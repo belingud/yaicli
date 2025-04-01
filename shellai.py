@@ -1,9 +1,13 @@
-from enum import StrEnum
-import json
-import time
-import requests
-import subprocess
 import configparser
+import json
+import subprocess
+import time
+from enum import StrEnum
+from pathlib import Path
+from typing import Annotated
+
+import requests
+import typer
 from prompt_toolkit import PromptSession
 from prompt_toolkit.application import get_app
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
@@ -12,21 +16,17 @@ from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.prompt import Confirm
-from pathlib import Path
-
-import typer
-from typing import Annotated
 
 
 class ModeEnum(StrEnum):
     CHAT = "chat"
-    EXECUTE = 'execute'
+    EXECUTE = "execute"
 
 
 class ShellAI:
     # Configuration file path
     CONFIG_PATH = Path("~/.config/shellai/config.json").expanduser()
-    
+
     # Default configuration template
     DEFAULT_CONFIG_INI = """
     [DEFAULT]
@@ -56,23 +56,28 @@ class ShellAI:
         self.session = PromptSession(key_bindings=self.bindings)
         self.current_mode = ModeEnum.CHAT.value
         self.config = {}
-        
+
         # Setup key bindings
         self._setup_key_bindings()
 
     def _setup_key_bindings(self):
         """Setup keyboard shortcuts"""
+
         @self.bindings.add(Keys.ControlI)  # Bind Ctrl+I to switch modes
         def _(event: KeyPressEvent):
-            self.current_mode = ModeEnum.CHAT.value if self.current_mode == ModeEnum.EXECUTE.value else ModeEnum.EXECUTE.value
+            self.current_mode = (
+                ModeEnum.CHAT.value
+                if self.current_mode == ModeEnum.EXECUTE.value
+                else ModeEnum.EXECUTE.value
+            )
 
     def get_default_config(self):
         """Get default configuration"""
         config = configparser.RawConfigParser()
         try:
             config.read_string(self.DEFAULT_CONFIG_INI)
-            config_dict = dict(config['DEFAULT'])
-            config_dict['stream'] = str(config_dict.get('stream', 'true')).lower()
+            config_dict = dict(config["DEFAULT"])
+            config_dict["stream"] = str(config_dict.get("stream", "true")).lower()
             return config_dict
         except configparser.Error as e:
             self.console.print(f"[red]Error parsing config: {e}[/red]")
@@ -165,7 +170,9 @@ class ShellAI:
         self.console.print(f"\n[bold green]Executing command: [/bold green] {command}\n")
         result = subprocess.run(command, shell=True)
         if result.returncode != 0:
-            self.console.print(f"\n[bold red]Command failed with return code: {result.returncode}[/bold red]")
+            self.console.print(
+                f"\n[bold red]Command failed with return code: {result.returncode}[/bold red]"
+            )
 
     def get_prompt_tokens(self):
         """Get prompt tokens based on current mode"""
@@ -203,12 +210,14 @@ class ShellAI:
         # Load configuration
         self.config = self.load_config()
         if not self.config["api_key"]:
-            self.console.print("[red]API key not found. Please set it in the configuration file.[/red]")
+            self.console.print(
+                "[red]API key not found. Please set it in the configuration file.[/red]"
+            )
             return
-            
+
         # Set initial mode
         self.current_mode = self.config["default_mode"]
-        
+
         # Check run mode from command line arguments
         if all([chat, shell]):
             self.console.print("[red]Cannot use both --chat and --shell[/red]")
@@ -229,10 +238,10 @@ class ShellAI:
         # Run main loop
         while True:
             user_input = self.session.prompt(self.get_prompt_tokens)
-            
+
             if user_input.lower() in ("exit", "quit"):
                 break
-                
+
             if self.current_mode == ModeEnum.CHAT.value:
                 self.chat_mode(user_input)
             elif self.current_mode == ModeEnum.EXECUTE.value:
