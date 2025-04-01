@@ -1,12 +1,18 @@
 [project]
-name = "llmcli"
+name = "shellai"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
+    "jmespath>=1.0.1",
     "prompt-toolkit>=3.0.50",
     "requests>=2.32.3",
     "rich>=13.9.4",
     "typer>=0.15.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.2",
 ]

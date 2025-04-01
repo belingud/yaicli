@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Annotated
 
 import requests
+import jmespath
 import typer
 from prompt_toolkit import PromptSession
 from prompt_toolkit.application import get_app
@@ -21,6 +22,7 @@ from rich.prompt import Confirm
 class ModeEnum(StrEnum):
     CHAT = "chat"
     EXECUTE = "execute"
+    TEMP = "temp"
 
 
 class ShellAI:
@@ -49,8 +51,9 @@ class ShellAI:
     stream=true
     """
 
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
         # Initialize terminal components
+        self.verbose = verbose
         self.console = Console()
         self.bindings = KeyBindings()
         self.session = PromptSession(key_bindings=self.bindings)
@@ -107,7 +110,9 @@ class ShellAI:
 
     def call_llm_api(self, prompt):
         """Call LLM API, return streaming output"""
-        url = f"{self.config['base_url']}/chat/completions"
+        base = self.config.get("base_url", "").rstrip("/")
+        completions_path = self.config.get("completions_path", "").lstrip("/")
+        url = f"{base}/{completions_path}"
         headers = {"Authorization": f"Bearer {self.config['api_key']}"}
         data = {
             "model": self.config["model"],
@@ -162,8 +167,8 @@ class ShellAI:
         response = self._call_api(url, headers, data)
         if not response:
             return None
-
-        return response.json()["choices"][0]["message"]["content"].strip()
+        content = jmespath.search(self.config["answer_path"], response.json())
+        return content.strip()
 
     def execute_shell_command(self, command):
         """Execute shell command"""
@@ -205,7 +210,7 @@ class ShellAI:
                 self.execute_shell_command(command)
         return ModeEnum.EXECUTE.value
 
-    def run(self, verbose=False, chat=False, shell=False):
+    def run(self, chat=False, shell=False):
         """Run the CLI application"""
         # Load configuration
         self.config = self.load_config()
@@ -227,7 +232,7 @@ class ShellAI:
         elif shell:
             self.current_mode = ModeEnum.EXECUTE.value
 
-        if verbose:
+        if self.verbose:
             self.console.print("[bold yellow]Verbose mode enabled[/bold yellow]")
             self.console.print(f"[bold yellow]Current mode: {self.current_mode}[/bold yellow]")
             self.console.print(f"[bold yellow]Using model: {self.config['model']}[/bold yellow]")
