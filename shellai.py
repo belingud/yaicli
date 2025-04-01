@@ -22,7 +22,7 @@ from rich.prompt import Confirm
 
 class ModeEnum(StrEnum):
     CHAT = "chat"
-    EXECUTE = "execute"
+    EXECUTE = "exec"
     TEMP = "temp"
 
 
@@ -40,6 +40,11 @@ class ShellAI:
 BASE_URL=https://api.openai.com/v1
 API_KEY=
 MODEL=gpt-4o
+
+# default run mode, default: temp
+# chat: interactive chat mode
+# exec: shell command generation mode
+# temp: one-shot mode
 DEFAULT_MODE=temp
 
 # auto detect shell and os

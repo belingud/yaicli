@@ -1,6 +1,6 @@
 [project]
 name = "shellai"
-version = "0.1.0"
+version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -20,6 +20,7 @@ resolution = "highest"
 
 [dependency-groups]
 dev = [
+    "bump2version>=1.0.1",
     "pytest>=8.3.5",
     "ruff>=0.11.2",
 ]
