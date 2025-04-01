@@ -12,7 +12,24 @@ dependencies = [
     "typer>=0.15.2",
 ]
 
+[project.scripts]
+ai = "shellai:app"
+
+[tool.uv]
+resolution = "highest"
+
 [dependency-groups]
 dev = [
+    "pytest>=8.3.5",
     "ruff>=0.11.2",
 ]
+
+[tool.ruff]
+line-length = 120
+select = ["E", "F", "W", "I", "B", "C90"]
+ignore = ["E501"]
+
+
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
