@@ -1,7 +1,7 @@
 [project]
-name = "shellai"
+name = "llmcli"
 version = "0.0.1"
-description = "Add your description here"
+description = "A simple CLI tool to interact with LLM"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ai = "shellai:app"
+ai = "llmcli:app"
 
 [tool.uv]
 resolution = "highest"
