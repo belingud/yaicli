@@ -3,7 +3,7 @@ name = "yaicli"
 version = "0.0.4"
 description = "A simple CLI tool to interact with LLM"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "distro>=1.9.0",
     "jmespath>=1.0.1",
