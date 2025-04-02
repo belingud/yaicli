@@ -1,5 +1,18 @@
 
 ---
+## [0.0.4](https://github.com/belingud/yaicli/compare/v0.0.3..v0.0.4) - 2025-04-02
+
+### 🚜 Refactor
+
+- simplify multi-line statements for better readability - ([4870bb7](https://github.com/belingud/yaicli/commit/4870bb7460682791ca79bbe2bcc0cef94bf51c26)) - Belingud
+- rename ShellAI to yaicli and improve CLI help handling - ([dad0905](https://github.com/belingud/yaicli/commit/dad090540a7c1f8c8b30e3c688643a76e504b0c0)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.3 - ([a689a02](https://github.com/belingud/yaicli/commit/a689a02b1c5e0cb278484267ef71f5f3acec8203)) - Belingud
+
+
+---
 ## [0.0.3](https://github.com/belingud/yaicli/compare/v0.0.2..v0.0.3) - 2025-04-02
 
 ### 🚜 Refactor
