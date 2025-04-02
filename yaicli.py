@@ -1,5 +1,6 @@
 import configparser
 import json
+import platform
 import subprocess
 import time
 from enum import StrEnum
@@ -11,6 +12,7 @@ from typing import Annotated, Optional
 import jmespath
 import requests
 import typer
+from distro import name as distro_name
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.keys import Keys
@@ -61,7 +63,6 @@ ANSWER_PATH=choices[0].message.content
 STREAM=true"""
 
     def __init__(self, verbose: bool = False):
-        # Initialize terminal components
         self.verbose = verbose
         self.console = Console()
         self.bindings = KeyBindings()
@@ -83,15 +84,20 @@ STREAM=true"""
                 else ModeEnum.EXECUTE.value
             )
 
-    def get_os(self):
+    def detect_os(self):
         """Detect operating system"""
         if self.config.get("OS_NAME") != "auto":
             return self.config.get("OS_NAME")
-        import platform
+        current_platform = platform.system()
+        if current_platform == "Linux":
+            return "Linux/" + distro_name(pretty=True)
+        if current_platform == "Windows":
+            return "Windows " + platform.release()
+        if current_platform == "Darwin":
+            return "Darwin/MacOS " + platform.mac_ver()[0]
+        return current_platform
 
-        return platform.system()
-
-    def get_shell(self):
+    def detect_shell(self):
         """Detect shell"""
         if self.config.get("SHELL_NAME") != "auto":
             return self.config.get("SHELL_NAME")
@@ -102,6 +108,30 @@ STREAM=true"""
             is_powershell = len(getenv("PSModulePath", "").split(pathsep)) >= 3
             return "powershell.exe" if is_powershell else "cmd.exe"
         return basename(getenv("SHELL", "/bin/sh"))
+
+    def build_cmd_prompt(self):
+        _os = self.detect_os()
+        _shell = self.detect_shell()
+        return f"""Your are a Shell Command Generator.
+Generate a command EXCLUSIVELY for {_os} OS with {_shell} shell.
+Rules:
+1. Use ONLY {_shell}-specific syntax and connectors (&&, ||, |, etc)
+2. Output STRICTLY in plain text format
+3. NEVER use markdown, code blocks or explanations
+4. Chain multi-step commands in SINGLE LINE
+5. Return NOTHING except the ready-to-run command"""
+
+    def build_default_prompt(self):
+        """Build default prompt"""
+        _os = self.detect_os()
+        _shell = self.detect_shell()
+        return (
+            "You are a system and code assistant, "
+            f"focusing on {_os} and {_shell}. "
+            "Assist with system management, script writing, and coding tasks. "
+            "Your responses should be concise and use Markdown format, "
+            "unless the user explicitly requests more details."
+        )
 
     def get_default_config(self):
         """Get default configuration"""
@@ -137,36 +167,42 @@ STREAM=true"""
         response.raise_for_status()  # Raise an exception for non-200 status codes
         return response
 
-    def call_llm_api(self, prompt):
-        """Call LLM API, return streaming output"""
+    def get_llm_url(self) -> Optional[str]:
+        """Get LLM API URL"""
         base = self.config.get("BASE_URL", "").rstrip("/")
         if not base:
             self.console.print(
                 "[red]Base URL not found. Please set it in the configuration file. Default: https://api.openai.com/v1[/red]"
             )
-            return
+            raise typer.Exit(code=1)
         COMPLETION_PATH = self.config.get("COMPLETION_PATH", "").lstrip("/")
         if not COMPLETION_PATH:
             self.console.print(
                 "[red]Completions path not set. Please set it in the configuration file. Default: `/chat/completions`[/red]"
             )
-            return
-        url = f"{base}/{COMPLETION_PATH}"
-        headers = {"Authorization": f"Bearer {self.config['API_KEY']}"}
-        data = {
-            "model": self.config["MODEL"],
-            "messages": [{"role": "user", "content": prompt}],
-            "stream": self.config.get("STREAM", "true") == "true",
-        }
-        try:
-            response = self._call_api(url, headers, data)
-        except requests.exceptions.RequestException as e:
-            self.console.print(f"[red]Error calling API: {e}[/red]")
-            return
-        if not response:
-            return
+            raise typer.Exit(code=1)
+        return f"{base}/{COMPLETION_PATH}"
 
-        self.console.print("\n[bold green]Assistant:[/bold green]")
+    def build_data(self, prompt: str, mode: str = ModeEnum.TEMP.value) -> dict:
+        """Build request data"""
+        if mode == ModeEnum.EXECUTE.value:
+            system_prompt = self.build_cmd_prompt()
+        else:
+            system_prompt = self.build_default_prompt()
+        return {
+            "model": self.config["MODEL"],
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            "stream": self.config.get("STREAM", "true") == "true",
+            "temperature": 0.7,
+            "top_p": 0.7,
+            "max_tokens": 200,
+        }
+
+    def stream_response(self, response):
+        """Stream response from LLM API"""
         full_completion = ""
         # Streaming response loop
         with Live(console=self.console) as live:
@@ -190,24 +226,29 @@ STREAM=true"""
                             self.console.print(f"[red]Error decoding JSON: {decoded_line}[/red]")
                 time.sleep(0.05)
 
+    def call_llm_api(self, prompt: str):
+        """Call LLM API, return streaming output"""
+        url = self.get_llm_url()
+        headers = {"Authorization": f"Bearer {self.config['API_KEY']}"}
+        data = self.build_data(prompt)
+        try:
+            response = self._call_api(url, headers, data)
+        except requests.exceptions.RequestException as e:
+            self.console.print(f"[red]Error calling API: {e}[/red]")
+            raise typer.Exit(code=1) from None
+        if not response:
+            raise typer.Exit(code=1)
+
+        self.console.print("\n[bold green]Assistant:[/bold green]")
+        self.stream_response(response)  # Stream the response
         self.console.print()  # Add a newline after the completion
 
     def get_command_from_llm(self, prompt):
         """Request Shell command from LLM"""
-        url = f"{self.config['BASE_URL']}/chat/completions"
+        url = self.get_llm_url()
         headers = {"Authorization": f"Bearer {self.config['API_KEY']}"}
-        data = {
-            "model": self.config["MODEL"],
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are a command line assistant, return one Linux/macOS shell commands only, without explanation and triple-backtick code blocks.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            "stream": False,  # Always use non-streaming for command generation
-        }
-
+        data = self.build_data(prompt, mode=ModeEnum.EXECUTE.value)
+        data["stream"] = False
         try:
             response = self._call_api(url, headers, data)
         except requests.exceptions.RequestException as e:

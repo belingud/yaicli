@@ -133,6 +133,15 @@ wheels = [
 ]
 
 [[package]]
+name = "distro"
+version = "1.9.0"
+source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple/" }
+sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/fc/f8/98eea607f65de6527f8a2e8885fc8015d3e6f5775df186e443e0964a11c3/distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed" }
+wheels = [
+    { url = "https://repo.huaweicloud.com/repository/pypi/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2" },
+]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.2.2"
 source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple/" }
@@ -410,6 +419,7 @@ name = "yaicli"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "distro" },
     { name = "jmespath" },
     { name = "prompt-toolkit" },
     { name = "requests" },
@@ -426,6 +436,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "distro", specifier = ">=1.9.0" },
     { name = "jmespath", specifier = ">=1.0.1" },
     { name = "prompt-toolkit", specifier = ">=3.0.50" },
     { name = "requests", specifier = ">=2.32.3" },

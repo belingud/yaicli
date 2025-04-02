@@ -5,6 +5,7 @@ description = "A simple CLI tool to interact with LLM"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
+    "distro>=1.9.0",
     "jmespath>=1.0.1",
     "prompt-toolkit>=3.0.50",
     "requests>=2.32.3",
