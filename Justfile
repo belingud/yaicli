@@ -9,7 +9,7 @@ clean:
     @echo "Cleaning test artifacts..."
     @rm -rf .pytest_cache/
     @echo "Cleaning pdm build artifacts..."
-    @rm -rf.pdm_build/
+    @rm -rf .pdm_build/
 
 # Run tests with pytest
 test:
@@ -17,9 +17,10 @@ test:
     @pytest tests/
 
 # Build package with hatch (runs clean first)
-build: clean
+build:
     @echo "Building package..."
-    @hatch build
+    @rm -rf dist/
+    @uv build
 
 # Install package in editable mode
 install:
