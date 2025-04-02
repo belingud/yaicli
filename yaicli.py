@@ -79,9 +79,7 @@ STREAM=true"""
         @self.bindings.add(Keys.ControlI)  # Bind Ctrl+I to switch modes
         def _(event: KeyPressEvent):
             self.current_mode = (
-                ModeEnum.CHAT.value
-                if self.current_mode == ModeEnum.EXECUTE.value
-                else ModeEnum.EXECUTE.value
+                ModeEnum.CHAT.value if self.current_mode == ModeEnum.EXECUTE.value else ModeEnum.EXECUTE.value
             )
 
     def detect_os(self):
@@ -272,9 +270,7 @@ Rules:
         self.console.print(f"\n[bold green]Executing command: [/bold green] {command}\n")
         result = subprocess.run(command, shell=True)
         if result.returncode != 0:
-            self.console.print(
-                f"\n[bold red]Command failed with return code: {result.returncode}[/bold red]"
-            )
+            self.console.print(f"\n[bold red]Command failed with return code: {result.returncode}[/bold red]")
 
     def get_prompt_tokens(self):
         """Get prompt tokens based on current mode"""
@@ -383,9 +379,7 @@ Rules:
         # Load configuration
         self.config = self.load_config()
         if not self.config.get("API_KEY", None):
-            self.console.print(
-                "[red]API key not found. Please set it in the configuration file.[/red]"
-            )
+            self.console.print("[red]API key not found. Please set it in the configuration file.[/red]")
             return
 
         # Set initial mode
@@ -421,7 +415,7 @@ app = typer.Typer(
     name="yaicli",
     context_settings=CONTEXT_SETTINGS,
     pretty_exceptions_enable=False,
-    short_help="yaicli Command Line Tool",
+    short_help="yaicli. Your AI interface in cli.",
     no_args_is_help=True,
     invoke_without_command=True,
 )
@@ -431,13 +425,9 @@ app = typer.Typer(
 def main(
     ctx: typer.Context,
     prompt: Annotated[str, typer.Argument(show_default=False, help="The prompt send to the LLM")] = "",
-    verbose: Annotated[
-        bool, typer.Option("--verbose", "-V", help="Show verbose information")
-    ] = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-V", help="Show verbose information")] = False,
     chat: Annotated[bool, typer.Option("--chat", "-c", help="Start in chat mode")] = False,
-    shell: Annotated[
-        bool, typer.Option("--shell", "-s", help="Generate and execute shell command")
-    ] = False,
+    shell: Annotated[bool, typer.Option("--shell", "-s", help="Generate and execute shell command")] = False,
 ):
     """yaicli. Your AI interface in cli."""
     if not prompt and not chat:
