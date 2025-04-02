@@ -1,5 +1,21 @@
 
 ---
+## [0.0.5](https://github.com/belingud/yaicli/compare/v0.0.4..v0.0.5) - 2025-04-02
+
+### 🚜 Refactor
+
+- rename ShellAI to YAICLI and update related tests - ([2284297](https://github.com/belingud/yaicli/commit/2284297d018851abcb74f01064554b00df821301)) - Belingud
+
+### 📚 Documentation
+
+- update README with detailed project information and usage instructions - ([c71d50c](https://github.com/belingud/yaicli/commit/c71d50c9d232c47a3cdbe035d03c1f4a0dbbe7d2)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.4 - ([03cdedb](https://github.com/belingud/yaicli/commit/03cdedb38465adcf4fc10d4379b2d939daf22d9d)) - Belingud
+
+
+---
 ## [0.0.4](https://github.com/belingud/yaicli/compare/v0.0.3..v0.0.4) - 2025-04-02
 
 ### 🚜 Refactor
