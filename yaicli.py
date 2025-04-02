@@ -126,9 +126,8 @@ Rules:
         _os = self.detect_os()
         _shell = self.detect_shell()
         return (
-            "You are a system and code assistant, "
-            f"focusing on {_os} and {_shell}. "
-            "Assist with system management, script writing, and coding tasks. "
+            "You are yaili, a system management and programing assistant, "
+            f"You are managing {_os} operating system with {_shell} shell. "
             "Your responses should be concise and use Markdown format, "
             "unless the user explicitly requests more details."
         )
@@ -235,6 +234,8 @@ Rules:
             response = self._call_api(url, headers, data)
         except requests.exceptions.RequestException as e:
             self.console.print(f"[red]Error calling API: {e}[/red]")
+            if self.verbose and e.response:
+                self.console.print(f"{e.response.text}")
             raise typer.Exit(code=1) from None
         if not response:
             raise typer.Exit(code=1)
@@ -438,7 +439,7 @@ def main(
     ] = False,
 ):
     """LLM CLI Tool"""
-    cli = ShellAI()
+    cli = ShellAI(verbose=verbose)
     cli.run(chat=chat, shell=shell, prompt=prompt)
 
 
