@@ -33,7 +33,7 @@ class CasePreservingConfigParser(configparser.RawConfigParser):
 
 class ShellAI:
     # Configuration file path
-    CONFIG_PATH = Path("~/.config/shellai/config.ini").expanduser()
+    CONFIG_PATH = Path("~/.config/llmcli/config.ini").expanduser()
 
     # Default configuration template
     DEFAULT_CONFIG_INI = """[core]

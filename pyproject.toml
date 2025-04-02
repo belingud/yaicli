@@ -1,5 +1,5 @@
 [project]
-name = "llmcli"
+name = "yaicli"
 version = "0.0.1"
 description = "A simple CLI tool to interact with LLM"
 readme = "README.md"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ai = "llmcli:app"
+ai = "yaicli:app"
 
 [tool.uv]
 resolution = "highest"
