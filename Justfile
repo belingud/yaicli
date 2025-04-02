@@ -30,4 +30,4 @@ install:
 # Generate changelog from git log
 changelog:
     @echo "Generating changelog..."
-    @git log --oneline --decorate --graph > CHANGELOG.md
+    @git cliff -l --prepend CHANGELOG.md
