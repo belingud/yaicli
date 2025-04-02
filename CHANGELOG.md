@@ -1,5 +1,15 @@
 
 ---
+## [0.0.3](https://github.com/belingud/yaicli/compare/v0.0.2..v0.0.3) - 2025-04-02
+
+### 🚜 Refactor
+
+- **(changelog)** switch from git log to git cliff for changelog generation - ([242a51d](https://github.com/belingud/yaicli/commit/242a51d93a25675041a7fe19c4a0db1c7c12a663)) - Belingud
+- update CLI assistant description and error handling - ([1a8bcdc](https://github.com/belingud/yaicli/commit/1a8bcdc86c72a75259d266291bc9e5350fc81f61)) - Belingud
+- fix spacing in clean target and simplify build target - ([2a1050e](https://github.com/belingud/yaicli/commit/2a1050e7a9eea8753c164553b13796e5510b7965)) - Belingud
+
+
+---
 ## [0.0.2] - 2025-04-02
 
 ### ⛰️  Features
