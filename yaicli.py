@@ -418,10 +418,10 @@ CONTEXT_SETTINGS = {
 }
 
 app = typer.Typer(
-    name="ShellAI",
+    name="yaicli",
     context_settings=CONTEXT_SETTINGS,
     pretty_exceptions_enable=False,
-    short_help="ShellAI Command Line Tool",
+    short_help="yaicli Command Line Tool",
     no_args_is_help=True,
     invoke_without_command=True,
 )
@@ -429,7 +429,8 @@ app = typer.Typer(
 
 @app.command()
 def main(
-    prompt: Annotated[str, typer.Argument(show_default=False, help="The prompt send to the LLM")],
+    ctx: typer.Context,
+    prompt: Annotated[str, typer.Argument(show_default=False, help="The prompt send to the LLM")] = "",
     verbose: Annotated[
         bool, typer.Option("--verbose", "-V", help="Show verbose information")
     ] = False,
@@ -438,7 +439,11 @@ def main(
         bool, typer.Option("--shell", "-s", help="Generate and execute shell command")
     ] = False,
 ):
-    """LLM CLI Tool"""
+    """yaicli. Your AI interface in cli."""
+    if not prompt and not chat:
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
+
     cli = ShellAI(verbose=verbose)
     cli.run(chat=chat, shell=shell, prompt=prompt)
 
