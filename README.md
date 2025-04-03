@@ -85,14 +85,16 @@ STREAM=true
 
 ### Configuration Options
 
-- **BASE_URL**: API endpoint URL (default: OpenAI API)
-- **API_KEY**: Your API key for the LLM provider
-- **MODEL**: The model to use (e.g., gpt-4o, gpt-3.5-turbo), default: gpt-4o
-- **SHELL_NAME**: Shell to use (auto for automatic detection), default: auto
-- **OS_NAME**: OS to use (auto for automatic detection), default: auto
-- **COMPLETION_PATH**: Path for completions endpoint, default: /chat/completions
-- **ANSWER_PATH**: Json path expression to extract answer from response, default: choices[0].message.content
-- **STREAM**: Enable/disable streaming responses
+Below are the available configuration options and override environment variables:
+
+- **BASE_URL**: API endpoint URL (default: OpenAI API), env: AI_BASE_URL
+- **API_KEY**: Your API key for the LLM provider, env: AI_API_KEY
+- **MODEL**: The model to use (e.g., gpt-4o, gpt-3.5-turbo), default: gpt-4o, env: AI_MODEL
+- **SHELL_NAME**: Shell to use (auto for automatic detection), default: auto, env: AI_SHELL_NAME
+- **OS_NAME**: OS to use (auto for automatic detection), default: auto, env: AI_OS_NAME
+- **COMPLETION_PATH**: Path for completions endpoint, default: /chat/completions, env: AI_COMPLETION_PATH
+- **ANSWER_PATH**: Json path expression to extract answer from response, default: choices[0].message.content, env: AI_ANSWER_PATH
+- **STREAM**: Enable/disable streaming responses, default: true, env: AI_STREAM
 
 ## Usage
 

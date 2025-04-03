@@ -47,8 +47,8 @@ DEFAULT_CONFIG = {
 
 # Environment variable mapping (config key -> environment variable name)
 ENV_VAR_MAPPING = {
-    "BASE_URL": "AI_OPENAI_API_BASE",
-    "API_KEY": "AI_OPENAI_API_KEY",
+    "BASE_URL": "AI_BASE_URL",
+    "API_KEY": "AI_API_KEY",
     "MODEL": "AI_MODEL",
     "SHELL_NAME": "AI_SHELL_NAME",
     "OS_NAME": "AI_OS_NAME",
@@ -298,7 +298,6 @@ Rules:
             "stream": self.config.get("STREAM", "true") == "true",
             "temperature": 0.7,
             "top_p": 0.7,
-            "max_tokens": 200,
         }
 
     def stream_response(self, response: requests.Response) -> str:
