@@ -1,5 +1,18 @@
 
 ---
+## [0.0.6](https://github.com/belingud/yaicli/compare/v0.0.5..v0.0.6) - 2025-04-03
+
+### 🚜 Refactor
+
+- update environment variable names and remove max_tokens - ([3abba5f](https://github.com/belingud/yaicli/commit/3abba5fe189b3de0d005907e159a46291a69636f)) - Belingud
+- simplify config handling and remove DEFAULT_MODE - ([3439eda](https://github.com/belingud/yaicli/commit/3439eda71fdb24816de9c61c7ccee389e32c53b2)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update CHANGELOG and uv.lock for version 0.0.5 - ([d5abef4](https://github.com/belingud/yaicli/commit/d5abef4b602355fe472abaecd07f2701e8a38e4b)) - Belingud
+
+
+---
 ## [0.0.5](https://github.com/belingud/yaicli/compare/v0.0.4..v0.0.5) - 2025-04-02
 
 ### 🚜 Refactor
