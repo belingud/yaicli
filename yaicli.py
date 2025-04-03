@@ -33,13 +33,39 @@ class CasePreservingConfigParser(configparser.RawConfigParser):
         return optionstr
 
 
+# Default configuration values (lowest priority)
+DEFAULT_CONFIG = {
+    "BASE_URL": "https://api.openai.com/v1",
+    "API_KEY": "",
+    "MODEL": "gpt-4o",
+    "SHELL_NAME": "auto",
+    "OS_NAME": "auto",
+    "COMPLETION_PATH": "chat/completions",
+    "ANSWER_PATH": "choices[0].message.content",
+    "STREAM": "true",
+}
+
+# Environment variable mapping (config key -> environment variable name)
+ENV_VAR_MAPPING = {
+    "BASE_URL": "AI_OPENAI_API_BASE",
+    "API_KEY": "AI_OPENAI_API_KEY",
+    "MODEL": "AI_MODEL",
+    "SHELL_NAME": "AI_SHELL_NAME",
+    "OS_NAME": "AI_OS_NAME",
+    "COMPLETION_PATH": "AI_COMPLETION_PATH",
+    "ANSWER_PATH": "AI_ANSWER_PATH",
+    "STREAM": "AI_STREAM",
+}
+
+
 class YAICLI:
     """Main class for YAICLI
     Chat mode: interactive chat mode
     One-shot mode:
-        Temp mode: ask a question and get a response once
-        Execute mode: generate and execute shell commands
+        Temp: ask a question and get a response once
+        Execute: generate and execute shell commands
     """
+
     # Configuration file path
     CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 
@@ -48,12 +74,6 @@ class YAICLI:
 BASE_URL=https://api.openai.com/v1
 API_KEY=
 MODEL=gpt-4o
-
-# default run mode, default: temp
-# chat: interactive chat mode
-# exec: generate and execute shell commands once
-# temp: ask a question and get a response once
-DEFAULT_MODE=temp
 
 # auto detect shell and os
 SHELL_NAME=auto
@@ -73,7 +93,7 @@ STREAM=true"""
         self.console = Console()
         self.bindings = KeyBindings()
         self.session = PromptSession(key_bindings=self.bindings)
-        self.current_mode = ModeEnum.CHAT.value
+        self.current_mode = ModeEnum.TEMP.value
         self.config = {}
         self.history = []
         self.max_history_length = 25
@@ -87,7 +107,9 @@ STREAM=true"""
         @self.bindings.add(Keys.ControlI)  # Bind Ctrl+I to switch modes
         def _(event: KeyPressEvent):
             self.current_mode = (
-                ModeEnum.CHAT.value if self.current_mode == ModeEnum.EXECUTE.value else ModeEnum.EXECUTE.value
+                ModeEnum.CHAT.value
+                if self.current_mode == ModeEnum.EXECUTE.value
+                else ModeEnum.EXECUTE.value
             )
 
     def clear_history(self):
@@ -166,27 +188,23 @@ Rules:
     def get_default_config(self) -> dict[str, str]:
         """Get default configuration
         Returns:
-            dict: default configuration
-        Raises:
-            typer.Exit: if there is an error with the request
+            dict: default configuration with lowest priority
         """
-        config = CasePreservingConfigParser()
-        try:
-            config.read_string(self.DEFAULT_CONFIG_INI)
-            config_dict = {k.upper(): v for k, v in config["core"].items()}
-            config_dict["STREAM"] = str(config_dict.get("STREAM", "true")).lower()
-            return config_dict
-        except configparser.Error as e:
-            self.console.print(f"[red]Error parsing config: {e}[/red]")
-            raise typer.Exit(code=1) from None
+        return DEFAULT_CONFIG.copy()
 
     def load_config(self) -> dict[str, str]:
-        """Load LLM API configuration
+        """Load LLM API configuration with priority:
+        1. Environment variables (highest priority)
+        2. Configuration file
+        3. Default values (lowest priority)
+
         Returns:
-            dict: configuration
-        Raises:
-            typer.Exit: if there is an error with the request
+            dict: merged configuration
         """
+        # Start with default configuration (lowest priority)
+        merged_config = self.get_default_config()
+
+        # Load from configuration file (middle priority)
         if not self.CONFIG_PATH.exists():
             self.console.print(
                 "[bold yellow]Configuration file not found. Creating default configuration file.[/bold yellow]"
@@ -194,11 +212,25 @@ Rules:
             self.CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             with open(self.CONFIG_PATH, "w") as f:
                 f.write(self.DEFAULT_CONFIG_INI)
-            return self.config
-        config = CasePreservingConfigParser()
-        config.read(self.CONFIG_PATH)
-        self.config = dict(config["core"])
-        self.config["STREAM"] = str(self.config.get("STREAM", "true")).lower()
+        else:
+            config_parser = CasePreservingConfigParser()
+            config_parser.read(self.CONFIG_PATH)
+            if "core" in config_parser:
+                # Update with values from config file
+                for key, value in config_parser["core"].items():
+                    if value.strip():  # Only use non-empty values from config file
+                        merged_config[key] = value
+
+        # Override with environment variables (highest priority)
+        for config_key, env_var in ENV_VAR_MAPPING.items():
+            env_value = getenv(env_var)
+            if env_value is not None:  # Only override if environment variable exists
+                merged_config[config_key] = env_value
+
+        # Ensure STREAM is lowercase string
+        merged_config["STREAM"] = str(merged_config.get("STREAM", "true")).lower()
+
+        self.config = merged_config
         return self.config
 
     def _call_api(self, url: str, headers: dict, data: dict) -> requests.Response:
@@ -322,7 +354,9 @@ Rules:
             raise typer.Exit(code=1)
 
         self.console.print("\n[bold green]Assistant:[/bold green]")
-        assistant_response = self.stream_response(response)  # Stream the response and get the full text
+        assistant_response = self.stream_response(
+            response
+        )  # Stream the response and get the full text
         self.console.print()  # Add a newline after the completion
 
         return assistant_response
@@ -365,7 +399,9 @@ Rules:
         self.console.print(f"\n[bold green]Executing command: [/bold green] {command}\n")
         result = subprocess.run(command, shell=True)
         if result.returncode != 0:
-            self.console.print(f"\n[bold red]Command failed with return code: {result.returncode}[/bold red]")
+            self.console.print(
+                f"\n[bold red]Command failed with return code: {result.returncode}[/bold red]"
+            )
         return result.returncode
 
     def get_prompt_tokens(self):
@@ -405,7 +441,9 @@ Rules:
             self.history.append({"role": "assistant", "content": assistant_response})
 
         # Manage history length, keep recent conversations
-        if len(self.history) > self.max_history_length * 2:  # Each conversation has user and assistant messages
+        if (
+            len(self.history) > self.max_history_length * 2
+        ):  # Each conversation has user and assistant messages
             self.history = self.history[-self.max_history_length * 2 :]
 
         return ModeEnum.CHAT.value
@@ -528,11 +566,10 @@ Rules:
         # Load configuration
         self.config = self.load_config()
         if not self.config.get("API_KEY", None):
-            self.console.print("[red]API key not found. Please set it in the configuration file.[/red]")
+            self.console.print(
+                "[red]API key not found. Please set it in the configuration file.[/red]"
+            )
             return
-
-        # Set initial mode
-        self.current_mode = self.config["DEFAULT_MODE"]
 
         # Check run mode from command line arguments
         if all([chat, shell]):
@@ -573,10 +610,16 @@ app = typer.Typer(
 @app.command()
 def main(
     ctx: typer.Context,
-    prompt: Annotated[str, typer.Argument(show_default=False, help="The prompt send to the LLM")] = "",
-    verbose: Annotated[bool, typer.Option("--verbose", "-V", help="Show verbose information")] = False,
+    prompt: Annotated[
+        str, typer.Argument(show_default=False, help="The prompt send to the LLM")
+    ] = "",
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-V", help="Show verbose information")
+    ] = False,
     chat: Annotated[bool, typer.Option("--chat", "-c", help="Start in chat mode")] = False,
-    shell: Annotated[bool, typer.Option("--shell", "-s", help="Generate and execute shell command")] = False,
+    shell: Annotated[
+        bool, typer.Option("--shell", "-s", help="Generate and execute shell command")
+    ] = False,
 ):
     """yaicli. Your AI interface in cli."""
     if not prompt and not chat:

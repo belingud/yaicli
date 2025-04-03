@@ -31,7 +31,6 @@ YAICLI is a powerful command-line AI assistant tool that enables you to interact
 ### Prerequisites
 
 - Python 3.9 or higher
-- pip (Python package manager)
 
 ### Install from PyPI
 
@@ -62,17 +61,13 @@ Just run `ai`, and it will create the config file for you. Then you can edit it 
 
 ### Configuration File
 
+The default configuration file is located at `~/.config/yaicli/config.ini`. Look at the example below:
+
 ```ini
 [core]
 BASE_URL=https://api.openai.com/v1
 API_KEY=your_api_key_here
 MODEL=gpt-4o
-
-# default run mode, default: temp
-# chat: interactive chat mode
-# exec: shell command generation mode
-# temp: one-shot mode
-DEFAULT_MODE=temp
 
 # auto detect shell and os
 SHELL_NAME=auto
@@ -93,7 +88,6 @@ STREAM=true
 - **BASE_URL**: API endpoint URL (default: OpenAI API)
 - **API_KEY**: Your API key for the LLM provider
 - **MODEL**: The model to use (e.g., gpt-4o, gpt-3.5-turbo), default: gpt-4o
-- **DEFAULT_MODE**: Default operation mode (chat, exec, or temp), default: temp
 - **SHELL_NAME**: Shell to use (auto for automatic detection), default: auto
 - **OS_NAME**: OS to use (auto for automatic detection), default: auto
 - **COMPLETION_PATH**: Path for completions endpoint, default: /chat/completions
