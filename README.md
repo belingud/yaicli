@@ -154,7 +154,9 @@ ai -h
 In interactive mode (chat or shell), you can:
 - Type your queries and get responses
 - Use `Tab` to switch between Chat and Execute modes
-- Type 'exit' or 'quit' to exit
+- Type '/exit' to exit
+- Type '/clear' to clear history
+- Type '/his' to show history
 
 ### Shell Command Generation
 

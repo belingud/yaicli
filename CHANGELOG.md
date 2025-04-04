@@ -1,5 +1,17 @@
 
 ---
+## [0.0.7](https://github.com/belingud/yaicli/compare/v0.0.6..v0.0.7) - 2025-04-04
+
+### 🚜 Refactor
+
+- simplify CLI structure and improve code maintainability - ([4eed7d8](https://github.com/belingud/yaicli/commit/4eed7d85abf3a75766e015533682beb2998f8c3e)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.6 and CHANGELOG - ([563a468](https://github.com/belingud/yaicli/commit/563a4681c1a2e96a0609f2bd9822410567c4d0d0)) - Belingud
+
+
+---
 ## [0.0.6](https://github.com/belingud/yaicli/compare/v0.0.5..v0.0.6) - 2025-04-03
 
 ### 🚜 Refactor
