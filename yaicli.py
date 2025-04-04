@@ -3,7 +3,6 @@ import json
 import platform
 import subprocess
 import time
-from enum import StrEnum
 from os import getenv
 from os.path import basename, pathsep
 from pathlib import Path
@@ -21,55 +20,56 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.prompt import Confirm
 
+SHELL_PROMPT = """Your are a Shell Command Generator.
+Generate a command EXCLUSIVELY for {_os} OS with {_shell} shell.
+Rules:
+1. Use ONLY {_shell}-specific syntax and connectors (&&, ||, |, etc)
+2. Output STRICTLY in plain text format
+3. NEVER use markdown, code blocks or explanations
+4. Chain multi-step commands in SINGLE LINE
+5. Return NOTHING except the ready-to-run command"""
 
-class ModeEnum(StrEnum):
-    CHAT = "chat"
-    EXECUTE = "exec"
-    TEMP = "temp"
+DEFAULT_PROMPT = (
+    "You are yaili, a system management and programing assistant, "
+    "You are managing {_os} operating system with {_shell} shell. "
+    "Your responses should be concise and use Markdown format, "
+    "unless the user explicitly requests more details."
+)
+
+CMD_CLEAR = "/clear"
+CMD_EXIT = "/exit"
+
+EXEC_MODE = "exec"
+CHAT_MODE = "chat"
+TEMP_MODE = "temp"
+
+DEFAULT_CONFIG_MAP = {
+    "BASE_URL": {"value": "https://api.openai.com/v1", "env_key": "AI_BASE_URL"},
+    "API_KEY": {"value": "", "env_key": "AI_API_KEY"},
+    "MODEL": {"value": "gpt-4o", "env_key": "AI_MODEL"},
+    "SHELL_NAME": {"value": "auto", "env_key": "AI_SHELL_NAME"},
+    "OS_NAME": {"value": "auto", "env_key": "AI_OS_NAME"},
+    "COMPLETION_PATH": {"value": "chat/completions", "env_key": "AI_COMPLETION_PATH"},
+    "ANSWER_PATH": {"value": "choices[0].message.content", "env_key": "AI_ANSWER_PATH"},
+    "STREAM": {"value": "true", "env_key": "AI_STREAM"},
+}
+
+app = typer.Typer(
+    name="yaicli",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    pretty_exceptions_enable=False,
+)
 
 
 class CasePreservingConfigParser(configparser.RawConfigParser):
+    """Case preserving config parser"""
+
     def optionxform(self, optionstr):
         return optionstr
 
 
-# Default configuration values (lowest priority)
-DEFAULT_CONFIG = {
-    "BASE_URL": "https://api.openai.com/v1",
-    "API_KEY": "",
-    "MODEL": "gpt-4o",
-    "SHELL_NAME": "auto",
-    "OS_NAME": "auto",
-    "COMPLETION_PATH": "chat/completions",
-    "ANSWER_PATH": "choices[0].message.content",
-    "STREAM": "true",
-}
-
-# Environment variable mapping (config key -> environment variable name)
-ENV_VAR_MAPPING = {
-    "BASE_URL": "AI_BASE_URL",
-    "API_KEY": "AI_API_KEY",
-    "MODEL": "AI_MODEL",
-    "SHELL_NAME": "AI_SHELL_NAME",
-    "OS_NAME": "AI_OS_NAME",
-    "COMPLETION_PATH": "AI_COMPLETION_PATH",
-    "ANSWER_PATH": "AI_ANSWER_PATH",
-    "STREAM": "AI_STREAM",
-}
-
-
-class YAICLI:
-    """Main class for YAICLI
-    Chat mode: interactive chat mode
-    One-shot mode:
-        Temp: ask a question and get a response once
-        Execute: generate and execute shell commands
-    """
-
-    # Configuration file path
+class CLI:
     CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
-
-    # Default configuration template
     DEFAULT_CONFIG_INI = """[core]
 BASE_URL=https://api.openai.com/v1
 API_KEY=
@@ -88,41 +88,62 @@ ANSWER_PATH=choices[0].message.content
 # false: non-streaming response
 STREAM=true"""
 
-    def __init__(self, verbose: bool = False):
+    def __init__(self, verbose: bool = False) -> None:
         self.verbose = verbose
         self.console = Console()
         self.bindings = KeyBindings()
         self.session = PromptSession(key_bindings=self.bindings)
-        self.current_mode = ModeEnum.TEMP.value
         self.config = {}
         self.history = []
         self.max_history_length = 25
+        self.current_mode = TEMP_MODE
 
-        # Setup key bindings
-        self._setup_key_bindings()
-
-    def _setup_key_bindings(self):
+    def _setup_key_bindings(self) -> None:
         """Setup keyboard shortcuts"""
 
-        @self.bindings.add(Keys.ControlI)  # Bind Ctrl+I to switch modes
-        def _(event: KeyPressEvent):
-            self.current_mode = (
-                ModeEnum.CHAT.value
-                if self.current_mode == ModeEnum.EXECUTE.value
-                else ModeEnum.EXECUTE.value
-            )
+        @self.bindings.add(Keys.ControlI)  # Bind TAB to switch modes
+        def _(event: KeyPressEvent) -> None:
+            self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
 
-    def clear_history(self):
-        """Clear chat history"""
-        self.history = []
+    def load_config(self) -> dict[str, str]:
+        """Load LLM API configuration with priority:
+        1. Environment variables (highest priority)
+        2. Configuration file
+        3. Default values (lowest priority)
+
+        Returns:
+            dict: merged configuration
+        """
+        # Start with default configuration (lowest priority)
+        merged_config = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
+
+        # Create default config file if it doesn't exist
+        if not self.CONFIG_PATH.exists():
+            self.console.print("[bold yellow]Creating default configuration file.[/bold yellow]")
+            self.CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.CONFIG_PATH, "w") as f:
+                f.write(self.DEFAULT_CONFIG_INI)
+        else:
+            # Load from configuration file (middle priority)
+            config_parser = CasePreservingConfigParser()
+            config_parser.read(self.CONFIG_PATH)
+            if "core" in config_parser:
+                # Update with non-empty values from config file
+                merged_config.update({k: v for k, v in config_parser["core"].items() if v.strip()})
+
+        # Override with environment variables (highest priority)
+        for key, config in DEFAULT_CONFIG_MAP.items():
+            env_value = getenv(config["env_key"])
+            if env_value is not None:
+                merged_config[key] = env_value
+
+        merged_config["STREAM"] = str(merged_config.get("STREAM", "true")).lower()
+
+        self.config = merged_config
+        return merged_config
 
     def detect_os(self) -> str:
-        """Detect operating system
-        Returns:
-            str: operating system name
-        Raises:
-            typer.Exit: if there is an error with the request
-        """
+        """Detect operating system + version"""
         if self.config.get("OS_NAME") != "auto":
             return self.config["OS_NAME"]
         current_platform = platform.system()
@@ -135,15 +156,9 @@ STREAM=true"""
         return current_platform
 
     def detect_shell(self) -> str:
-        """Detect shell
-        Returns:
-            str: shell name
-        Raises:
-            typer.Exit: if there is an error with the request
-        """
+        """Detect shell name"""
         if self.config["SHELL_NAME"] != "auto":
             return self.config["SHELL_NAME"]
-        import platform
 
         current_platform = platform.system()
         if current_platform in ("Windows", "nt"):
@@ -151,482 +166,199 @@ STREAM=true"""
             return "powershell.exe" if is_powershell else "cmd.exe"
         return basename(getenv("SHELL", "/bin/sh"))
 
-    def build_cmd_prompt(self) -> str:
-        """Build command prompt
-        Returns:
-            str: command prompt
-        Raises:
-            typer.Exit: if there is an error with the request
-        """
-        _os = self.detect_os()
-        _shell = self.detect_shell()
-        return f"""Your are a Shell Command Generator.
-Generate a command EXCLUSIVELY for {_os} OS with {_shell} shell.
-Rules:
-1. Use ONLY {_shell}-specific syntax and connectors (&&, ||, |, etc)
-2. Output STRICTLY in plain text format
-3. NEVER use markdown, code blocks or explanations
-4. Chain multi-step commands in SINGLE LINE
-5. Return NOTHING except the ready-to-run command"""
-
-    def build_default_prompt(self) -> str:
-        """Build default prompt
-        Returns:
-            str: default prompt
-        Raises:
-            typer.Exit: if there is an error with the request
-        """
-        _os = self.detect_os()
-        _shell = self.detect_shell()
-        return (
-            "You are yaili, a system management and programing assistant, "
-            f"You are managing {_os} operating system with {_shell} shell. "
-            "Your responses should be concise and use Markdown format, "
-            "unless the user explicitly requests more details."
-        )
-
-    def get_default_config(self) -> dict[str, str]:
-        """Get default configuration
-        Returns:
-            dict: default configuration with lowest priority
-        """
-        return DEFAULT_CONFIG.copy()
-
-    def load_config(self) -> dict[str, str]:
-        """Load LLM API configuration with priority:
-        1. Environment variables (highest priority)
-        2. Configuration file
-        3. Default values (lowest priority)
-
-        Returns:
-            dict: merged configuration
-        """
-        # Start with default configuration (lowest priority)
-        merged_config = self.get_default_config()
-
-        # Load from configuration file (middle priority)
-        if not self.CONFIG_PATH.exists():
-            self.console.print(
-                "[bold yellow]Configuration file not found. Creating default configuration file.[/bold yellow]"
-            )
-            self.CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.CONFIG_PATH, "w") as f:
-                f.write(self.DEFAULT_CONFIG_INI)
-        else:
-            config_parser = CasePreservingConfigParser()
-            config_parser.read(self.CONFIG_PATH)
-            if "core" in config_parser:
-                # Update with values from config file
-                for key, value in config_parser["core"].items():
-                    if value.strip():  # Only use non-empty values from config file
-                        merged_config[key] = value
-
-        # Override with environment variables (highest priority)
-        for config_key, env_var in ENV_VAR_MAPPING.items():
-            env_value = getenv(env_var)
-            if env_value is not None:  # Only override if environment variable exists
-                merged_config[config_key] = env_value
-
-        # Ensure STREAM is lowercase string
-        merged_config["STREAM"] = str(merged_config.get("STREAM", "true")).lower()
-
-        self.config = merged_config
-        return self.config
-
-    def _call_api(self, url: str, headers: dict, data: dict) -> requests.Response:
-        """Call the API and return the response.
-        Args:
-            url: API endpoint URL
-            headers: request headers
-            data: request data
-        Returns:
-            requests.Response: response object
-        Raises:
-            requests.exceptions.RequestException: if there is an error with the request
-        """
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()  # Raise an exception for non-200 status codes
-        return response
-
-    def get_llm_url(self) -> str:
-        """Get LLM API URL
-        Returns:
-            str: LLM API URL
-        Raises:
-            typer.Exit: if API key or base URL is not set
-        """
-        base = self.config.get("BASE_URL", "").rstrip("/")
-        if not base:
-            self.console.print(
-                "[red]Base URL not found. Please set it in the configuration file. Default: https://api.openai.com/v1[/red]"
-            )
-            raise typer.Exit(code=1)
-        COMPLETION_PATH = self.config.get("COMPLETION_PATH", "").lstrip("/")
-        if not COMPLETION_PATH:
-            self.console.print(
-                "[red]Completions path not set. Please set it in the configuration file. Default: `/chat/completions`[/red]"
-            )
-            raise typer.Exit(code=1)
-        return f"{base}/{COMPLETION_PATH}"
-
-    def build_data(self, prompt: str, mode: str = ModeEnum.TEMP.value) -> dict:
-        """Build request data
-        Args:
-            prompt: user input
-            mode: chat or execute mode
-        Returns:
-            dict: request data
-        """
-        if mode == ModeEnum.EXECUTE.value:
-            system_prompt = self.build_cmd_prompt()
-        else:
-            system_prompt = self.build_default_prompt()
-
-        # Build messages list, first add system prompt
-        messages = [{"role": "system", "content": system_prompt}]
-
-        # Add history records in chat mode
-        if mode == ModeEnum.CHAT.value and self.history:
-            messages.extend(self.history)
-
-        # Add current user message
-        messages.append({"role": "user", "content": prompt})
-
-        return {
-            "model": self.config["MODEL"],
-            "messages": messages,
+    def post(self, message: list[dict[str, str]]) -> requests.Response:
+        """Post message to LLM API and return response"""
+        url = self.config.get("BASE_URL", "").rstrip("/") + "/" + self.config.get("COMPLETION_PATH", "").lstrip("/")
+        body = {
+            "messages": message,
+            "model": self.config.get("MODEL", "gpt-4o"),
             "stream": self.config.get("STREAM", "true") == "true",
             "temperature": 0.7,
-            "top_p": 0.7,
+            "top_p": 1,
         }
+        response = requests.post(url, json=body, headers={"Authorization": f"Bearer {self.config.get('API_KEY', '')}"})
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            self.console.print(f"[red]Error calling API: {e}[/red]")
+            if self.verbose:
+                self.console.print(f"Reason: {e.response.reason}")
+                self.console.print(f"Response: {response.text}")
+            raise typer.Exit(code=1) from None
+        return response
 
-    def stream_response(self, response: requests.Response) -> str:
-        """Stream response from LLM API
-        Args:
-            response: requests.Response object
-        Returns:
-            str: full completion text
-        """
+    def _print(self, response: requests.Response, stream: bool = True) -> str:
+        """Print response from LLM and return full completion"""
         full_completion = ""
-        # Streaming response loop
-        with Live(console=self.console) as live:
-            for line in response.iter_lines():
-                if not line:
-                    continue
-                decoded_line = line.decode("utf-8")
-                if decoded_line.startswith("data: "):
-                    decoded_line = decoded_line[6:]
-                    if decoded_line == "[DONE]":
+        if stream:
+            with Live() as live:
+                for line in response.iter_lines():
+                    # Skip empty lines
+                    if not line:
+                        continue
+
+                    # Process server-sent events
+                    data = line.decode("utf-8")
+                    if not data.startswith("data: "):
+                        continue
+
+                    # Extract data portion
+                    data = data[6:]
+                    if data == "[DONE]":
                         break
+
+                    # Parse JSON and update display
                     try:
-                        json_data = json.loads(decoded_line)
+                        json_data = json.loads(data)
                         content = json_data["choices"][0]["delta"].get("content", "")
                         full_completion += content
-                        markdown = Markdown(markup=full_completion)
-                        live.update(markdown, refresh=True)
+                        live.update(Markdown(markup=full_completion), refresh=True)
                     except json.JSONDecodeError:
                         self.console.print("[red]Error decoding response JSON[/red]")
                         if self.verbose:
-                            self.console.print(f"[red]Error decoding JSON: {decoded_line}[/red]")
-                time.sleep(0.05)
+                            self.console.print(f"[red]Error: {data}[/red]")
 
+                    time.sleep(0.01)
+        else:
+            # Non-streaming response
+            full_completion = jmespath.search(
+                self.config.get("ANSWER_PATH", "choices[0].message.content"), response.json()
+            )
+            self.console.print(Markdown(full_completion))
+        self.console.print()  # Add a newline after the response to separate from the next input
         return full_completion
 
-    def call_llm_api(self, prompt: str) -> str:
-        """Call LLM API, return streaming output
-        Args:
-            prompt: user input
-        Returns:
-            str: streaming output
-        """
-        url = self.get_llm_url()
-        headers = {"Authorization": f"Bearer {self.config['API_KEY']}"}
-        data = self.build_data(prompt)
-        try:
-            response = self._call_api(url, headers, data)
-        except requests.exceptions.RequestException as e:
-            self.console.print(f"[red]Error calling API: {e}[/red]")
-            if self.verbose and e.response:
-                self.console.print(f"{e.response.text}")
-            raise typer.Exit(code=1) from None
-        if not response:
-            raise typer.Exit(code=1)
-
-        self.console.print("\n[bold green]Assistant:[/bold green]")
-        assistant_response = self.stream_response(
-            response
-        )  # Stream the response and get the full text
-        self.console.print()  # Add a newline after the completion
-
-        return assistant_response
-
-    def get_command_from_llm(self, prompt: str) -> Optional[str]:
-        """Request Shell command from LLM
-        Args:
-            prompt: user input
-        Returns:
-            str: shell command
-        """
-        url = self.get_llm_url()
-        headers = {"Authorization": f"Bearer {self.config['API_KEY']}"}
-        data = self.build_data(prompt, mode=ModeEnum.EXECUTE.value)
-        data["stream"] = False
-        try:
-            response = self._call_api(url, headers, data)
-        except requests.exceptions.RequestException as e:
-            self.console.print(f"[red]Error calling API: {e}[/red]")
-            return None
-        if not response:
-            return None
-        ANSWER_PATH = self.config.get("ANSWER_PATH", None)
-        if not ANSWER_PATH:
-            ANSWER_PATH = "choices[0].message.content"
-            if self.verbose:
-                self.console.print(
-                    "[bold yellow]Answer path not set. Using default: `choices[0].message.content`[/bold yellow]"
-                )
-        content = jmespath.search(ANSWER_PATH, response.json())
-        return content.strip()
-
-    def execute_shell_command(self, command: str) -> int:
-        """Execute shell command
-        Args:
-            command: shell command
-        Returns:
-            int: return code
-        """
-        self.console.print(f"\n[bold green]Executing command: [/bold green] {command}\n")
-        result = subprocess.run(command, shell=True)
-        if result.returncode != 0:
-            self.console.print(
-                f"\n[bold red]Command failed with return code: {result.returncode}[/bold red]"
-            )
-        return result.returncode
-
-    def get_prompt_tokens(self):
-        """Get prompt tokens based on current mode
-        Returns:
-            list: prompt tokens for prompt_toolkit
-        """
-        if self.current_mode == ModeEnum.CHAT.value:
+    def get_prompt_tokens(self) -> list[tuple[str, str]]:
+        """Return prompt tokens for current mode"""
+        if self.current_mode == CHAT_MODE:
             qmark = "💬"
-        elif self.current_mode == ModeEnum.EXECUTE.value:
+        elif self.current_mode == EXEC_MODE:
             qmark = "🚀"
         else:
             qmark = ""
         return [("class:qmark", qmark), ("class:question", " {} ".format(">"))]
 
-    def chat_mode(self, user_input: str):
-        """
-        This method handles the chat mode.
-        It adds the user input to the history and calls the API to get a response.
-        It then adds the response to the history and manages the history length.
-        Args:
-            user_input: user input
-        Returns:
-            ModeEnum: current mode
-        """
-        if self.current_mode != ModeEnum.CHAT.value:
-            return self.current_mode
+    def _run_repl(self) -> None:
+        """Run REPL loop, handling user input and generating responses, saving history, and executing commands"""
+        # Show REPL instructions
+        self._setup_key_bindings()
+        self.console.print("[bold]Starting REPL loop[/bold]")
+        self.console.print("[bold]Press TAB to change in chat and exec mode[/bold]")
+        self.console.print("[bold]Type /clear to clear chat history[/bold]")
+        self.console.print("[bold]Type /his to see chat history[/bold]")
+        self.console.print("[bold]Press Ctrl+C or type /exit to exit[/bold]\n")
 
-        # Add user message to history
-        self.history.append({"role": "user", "content": user_input})
-
-        # Call API and get response
-        assistant_response = self.call_llm_api(user_input)
-
-        # Add assistant response to history
-        if assistant_response:
-            self.history.append({"role": "assistant", "content": assistant_response})
-
-        # Manage history length, keep recent conversations
-        if (
-            len(self.history) > self.max_history_length * 2
-        ):  # Each conversation has user and assistant messages
-            self.history = self.history[-self.max_history_length * 2 :]
-
-        return ModeEnum.CHAT.value
-
-    def _filter_command(self, command: str) -> Optional[str]:
-        """Filter out unwanted characters from command
-
-        The LLM may return commands in markdown format with code blocks.
-        This method removes markdown formatting from the command.
-        It handles various formats including:
-        - Commands surrounded by ``` (plain code blocks)
-        - Commands with language specifiers like ```bash, ```zsh, etc.
-        - Commands with specific examples like ```ls -al```
-
-        example:
-        ```bash\nls -la\n``` ==> ls -al
-        ```zsh\nls -la\n``` ==> ls -al
-        ```ls -al``` ==> ls -al
-        ls -al ==> ls -al
-        ```\ncd /tmp\nls -la\n``` ==> cd /tmp\nls -la
-        ```bash\ncd /tmp\nls -la\n``` ==> cd /tmp\nls -la
-        """
-        if not command or not command.strip():
-            return ""
-
-        # Handle commands that are already without code blocks
-        if "```" not in command:
-            return command.strip()
-
-        # Handle code blocks with or without language specifiers
-        lines = command.strip().split("\n")
-
-        # Check if it's a single-line code block like ```ls -al```
-        if len(lines) == 1 and lines[0].startswith("```") and lines[0].endswith("```"):
-            return lines[0][3:-3].strip()
-
-        # Handle multi-line code blocks
-        if lines[0].startswith("```"):
-            # Remove the opening ``` line (with or without language specifier)
-            content_lines = lines[1:]
-
-            # If the last line is a closing ```, remove it
-            if content_lines and content_lines[-1].strip() == "```":
-                content_lines = content_lines[:-1]
-
-            # Join the remaining lines and strip any extra whitespace
-            return "\n".join(line.strip() for line in content_lines if line.strip())
-
-    def execute_mode(self, user_input: str):
-        """
-        This method generates a shell command from the user input and executes it.
-        If the user confirms the command, it is executed.
-        Args:
-            user_input: user input
-        Returns:
-            ModeEnum: current mode
-        """
-        if user_input == "" or self.current_mode != ModeEnum.EXECUTE.value:
-            return self.current_mode
-
-        command = self.get_command_from_llm(user_input)
-        if not command:
-            self.console.print("[bold red]No command generated[/bold red]")
-            return self.current_mode
-        command = self._filter_command(command)
-        if not command:
-            self.console.print("[bold red]No command generated[/bold red]")
-            return self.current_mode
-        self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {command}")
-        confirm = Confirm.ask("Execute this command?")
-        if confirm:
-            self.execute_shell_command(command)
-        return ModeEnum.EXECUTE.value
-
-    def run_repl_loop(self):
         while True:
-            user_input = self.session.prompt(self.get_prompt_tokens)
-            # Skip empty input
-            if not user_input.strip():
+            # Get user input
+            user_input = self.session.prompt(self.get_prompt_tokens).strip()
+            if not user_input:
                 continue
 
-            if user_input.lower() in ("/exit", "/quit", "/q"):
+            # Handle exit commands
+            if user_input.lower() == CMD_EXIT:
                 break
 
-            # Handle special commands
-            if self.current_mode == ModeEnum.CHAT.value:
-                if user_input.lower() == "/clear":
-                    self.clear_history()
-                    self.console.print("[bold yellow]Chat history cleared[/bold yellow]\n")
-                    continue
-                else:
-                    self.chat_mode(user_input)
-            elif self.current_mode == ModeEnum.EXECUTE.value:
-                self.execute_mode(user_input)
+            # Handle clear command
+            if user_input.lower() == CMD_CLEAR and self.current_mode == CHAT_MODE:
+                self.history = []
+                self.console.print("[bold yellow]Chat history cleared[/bold yellow]\n")
+                continue
+            elif user_input.lower() == "/his":
+                self.console.print(self.history)
+                continue
+            # Create appropriate system prompt based on mode
+            system_prompt = SHELL_PROMPT if self.current_mode == EXEC_MODE else DEFAULT_PROMPT
+            system_content = system_prompt.format(_os=self.detect_os(), _shell=self.detect_shell())
+
+            # Create message with system prompt and history
+            message = [{"role": "system", "content": system_content}]
+            message.extend(self.history)
+
+            # Add current user message
+            message.append({"role": "user", "content": user_input})
+
+            # Get response from LLM
+            response = self.post(message)
+            self.console.print("\n[bold green]Assistant:[/bold green]")
+            content = self._print(response, stream=self.config["STREAM"] == "true")
+
+            # Add user input and assistant response to history
+            self.history.append({"role": "user", "content": user_input})
+            self.history.append({"role": "assistant", "content": content})
+
+            # Trim history if needed
+            if len(self.history) > self.max_history_length * 2:
+                self.history = self.history[-self.max_history_length * 2 :]
+
+            # Handle command execution in exec mode
+            if self.current_mode == EXEC_MODE:
+                self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {content}")
+                if Confirm.ask("Execute this command?", default=False):
+                    returncode = subprocess.call(content, shell=True)
+                    if returncode != 0:
+                        self.console.print(f"[bold red]Command failed with return code {returncode}[/bold red]")
 
         self.console.print("[bold green]Exiting...[/bold green]")
 
-    def run_one_shot(self, prompt: str):
-        """Run one-shot mode with given prompt
-        Args:
-            prompt (str): Prompt to send to LLM
-        Returns:
-            None
-        """
-        if self.current_mode == ModeEnum.EXECUTE.value:
-            self.execute_mode(prompt)  # Execute mode for one-shot prompt
-        else:
-            self.call_llm_api(prompt)
-
-    def run(self, chat=False, shell=False, prompt: Optional[str] = None):
-        """Run the CLI application
-        Args:
-            chat (bool): Whether to run in chat mode
-            shell (bool): Whether to run in shell mode
-            prompt (Optional[str]): Prompt send to LLM
-
-        Returns:
-            None
-        """
-        # Load configuration
-        self.config = self.load_config()
-        if not self.config.get("API_KEY", None):
+    def run(self, chat: bool, shell: bool, prompt: str) -> None:
+        self.load_config()
+        if not self.config.get("API_KEY"):
+            self.console.print("[bold red]API key not set[/bold red]")
             self.console.print(
-                "[red]API key not found. Please set it in the configuration file.[/red]"
+                "[bold red]Please set API key in ~/.config/yaicli/config.ini or environment variable[/bold red]"
             )
+            raise typer.Exit(code=1)
+        _os = self.detect_os()
+        _shell = self.detect_shell()
+
+        # Handle chat mode
+        if chat:
+            self.current_mode = CHAT_MODE
+            self._run_repl()
             return
 
-        # Check run mode from command line arguments
-        if all([chat, shell]):
-            self.console.print("[red]Cannot use both --chat and --shell[/red]")
-            return
-        elif chat:
-            self.current_mode = ModeEnum.CHAT.value
-        elif shell:
-            self.current_mode = ModeEnum.EXECUTE.value
+        # Create appropriate system prompt based on mode
+        system_prompt = SHELL_PROMPT if shell else DEFAULT_PROMPT
+        system_content = system_prompt.format(_os=_os, _shell=_shell)
 
-        if self.verbose:
-            self.console.print("[bold yellow]Verbose mode enabled[/bold yellow]")
-            self.console.print(f"[bold yellow]Current mode: {self.current_mode}[/bold yellow]")
-            self.console.print(f"[bold yellow]Using model: {self.config['MODEL']}[/bold yellow]")
+        # Create message with system prompt and user input
+        message = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": prompt},
+        ]
 
-        if self.current_mode in (ModeEnum.TEMP.value, ModeEnum.EXECUTE.value) and prompt:
-            self.run_one_shot(prompt)
-        elif self.current_mode == ModeEnum.CHAT.value:
-            self.run_repl_loop()
+        # Get response from LLM
+        response = self.post(message)
+        self.console.print("\n[bold green]Assistant:[/bold green]")
+        content = self._print(response, stream=(not shell and self.config["STREAM"] == "true"))
 
-
-# CLI application setup
-CONTEXT_SETTINGS = {
-    "help_option_names": ["-h", "--help"],
-    "show_default": True,
-}
-
-app = typer.Typer(
-    name="yaicli",
-    context_settings=CONTEXT_SETTINGS,
-    pretty_exceptions_enable=False,
-    short_help="yaicli. Your AI interface in cli.",
-    no_args_is_help=True,
-    invoke_without_command=True,
-)
+        # Handle shell mode execution
+        if shell:
+            self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {content}")
+            if Confirm.ask("Execute this command?", default=False):
+                returncode = subprocess.call(content, shell=True)
+                if returncode != 0:
+                    self.console.print(f"[bold red]Command failed with return code {returncode}[/bold red]")
 
 
 @app.command()
 def main(
     ctx: typer.Context,
-    prompt: Annotated[
-        str, typer.Argument(show_default=False, help="The prompt send to the LLM")
-    ] = "",
-    verbose: Annotated[
-        bool, typer.Option("--verbose", "-V", help="Show verbose information")
-    ] = False,
+    prompt: Annotated[Optional[str], typer.Argument(show_default=False, help="The prompt send to the LLM")] = None,
+    verbose: Annotated[bool, typer.Option("--verbose", "-V", help="Show verbose information")] = False,
     chat: Annotated[bool, typer.Option("--chat", "-c", help="Start in chat mode")] = False,
-    shell: Annotated[
-        bool, typer.Option("--shell", "-s", help="Generate and execute shell command")
-    ] = False,
+    shell: Annotated[bool, typer.Option("--shell", "-s", help="Generate and execute shell command")] = False,
 ):
-    """yaicli. Your AI interface in cli."""
+    """yaicli - Your AI interface in cli."""
+    if prompt == "":
+        typer.echo("Empty prompt, ignored")
+        return
     if not prompt and not chat:
         typer.echo(ctx.get_help())
-        raise typer.Exit()
+        return
 
-    cli = YAICLI(verbose=verbose)
-    cli.run(chat=chat, shell=shell, prompt=prompt)
+    cli = CLI(verbose=verbose)
+    cli.run(chat=chat, shell=shell, prompt=prompt or "")
 
 
 if __name__ == "__main__":

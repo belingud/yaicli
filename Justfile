@@ -14,7 +14,7 @@ clean:
 # Run tests with pytest
 test:
     @echo "Running tests..."
-    @pytest tests/
+    @pytest
 
 # Build package with hatch (runs clean first)
 build:
@@ -25,7 +25,7 @@ build:
 # Install package in editable mode
 install:
     @echo "Installing packages..."
-    @pip install -e .
+    @uv sync
 
 # Generate changelog from git log
 changelog:
