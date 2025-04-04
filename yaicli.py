@@ -71,6 +71,7 @@ class CasePreservingConfigParser(configparser.RawConfigParser):
 class CLI:
     CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
     DEFAULT_CONFIG_INI = """[core]
+PROVIDER=openai
 BASE_URL=https://api.openai.com/v1
 API_KEY=
 MODEL=gpt-4o
@@ -166,6 +167,50 @@ STREAM=true"""
             return "powershell.exe" if is_powershell else "cmd.exe"
         return basename(getenv("SHELL", "/bin/sh"))
 
+    def _filter_command(self, command: str) -> Optional[str]:
+        """Filter out unwanted characters from command
+
+        The LLM may return commands in markdown format with code blocks.
+        This method removes markdown formatting from the command.
+        It handles various formats including:
+        - Commands surrounded by ``` (plain code blocks)
+        - Commands with language specifiers like ```bash, ```zsh, etc.
+        - Commands with specific examples like ```ls -al```
+
+        example:
+        ```bash\nls -la\n``` ==> ls -al
+        ```zsh\nls -la\n``` ==> ls -al
+        ```ls -al``` ==> ls -al
+        ls -al ==> ls -al
+        ```\ncd /tmp\nls -la\n``` ==> cd /tmp\nls -la
+        ```bash\ncd /tmp\nls -la\n``` ==> cd /tmp\nls -la
+        """
+        if not command or not command.strip():
+            return ""
+
+        # Handle commands that are already without code blocks
+        if "```" not in command:
+            return command.strip()
+
+        # Handle code blocks with or without language specifiers
+        lines = command.strip().split("\n")
+
+        # Check if it's a single-line code block like ```ls -al```
+        if len(lines) == 1 and lines[0].startswith("```") and lines[0].endswith("```"):
+            return lines[0][3:-3].strip()
+
+        # Handle multi-line code blocks
+        if lines[0].startswith("```"):
+            # Remove the opening ``` line (with or without language specifier)
+            content_lines = lines[1:]
+
+            # If the last line is a closing ```, remove it
+            if content_lines and content_lines[-1].strip() == "```":
+                content_lines = content_lines[:-1]
+
+            # Join the remaining lines and strip any extra whitespace
+            return "\n".join(line.strip() for line in content_lines if line.strip())
+
     def post(self, message: list[dict[str, str]]) -> requests.Response:
         """Post message to LLM API and return response"""
         url = self.config.get("BASE_URL", "").rstrip("/") + "/" + self.config.get("COMPLETION_PATH", "").lstrip("/")
@@ -238,6 +283,11 @@ STREAM=true"""
             qmark = ""
         return [("class:qmark", qmark), ("class:question", " {} ".format(">"))]
 
+    def _check_history_len(self) -> None:
+        """Check history length and remove oldest messages if necessary"""
+        if len(self.history) > self.max_history_length:
+            self.history = self.history[-self.max_history_length :]
+
     def _run_repl(self) -> None:
         """Run REPL loop, handling user input and generating responses, saving history, and executing commands"""
         # Show REPL instructions
@@ -280,27 +330,33 @@ STREAM=true"""
             # Get response from LLM
             response = self.post(message)
             self.console.print("\n[bold green]Assistant:[/bold green]")
-            content = self._print(response, stream=self.config["STREAM"] == "true")
+            try:
+                content = self._print(response, stream=self.config["STREAM"] == "true")
+            except Exception as e:
+                self.console.print(f"[red]Error: {e}[/red]")
+                continue
 
             # Add user input and assistant response to history
             self.history.append({"role": "user", "content": user_input})
             self.history.append({"role": "assistant", "content": content})
 
             # Trim history if needed
-            if len(self.history) > self.max_history_length * 2:
-                self.history = self.history[-self.max_history_length * 2 :]
+            self._check_history_len()
 
             # Handle command execution in exec mode
             if self.current_mode == EXEC_MODE:
+                content = self._filter_command(content)
+                if not content:
+                    self.console.print("[bold red]No command generated[/bold red]")
+                    continue
                 self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {content}")
                 if Confirm.ask("Execute this command?", default=False):
-                    returncode = subprocess.call(content, shell=True)
-                    if returncode != 0:
-                        self.console.print(f"[bold red]Command failed with return code {returncode}[/bold red]")
+                    subprocess.call(content, shell=True)
 
         self.console.print("[bold green]Exiting...[/bold green]")
 
     def run(self, chat: bool, shell: bool, prompt: str) -> None:
+        """Run the CLI"""
         self.load_config()
         if not self.config.get("API_KEY"):
             self.console.print("[bold red]API key not set[/bold red]")
@@ -330,10 +386,14 @@ STREAM=true"""
         # Get response from LLM
         response = self.post(message)
         self.console.print("\n[bold green]Assistant:[/bold green]")
-        content = self._print(response, stream=(not shell and self.config["STREAM"] == "true"))
+        content = self._print(response, stream=self.config["STREAM"] == "true")
 
         # Handle shell mode execution
         if shell:
+            content = self._filter_command(content)
+            if not content:
+                self.console.print("[bold red]No command generated[/bold red]")
+                return
             self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {content}")
             if Confirm.ask("Execute this command?", default=False):
                 returncode = subprocess.call(content, shell=True)

@@ -49,11 +49,7 @@ ai = "yaicli:app"
 resolution = "highest"
 
 [dependency-groups]
-dev = [
-    "bump2version>=1.0.1",
-    "pytest>=8.3.5",
-    "ruff>=0.11.2",
-]
+dev = ["bump2version>=1.0.1", "pytest>=8.3.5", "ruff>=0.11.2"]
 
 [tool.ruff]
 line-length = 120
@@ -64,3 +60,7 @@ ignore = ["E501"]
 [build-system]
 requires = ["hatchling>=1.18.0"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = ["test_*.py", "tests/*", ".gitignore"]
+include = ["yaicli.py", "pyproject.toml"]
