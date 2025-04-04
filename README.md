@@ -104,6 +104,58 @@ Below are the available configuration options and override environment variables
 - **ANSWER_PATH**: Json path expression to extract answer from response, default: choices[0].message.content, env: AI_ANSWER_PATH
 - **STREAM**: Enable/disable streaming responses, default: true, env: AI_STREAM
 
+Default config of `COMPLETION_PATH` and `ANSWER_PATH` is OpenAI compatible. If you are using OpenAI or other OpenAI compatible LLM provider, you can use the default config.
+
+If you wish to use other providers that are not compatible with the openai interface, you can use the following config:
+
+- claude:
+  - BASE_URL: https://api.anthropic.com/v1
+  - COMPLETION_PATH: /messages
+  - ANSWER_PATH: content.0.text
+- cohere:
+  - BASE_URL: https://api.cohere.com/v2
+  - COMPLETION_PATH: /chat
+  - ANSWER_PATH: message.content.[0].text
+- google:
+  - BASE_URL: https://generativelanguage.googleapis.com/v1beta
+  - COMPLETION_PATH: /models
+  - ANSWER_PATH: candidates.[0].content.parts.[0].text
+
+You can also use google OpenAI complete endpoint and leave `COMPLETION_PATH` and `ANSWER_PATH` as default. BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai. See https://ai.google.dev/gemini-api/docs/openai
+
+Claude also has a testable OpenAI-compatible interface, you can just use Calude endpoint and leave `COMPLETION_PATH` and `ANSWER_PATH` as default. See: https://docs.anthropic.com/en/api/openai-sdk
+
+If you not sure how to config `COMPLETION_PATH` and `ANSWER_PATH`, here is a guide:
+1. **Find the API Endpoint**:
+   - Visit the documentation of the LLM provider you want to use.
+   - Find the API endpoint for the completion task. This is usually under the "API Reference" or "Developer Documentation" section.
+2. **Identify the Response Structure**:
+   - Look for the structure of the response. This typically includes fields like `choices`, `completion`, etc.
+3. **Identify the Path Expression**:
+   Forexample, claude response structure like this:
+   ```json
+      {
+      "content": [
+        {
+          "text": "Hi! My name is Claude.",
+          "type": "text"
+        }
+      ],
+      "id": "msg_013Zva2CMHLNnXjNJJKqJ2EF",
+      "model": "claude-3-7-sonnet-20250219",
+      "role": "assistant",
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "input_tokens": 2095,
+        "output_tokens": 503
+      }
+    }
+   ```
+    We are looking for the `text` field, so the path should be 1.Key `content`, 2.First obj `[0]`, 3.Key `text`. So it should be `content.[0].text`.
+
+
 ## Usage
 
 ### Basic Usage
