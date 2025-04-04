@@ -1,5 +1,21 @@
 
 ---
+## [0.0.8](https://github.com/belingud/yaicli/compare/v0.0.7..v0.0.8) - 2025-04-04
+
+### ⛰️  Features
+
+- add command filtering and improve history management - ([e743b13](https://github.com/belingud/yaicli/commit/e743b1381e07c55e8adb49a4618359c91b1b932d)) - Belingud
+
+### 🧪 Testing
+
+- restructure and add new test files for CLI functionality - ([09c81eb](https://github.com/belingud/yaicli/commit/09c81eb9002ed8735b2cbc41dfd739448960dfce)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.7 and improve README - ([71a8eff](https://github.com/belingud/yaicli/commit/71a8eff5e77e5aed35a7dc2825be8dbb0a73cebe)) - Belingud
+
+
+---
 ## [0.0.7](https://github.com/belingud/yaicli/compare/v0.0.6..v0.0.7) - 2025-04-04
 
 ### 🚜 Refactor
