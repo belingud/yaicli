@@ -1,5 +1,17 @@
 
 ---
+## [0.0.10](https://github.com/belingud/yaicli/compare/v0.0.9..v0.0.10) - 2025-04-05
+
+### 📚 Documentation
+
+- update assistant name in default prompt - ([e92313e](https://github.com/belingud/yaicli/commit/e92313ecbd95191443b26320ae4cc26bf1983718)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.9 and CHANGELOG - ([2a47a8b](https://github.com/belingud/yaicli/commit/2a47a8b318771139ae5f0515d7c04ccf7fef92eb)) - Belingud
+
+
+---
 ## [0.0.9](https://github.com/belingud/yaicli/compare/v0.0.8..v0.0.9) - 2025-04-05
 
 ### ⛰️  Features
