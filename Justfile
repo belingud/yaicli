@@ -22,6 +22,11 @@ build:
     @rm -rf dist/
     @uv build
 
+# Publish package to PyPI
+publish: build
+    @echo "Publishing package..."
+    @uv-publish
+
 # Install package in editable mode
 install:
     @echo "Installing packages..."
