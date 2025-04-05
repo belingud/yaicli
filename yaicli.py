@@ -2,7 +2,6 @@ import configparser
 import json
 import platform
 import subprocess
-import time
 from os import getenv
 from os.path import basename, pathsep
 from pathlib import Path
@@ -30,7 +29,7 @@ Rules:
 5. Return NOTHING except the ready-to-run command"""
 
 DEFAULT_PROMPT = (
-    "You are yaili, a system management and programing assistant, "
+    "You are YAICLI, a system management and programing assistant, "
     "You are managing {_os} operating system with {_shell} shell. "
     "Your responses should be concise and use Markdown format, "
     "unless the user explicitly requests more details."
