@@ -1,5 +1,21 @@
 
 ---
+## [0.0.9](https://github.com/belingud/yaicli/compare/v0.0.8..v0.0.9) - 2025-04-05
+
+### ⛰️  Features
+
+- add reasoning model support - ([8a3d21b](https://github.com/belingud/yaicli/commit/8a3d21bc1aea147652b345d0015c2468724ee37d)) - Belingud
+
+### 📚 Documentation
+
+- add configuration guide for non-OpenAI LLM providers - ([20f590d](https://github.com/belingud/yaicli/commit/20f590d374a3e6fa4b6c7a21529abec7dbb7d3b6)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.8 and improve README - ([282d3b5](https://github.com/belingud/yaicli/commit/282d3b5c987a333294ed09bfaca74f2ed0e7db12)) - Belingud
+
+
+---
 ## [0.0.8](https://github.com/belingud/yaicli/compare/v0.0.7..v0.0.8) - 2025-04-04
 
 ### ⛰️  Features
