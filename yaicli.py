@@ -232,44 +232,75 @@ STREAM=true"""
             raise typer.Exit(code=1) from None
         return response
 
+    def get_reasoning_content(self, delta: dict) -> Optional[str]:
+        # reasoning: openrouter
+        # reasoning_content: infi-ai/deepseek
+        for k in ("reasoning_content", "reasoning"):
+            if k in delta:
+                return delta[k]
+        return None
+
+    def _print_stream(self, response: requests.Response) -> str:
+        """Print response from LLM in streaming mode"""
+        full_completion = ""
+        in_reasoning = False
+
+        with Live() as live:
+            for line in response.iter_lines():
+                if not line:
+                    continue
+
+                data = line.decode("utf-8")
+                if not data.startswith("data: "):
+                    continue
+
+                data = data[6:]
+                if data == "[DONE]":
+                    break
+
+                try:
+                    json_data = json.loads(data)
+                    if not json_data.get("choices"):
+                        continue
+
+                    delta = json_data["choices"][0]["delta"]
+                    reason = self.get_reasoning_content(delta)
+
+                    if reason is not None:
+                        # reasoning started
+                        if not in_reasoning:
+                            in_reasoning = True
+                            full_completion = "> Reasoning:\n> "
+                        full_completion += reason.replace("\n", "\n> ")
+                    else:
+                        # reasoning stoped
+                        if in_reasoning:
+                            in_reasoning = False
+                            full_completion += "\n\n"
+                        content = delta.get("content", "") or ""
+                        full_completion += content
+                    live.update(Markdown(markup=full_completion), refresh=True)
+                except json.JSONDecodeError:
+                    self.console.print("[red]Error decoding response JSON[/red]")
+                    if self.verbose:
+                        self.console.print(f"[red]Error: {data}[/red]")
+
+        return full_completion
+
+    def _print_non_stream(self, response: requests.Response) -> str:
+        """Print response from LLM in non-streaming mode"""
+        full_completion = jmespath.search(self.config.get("ANSWER_PATH", "choices[0].message.content"), response.json())
+        self.console.print(Markdown(full_completion))
+        return full_completion
+
     def _print(self, response: requests.Response, stream: bool = True) -> str:
         """Print response from LLM and return full completion"""
-        full_completion = ""
         if stream:
-            with Live() as live:
-                for line in response.iter_lines():
-                    # Skip empty lines
-                    if not line:
-                        continue
-
-                    # Process server-sent events
-                    data = line.decode("utf-8")
-                    if not data.startswith("data: "):
-                        continue
-
-                    # Extract data portion
-                    data = data[6:]
-                    if data == "[DONE]":
-                        break
-
-                    # Parse JSON and update display
-                    try:
-                        json_data = json.loads(data)
-                        content = json_data["choices"][0]["delta"].get("content", "")
-                        full_completion += content
-                        live.update(Markdown(markup=full_completion), refresh=True)
-                    except json.JSONDecodeError:
-                        self.console.print("[red]Error decoding response JSON[/red]")
-                        if self.verbose:
-                            self.console.print(f"[red]Error: {data}[/red]")
-
-                    time.sleep(0.01)
+            # Streaming response
+            full_completion = self._print_stream(response)
         else:
             # Non-streaming response
-            full_completion = jmespath.search(
-                self.config.get("ANSWER_PATH", "choices[0].message.content"), response.json()
-            )
-            self.console.print(Markdown(full_completion))
+            full_completion = self._print_non_stream(response)
         self.console.print()  # Add a newline after the response to separate from the next input
         return full_completion
 
@@ -292,7 +323,13 @@ STREAM=true"""
         """Run REPL loop, handling user input and generating responses, saving history, and executing commands"""
         # Show REPL instructions
         self._setup_key_bindings()
-        self.console.print("[bold]Starting REPL loop[/bold]")
+        self.console.print("""
+██    ██  █████  ██  ██████ ██      ██
+ ██  ██  ██   ██ ██ ██      ██      ██
+  ████   ███████ ██ ██      ██      ██
+   ██    ██   ██ ██ ██      ██      ██
+   ██    ██   ██ ██  ██████ ███████ ██
+""")
         self.console.print("[bold]Press TAB to change in chat and exec mode[/bold]")
         self.console.print("[bold]Type /clear to clear chat history[/bold]")
         self.console.print("[bold]Type /his to see chat history[/bold]")
@@ -355,24 +392,10 @@ STREAM=true"""
 
         self.console.print("[bold green]Exiting...[/bold green]")
 
-    def run(self, chat: bool, shell: bool, prompt: str) -> None:
-        """Run the CLI"""
-        self.load_config()
-        if not self.config.get("API_KEY"):
-            self.console.print("[bold red]API key not set[/bold red]")
-            self.console.print(
-                "[bold red]Please set API key in ~/.config/yaicli/config.ini or environment variable[/bold red]"
-            )
-            raise typer.Exit(code=1)
+    def _run_once(self, prompt: str, shell: bool = False) -> None:
+        """Run once with given prompt"""
         _os = self.detect_os()
         _shell = self.detect_shell()
-
-        # Handle chat mode
-        if chat:
-            self.current_mode = CHAT_MODE
-            self._run_repl()
-            return
-
         # Create appropriate system prompt based on mode
         system_prompt = SHELL_PROMPT if shell else DEFAULT_PROMPT
         system_content = system_prompt.format(_os=_os, _shell=_shell)
@@ -399,6 +422,24 @@ STREAM=true"""
                 returncode = subprocess.call(content, shell=True)
                 if returncode != 0:
                     self.console.print(f"[bold red]Command failed with return code {returncode}[/bold red]")
+
+
+    def run(self, chat: bool, shell: bool, prompt: str) -> None:
+        """Run the CLI"""
+        self.load_config()
+        if not self.config.get("API_KEY"):
+            self.console.print("[bold red]API key not set[/bold red]")
+            self.console.print(
+                "[bold red]Please set API key in ~/.config/yaicli/config.ini or environment variable[/bold red]"
+            )
+            raise typer.Exit(code=1)
+
+        # Handle chat mode
+        if chat:
+            self.current_mode = CHAT_MODE
+            self._run_repl()
+        else:
+            self._run_once(prompt, shell)
 
 
 @app.command()

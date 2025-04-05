@@ -7,6 +7,8 @@
 
 YAICLI is a compact yet potent command-line AI assistant, allowing you to engage with Large Language Models (LLMs) such as ChatGPT's gpt-4o directly via your terminal. It offers multiple operation modes for everyday conversations, generating and executing shell commands, and one-shot quick queries.
 
+Support regular and deep thinking models.
+
 > [!WARNING] 
 > This is a work in progress, some features could change or be removed in the future.
 
@@ -33,6 +35,9 @@ YAICLI is a compact yet potent command-line AI assistant, allowing you to engage
 
 - **Keyboard Shortcuts**:
   - Tab to switch between Chat and Execute modes
+
+- **History**:
+  - Save and recall previous queries
 
 ## Installation
 
@@ -73,6 +78,7 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. Look
 
 ```ini
 [core]
+PROVIDER=OPENAI
 BASE_URL=https://api.openai.com/v1
 API_KEY=your_api_key_here
 MODEL=gpt-4o
@@ -117,11 +123,11 @@ If you wish to use other providers that are not compatible with the openai inter
   - COMPLETION_PATH: /chat
   - ANSWER_PATH: message.content.[0].text
 - google:
-  - BASE_URL: https://generativelanguage.googleapis.com/v1beta
-  - COMPLETION_PATH: /models
-  - ANSWER_PATH: candidates.[0].content.parts.[0].text
+  - BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai
+  - COMPLETION_PATH: /chat/completions
+  - ANSWER_PATH: choices[0].message.content
 
-You can also use google OpenAI complete endpoint and leave `COMPLETION_PATH` and `ANSWER_PATH` as default. BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai. See https://ai.google.dev/gemini-api/docs/openai
+You can use google OpenAI complete endpoint and leave `COMPLETION_PATH` and `ANSWER_PATH` as default. BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai. See https://ai.google.dev/gemini-api/docs/openai
 
 Claude also has a testable OpenAI-compatible interface, you can just use Calude endpoint and leave `COMPLETION_PATH` and `ANSWER_PATH` as default. See: https://docs.anthropic.com/en/api/openai-sdk
 
