@@ -1,5 +1,23 @@
 
 ---
+## [0.0.11](https://github.com/belingud/yaicli/compare/v0.0.10..v0.0.11) - 2025-04-07
+
+### 🚜 Refactor
+
+- **(yaicli)** improve stream response parsing and add plaintext test - ([92383ae](https://github.com/belingud/yaicli/commit/92383aea242bebdf6e5149fde44d077d0757fc59)) - Belingud
+- replace requests with httpx for HTTP client and update dependencies - ([cfc3823](https://github.com/belingud/yaicli/commit/cfc38232952b1eba8907067a14628fa24a81bfb6)) - Belingud
+
+### 📚 Documentation
+
+- update project title in README - ([cf8aaa7](https://github.com/belingud/yaicli/commit/cf8aaa7ea30c4ff845d27a5fd120b4157f28dc0c)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add publish command to Justfile - ([a2a76e5](https://github.com/belingud/yaicli/commit/a2a76e544332cc703a0956426c38dd5bd9301e12)) - Belingud
+- update yaicli version to 0.0.10 and CHANGELOG - ([aab8fb2](https://github.com/belingud/yaicli/commit/aab8fb2340950028851577331f87fbbffb75e242)) - Belingud
+
+
+---
 ## [0.0.10](https://github.com/belingud/yaicli/compare/v0.0.9..v0.0.10) - 2025-04-05
 
 ### 📚 Documentation
