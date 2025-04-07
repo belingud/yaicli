@@ -5,10 +5,10 @@ import subprocess
 from os import getenv
 from os.path import basename, pathsep
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Union
 
+import httpx
 import jmespath
-import requests
 import typer
 from distro import name as distro_name
 from prompt_toolkit import PromptSession
@@ -53,23 +53,7 @@ DEFAULT_CONFIG_MAP = {
     "STREAM": {"value": "true", "env_key": "AI_STREAM"},
 }
 
-app = typer.Typer(
-    name="yaicli",
-    context_settings={"help_option_names": ["-h", "--help"]},
-    pretty_exceptions_enable=False,
-)
-
-
-class CasePreservingConfigParser(configparser.RawConfigParser):
-    """Case preserving config parser"""
-
-    def optionxform(self, optionstr):
-        return optionstr
-
-
-class CLI:
-    CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
-    DEFAULT_CONFIG_INI = """[core]
+DEFAULT_CONFIG_INI = """[core]
 PROVIDER=openai
 BASE_URL=https://api.openai.com/v1
 API_KEY=
@@ -86,7 +70,28 @@ ANSWER_PATH=choices[0].message.content
 
 # true: streaming response
 # false: non-streaming response
-STREAM=true"""
+STREAM=true
+
+TEMPERATURE=0.7
+TOP_P=1.0
+MAX_TOKENS=1024"""
+
+app = typer.Typer(
+    name="yaicli",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    pretty_exceptions_enable=False,
+)
+
+
+class CasePreservingConfigParser(configparser.RawConfigParser):
+    """Case preserving config parser"""
+
+    def optionxform(self, optionstr):
+        return optionstr
+
+
+class CLI:
+    CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 
     def __init__(self, verbose: bool = False) -> None:
         self.verbose = verbose
@@ -122,7 +127,7 @@ STREAM=true"""
             self.console.print("[bold yellow]Creating default configuration file.[/bold yellow]")
             self.CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             with open(self.CONFIG_PATH, "w") as f:
-                f.write(self.DEFAULT_CONFIG_INI)
+                f.write(DEFAULT_CONFIG_INI)
         else:
             # Load from configuration file (middle priority)
             config_parser = CasePreservingConfigParser()
@@ -211,25 +216,36 @@ STREAM=true"""
             # Join the remaining lines and strip any extra whitespace
             return "\n".join(line.strip() for line in content_lines if line.strip())
 
-    def post(self, message: list[dict[str, str]]) -> requests.Response:
+    def _get_type_number(self, key, _type: type, default=None):
+        """Get number with type from config"""
+        try:
+            return _type(self.config.get(key, default))
+        except ValueError:
+            raise ValueError(f"[red]{key} should be {_type} type.[/red]")
+
+    def post(self, message: list[dict[str, str]]) -> httpx.Response:
         """Post message to LLM API and return response"""
         url = self.config.get("BASE_URL", "").rstrip("/") + "/" + self.config.get("COMPLETION_PATH", "").lstrip("/")
         body = {
             "messages": message,
             "model": self.config.get("MODEL", "gpt-4o"),
             "stream": self.config.get("STREAM", "true") == "true",
-            "temperature": 0.7,
-            "top_p": 1,
+            "temperature": self._get_type_number(key="TEMPERATURE", _type=float, default="0.7"),
+            "top_p": self._get_type_number(key="TOP_P", _type=float, default="1.0"),
+            "max_tokens": self._get_type_number(key="MAX_TOKENS", _type=int, default="1024"),
         }
-        response = requests.post(url, json=body, headers={"Authorization": f"Bearer {self.config.get('API_KEY', '')}"})
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(
+                url, json=body, headers={"Authorization": f"Bearer {self.config.get('API_KEY', '')}"}
+            )
         try:
             response.raise_for_status()
-        except requests.exceptions.HTTPError as e:
+        except httpx.HTTPStatusError as e:
             self.console.print(f"[red]Error calling API: {e}[/red]")
             if self.verbose:
-                self.console.print(f"Reason: {e.response.reason}")
+                self.console.print(f"Reason: {e}")
                 self.console.print(f"Response: {response.text}")
-            raise typer.Exit(code=1) from None
+            raise e
         return response
 
     def get_reasoning_content(self, delta: dict) -> Optional[str]:
@@ -240,21 +256,22 @@ STREAM=true"""
                 return delta[k]
         return None
 
-    def _parse_stream_line(self, line: bytes) -> Optional[dict]:
+    def _parse_stream_line(self, line: Union[bytes, str]) -> Optional[dict]:
         """Parse a single line from the stream response"""
         if not line:
             return None
 
-        data = line.decode("utf-8")
-        if not data.startswith("data: "):
+        if isinstance(line, bytes):
+            line = line.decode("utf-8")
+        if not line.startswith("data: "):
             return None
 
-        data = data[6:]
-        if data == "[DONE]":
+        line = line[6:]
+        if line == "[DONE]":
             return None
 
         try:
-            json_data = json.loads(data)
+            json_data = json.loads(line)
             if not json_data.get("choices"):
                 return None
 
@@ -262,7 +279,7 @@ STREAM=true"""
         except json.JSONDecodeError:
             self.console.print("[red]Error decoding response JSON[/red]")
             if self.verbose:
-                self.console.print(f"[red]Error JSON data: {data}[/red]")
+                self.console.print(f"[red]Error JSON data: {line}[/red]")
             return None
 
     def _process_reasoning_content(self, reason: str, full_completion: str, in_reasoning: bool) -> tuple[str, bool]:
@@ -281,7 +298,7 @@ STREAM=true"""
         full_completion += content
         return full_completion, in_reasoning
 
-    def _print_stream(self, response: requests.Response) -> str:
+    def _print_stream(self, response: httpx.Response) -> str:
         """Print response from LLM in streaming mode"""
         full_completion = ""
         in_reasoning = False
@@ -309,13 +326,13 @@ STREAM=true"""
 
         return full_completion
 
-    def _print_non_stream(self, response: requests.Response) -> str:
+    def _print_non_stream(self, response: httpx.Response) -> str:
         """Print response from LLM in non-streaming mode"""
         full_completion = jmespath.search(self.config.get("ANSWER_PATH", "choices[0].message.content"), response.json())
         self.console.print(Markdown(full_completion))
         return full_completion
 
-    def _print(self, response: requests.Response, stream: bool = True) -> str:
+    def _print(self, response: httpx.Response, stream: bool = True) -> str:
         """Print response from LLM and return full completion"""
         if stream:
             # Streaming response
@@ -387,12 +404,21 @@ STREAM=true"""
             message.append({"role": "user", "content": user_input})
 
             # Get response from LLM
-            response = self.post(message)
+            try:
+                response = self.post(message)
+            except ValueError as e:
+                self.console.print(f"[red]Error: {e}[/red]")
+                return
+            except httpx.ConnectError as e:
+                self.console.print(f"[red]Error: {e}[/red]")
+                continue
+            except httpx.HTTPStatusError:
+                continue
             self.console.print("\n[bold green]Assistant:[/bold green]")
             try:
                 content = self._print(response, stream=self.config["STREAM"] == "true")
             except Exception as e:
-                self.console.print(f"[red]Error: {e}[/red]")
+                self.console.print(f"[red]Unknown Error: {e}[/red]")
                 continue
 
             # Add user input and assistant response to history
@@ -429,7 +455,14 @@ STREAM=true"""
         ]
 
         # Get response from LLM
-        response = self.post(message)
+        try:
+            response = self.post(message)
+        except (ValueError, httpx.ConnectError, httpx.HTTPStatusError) as e:
+            self.console.print(f"[red]Error: {e}[/red]")
+            return
+        except Exception as e:
+            self.console.print(f"[red]Unknown Error: {e}[/red]")
+            return
         self.console.print("\n[bold green]Assistant:[/bold green]")
         content = self._print(response, stream=self.config["STREAM"] == "true")
 

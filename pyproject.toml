@@ -31,10 +31,11 @@ keywords = [
 ]
 dependencies = [
     "distro>=1.9.0",
+    "httpx>=0.28.1",
     "jmespath>=1.0.1",
     "prompt-toolkit>=3.0.50",
-    "requests>=2.32.3",
     "rich>=13.9.4",
+    "socksio>=1.0.0",
     "typer>=0.15.2",
 ]
 [project.urls]
@@ -51,11 +52,12 @@ resolution = "highest"
 [dependency-groups]
 dev = ["bump2version>=1.0.1", "pytest>=8.3.5", "ruff>=0.11.2"]
 
+[tool.isort]
+profile = "black"
+
 [tool.ruff]
 line-length = 120
-select = ["E", "F", "W", "I", "B", "C90"]
-ignore = ["E501"]
-
+fix = true
 
 [build-system]
 requires = ["hatchling>=1.18.0"]

@@ -95,6 +95,10 @@ ANSWER_PATH=choices[0].message.content
 # true: streaming response
 # false: non-streaming response
 STREAM=true
+
+TEMPERATURE=0.7
+TOP_P=1.0
+MAX_TOKENS=1024
 ```
 
 ### Configuration Options
