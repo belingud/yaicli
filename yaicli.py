@@ -179,10 +179,11 @@ STREAM=true"""
         example:
         ```bash\nls -la\n``` ==> ls -al
         ```zsh\nls -la\n``` ==> ls -al
-        ```ls -al``` ==> ls -al
-        ls -al ==> ls -al
+        ```ls -la``` ==> ls -la
+        ls -la ==> ls -la
         ```\ncd /tmp\nls -la\n``` ==> cd /tmp\nls -la
         ```bash\ncd /tmp\nls -la\n``` ==> cd /tmp\nls -la
+        ```plaintext\nls -la\n``` ==> ls -la
         """
         if not command or not command.strip():
             return ""
@@ -239,6 +240,47 @@ STREAM=true"""
                 return delta[k]
         return None
 
+    def _parse_stream_line(self, line: bytes) -> Optional[dict]:
+        """Parse a single line from the stream response"""
+        if not line:
+            return None
+
+        data = line.decode("utf-8")
+        if not data.startswith("data: "):
+            return None
+
+        data = data[6:]
+        if data == "[DONE]":
+            return None
+
+        try:
+            json_data = json.loads(data)
+            if not json_data.get("choices"):
+                return None
+
+            return json_data
+        except json.JSONDecodeError:
+            self.console.print("[red]Error decoding response JSON[/red]")
+            if self.verbose:
+                self.console.print(f"[red]Error JSON data: {data}[/red]")
+            return None
+
+    def _process_reasoning_content(self, reason: str, full_completion: str, in_reasoning: bool) -> tuple[str, bool]:
+        """Process reasoning content in the response"""
+        if not in_reasoning:
+            in_reasoning = True
+            full_completion = "> Reasoning:\n> "
+        full_completion += reason.replace("\n", "\n> ")
+        return full_completion, in_reasoning
+
+    def _process_regular_content(self, content: str, full_completion: str, in_reasoning: bool) -> tuple[str, bool]:
+        """Process regular content in the response"""
+        if in_reasoning:
+            in_reasoning = False
+            full_completion += "\n\n"
+        full_completion += content
+        return full_completion, in_reasoning
+
     def _print_stream(self, response: requests.Response) -> str:
         """Print response from LLM in streaming mode"""
         full_completion = ""
@@ -246,43 +288,24 @@ STREAM=true"""
 
         with Live() as live:
             for line in response.iter_lines():
-                if not line:
+                json_data = self._parse_stream_line(line)
+                if not json_data:
                     continue
 
-                data = line.decode("utf-8")
-                if not data.startswith("data: "):
-                    continue
+                delta = json_data["choices"][0]["delta"]
+                reason = self.get_reasoning_content(delta)
 
-                data = data[6:]
-                if data == "[DONE]":
-                    break
+                if reason is not None:
+                    full_completion, in_reasoning = self._process_reasoning_content(
+                        reason, full_completion, in_reasoning
+                    )
+                else:
+                    content = delta.get("content", "") or ""
+                    full_completion, in_reasoning = self._process_regular_content(
+                        content, full_completion, in_reasoning
+                    )
 
-                try:
-                    json_data = json.loads(data)
-                    if not json_data.get("choices"):
-                        continue
-
-                    delta = json_data["choices"][0]["delta"]
-                    reason = self.get_reasoning_content(delta)
-
-                    if reason is not None:
-                        # reasoning started
-                        if not in_reasoning:
-                            in_reasoning = True
-                            full_completion = "> Reasoning:\n> "
-                        full_completion += reason.replace("\n", "\n> ")
-                    else:
-                        # reasoning stoped
-                        if in_reasoning:
-                            in_reasoning = False
-                            full_completion += "\n\n"
-                        content = delta.get("content", "") or ""
-                        full_completion += content
-                    live.update(Markdown(markup=full_completion), refresh=True)
-                except json.JSONDecodeError:
-                    self.console.print("[red]Error decoding response JSON[/red]")
-                    if self.verbose:
-                        self.console.print(f"[red]Error: {data}[/red]")
+                live.update(Markdown(markup=full_completion), refresh=True)
 
         return full_completion
 
@@ -421,7 +444,6 @@ STREAM=true"""
                 returncode = subprocess.call(content, shell=True)
                 if returncode != 0:
                     self.console.print(f"[bold red]Command failed with return code {returncode}[/bold red]")
-
 
     def run(self, chat: bool, shell: bool, prompt: str) -> None:
         """Run the CLI"""

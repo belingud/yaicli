@@ -44,3 +44,9 @@ def test_filter_command_nested_blocks(cli):
     """test nested code block"""
     command = "```bash\n```echo hello```\n```"
     assert cli._filter_command(command) == "```echo hello```"
+
+
+def test_filter_command_plaintext(cli):
+    """test command with plain text"""
+    command = "```plaintext\nls -la\n```"
+    assert cli._filter_command(command) == "ls -la"
