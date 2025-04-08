@@ -10,6 +10,8 @@ clean:
     @rm -rf .pytest_cache/
     @echo "Cleaning pdm build artifacts..."
     @rm -rf .pdm_build/
+    @echo "Cleaning ruff cache..."
+    @rm -rf .ruff_cache/
 
 # Run tests with pytest
 test:
@@ -35,4 +37,5 @@ install:
 # Generate changelog from git log
 changelog:
     @echo "Generating changelog..."
+    @uv lock
     @git cliff -l --prepend CHANGELOG.md
