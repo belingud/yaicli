@@ -12,6 +12,8 @@ import jmespath
 import typer
 from distro import name as distro_name
 from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.history import FileHistory
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.keys import Keys
 from rich.console import Console
@@ -37,6 +39,7 @@ DEFAULT_PROMPT = (
 
 CMD_CLEAR = "/clear"
 CMD_EXIT = "/exit"
+CMD_HISTORY = "/his"
 
 EXEC_MODE = "exec"
 CHAT_MODE = "chat"
@@ -102,6 +105,19 @@ class CLI:
         self.history = []
         self.max_history_length = 25
         self.current_mode = TEMP_MODE
+
+    def prepare_chat_loop(self) -> None:
+        """Setup key bindings and history for chat mode"""
+        self._setup_key_bindings()
+        # Initialize history
+        Path("~/.yaicli_history").expanduser().touch(exist_ok=True)
+        self.session = PromptSession(
+            key_bindings=self.bindings,
+            completer=WordCompleter(["/clear", "/exit", "/his"]),
+            complete_while_typing=True,
+            history=FileHistory(Path("~/.yaicli_history").expanduser()),
+            enable_history_search=True,
+        )
 
     def _setup_key_bindings(self) -> None:
         """Setup keyboard shortcuts"""
@@ -243,8 +259,7 @@ class CLI:
         except httpx.HTTPStatusError as e:
             self.console.print(f"[red]Error calling API: {e}[/red]")
             if self.verbose:
-                self.console.print(f"Reason: {e}")
-                self.console.print(f"Response: {response.text}")
+                self.console.print(f"Reason: {e}\nResponse: {response.text}")
             raise e
         return response
 
@@ -345,12 +360,7 @@ class CLI:
 
     def get_prompt_tokens(self) -> list[tuple[str, str]]:
         """Return prompt tokens for current mode"""
-        if self.current_mode == CHAT_MODE:
-            qmark = "💬"
-        elif self.current_mode == EXEC_MODE:
-            qmark = "🚀"
-        else:
-            qmark = ""
+        qmark = "💬" if self.current_mode == CHAT_MODE else "🚀" if self.current_mode == EXEC_MODE else ""
         return [("class:qmark", qmark), ("class:question", " {} ".format(">"))]
 
     def _check_history_len(self) -> None:
@@ -361,7 +371,7 @@ class CLI:
     def _run_repl(self) -> None:
         """Run REPL loop, handling user input and generating responses, saving history, and executing commands"""
         # Show REPL instructions
-        self._setup_key_bindings()
+        self.prepare_chat_loop()
         self.console.print("""
 ██    ██  █████  ██  ██████ ██      ██
  ██  ██  ██   ██ ██ ██      ██      ██
@@ -389,7 +399,7 @@ class CLI:
                 self.history = []
                 self.console.print("[bold yellow]Chat history cleared[/bold yellow]\n")
                 continue
-            elif user_input.lower() == "/his":
+            elif user_input.lower() == CMD_HISTORY:
                 self.console.print(self.history)
                 continue
             # Create appropriate system prompt based on mode
@@ -409,10 +419,8 @@ class CLI:
             except ValueError as e:
                 self.console.print(f"[red]Error: {e}[/red]")
                 return
-            except httpx.ConnectError as e:
+            except (httpx.ConnectError, httpx.HTTPStatusError) as e:
                 self.console.print(f"[red]Error: {e}[/red]")
-                continue
-            except httpx.HTTPStatusError:
                 continue
             self.console.print("\n[bold green]Assistant:[/bold green]")
             try:
@@ -425,7 +433,6 @@ class CLI:
             self.history.append({"role": "user", "content": user_input})
             self.history.append({"role": "assistant", "content": content})
 
-            # Trim history if needed
             self._check_history_len()
 
             # Handle command execution in exec mode
@@ -482,9 +489,8 @@ class CLI:
         """Run the CLI"""
         self.load_config()
         if not self.config.get("API_KEY"):
-            self.console.print("[bold red]API key not set[/bold red]")
             self.console.print(
-                "[bold red]Please set API key in ~/.config/yaicli/config.ini or environment variable[/bold red]"
+                "[yellow]API key not set. Please set in ~/.config/yaicli/config.ini or AI_API_KEY env[/]"
             )
             raise typer.Exit(code=1)
 
@@ -500,13 +506,23 @@ class CLI:
 def main(
     ctx: typer.Context,
     prompt: Annotated[Optional[str], typer.Argument(show_default=False, help="The prompt send to the LLM")] = None,
-    verbose: Annotated[bool, typer.Option("--verbose", "-V", help="Show verbose information")] = False,
-    chat: Annotated[bool, typer.Option("--chat", "-c", help="Start in chat mode")] = False,
-    shell: Annotated[bool, typer.Option("--shell", "-s", help="Generate and execute shell command")] = False,
+    chat: Annotated[
+        bool, typer.Option("--chat", "-c", help="Start in chat mode", rich_help_panel="Run Option")
+    ] = False,
+    shell: Annotated[
+        bool, typer.Option("--shell", "-s", help="Generate and execute shell command", rich_help_panel="Run Option")
+    ] = False,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-V", help="Show verbose information", rich_help_panel="Run Option")
+    ] = False,
+    template: Annotated[bool, typer.Option("--template", help="Show the config template.")] = False,
 ):
     """yaicli - Your AI interface in cli."""
     if prompt == "":
         typer.echo("Empty prompt, ignored")
+        return
+    if template:
+        typer.echo(DEFAULT_CONFIG_INI)
         return
     if not prompt and not chat:
         typer.echo(ctx.get_help())
