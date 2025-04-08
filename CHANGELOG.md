@@ -1,5 +1,18 @@
 
 ---
+## [0.0.12](https://github.com/belingud/yaicli/compare/v0.0.11..v0.0.12) - 2025-04-08
+
+### ⛰️  Features
+
+- add chat history and improve CLI UX with completions - ([7749883](https://github.com/belingud/yaicli/commit/7749883f886c23fc5226965795ae46128caacd13)) - Belingud
+
+### 📚 Documentation
+
+- restructure CLI options documentation in README - ([142ac78](https://github.com/belingud/yaicli/commit/142ac781f677b4285409414402f1493562bd6a90)) - Belingud
+- update CHANGELOG.md for v0.0.11 release - ([6a6b3ae](https://github.com/belingud/yaicli/commit/6a6b3ae47d0ee2e3ae41160715f3416c3c1ce3bc)) - Belingud
+
+
+---
 ## [0.0.11](https://github.com/belingud/yaicli/compare/v0.0.10..v0.0.11) - 2025-04-07
 
 ### 🚜 Refactor
