@@ -186,33 +186,41 @@ ai --verbose "Explain quantum computing"
 
 ### Command Line Options
 
+Arguments:
 - `<PROMPT>`: Argument
-- `--verbose` or `-V`: Show verbose information
-- `--chat` or `-c`: Start in chat mode
-- `--shell` or `-s`: Generate and execute shell command
+
+Options:
 - `--install-completion`: Install completion for the current shell
 - `--show-completion`: Show completion for the current shell, to copy it or customize the installation
 - `--help` or `-h`: Show this message and exit
+- `--template`: Show the config template.
+
+Run Options:
+- `--verbose` or `-V`: Show verbose information
+- `--chat` or `-c`: Start in chat mode
+- `--shell` or `-s`: Generate and execute shell command
 
 ```bash
 ai -h
 
- Usage: ai [OPTIONS] [PROMPT]
-
- yaicli. Your AI interface in cli.
-
-╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│   prompt      [PROMPT]  The prompt send to the LLM                                                                                                       │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --verbose             -V        Show verbose information                                                                                                 │
-│ --chat                -c        Start in chat mode                                                                                                       │
-│ --shell               -s        Generate and execute shell command                                                                                       │
-│ --install-completion            Install completion for the current shell.                                                                                │
-│ --show-completion               Show completion for the current shell, to copy it or customize the installation.                                         │
-│ --help                -h        Show this message and exit.                                                                                              │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-
+Usage: ai [OPTIONS] [PROMPT]                                                                                                                                              
+                                                                                                                                                                           
+ yaicli - Your AI interface in cli.                                                                                                                                        
+                                                                                                                                                                           
+╭─ Arguments ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│   prompt      [PROMPT]  The prompt send to the LLM                                                                                                                      │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --template                      Show the config template.                                                                                                               │
+│ --install-completion            Install completion for the current shell.                                                                                               │
+│ --show-completion               Show completion for the current shell, to copy it or customize the installation.                                                        │
+│ --help                -h        Show this message and exit.                                                                                                             │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Run Option ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --chat     -c        Start in chat mode                                                                                                                                 │
+│ --shell    -s        Generate and execute shell command                                                                                                                 │
+│ --verbose  -V        Show verbose information                                                                                                                           │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
