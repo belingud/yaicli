@@ -247,6 +247,18 @@ In Execute mode:
 
 ```bash
 $ ai --chat
+
+██    ██  █████  ██  ██████ ██      ██
+ ██  ██  ██   ██ ██ ██      ██      ██
+  ████   ███████ ██ ██      ██      ██
+   ██    ██   ██ ██ ██      ██      ██
+   ██    ██   ██ ██  ██████ ███████ ██
+
+Press TAB to change in chat and exec mode
+Type /clear to clear chat history
+Type /his to see chat history
+Press Ctrl+C or type /exit to exit
+
 💬 > Tell me about the solar system
 
 Assistant:
@@ -265,7 +277,15 @@ Certainly! Here’s a brief overview of the solar system:
  • Dwarf Planets:
     • Pluto: Once considered the ninth planet, now classified as
 
-💬 >
+🚀 > Check the current directory size
+
+Assistant:
+du -sh .
+
+Generated command: du -sh .
+Execute this command? [y/n] (n): y
+108M    .
+🚀 >
 ```
 
 ### Execute Mode Example
