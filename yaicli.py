@@ -19,7 +19,7 @@ from prompt_toolkit.keys import Keys
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
-from rich.prompt import Confirm
+from rich.prompt import Prompt
 
 SHELL_PROMPT = """Your are a Shell Command Generator.
 Generate a command EXCLUSIVELY for {_os} OS with {_shell} shell.
@@ -322,7 +322,7 @@ class CLI:
 
     def _print_stream(self, response: httpx.Response) -> str:
         """Print response from LLM in streaming mode"""
-        self.console.print("[bold green]Assistant:[/bold green]")
+        self.console.print("Assistant:", style="bold green")
         full_completion = ""
         in_reasoning = False
 
@@ -345,12 +345,12 @@ class CLI:
                     )
 
                 live.update(Markdown(markup=full_completion), refresh=True)
-        self.console.print()
+        # self.console.print()
         return full_completion
 
     def _print_normal(self, response: httpx.Response) -> str:
         """Print response from LLM in non-streaming mode"""
-        self.console.print("[bold green]Assistant:[/bold green]")
+        self.console.print("Assistant:", style="bold green")
         full_completion = jmespath.search(self.config.get("ANSWER_PATH", "choices[0].message.content"), response.json())
         self.console.print(Markdown(full_completion + '\n'))
         return full_completion
@@ -371,7 +371,7 @@ class CLI:
             return False
         if user_input.lower() == CMD_CLEAR and self.current_mode == CHAT_MODE:
             self.history.clear()
-            self.console.print("[bold yellow]Chat history cleared[/bold yellow]\n")
+            self.console.print("Chat history cleared\n", style="bold yellow")
             return True
         if user_input.lower() == CMD_HISTORY:
             self.console.print(self.history)
@@ -379,13 +379,19 @@ class CLI:
         return None
 
     def _confirm_and_execute(self, content: str) -> None:
-        """Review and execute the command"""
+        """Review, edit and execute the command"""
         cmd = self._filter_command(content)
         if not cmd:
-            self.console.print("[bold red]No command generated[/bold red]")
+            self.console.print("No command generated", style="bold red")
             return
         self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {cmd}")
-        if Confirm.ask("Execute this command?", default=False):
+        _input = Prompt.ask("Execute this command?", choices=['y', 'n', 'e'], default="n", case_sensitive=False)
+        if _input == 'y':  # execute cmd
+            self.console.print("Output:", style="bold green")
+            subprocess.call(cmd, shell=True)
+        elif _input == 'e':  # edit cmd
+            cmd = self.session.prompt("Edit command, press enter to execute:\n", key_bindings=None, default=cmd)
+            self.console.print("Output:", style="bold green")
             subprocess.call(cmd, shell=True)
 
     def _build_messages(self, user_input: str) -> list[dict[str, str]]:
@@ -411,7 +417,7 @@ class CLI:
                 self._confirm_and_execute(content)
             return True
         except Exception as e:
-            self.console.print(f"[red]Error: {e}[/red]")
+            self.console.print(f"Error: {e}", style="red")
             return False
 
     def get_system_prompt(self) -> str:
@@ -429,12 +435,13 @@ class CLI:
    ██    ██   ██ ██ ██      ██      ██
    ██    ██   ██ ██  ██████ ███████ ██
 """)
-        self.console.print("[bold]Press TAB to change in chat and exec mode[/bold]")
-        self.console.print("[bold]Type /clear to clear chat history[/bold]")
-        self.console.print("[bold]Type /his to see chat history[/bold]")
-        self.console.print("[bold]Press Ctrl+C or type /exit to exit[/bold]\n")
+        self.console.print("Press TAB to change in chat and exec mode", style="bold")
+        self.console.print("Type /clear to clear chat history", style="bold")
+        self.console.print("Type /his to see chat history", style="bold")
+        self.console.print("Press Ctrl+C or type /exit to exit\n", style="bold")
 
         while True:
+            self.console.print(Markdown("---"))
             user_input = self.session.prompt(self.get_prompt_tokens).strip()
             if not user_input:
                 continue
@@ -479,6 +486,7 @@ class CLI:
             self.current_mode = CHAT_MODE
             self._run_repl()
         else:
+            self.current_mode = EXEC_MODE if shell else TEMP_MODE
             self._run_once(prompt, shell)
 
 

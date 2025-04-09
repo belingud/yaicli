@@ -246,6 +246,29 @@ In Execute mode:
 
 ## Examples
 
+### Have a Chat
+
+```bash
+$ ai "What is the capital of France?"
+Assistant:
+The capital of France is Paris.
+```
+
+### Command Gen and Run
+
+```bash
+$ ai -s 'Check the current directory size'
+Assistant:
+du -sh .
+
+Generated command: du -sh .
+Execute this command? [y/n/e] (n): e
+Edit command, press enter to execute:
+du -sh ./
+Output:
+109M    ./
+```
+
 ### Chat Mode Example
 
 ```bash
@@ -281,13 +304,15 @@ Certainly! Here’s a brief overview of the solar system:
     • Pluto: Once considered the ninth planet, now classified as
 
 🚀 > Check the current directory size
-
 Assistant:
 du -sh .
 
 Generated command: du -sh .
-Execute this command? [y/n] (n): y
-108M    .
+Execute this command? [y/n/e] (n): e
+Edit command, press enter to execute:
+du -sh ./
+Output:
+109M    ./
 🚀 >
 ```
 
