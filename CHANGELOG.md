@@ -1,5 +1,23 @@
 
 ---
+## [0.0.13](https://github.com/belingud/yaicli/compare/v0.0.12..v0.0.13) - 2025-04-09
+
+### ⛰️  Features
+
+- **(cli)** add command edit option and improve console output styling - ([48c14cc](https://github.com/belingud/yaicli/commit/48c14ccff33af8ebeaeb100e002cf15c01d3756e)) - Belingud
+- refactor CLI and add new configuration options - ([ad09301](https://github.com/belingud/yaicli/commit/ad093015cd2d54fbd17e6a07dd56af9459b2070f)) - Belingud
+
+### 📚 Documentation
+
+- update README with new ASCII art and command examples - ([cdcb9af](https://github.com/belingud/yaicli/commit/cdcb9af6ece0cfa770390aa5900db5822c80d115)) - Belingud
+- update CHANGELOG.md for v0.0.12 release - ([456c454](https://github.com/belingud/yaicli/commit/456c454f995fa2e6bf77fba9ca5d7b904e674f4e)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add ruff cache cleanup and uv lock to changelog - ([218b310](https://github.com/belingud/yaicli/commit/218b3103644b8aac6397acc2a765244c3bfae622)) - Belingud
+
+
+---
 ## [0.0.12](https://github.com/belingud/yaicli/compare/v0.0.11..v0.0.12) - 2025-04-08
 
 ### ⛰️  Features
