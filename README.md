@@ -105,14 +105,17 @@ MAX_TOKENS=1024
 
 Below are the available configuration options and override environment variables:
 
-- **BASE_URL**: API endpoint URL (default: OpenAI API), env: AI_BASE_URL
-- **API_KEY**: Your API key for the LLM provider, env: AI_API_KEY
-- **MODEL**: The model to use (e.g., gpt-4o, gpt-3.5-turbo), default: gpt-4o, env: AI_MODEL
-- **SHELL_NAME**: Shell to use (auto for automatic detection), default: auto, env: AI_SHELL_NAME
-- **OS_NAME**: OS to use (auto for automatic detection), default: auto, env: AI_OS_NAME
-- **COMPLETION_PATH**: Path for completions endpoint, default: /chat/completions, env: AI_COMPLETION_PATH
-- **ANSWER_PATH**: Json path expression to extract answer from response, default: choices[0].message.content, env: AI_ANSWER_PATH
-- **STREAM**: Enable/disable streaming responses, default: true, env: AI_STREAM
+- **BASE_URL**: API endpoint URL (default: OpenAI API), env: YAI_BASE_URL
+- **API_KEY**: Your API key for the LLM provider, env: YAI_API_KEY
+- **MODEL**: The model to use (e.g., gpt-4o, gpt-3.5-turbo), default: gpt-4o, env: YAI_MODEL
+- **SHELL_NAME**: Shell to use (auto for automatic detection), default: auto, env: YAI_SHELL_NAME
+- **OS_NAME**: OS to use (auto for automatic detection), default: auto, env: YAI_OS_NAME
+- **COMPLETION_PATH**: Path for completions endpoint, default: /chat/completions, env: YAI_COMPLETION_PATH
+- **ANSWER_PATH**: Json path expression to extract answer from response, default: choices[0].message.content, env: YAI_ANSWER_PATH
+- **STREAM**: Enable/disable streaming responses, default: true, env: YAI_STREAM
+- **TEMPERATURE**: Temperature for response generation (default: 0.7), env: YAI_TEMPERATURE
+- **TOP_P**: Top-p sampling for response generation (default: 1.0), env: YAI_TOP_P
+- **MAX_TOKENS**: Maximum number of tokens for response generation (default: 1024), env: YAI_MAX_TOKENS
 
 Default config of `COMPLETION_PATH` and `ANSWER_PATH` is OpenAI compatible. If you are using OpenAI or other OpenAI compatible LLM provider, you can use the default config.
 

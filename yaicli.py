@@ -46,14 +46,17 @@ CHAT_MODE = "chat"
 TEMP_MODE = "temp"
 
 DEFAULT_CONFIG_MAP = {
-    "BASE_URL": {"value": "https://api.openai.com/v1", "env_key": "AI_BASE_URL"},
-    "API_KEY": {"value": "", "env_key": "AI_API_KEY"},
-    "MODEL": {"value": "gpt-4o", "env_key": "AI_MODEL"},
-    "SHELL_NAME": {"value": "auto", "env_key": "AI_SHELL_NAME"},
-    "OS_NAME": {"value": "auto", "env_key": "AI_OS_NAME"},
-    "COMPLETION_PATH": {"value": "chat/completions", "env_key": "AI_COMPLETION_PATH"},
-    "ANSWER_PATH": {"value": "choices[0].message.content", "env_key": "AI_ANSWER_PATH"},
-    "STREAM": {"value": "true", "env_key": "AI_STREAM"},
+    "BASE_URL": {"value": "https://api.openai.com/v1", "env_key": "YAI_BASE_URL"},
+    "API_KEY": {"value": "", "env_key": "YAI_API_KEY"},
+    "MODEL": {"value": "gpt-4o", "env_key": "YAI_MODEL"},
+    "SHELL_NAME": {"value": "auto", "env_key": "YAI_SHELL_NAME"},
+    "OS_NAME": {"value": "auto", "env_key": "YAI_OS_NAME"},
+    "COMPLETION_PATH": {"value": "chat/completions", "env_key": "YAI_COMPLETION_PATH"},
+    "ANSWER_PATH": {"value": "choices[0].message.content", "env_key": "YAI_ANSWER_PATH"},
+    "STREAM": {"value": "true", "env_key": "YAI_STREAM"},
+    "TEMPERATURE": {"value": "0.7", "env_key": "YAI_TEMPERATURE"},
+    "TOP_P": {"value": "1.0", "env_key": "YAI_TOP_P"},
+    "MAX_TOKENS": {"value": "1024", "env_key": "YAI_MAX_TOKENS"},
 }
 
 DEFAULT_CONFIG_INI = """[core]
@@ -102,9 +105,13 @@ class CLI:
         self.bindings = KeyBindings()
         self.session = PromptSession(key_bindings=self.bindings)
         self.config = {}
-        self.history = []
+        self.history: list[dict[str, str]] = []
         self.max_history_length = 25
         self.current_mode = TEMP_MODE
+
+    def is_stream(self) -> bool:
+        """Check if streaming is enabled"""
+        return self.config["STREAM"] == "true"
 
     def prepare_chat_loop(self) -> None:
         """Setup key bindings and history for chat mode"""
@@ -232,7 +239,7 @@ class CLI:
             # Join the remaining lines and strip any extra whitespace
             return "\n".join(line.strip() for line in content_lines if line.strip())
 
-    def _get_type_number(self, key, _type: type, default=None):
+    def _get_number_with_type(self, key, _type: type, default=None):
         """Get number with type from config"""
         try:
             return _type(self.config.get(key, default))
@@ -245,10 +252,10 @@ class CLI:
         body = {
             "messages": message,
             "model": self.config.get("MODEL", "gpt-4o"),
-            "stream": self.config.get("STREAM", "true") == "true",
-            "temperature": self._get_type_number(key="TEMPERATURE", _type=float, default="0.7"),
-            "top_p": self._get_type_number(key="TOP_P", _type=float, default="1.0"),
-            "max_tokens": self._get_type_number(key="MAX_TOKENS", _type=int, default="1024"),
+            "stream": self.is_stream(),
+            "temperature": self._get_number_with_type(key="TEMPERATURE", _type=float, default="0.7"),
+            "top_p": self._get_number_with_type(key="TOP_P", _type=float, default="1.0"),
+            "max_tokens": self._get_number_with_type(key="MAX_TOKENS", _type=int, default="1024"),
         }
         with httpx.Client(timeout=120.0) as client:
             response = client.post(
@@ -315,6 +322,7 @@ class CLI:
 
     def _print_stream(self, response: httpx.Response) -> str:
         """Print response from LLM in streaming mode"""
+        self.console.print("[bold green]Assistant:[/bold green]")
         full_completion = ""
         in_reasoning = False
 
@@ -332,30 +340,19 @@ class CLI:
                         reason, full_completion, in_reasoning
                     )
                 else:
-                    content = delta.get("content", "") or ""
                     full_completion, in_reasoning = self._process_regular_content(
-                        content, full_completion, in_reasoning
+                        delta.get("content", "") or "", full_completion, in_reasoning
                     )
 
                 live.update(Markdown(markup=full_completion), refresh=True)
-
+        self.console.print()
         return full_completion
 
-    def _print_non_stream(self, response: httpx.Response) -> str:
+    def _print_normal(self, response: httpx.Response) -> str:
         """Print response from LLM in non-streaming mode"""
+        self.console.print("[bold green]Assistant:[/bold green]")
         full_completion = jmespath.search(self.config.get("ANSWER_PATH", "choices[0].message.content"), response.json())
-        self.console.print(Markdown(full_completion))
-        return full_completion
-
-    def _print(self, response: httpx.Response, stream: bool = True) -> str:
-        """Print response from LLM and return full completion"""
-        if stream:
-            # Streaming response
-            full_completion = self._print_stream(response)
-        else:
-            # Non-streaming response
-            full_completion = self._print_non_stream(response)
-        self.console.print()  # Add a newline after the response to separate from the next input
+        self.console.print(Markdown(full_completion + '\n'))
         return full_completion
 
     def get_prompt_tokens(self) -> list[tuple[str, str]]:
@@ -368,9 +365,62 @@ class CLI:
         if len(self.history) > self.max_history_length:
             self.history = self.history[-self.max_history_length :]
 
+    def _handle_special_commands(self, user_input: str) -> Optional[bool]:
+        """Handle special command return: True-continue loop, False-exit loop, None-non-special command"""
+        if user_input.lower() == CMD_EXIT:
+            return False
+        if user_input.lower() == CMD_CLEAR and self.current_mode == CHAT_MODE:
+            self.history.clear()
+            self.console.print("[bold yellow]Chat history cleared[/bold yellow]\n")
+            return True
+        if user_input.lower() == CMD_HISTORY:
+            self.console.print(self.history)
+            return True
+        return None
+
+    def _confirm_and_execute(self, content: str) -> None:
+        """Review and execute the command"""
+        cmd = self._filter_command(content)
+        if not cmd:
+            self.console.print("[bold red]No command generated[/bold red]")
+            return
+        self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {cmd}")
+        if Confirm.ask("Execute this command?", default=False):
+            subprocess.call(cmd, shell=True)
+
+    def _build_messages(self, user_input: str) -> list[dict[str, str]]:
+        return [
+            {"role": "system", "content": self.get_system_prompt()},
+            *self.history,
+            {"role": "user", "content": user_input}
+        ]
+
+    def _handle_llm_response(self, response: httpx.Response, user_input: str) -> str:
+        """Print LLM response and update history"""
+        content = self._print_stream(response) if self.is_stream() else self._print_normal(response)
+        self.history.extend([{"role": "user", "content": user_input}, {"role": "assistant", "content": content}])
+        self._check_history_len()
+        return content
+
+    def _process_user_input(self, user_input: str) -> bool:
+        """Process user input and generate response"""
+        try:
+            response = self.post(self._build_messages(user_input))
+            content = self._handle_llm_response(response, user_input)
+            if self.current_mode == EXEC_MODE:
+                self._confirm_and_execute(content)
+            return True
+        except Exception as e:
+            self.console.print(f"[red]Error: {e}[/red]")
+            return False
+
+    def get_system_prompt(self) -> str:
+        """Return system prompt for current mode"""
+        prompt = SHELL_PROMPT if self.current_mode == EXEC_MODE else DEFAULT_PROMPT
+        return prompt.format(_os=self.detect_os(), _shell=self.detect_shell())
+
     def _run_repl(self) -> None:
         """Run REPL loop, handling user input and generating responses, saving history, and executing commands"""
-        # Show REPL instructions
         self.prepare_chat_loop()
         self.console.print("""
 ██    ██  █████  ██  ██████ ██      ██
@@ -385,7 +435,6 @@ class CLI:
         self.console.print("[bold]Press Ctrl+C or type /exit to exit[/bold]\n")
 
         while True:
-            # Get user input
             user_input = self.session.prompt(self.get_prompt_tokens).strip()
             if not user_input:
                 continue
@@ -402,88 +451,21 @@ class CLI:
             elif user_input.lower() == CMD_HISTORY:
                 self.console.print(self.history)
                 continue
-            # Create appropriate system prompt based on mode
-            system_prompt = SHELL_PROMPT if self.current_mode == EXEC_MODE else DEFAULT_PROMPT
-            system_content = system_prompt.format(_os=self.detect_os(), _shell=self.detect_shell())
-
-            # Create message with system prompt and history
-            message = [{"role": "system", "content": system_content}]
-            message.extend(self.history)
-
-            # Add current user message
-            message.append({"role": "user", "content": user_input})
-
-            # Get response from LLM
-            try:
-                response = self.post(message)
-            except ValueError as e:
-                self.console.print(f"[red]Error: {e}[/red]")
-                return
-            except (httpx.ConnectError, httpx.HTTPStatusError) as e:
-                self.console.print(f"[red]Error: {e}[/red]")
+            if not self._process_user_input(user_input):
                 continue
-            self.console.print("\n[bold green]Assistant:[/bold green]")
-            try:
-                content = self._print(response, stream=self.config["STREAM"] == "true")
-            except Exception as e:
-                self.console.print(f"[red]Unknown Error: {e}[/red]")
-                continue
-
-            # Add user input and assistant response to history
-            self.history.append({"role": "user", "content": user_input})
-            self.history.append({"role": "assistant", "content": content})
-
-            self._check_history_len()
-
-            # Handle command execution in exec mode
-            if self.current_mode == EXEC_MODE:
-                content = self._filter_command(content)
-                if not content:
-                    self.console.print("[bold red]No command generated[/bold red]")
-                    continue
-                self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {content}")
-                if Confirm.ask("Execute this command?", default=False):
-                    subprocess.call(content, shell=True)
 
         self.console.print("[bold green]Exiting...[/bold green]")
 
     def _run_once(self, prompt: str, shell: bool = False) -> None:
         """Run once with given prompt"""
-        _os = self.detect_os()
-        _shell = self.detect_shell()
-        # Create appropriate system prompt based on mode
-        system_prompt = SHELL_PROMPT if shell else DEFAULT_PROMPT
-        system_content = system_prompt.format(_os=_os, _shell=_shell)
 
-        # Create message with system prompt and user input
-        message = [
-            {"role": "system", "content": system_content},
-            {"role": "user", "content": prompt},
-        ]
-
-        # Get response from LLM
         try:
-            response = self.post(message)
-        except (ValueError, httpx.ConnectError, httpx.HTTPStatusError) as e:
-            self.console.print(f"[red]Error: {e}[/red]")
-            return
+            response = self.post(self._build_messages(prompt))
+            content = self._handle_llm_response(response, prompt)
+            if shell:
+                self._confirm_and_execute(content)
         except Exception as e:
-            self.console.print(f"[red]Unknown Error: {e}[/red]")
-            return
-        self.console.print("\n[bold green]Assistant:[/bold green]")
-        content = self._print(response, stream=self.config["STREAM"] == "true")
-
-        # Handle shell mode execution
-        if shell:
-            content = self._filter_command(content)
-            if not content:
-                self.console.print("[bold red]No command generated[/bold red]")
-                return
-            self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {content}")
-            if Confirm.ask("Execute this command?", default=False):
-                returncode = subprocess.call(content, shell=True)
-                if returncode != 0:
-                    self.console.print(f"[bold red]Command failed with return code {returncode}[/bold red]")
+            self.console.print(f"[red]Error: {e}[/red]")
 
     def run(self, chat: bool, shell: bool, prompt: str) -> None:
         """Run the CLI"""
@@ -493,8 +475,6 @@ class CLI:
                 "[yellow]API key not set. Please set in ~/.config/yaicli/config.ini or AI_API_KEY env[/]"
             )
             raise typer.Exit(code=1)
-
-        # Handle chat mode
         if chat:
             self.current_mode = CHAT_MODE
             self._run_repl()
@@ -507,13 +487,13 @@ def main(
     ctx: typer.Context,
     prompt: Annotated[Optional[str], typer.Argument(show_default=False, help="The prompt send to the LLM")] = None,
     chat: Annotated[
-        bool, typer.Option("--chat", "-c", help="Start in chat mode", rich_help_panel="Run Option")
+        bool, typer.Option("--chat", "-c", help="Start in chat mode", rich_help_panel="Run Options")
     ] = False,
     shell: Annotated[
-        bool, typer.Option("--shell", "-s", help="Generate and execute shell command", rich_help_panel="Run Option")
+        bool, typer.Option("--shell", "-s", help="Generate and execute shell command", rich_help_panel="Run Options")
     ] = False,
     verbose: Annotated[
-        bool, typer.Option("--verbose", "-V", help="Show verbose information", rich_help_panel="Run Option")
+        bool, typer.Option("--verbose", "-V", help="Show verbose information", rich_help_panel="Run Options")
     ] = False,
     template: Annotated[bool, typer.Option("--template", help="Show the config template.")] = False,
 ):
