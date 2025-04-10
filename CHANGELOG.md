@@ -22,6 +22,9 @@
 ---
 ## [0.0.13](https://github.com/belingud/yaicli/compare/v0.0.12..v0.0.13) - 2025-04-09
 
+[!IMPORTANT]
+- Change env key prefix from AI_ to YAI_
+
 ### ⛰️  Features
 
 - **(cli)** add command edit option and improve console output styling - ([48c14cc](https://github.com/belingud/yaicli/commit/48c14ccff33af8ebeaeb100e002cf15c01d3756e)) - Belingud
