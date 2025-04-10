@@ -1,5 +1,25 @@
 
 ---
+## [0.0.14](https://github.com/belingud/yaicli/compare/v0.0.13..v0.0.14) - 2025-04-10
+
+### ⛰️  Features
+
+- **(cli)** enhance command execution and output display - ([d101841](https://github.com/belingud/yaicli/commit/d101841b17ee57e421574408fdc643a4f5b1eea7)) - Belingud
+
+### 🚜 Refactor
+
+- clean up unused imports in yaicli.py - ([71c64af](https://github.com/belingud/yaicli/commit/71c64af167b0b0d2b8f771302b86035da0c8f18f)) - Belingud
+
+### 📚 Documentation
+
+- **(Justfile)** update changelog command message - ([b060812](https://github.com/belingud/yaicli/commit/b060812488d8c64bb0bded6433fb93a66946c8aa)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.13 in uv.lock and CHANGELOG.md - ([3806f70](https://github.com/belingud/yaicli/commit/3806f707e320ec7616264e62c28d3e345fb6a79d)) - Belingud
+
+
+---
 ## [0.0.13](https://github.com/belingud/yaicli/compare/v0.0.12..v0.0.13) - 2025-04-09
 
 ### ⛰️  Features
