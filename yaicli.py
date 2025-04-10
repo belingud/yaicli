@@ -1,17 +1,21 @@
 import configparser
 import json
 import platform
+from random import choice
 import subprocess
+import time
 from os import getenv
 from os.path import basename, pathsep
 from pathlib import Path
 from typing import Annotated, Optional, Union
 
+from click.core import F
 import httpx
 import jmespath
+from rich.panel import Panel
 import typer
 from distro import name as distro_name
-from prompt_toolkit import PromptSession
+from prompt_toolkit import PromptSession, prompt
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
@@ -325,6 +329,8 @@ class CLI:
         self.console.print("Assistant:", style="bold green")
         full_completion = ""
         in_reasoning = False
+        cursor_chars = ["_", " "]
+        cursor_index = 0
 
         with Live() as live:
             for line in response.iter_lines():
@@ -344,15 +350,17 @@ class CLI:
                         delta.get("content", "") or "", full_completion, in_reasoning
                     )
 
-                live.update(Markdown(markup=full_completion), refresh=True)
-        # self.console.print()
+                live.update(Markdown(markup=full_completion + cursor_chars[cursor_index]), refresh=True)
+                cursor_index = (cursor_index + 1) % 2
+                time.sleep(0.005)  # Slow down the printing speed, avoiding screen flickering
+            live.update(Markdown(markup=full_completion), refresh=True)
         return full_completion
 
     def _print_normal(self, response: httpx.Response) -> str:
         """Print response from LLM in non-streaming mode"""
         self.console.print("Assistant:", style="bold green")
         full_completion = jmespath.search(self.config.get("ANSWER_PATH", "choices[0].message.content"), response.json())
-        self.console.print(Markdown(full_completion + '\n'))
+        self.console.print(Markdown(full_completion + "\n"))
         return full_completion
 
     def get_prompt_tokens(self) -> list[tuple[str, str]]:
@@ -384,13 +392,19 @@ class CLI:
         if not cmd:
             self.console.print("No command generated", style="bold red")
             return
-        self.console.print(f"\n[bold magenta]Generated command:[/bold magenta] {cmd}")
-        _input = Prompt.ask("Execute this command?", choices=['y', 'n', 'e'], default="n", case_sensitive=False)
-        if _input == 'y':  # execute cmd
+        self.console.print(Panel(cmd, title="Command", title_align="left", border_style="bold magenta", expand=False))
+        _input = Prompt.ask(
+            r"Execute command? \[e]dit, \[y]es, \[n]o",
+            choices=["y", "n", "e"],
+            default="n",
+            case_sensitive=False,
+            show_choices=False,
+        )
+        if _input == "y":  # execute cmd
             self.console.print("Output:", style="bold green")
             subprocess.call(cmd, shell=True)
-        elif _input == 'e':  # edit cmd
-            cmd = self.session.prompt("Edit command, press enter to execute:\n", key_bindings=None, default=cmd)
+        elif _input == "e":  # edit cmd
+            cmd = prompt("Edit command, press enter to execute:\n", default=cmd)
             self.console.print("Output:", style="bold green")
             subprocess.call(cmd, shell=True)
 
@@ -398,7 +412,7 @@ class CLI:
         return [
             {"role": "system", "content": self.get_system_prompt()},
             *self.history,
-            {"role": "user", "content": user_input}
+            {"role": "user", "content": user_input},
         ]
 
     def _handle_llm_response(self, response: httpx.Response, user_input: str) -> str:
