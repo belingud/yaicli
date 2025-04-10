@@ -260,9 +260,10 @@ The capital of France is Paris.
 $ ai -s 'Check the current directory size'
 Assistant:
 du -sh .
-
-Generated command: du -sh .
-Execute this command? [y/n/e] (n): e
+╭─ Command ─╮
+│ du -sh .  │
+╰───────────╯
+Execute command? [e]dit, [y]es, [n]o (n): e
 Edit command, press enter to execute:
 du -sh ./
 Output:
@@ -306,9 +307,10 @@ Certainly! Here’s a brief overview of the solar system:
 🚀 > Check the current directory size
 Assistant:
 du -sh .
-
-Generated command: du -sh .
-Execute this command? [y/n/e] (n): e
+╭─ Command ─╮
+│ du -sh .  │
+╰───────────╯
+Execute command? [e]dit, [y]es, [n]o (n): e
 Edit command, press enter to execute:
 du -sh ./
 Output:
