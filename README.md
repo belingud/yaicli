@@ -322,11 +322,13 @@ Output:
 
 ```bash
 $ ai --shell "Find all PDF files in my Downloads folder"
-
-Generated command: find ~/Downloads -type f -name "*.pdf"
-Execute this command? [y/n]: y
-
-Executing command: find ~/Downloads -type f -name "*.pdf"
+Assistant:
+find ~/Downloads -type f -name "*.pdf"
+╭─ Command ──────────────────────────────╮
+│ find ~/Downloads -type f -name "*.pdf" │
+╰────────────────────────────────────────╯
+Execute command? [e]dit, [y]es, [n]o (n): y
+Output:
 
 /Users/username/Downloads/document1.pdf
 /Users/username/Downloads/report.pdf
