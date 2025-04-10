@@ -36,6 +36,6 @@ install:
 
 # Generate changelog from git log
 changelog:
-    @echo "Generating changelog..."
+    @echo "Lock and Generating changelog..."
     @uv lock
     @git cliff -l --prepend CHANGELOG.md
