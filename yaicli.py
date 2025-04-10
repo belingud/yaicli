@@ -1,7 +1,6 @@
 import configparser
 import json
 import platform
-from random import choice
 import subprocess
 import time
 from os import getenv
@@ -9,10 +8,8 @@ from os.path import basename, pathsep
 from pathlib import Path
 from typing import Annotated, Optional, Union
 
-from click.core import F
 import httpx
 import jmespath
-from rich.panel import Panel
 import typer
 from distro import name as distro_name
 from prompt_toolkit import PromptSession, prompt
@@ -23,6 +20,7 @@ from prompt_toolkit.keys import Keys
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
+from rich.panel import Panel
 from rich.prompt import Prompt
 
 SHELL_PROMPT = """Your are a Shell Command Generator.
