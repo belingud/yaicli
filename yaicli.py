@@ -56,6 +56,7 @@ DEFAULT_CONFIG_MAP = {
     "COMPLETION_PATH": {"value": "chat/completions", "env_key": "YAI_COMPLETION_PATH"},
     "ANSWER_PATH": {"value": "choices[0].message.content", "env_key": "YAI_ANSWER_PATH"},
     "STREAM": {"value": "true", "env_key": "YAI_STREAM"},
+    "CODE_THEME": {"value": "monokia", "env_key": "YAI_CODE_THEME"},
     "TEMPERATURE": {"value": "0.7", "env_key": "YAI_TEMPERATURE"},
     "TOP_P": {"value": "1.0", "env_key": "YAI_TOP_P"},
     "MAX_TOKENS": {"value": "1024", "env_key": "YAI_MAX_TOKENS"},
@@ -79,6 +80,7 @@ ANSWER_PATH=choices[0].message.content
 # true: streaming response
 # false: non-streaming response
 STREAM=true
+CODE_THEME=monokia
 
 TEMPERATURE=0.7
 TOP_P=1.0
@@ -325,12 +327,12 @@ class CLI:
     def _print_stream(self, response: httpx.Response) -> str:
         """Print response from LLM in streaming mode"""
         self.console.print("Assistant:", style="bold green")
-        full_completion = ""
+        full_content = ""
         in_reasoning = False
         cursor_chars = ["_", " "]
         cursor_index = 0
 
-        with Live() as live:
+        with Live(console=self.console) as live:
             for line in response.iter_lines():
                 json_data = self._parse_stream_line(line)
                 if not json_data:
@@ -340,26 +342,25 @@ class CLI:
                 reason = self.get_reasoning_content(delta)
 
                 if reason is not None:
-                    full_completion, in_reasoning = self._process_reasoning_content(
-                        reason, full_completion, in_reasoning
-                    )
+                    full_content, in_reasoning = self._process_reasoning_content(reason, full_content, in_reasoning)
                 else:
-                    full_completion, in_reasoning = self._process_regular_content(
-                        delta.get("content", "") or "", full_completion, in_reasoning
+                    full_content, in_reasoning = self._process_regular_content(
+                        delta.get("content", "") or "", full_content, in_reasoning
                     )
 
-                live.update(Markdown(markup=full_completion + cursor_chars[cursor_index]), refresh=True)
+                cursor = cursor_chars[cursor_index]
+                live.update(Markdown(markup=full_content + cursor, code_theme=self.config["CODE_THEME"]), refresh=True)
                 cursor_index = (cursor_index + 1) % 2
                 time.sleep(0.005)  # Slow down the printing speed, avoiding screen flickering
-            live.update(Markdown(markup=full_completion), refresh=True)
-        return full_completion
+            live.update(Markdown(markup=full_content, code_theme=self.config["CODE_THEME"]), refresh=True)
+        return full_content
 
     def _print_normal(self, response: httpx.Response) -> str:
         """Print response from LLM in non-streaming mode"""
         self.console.print("Assistant:", style="bold green")
-        full_completion = jmespath.search(self.config.get("ANSWER_PATH", "choices[0].message.content"), response.json())
-        self.console.print(Markdown(full_completion + "\n"))
-        return full_completion
+        full_content = jmespath.search(self.config.get("ANSWER_PATH", "choices[0].message.content"), response.json())
+        self.console.print(Markdown(full_content + "\n", code_theme=self.config["CODE_THEME"]))
+        return full_content
 
     def get_prompt_tokens(self) -> list[tuple[str, str]]:
         """Return prompt tokens for current mode"""

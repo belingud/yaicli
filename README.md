@@ -9,7 +9,7 @@ YAICLI is a compact yet potent command-line AI assistant, allowing you to engage
 
 Support regular and deep thinking models.
 
-> [!WARNING] 
+> [!WARNING]
 > This is a work in progress, some features could change or be removed in the future.
 
 ## Features
@@ -95,6 +95,7 @@ ANSWER_PATH=choices[0].message.content
 # true: streaming response
 # false: non-streaming response
 STREAM=true
+CODE_THEME=monokia
 
 TEMPERATURE=0.7
 TOP_P=1.0
@@ -113,6 +114,7 @@ Below are the available configuration options and override environment variables
 - **COMPLETION_PATH**: Path for completions endpoint, default: /chat/completions, env: YAI_COMPLETION_PATH
 - **ANSWER_PATH**: Json path expression to extract answer from response, default: choices[0].message.content, env: YAI_ANSWER_PATH
 - **STREAM**: Enable/disable streaming responses, default: true, env: YAI_STREAM
+- **CODE_THEME**: Theme for code blocks, default: monokia, env: YAI_CODE_THEME
 - **TEMPERATURE**: Temperature for response generation (default: 0.7), env: YAI_TEMPERATURE
 - **TOP_P**: Top-p sampling for response generation (default: 1.0), env: YAI_TOP_P
 - **MAX_TOKENS**: Maximum number of tokens for response generation (default: 1024), env: YAI_MAX_TOKENS
@@ -168,6 +170,12 @@ If you not sure how to config `COMPLETION_PATH` and `ANSWER_PATH`, here is a gui
    ```
     We are looking for the `text` field, so the path should be 1.Key `content`, 2.First obj `[0]`, 3.Key `text`. So it should be `content.[0].text`.
 
+**CODE_THEME**
+
+You can find the list of code theme here: https://pygments.org/styles/
+
+Default: monokia
+![alt text](artwork/monokia.png)
 
 ## Usage
 
@@ -206,10 +214,10 @@ Run Options:
 ```bash
 ai -h
 
-Usage: ai [OPTIONS] [PROMPT]                                                                                                                                              
-                                                                                                                                                                           
- yaicli - Your AI interface in cli.                                                                                                                                        
-                                                                                                                                                                           
+Usage: ai [OPTIONS] [PROMPT]
+
+ yaicli - Your AI interface in cli.
+
 ╭─ Arguments ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │   prompt      [PROMPT]  The prompt send to the LLM                                                                                                                      │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
