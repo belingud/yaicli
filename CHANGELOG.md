@@ -1,5 +1,35 @@
 
 ---
+## [0.0.15](https://github.com/belingud/yaicli/compare/v0.0.14..v0.0.15) - 2025-04-11
+
+### ⛰️  Features
+
+- add CODE_THEME configuration for code block styling - ([ed0e8f6](https://github.com/belingud/yaicli/commit/ed0e8f62f73128ef2c57a472560ae438c8738103)) - Belingud
+
+### 🐛 Bug Fixes
+
+- handle None value in SHELL environment variable - ([a4e29f5](https://github.com/belingud/yaicli/commit/a4e29f5876f042c71d9a9d36f6577ce751a26eba)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG.md with env key prefix change - ([48b33da](https://github.com/belingud/yaicli/commit/48b33da0d290ac9707e0e441318e50760c7de251)) - Belingud
+- update README.md with improved command execution format - ([03b2417](https://github.com/belingud/yaicli/commit/03b2417abc0e3127facb7638b31f07e1e35d8da1)) - Belingud
+- update command execution UI in README.md - ([a4aadc8](https://github.com/belingud/yaicli/commit/a4aadc8c47b01117edfadb49db058e5e44847061)) - Belingud
+
+### 🎨 Styling
+
+- fix spacing around 'or' operator in shell detection - ([44cedc9](https://github.com/belingud/yaicli/commit/44cedc993fda3b64df16adfc5a1381c31c04b045)) - Belingud
+
+### 🧪 Testing
+
+- add smoke tests for CLI and fix shell detection tests - ([baa1beb](https://github.com/belingud/yaicli/commit/baa1beb0238eb0c228d0c56310839d53b09c8484)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.14 in uv.lock and CHANGELOG.md - ([9d21edf](https://github.com/belingud/yaicli/commit/9d21edf9c046fe4c976750b27a0554d4605ccc5a)) - Belingud
+
+
+---
 ## [0.0.14](https://github.com/belingud/yaicli/compare/v0.0.13..v0.0.14) - 2025-04-10
 
 ### ⛰️  Features
