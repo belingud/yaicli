@@ -196,7 +196,7 @@ class CLI:
         if current_platform in ("Windows", "nt"):
             is_powershell = len(getenv("PSModulePath", "").split(pathsep)) >= 3
             return "powershell.exe" if is_powershell else "cmd.exe"
-        return basename(getenv("SHELL", "/bin/sh"))
+        return basename(getenv("SHELL", None)or  "/bin/sh")
 
     def _filter_command(self, command: str) -> Optional[str]:
         """Filter out unwanted characters from command
