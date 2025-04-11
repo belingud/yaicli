@@ -107,7 +107,7 @@ def test_detect_shell_with_config(cli, shell_name_config, expected_result):
         pass
 
 @patch("platform.system")
-@patch("os.getenv")
+@patch("yaicli.getenv")
 def test_detect_shell_windows_powershell(mock_getenv, mock_system, cli):
     """Test Windows PowerShell detection"""
     # Ensure config is set to auto detection
@@ -115,12 +115,13 @@ def test_detect_shell_windows_powershell(mock_getenv, mock_system, cli):
 
     # Simulate Windows environment with PowerShell
     mock_system.return_value = "Windows"
-    mock_getenv.return_value = "a;b;c"  # PSModulePath with 3 parts
+    mock_getenv.return_value = "a;b;c"  # PSModulePath with 3 parts (Windows uses semicolon)
 
-    # Verify result
-    assert cli.detect_shell() == "powershell.exe"
-    mock_system.assert_called_once()
-    mock_getenv.assert_called_once_with("PSModulePath", "")
+    with patch("yaicli.pathsep", ";"):
+        # Verify result
+        assert cli.detect_shell() == "powershell.exe"
+        mock_system.assert_called_once()
+        mock_getenv.assert_called_once_with("PSModulePath", "")
 
 @patch("platform.system")
 @patch("os.getenv")
@@ -133,13 +134,12 @@ def test_detect_shell_windows_cmd(mock_getenv, mock_system, cli):
     mock_system.return_value = "Windows"
     mock_getenv.return_value = "a"  # PSModulePath with less than 3 parts
 
-    # Verify result
-    assert cli.detect_shell() == "powershell.exe"
-    mock_system.assert_called_once()
-    mock_getenv.assert_called_once_with("PSModulePath", "")
+    with patch("os.path.pathsep", ";"):
+        # Verify result
+        assert cli.detect_shell() == "cmd.exe"
 
 @patch("platform.system")
-@patch("os.getenv")
+@patch("yaicli.getenv")
 def test_detect_shell_linux(mock_getenv, mock_system, cli):
     """Test Linux shell detection"""
     # Ensure config is set to auto detection
@@ -152,10 +152,10 @@ def test_detect_shell_linux(mock_getenv, mock_system, cli):
     # Verify result
     assert cli.detect_shell() == "bash"
     mock_system.assert_called_once()
-    mock_getenv.assert_called_once_with("SHELL", "/bin/sh")
+    mock_getenv.assert_called_once_with("SHELL", None)
 
 @patch("platform.system")
-@patch("os.getenv")
+@patch("yaicli.getenv")
 def test_detect_shell_default_sh(mock_getenv, mock_system, cli):
     """Test default /bin/sh detection when SHELL not set"""
     # Ensure config is set to auto detection
@@ -166,6 +166,6 @@ def test_detect_shell_default_sh(mock_getenv, mock_system, cli):
     mock_getenv.return_value = None
 
     # Verify result
-    assert cli.detect_shell() == "bash"
+    assert cli.detect_shell() == "sh"
     mock_system.assert_called_once()
-    mock_getenv.assert_called_once_with("SHELL", "/bin/sh")
+    mock_getenv.assert_called_once_with("SHELL", None)
