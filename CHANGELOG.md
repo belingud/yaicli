@@ -1,5 +1,25 @@
 
 ---
+## [0.0.16](https://github.com/belingud/yaicli/compare/v0.0.15..v0.0.16) - 2025-04-14
+
+### ⛰️  Features
+
+- **(cli)** add max history limit and stdin support - ([1b685df](https://github.com/belingud/yaicli/commit/1b685df079a0cb3010c73c543bdf8c4fbb72195d)) - Belingud
+
+### 🚜 Refactor
+
+- Remove unused io import - ([1e72f6c](https://github.com/belingud/yaicli/commit/1e72f6c3a1dfaff6326ad171aee360c57592be24)) - Belingud
+
+### 📚 Documentation
+
+- update README with new shortcuts and max history size - ([af70000](https://github.com/belingud/yaicli/commit/af700006e2a5f6b1b4ec1ec90396e00c45b4509f)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.15 in uv.lock and CHANGELOG.md - ([15faced](https://github.com/belingud/yaicli/commit/15faced8e89e5eebc7ed6984be6b0e1a7743ff8c)) - Belingud
+
+
+---
 ## [0.0.15](https://github.com/belingud/yaicli/compare/v0.0.14..v0.0.15) - 2025-04-11
 
 ### ⛰️  Features
