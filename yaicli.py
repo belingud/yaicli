@@ -7,14 +7,14 @@ import time
 from os import getenv
 from os.path import basename, exists, pathsep, devnull
 from pathlib import Path
-from typing import Annotated, Optional, Union
+from typing import Annotated, Any, Dict, Optional, Union
 
 import httpx
 import jmespath
 import typer
 from distro import name as distro_name
 from prompt_toolkit import PromptSession, prompt
-# from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.history import FileHistory, _StrOrBytesPath
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.keys import Keys
@@ -62,6 +62,7 @@ DEFAULT_CONFIG_MAP = {
     "TOP_P": {"value": "1.0", "env_key": "YAI_TOP_P"},
     "MAX_TOKENS": {"value": "1024", "env_key": "YAI_MAX_TOKENS"},
     "MAX_HISTORY": {"value": "500", "env_key": "YAI_MAX_HISTORY"},
+    "AUTO_SUGGEST": {"value": "true", "env_key": "YAI_AUTO_SUGGEST"},
 }
 
 DEFAULT_CONFIG_INI = """[core]
@@ -88,7 +89,8 @@ TEMPERATURE=0.7
 TOP_P=1.0
 MAX_TOKENS=1024
 
-MAX_HISTORY=500"""
+MAX_HISTORY=500
+AUTO_SUGGEST=true"""
 
 app = typer.Typer(
     name="yaicli",
@@ -184,10 +186,6 @@ class CLI:
         self.max_history_length = 25
         self.current_mode = TEMP_MODE
 
-    def is_stream(self) -> bool:
-        """Check if streaming is enabled"""
-        return self.config["STREAM"] == "true"
-
     def prepare_chat_loop(self) -> None:
         """Setup key bindings and history for chat mode"""
         self._setup_key_bindings()
@@ -200,6 +198,7 @@ class CLI:
             history=LimitedFileHistory(
                 Path("~/.yaicli_history").expanduser(), max_entries=int(self.config["MAX_HISTORY"])
             ),
+            auto_suggest=AutoSuggestFromHistory() if self.config["AUTO_SUGGEST"] else None,
             enable_history_search=True,
         )
 
@@ -219,8 +218,9 @@ class CLI:
         Returns:
             dict: merged configuration
         """
+        boolean_keys = ["STREAM", "AUTO_SUGGEST"]
         # Start with default configuration (lowest priority)
-        merged_config = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
+        merged_config: Dict[str, Any] = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
 
         # Create default config file if it doesn't exist
         if not self.CONFIG_PATH.exists():
@@ -241,8 +241,9 @@ class CLI:
             env_value = getenv(config["env_key"])
             if env_value is not None:
                 merged_config[key] = env_value
-
-        merged_config["STREAM"] = str(merged_config.get("STREAM", "true")).lower()
+            # Convert boolean values
+            if key in boolean_keys:
+                merged_config[key] = str(merged_config[key]).lower() == "true"
 
         self.config = merged_config
         return merged_config
@@ -329,14 +330,16 @@ class CLI:
         body = {
             "messages": message,
             "model": self.config.get("MODEL", "gpt-4o"),
-            "stream": self.is_stream(),
+            "stream": self.config["STREAM"],
             "temperature": self._get_number_with_type(key="TEMPERATURE", _type=float, default="0.7"),
             "top_p": self._get_number_with_type(key="TOP_P", _type=float, default="1.0"),
             "max_tokens": self._get_number_with_type(key="MAX_TOKENS", _type=int, default="1024"),
         }
         with httpx.Client(timeout=120.0) as client:
             response = client.post(
-                url, json=body, headers={"Authorization": f"Bearer {self.config.get('API_KEY', '')}"}
+                url,
+                json=body,
+                headers={"Authorization": f"Bearer {self.config.get('API_KEY', '')}"},
             )
         try:
             response.raise_for_status()
@@ -421,7 +424,10 @@ class CLI:
                     )
 
                 cursor = cursor_chars[cursor_index]
-                live.update(Markdown(markup=full_content + cursor, code_theme=self.config["CODE_THEME"]), refresh=True)
+                live.update(
+                    Markdown(markup=full_content + cursor, code_theme=self.config["CODE_THEME"]),
+                    refresh=True,
+                )
                 cursor_index = (cursor_index + 1) % 2
                 time.sleep(0.005)  # Slow down the printing speed, avoiding screen flickering
             live.update(Markdown(markup=full_content, code_theme=self.config["CODE_THEME"]), refresh=True)
@@ -488,7 +494,7 @@ class CLI:
 
     def _handle_llm_response(self, response: httpx.Response, user_input: str) -> str:
         """Print LLM response and update history"""
-        content = self._print_stream(response) if self.is_stream() else self._print_normal(response)
+        content = self._print_stream(response) if self.config["STREAM"] else self._print_normal(response)
         self.history.extend([{"role": "user", "content": user_input}, {"role": "assistant", "content": content}])
         self._check_history_len()
         return content
@@ -564,17 +570,17 @@ class CLI:
         """Run the CLI"""
         self.load_config()
         if self.verbose:
-            self.console.print(f"CODE_THEME: {self.config['CODE_THEME']}")
-            self.console.print(f"ANSWER_PATH: {self.config['ANSWER_PATH']}")
+            self.console.print(f"CODE_THEME:      {self.config['CODE_THEME']}")
+            self.console.print(f"ANSWER_PATH:     {self.config['ANSWER_PATH']}")
             self.console.print(f"COMPLETION_PATH: {self.config['COMPLETION_PATH']}")
-            self.console.print(f"BASE_URL: {self.config['BASE_URL']}")
-            self.console.print(f"MODEL: {self.config['MODEL']}")
-            self.console.print(f"SHELL_NAME: {self.config['SHELL_NAME']}")
-            self.console.print(f"OS_NAME: {self.config['OS_NAME']}")
-            self.console.print(f"STREAM: {self.config['STREAM']}")
-            self.console.print(f"TEMPERATURE: {self.config['TEMPERATURE']}")
-            self.console.print(f"TOP_P: {self.config['TOP_P']}")
-            self.console.print(f"MAX_TOKENS: {self.config['MAX_TOKENS']}")
+            self.console.print(f"BASE_URL:        {self.config['BASE_URL']}")
+            self.console.print(f"MODEL:           {self.config['MODEL']}")
+            self.console.print(f"SHELL_NAME:      {self.config['SHELL_NAME']}")
+            self.console.print(f"OS_NAME:         {self.config['OS_NAME']}")
+            self.console.print(f"STREAM:          {self.config['STREAM']}")
+            self.console.print(f"TEMPERATURE:     {self.config['TEMPERATURE']}")
+            self.console.print(f"TOP_P:           {self.config['TOP_P']}")
+            self.console.print(f"MAX_TOKENS:      {self.config['MAX_TOKENS']}")
         if not self.config.get("API_KEY"):
             self.console.print(
                 "[yellow]API key not set. Please set in ~/.config/yaicli/config.ini or AI_API_KEY env[/]"
@@ -596,10 +602,17 @@ def main(
         bool, typer.Option("--chat", "-c", help="Start in chat mode", rich_help_panel="Run Options")
     ] = False,
     shell: Annotated[
-        bool, typer.Option("--shell", "-s", help="Generate and execute shell command", rich_help_panel="Run Options")
+        bool,
+        typer.Option(
+            "--shell",
+            "-s",
+            help="Generate and execute shell command",
+            rich_help_panel="Run Options",
+        ),
     ] = False,
     verbose: Annotated[
-        bool, typer.Option("--verbose", "-V", help="Show verbose information", rich_help_panel="Run Options")
+        bool,
+        typer.Option("--verbose", "-V", help="Show verbose information", rich_help_panel="Run Options"),
     ] = False,
     template: Annotated[bool, typer.Option("--template", help="Show the config template.")] = False,
 ):

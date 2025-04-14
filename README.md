@@ -14,32 +14,28 @@ Support regular and deep thinking models.
 
 ## Features
 
-- **Multiple Operation Modes**:
-  - **Chat Mode (💬)**: Interactive conversation with the AI assistant
-  - **Execute Mode (🚀)**: Generate and execute shell commands specific to your OS and shell
-  - **Temp Mode**: Quick queries without entering interactive mode
+- **Smart Interaction Modes**:
+  - 💬 Chat Mode: Persistent dialogue with context tracking
+  - 🚀 Execute Mode: Generate & verify OS-specific commands (Windows/macOS/Linux)
+  - ⚡ Quick Query: Single-shot responses without entering REPL
 
-- **Smart Environment Detection**:
-  - Automatically detects your operating system and shell
-  - Customizes responses and commands for your specific environment
+- **Environment Intelligence**:
+  - Auto-detects shell type (CMD/PowerShell/bash/zsh)
+  - Dynamic command validation with 3-step confirmation
+  - Pipe input support (`cat log.txt | ai "analyze errors"`)
 
-- **Rich Terminal Interface**:
-  - Markdown rendering for formatted responses
-  - Streaming responses for real-time feedback
-  - Color-coded output for better readability
+- **Enterprise LLM Support**:
+  - OpenAI API compatible endpoints
+  - Claude/Gemini/Cohere integration guides
+  - Custom JSON parsing with jmespath
 
-- **Configurable**:
-  - Customizable API endpoints
-  - Support for different LLM providers
-  - Adjustable response parameters
+- **Terminal Experience**:
+  - Real-time streaming with cursor animation
+  - LRU history management (500 entries default)
 
-- **Keyboard Shortcuts**:
-  - Tab to switch between Chat and Execute modes
-  - `↑/↓` to navigate history
-  - `Ctrl+R` to search history
-
-- **History**:
-  - Save and recall previous queries
+- **DevOps Ready**:
+  - Layered configuration (Env > File > Defaults)
+  - Verbose debug mode with API tracing
 
 ## Installation
 
@@ -121,6 +117,7 @@ Below are the available configuration options and override environment variables
 - **TOP_P**: Top-p sampling for response generation (default: 1.0), env: YAI_TOP_P
 - **MAX_TOKENS**: Maximum number of tokens for response generation (default: 1024), env: YAI_MAX_TOKENS
 - **MAX_HISTORY**: Max history size, default: 500, env: YAI_MAX_HISTORY
+- **AUTO_SUGGEST**: Auto suggest from history, default: true, env: YAI_AUTO_SUGGEST
 
 Default config of `COMPLETION_PATH` and `ANSWER_PATH` is OpenAI compatible. If you are using OpenAI or other OpenAI compatible LLM provider, you can use the default config.
 
