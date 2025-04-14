@@ -14,7 +14,7 @@ import jmespath
 import typer
 from distro import name as distro_name
 from prompt_toolkit import PromptSession, prompt
-from prompt_toolkit.completion import WordCompleter
+# from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import FileHistory, _StrOrBytesPath
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.keys import Keys
