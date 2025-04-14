@@ -35,6 +35,8 @@ Support regular and deep thinking models.
 
 - **Keyboard Shortcuts**:
   - Tab to switch between Chat and Execute modes
+  - `↑/↓` to navigate history
+  - `Ctrl+R` to search history
 
 - **History**:
   - Save and recall previous queries
@@ -118,6 +120,7 @@ Below are the available configuration options and override environment variables
 - **TEMPERATURE**: Temperature for response generation (default: 0.7), env: YAI_TEMPERATURE
 - **TOP_P**: Top-p sampling for response generation (default: 1.0), env: YAI_TOP_P
 - **MAX_TOKENS**: Maximum number of tokens for response generation (default: 1024), env: YAI_MAX_TOKENS
+- **MAX_HISTORY**: Max history size, default: 500, env: YAI_MAX_HISTORY
 
 Default config of `COMPLETION_PATH` and `ANSWER_PATH` is OpenAI compatible. If you are using OpenAI or other OpenAI compatible LLM provider, you can use the default config.
 
@@ -252,6 +255,25 @@ In Execute mode:
 3. Review the command
 4. Confirm to execute or reject
 
+### Keyboard Shortcuts
+- `Tab`: Switch between Chat and Execute modes
+- `Ctrl+C`: Exit
+- `Ctrl+R`: Search history
+- `↑/↓`: Navigate history
+
+### Stdin
+You can also pipe input to YAICLI:
+```bash
+echo "What is the capital of France?" | ai
+```
+
+```bash
+cat demo.py | ai "How to use this tool?"
+```
+
+### History
+Support max history size. Set MAX_HISTORY in config file. Default is 500.
+
 ## Examples
 
 ### Have a Chat
@@ -350,7 +372,7 @@ YAICLI is built using several Python libraries:
 - **Typer**: Provides the command-line interface
 - **Rich**: Provides terminal content formatting and beautiful display
 - **prompt_toolkit**: Provides interactive command-line input experience
-- **requests**: Handles API requests
+- **httpx**: Handles API requests
 - **jmespath**: Parses JSON responses
 
 ## Contributing
