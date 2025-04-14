@@ -105,7 +105,7 @@ class CasePreservingConfigParser(configparser.RawConfigParser):
 
 
 class LimitedFileHistory(FileHistory):
-    def __init__(self, filename: _StrOrBytesPath, max_entries: int = 500, trim_every: int = 5):
+    def __init__(self, filename: _StrOrBytesPath, max_entries: int = 500, trim_every: int = 2):
         """Limited file history
         Args:
             filename (str): path to history file
@@ -171,7 +171,7 @@ class CLI:
         self.bindings = KeyBindings()
         # Disable nonatty warning
         _origin_stderr = None
-        if not sys.stderr.isatty():
+        if not sys.stdin.isatty():
             _origin_stderr = sys.stderr
             sys.stderr = open(devnull, "w")
         self.session = PromptSession(key_bindings=self.bindings)
@@ -195,7 +195,7 @@ class CLI:
         Path("~/.yaicli_history").expanduser().touch(exist_ok=True)
         self.session = PromptSession(
             key_bindings=self.bindings,
-            completer=WordCompleter(["/clear", "/exit", "/his"]),
+            # completer=WordCompleter(["/clear", "/exit", "/his"]),
             complete_while_typing=True,
             history=LimitedFileHistory(
                 Path("~/.yaicli_history").expanduser(), max_entries=int(self.config["MAX_HISTORY"])
