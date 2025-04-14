@@ -1,5 +1,21 @@
 
 ---
+## [0.0.17](https://github.com/belingud/yaicli/compare/v0.0.16..v0.0.17) - 2025-04-14
+
+### 🐛 Bug Fixes
+
+- Correct stdin TTY check and remove completer - ([e2ee703](https://github.com/belingud/yaicli/commit/e2ee7039c2f9fc707fe9a4eec57d2226a0e25254)) - Belingud
+
+### 🚜 Refactor
+
+- remove unused WordCompleter import - ([968e6f1](https://github.com/belingud/yaicli/commit/968e6f194aee2c1467b1e9b68bb118af614bd5ec)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update yaicli version to 0.0.16 in uv.lock and CHANGELOG.md - ([f9376c4](https://github.com/belingud/yaicli/commit/f9376c4fa7e6641ebed20bb071fac997c4467243)) - Belingud
+
+
+---
 ## [0.0.16](https://github.com/belingud/yaicli/compare/v0.0.15..v0.0.16) - 2025-04-14
 
 ### ⛰️  Features
