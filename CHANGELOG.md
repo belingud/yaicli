@@ -1,5 +1,17 @@
 
 ---
+## [0.0.18](https://github.com/belingud/yaicli/compare/v0.0.17..v0.0.18) - 2025-04-14
+
+### ⛰️  Features
+
+- add auto-suggest from history and improve config handling - ([22b31de](https://github.com/belingud/yaicli/commit/22b31ded71b4ecb87e1829076416b615affa38b4)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG.md for v0.0.17 release - ([af27d29](https://github.com/belingud/yaicli/commit/af27d29351d5c37c7473bb4021eaf31f2d7a2cfb)) - Belingud
+
+
+---
 ## [0.0.17](https://github.com/belingud/yaicli/compare/v0.0.16..v0.0.17) - 2025-04-14
 
 ### 🐛 Bug Fixes
