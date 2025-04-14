@@ -1,5 +1,4 @@
 import configparser
-import io
 import json
 import platform
 import subprocess
