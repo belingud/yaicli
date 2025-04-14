@@ -1,10 +1,12 @@
 import configparser
+import io
 import json
 import platform
 import subprocess
+import sys
 import time
 from os import getenv
-from os.path import basename, pathsep
+from os.path import basename, exists, pathsep, devnull
 from pathlib import Path
 from typing import Annotated, Optional, Union
 
@@ -14,7 +16,7 @@ import typer
 from distro import name as distro_name
 from prompt_toolkit import PromptSession, prompt
 from prompt_toolkit.completion import WordCompleter
-from prompt_toolkit.history import FileHistory
+from prompt_toolkit.history import FileHistory, _StrOrBytesPath
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.keys import Keys
 from rich.console import Console
@@ -60,6 +62,7 @@ DEFAULT_CONFIG_MAP = {
     "TEMPERATURE": {"value": "0.7", "env_key": "YAI_TEMPERATURE"},
     "TOP_P": {"value": "1.0", "env_key": "YAI_TOP_P"},
     "MAX_TOKENS": {"value": "1024", "env_key": "YAI_MAX_TOKENS"},
+    "MAX_HISTORY": {"value": "500", "env_key": "YAI_MAX_HISTORY"},
 }
 
 DEFAULT_CONFIG_INI = """[core]
@@ -84,7 +87,9 @@ CODE_THEME=monokia
 
 TEMPERATURE=0.7
 TOP_P=1.0
-MAX_TOKENS=1024"""
+MAX_TOKENS=1024
+
+MAX_HISTORY=500"""
 
 app = typer.Typer(
     name="yaicli",
@@ -100,6 +105,64 @@ class CasePreservingConfigParser(configparser.RawConfigParser):
         return optionstr
 
 
+class LimitedFileHistory(FileHistory):
+    def __init__(self, filename: _StrOrBytesPath, max_entries: int = 500, trim_every: int = 5):
+        """Limited file history
+        Args:
+            filename (str): path to history file
+            max_entries (int): maximum number of entries to keep
+            trim_every (int): trim history every `trim_every` appends
+
+        Example:
+            >>> history = LimitedFileHistory("~/.yaicli_history", max_entries=500, trim_every=10)
+            >>> history.append_string("echo hello")
+            >>> history.append_string("echo world")
+            >>> session = PromptSession(history=history)
+        """
+        self.max_entries = max_entries
+        self._append_count = 0
+        self._trim_every = trim_every
+        super().__init__(filename)
+
+    def store_string(self, string: str) -> None:
+        # Call the original method to deposit a new record
+        super().store_string(string)
+
+        self._append_count += 1
+        if self._append_count >= self._trim_every:
+            self._trim_history()
+            self._append_count = 0
+
+    def _trim_history(self):
+        if not exists(self.filename):
+            return
+
+        with open(self.filename, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # By record: each record starts with "# timestamp" followed by a number of "+lines".
+        entries = []
+        current_entry = []
+
+        for line in lines:
+            if line.startswith("# "):
+                if current_entry:
+                    entries.append(current_entry)
+                current_entry = [line]
+            elif line.startswith("+") or line.strip() == "":
+                current_entry.append(line)
+
+        if current_entry:
+            entries.append(current_entry)
+
+        # Keep the most recent max_entries row (the next row is newer)
+        trimmed_entries = entries[-self.max_entries :]
+
+        with open(self.filename, "w", encoding="utf-8") as f:
+            for entry in trimmed_entries:
+                f.writelines(entry)
+
+
 class CLI:
     CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 
@@ -107,7 +170,16 @@ class CLI:
         self.verbose = verbose
         self.console = Console()
         self.bindings = KeyBindings()
+        # Disable nonatty warning
+        _origin_stderr = None
+        if not sys.stderr.isatty():
+            _origin_stderr = sys.stderr
+            sys.stderr = open(devnull, "w")
         self.session = PromptSession(key_bindings=self.bindings)
+        # Restore stderr
+        if _origin_stderr:
+            sys.stderr.close()
+            sys.stderr = _origin_stderr
         self.config = {}
         self.history: list[dict[str, str]] = []
         self.max_history_length = 25
@@ -126,7 +198,9 @@ class CLI:
             key_bindings=self.bindings,
             completer=WordCompleter(["/clear", "/exit", "/his"]),
             complete_while_typing=True,
-            history=FileHistory(Path("~/.yaicli_history").expanduser()),
+            history=LimitedFileHistory(
+                Path("~/.yaicli_history").expanduser(), max_entries=int(self.config["MAX_HISTORY"])
+            ),
             enable_history_search=True,
         )
 
@@ -287,8 +361,7 @@ class CLI:
         if not line:
             return None
 
-        if isinstance(line, bytes):
-            line = line.decode("utf-8")
+        line = str(line)
         if not line.startswith("data: "):
             return None
 
@@ -448,6 +521,7 @@ class CLI:
    ██    ██   ██ ██ ██      ██      ██
    ██    ██   ██ ██  ██████ ███████ ██
 """)
+        self.console.print("↑/↓: navigate in history")
         self.console.print("Press TAB to change in chat and exec mode", style="bold")
         self.console.print("Type /clear to clear chat history", style="bold")
         self.console.print("Type /his to see chat history", style="bold")
@@ -490,6 +564,18 @@ class CLI:
     def run(self, chat: bool, shell: bool, prompt: str) -> None:
         """Run the CLI"""
         self.load_config()
+        if self.verbose:
+            self.console.print(f"CODE_THEME: {self.config['CODE_THEME']}")
+            self.console.print(f"ANSWER_PATH: {self.config['ANSWER_PATH']}")
+            self.console.print(f"COMPLETION_PATH: {self.config['COMPLETION_PATH']}")
+            self.console.print(f"BASE_URL: {self.config['BASE_URL']}")
+            self.console.print(f"MODEL: {self.config['MODEL']}")
+            self.console.print(f"SHELL_NAME: {self.config['SHELL_NAME']}")
+            self.console.print(f"OS_NAME: {self.config['OS_NAME']}")
+            self.console.print(f"STREAM: {self.config['STREAM']}")
+            self.console.print(f"TEMPERATURE: {self.config['TEMPERATURE']}")
+            self.console.print(f"TOP_P: {self.config['TOP_P']}")
+            self.console.print(f"MAX_TOKENS: {self.config['MAX_TOKENS']}")
         if not self.config.get("API_KEY"):
             self.console.print(
                 "[yellow]API key not set. Please set in ~/.config/yaicli/config.ini or AI_API_KEY env[/]"
@@ -519,6 +605,11 @@ def main(
     template: Annotated[bool, typer.Option("--template", help="Show the config template.")] = False,
 ):
     """yaicli - Your AI interface in cli."""
+    # Check for stdin input (from pipe or redirect)
+    if not sys.stdin.isatty():
+        stdin_content = sys.stdin.read()
+        prompt = f"{stdin_content}\n\n{prompt}"
+
     if prompt == "":
         typer.echo("Empty prompt, ignored")
         return

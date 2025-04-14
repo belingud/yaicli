@@ -175,7 +175,7 @@ If you not sure how to config `COMPLETION_PATH` and `ANSWER_PATH`, here is a gui
 You can find the list of code theme here: https://pygments.org/styles/
 
 Default: monokia
-![alt text](artwork/monokia.png)
+![monikia](artwork/monokia.png)
 
 ## Usage
 
