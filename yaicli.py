@@ -49,48 +49,54 @@ CHAT_MODE = "chat"
 TEMP_MODE = "temp"
 
 DEFAULT_CONFIG_MAP = {
-    "BASE_URL": {"value": "https://api.openai.com/v1", "env_key": "YAI_BASE_URL"},
-    "API_KEY": {"value": "", "env_key": "YAI_API_KEY"},
-    "MODEL": {"value": "gpt-4o", "env_key": "YAI_MODEL"},
-    "SHELL_NAME": {"value": "auto", "env_key": "YAI_SHELL_NAME"},
-    "OS_NAME": {"value": "auto", "env_key": "YAI_OS_NAME"},
-    "COMPLETION_PATH": {"value": "chat/completions", "env_key": "YAI_COMPLETION_PATH"},
-    "ANSWER_PATH": {"value": "choices[0].message.content", "env_key": "YAI_ANSWER_PATH"},
-    "STREAM": {"value": "true", "env_key": "YAI_STREAM"},
-    "CODE_THEME": {"value": "monokia", "env_key": "YAI_CODE_THEME"},
-    "TEMPERATURE": {"value": "0.7", "env_key": "YAI_TEMPERATURE"},
-    "TOP_P": {"value": "1.0", "env_key": "YAI_TOP_P"},
-    "MAX_TOKENS": {"value": "1024", "env_key": "YAI_MAX_TOKENS"},
-    "MAX_HISTORY": {"value": "500", "env_key": "YAI_MAX_HISTORY"},
-    "AUTO_SUGGEST": {"value": "true", "env_key": "YAI_AUTO_SUGGEST"},
+    # Core API settings
+    "BASE_URL": {"value": "https://api.openai.com/v1", "env_key": "YAI_BASE_URL", "type": str},
+    "API_KEY": {"value": "", "env_key": "YAI_API_KEY", "type": str},
+    "MODEL": {"value": "gpt-4o", "env_key": "YAI_MODEL", "type": str},
+    # System detection hints
+    "SHELL_NAME": {"value": "auto", "env_key": "YAI_SHELL_NAME", "type": str},
+    "OS_NAME": {"value": "auto", "env_key": "YAI_OS_NAME", "type": str},
+    # API response parsing
+    "COMPLETION_PATH": {"value": "chat/completions", "env_key": "YAI_COMPLETION_PATH", "type": str},
+    "ANSWER_PATH": {"value": "choices[0].message.content", "env_key": "YAI_ANSWER_PATH", "type": str},
+    # API call parameters
+    "STREAM": {"value": "true", "env_key": "YAI_STREAM", "type": bool},
+    "TEMPERATURE": {"value": "0.7", "env_key": "YAI_TEMPERATURE", "type": float},
+    "TOP_P": {"value": "1.0", "env_key": "YAI_TOP_P", "type": float},
+    "MAX_TOKENS": {"value": "1024", "env_key": "YAI_MAX_TOKENS", "type": int},
+    # UI/UX settings
+    "CODE_THEME": {"value": "monokai", "env_key": "YAI_CODE_THEME", "type": str},
+    "MAX_HISTORY": {"value": "500", "env_key": "YAI_MAX_HISTORY", "type": int},  # readline history file limit
+    "AUTO_SUGGEST": {"value": "true", "env_key": "YAI_AUTO_SUGGEST", "type": bool},
 }
 
-DEFAULT_CONFIG_INI = """[core]
+DEFAULT_CONFIG_INI = f"""[core]
 PROVIDER=openai
-BASE_URL=https://api.openai.com/v1
-API_KEY=
-MODEL=gpt-4o
+BASE_URL={DEFAULT_CONFIG_MAP["BASE_URL"]["value"]}
+API_KEY={DEFAULT_CONFIG_MAP["API_KEY"]["value"]}
+MODEL={DEFAULT_CONFIG_MAP["MODEL"]["value"]}
 
-# auto detect shell and os
-SHELL_NAME=auto
-OS_NAME=auto
+# auto detect shell and os (or specify manually, e.g., bash, zsh, powershell.exe)
+SHELL_NAME={DEFAULT_CONFIG_MAP["SHELL_NAME"]["value"]}
+OS_NAME={DEFAULT_CONFIG_MAP["OS_NAME"]["value"]}
 
-# if you want to use custom completions path, you can set it here
-COMPLETION_PATH=/chat/completions
-# if you want to use custom answer path, you can set it here
-ANSWER_PATH=choices[0].message.content
+# API paths (usually no need to change for OpenAI compatible APIs)
+COMPLETION_PATH={DEFAULT_CONFIG_MAP["COMPLETION_PATH"]["value"]}
+ANSWER_PATH={DEFAULT_CONFIG_MAP["ANSWER_PATH"]["value"]}
 
-# true: streaming response
-# false: non-streaming response
-STREAM=true
-CODE_THEME=monokia
+# true: streaming response, false: non-streaming
+STREAM={DEFAULT_CONFIG_MAP["STREAM"]["value"]}
 
-TEMPERATURE=0.7
-TOP_P=1.0
-MAX_TOKENS=1024
+# LLM parameters
+TEMPERATURE={DEFAULT_CONFIG_MAP["TEMPERATURE"]["value"]}
+TOP_P={DEFAULT_CONFIG_MAP["TOP_P"]["value"]}
+MAX_TOKENS={DEFAULT_CONFIG_MAP["MAX_TOKENS"]["value"]}
 
-MAX_HISTORY=500
-AUTO_SUGGEST=true"""
+# UI/UX
+CODE_THEME={DEFAULT_CONFIG_MAP["CODE_THEME"]["value"]}
+MAX_HISTORY={DEFAULT_CONFIG_MAP["MAX_HISTORY"]["value"]} # Max entries kept in history file
+AUTO_SUGGEST={DEFAULT_CONFIG_MAP["AUTO_SUGGEST"]["value"]}
+"""
 
 app = typer.Typer(
     name="yaicli",
@@ -194,7 +200,6 @@ class CLI:
         self.session = PromptSession(
             key_bindings=self.bindings,
             # completer=WordCompleter(["/clear", "/exit", "/his"]),
-            complete_while_typing=True,
             history=LimitedFileHistory(
                 Path("~/.yaicli_history").expanduser(), max_entries=int(self.config["MAX_HISTORY"])
             ),
@@ -209,44 +214,66 @@ class CLI:
         def _(event: KeyPressEvent) -> None:
             self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
 
-    def load_config(self) -> dict[str, str]:
+    def load_config(self) -> dict[str, Any]:  # Changed return type hint
         """Load LLM API configuration with priority:
         1. Environment variables (highest priority)
         2. Configuration file
         3. Default values (lowest priority)
 
+        Applies type conversion based on DEFAULT_CONFIG_MAP after merging sources.
+
         Returns:
-            dict: merged configuration
+            dict: merged configuration with appropriate types
         """
-        boolean_keys = ["STREAM", "AUTO_SUGGEST"]
-        # Start with default configuration (lowest priority)
-        merged_config: Dict[str, Any] = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
+        # Start with default configuration string values (lowest priority)
+        # These serve as the base and also for fallback on type errors
+        default_values_str = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
+        merged_config: Dict[str, Any] = default_values_str.copy()  # Use Any for value type
 
         # Create default config file if it doesn't exist
         if not self.CONFIG_PATH.exists():
             self.console.print("[bold yellow]Creating default configuration file.[/bold yellow]")
             self.CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.CONFIG_PATH, "w") as f:
+            with open(self.CONFIG_PATH, "w", encoding="utf-8") as f:  # Added encoding
                 f.write(DEFAULT_CONFIG_INI)
         else:
             # Load from configuration file (middle priority)
             config_parser = CasePreservingConfigParser()
-            config_parser.read(self.CONFIG_PATH)
+            # Read with UTF-8 encoding
+            config_parser.read(self.CONFIG_PATH, encoding="utf-8")
             if "core" in config_parser:
-                # Update with non-empty values from config file
-                merged_config.update({k: v for k, v in config_parser["core"].items() if v.strip()})
+                # Update with non-empty values from config file (values are strings)
+                merged_config.update(
+                    {k: v for k, v in config_parser["core"].items() if k in DEFAULT_CONFIG_MAP and v.strip()}
+                )
 
         # Override with environment variables (highest priority)
-        for key, config in DEFAULT_CONFIG_MAP.items():
-            env_value = getenv(config["env_key"])
+        for key, config_info in DEFAULT_CONFIG_MAP.items():
+            env_value = getenv(config_info["env_key"])
             if env_value is not None:
+                # Env values are strings
                 merged_config[key] = env_value
-            # Convert boolean values
-            if key in boolean_keys:
-                merged_config[key] = str(merged_config[key]).lower() == "true"
+            target_type = config_info["type"]
+            # Fallback, shouldn't be needed here, but safe
+            raw_value: Any = merged_config.get(key, default_values_str.get(key))
+            converted_value = None
+            try:
+                if target_type is bool:
+                    converted_value = str(raw_value).strip().lower() == "true"
+                elif target_type in (int, float, str):
+                    converted_value = target_type(raw_value)
+            except (ValueError, TypeError) as e:
+                self.console.print(
+                    f"[yellow]Warning:[/yellow] Invalid value '{raw_value}' for '{key}'. "
+                    f"Expected type '{target_type.__name__}'. Using default value '{default_values_str[key]}'. Error: {e}",
+                    style="dim",
+                )
+                # Fallback to default string value
+                converted_value = target_type(default_values_str[key])
 
+            merged_config[key] = converted_value
         self.config = merged_config
-        return merged_config
+        return self.config
 
     def detect_os(self) -> str:
         """Detect operating system + version"""
@@ -545,7 +572,7 @@ class CLI:
             # Handle clear command
             if user_input.lower() == CMD_CLEAR and self.current_mode == CHAT_MODE:
                 self.history = []
-                self.console.print("[bold yellow]Chat history cleared[/bold yellow]\n")
+                self.console.print("Chat history cleared\n", style="bold yellow")
                 continue
             elif user_input.lower() == CMD_HISTORY:
                 self.console.print(self.history)
