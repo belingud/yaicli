@@ -1,5 +1,17 @@
 
 ---
+## [0.0.19](https://github.com/belingud/yaicli/compare/v0.0.18..v0.0.19) - 2025-04-16
+
+### ⛰️  Features
+
+- enhance configuration handling with type support and improve default config initialization - ([34bc896](https://github.com/belingud/yaicli/commit/34bc896df1ae97f5a111cc95a4ebd58caafc6d07)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG.md for v0.0.18 release - ([bc19008](https://github.com/belingud/yaicli/commit/bc190086d5b1bcc9b083b057f891d3cdaff6ef0d)) - Belingud
+
+
+---
 ## [0.0.18](https://github.com/belingud/yaicli/compare/v0.0.17..v0.0.18) - 2025-04-14
 
 ### ⛰️  Features
