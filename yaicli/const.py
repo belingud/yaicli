@@ -48,7 +48,7 @@ Supply plain text only, avoiding Markdown formatting."""
 DEFAULT_PROMPT = (
     "You are YAICLI, a system management and programing assistant, "
     "You are managing {_os} operating system with {_shell} shell. "
-    "Your responses should be concise and use Markdown format, "
+    "Your responses should be concise and use Markdown format (but dont't use ```markdown), "
     "unless the user explicitly requests more details."
 )
 
@@ -75,7 +75,11 @@ DEFAULT_CONFIG_MAP = {
     "TOP_P": {"value": DEFAULT_TOP_P, "env_key": "YAI_TOP_P", "type": float},
     "MAX_TOKENS": {"value": DEFAULT_MAX_TOKENS, "env_key": "YAI_MAX_TOKENS", "type": int},
     "TIMEOUT": {"value": DEFAULT_TIMEOUT, "env_key": "YAI_TIMEOUT", "type": int},
-    "INTERACTIVE_MAX_HISTORY": {"value": DEFAULT_INTERACTIVE_MAX_HISTORY, "env_key": "YAI_INTERACTIVE_MAX_HISTORY", "type": int},
+    "INTERACTIVE_MAX_HISTORY": {
+        "value": DEFAULT_INTERACTIVE_MAX_HISTORY,
+        "env_key": "YAI_INTERACTIVE_MAX_HISTORY",
+        "type": int,
+    },
     # UI/UX settings
     "CODE_THEME": {"value": DEFAULT_CODE_THEME, "env_key": "YAI_CODE_THEME", "type": str},
     "MAX_HISTORY": {"value": DEFAULT_MAX_HISTORY, "env_key": "YAI_MAX_HISTORY", "type": int},

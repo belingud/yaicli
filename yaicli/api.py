@@ -127,9 +127,9 @@ class ApiClient:
                 if think_end != -1:
                     # Extract reasoning from <think> tag only if not already found via message path
                     if reasoning is None:
-                        reasoning = content[7:think_end].strip() # Start after <think>
+                        reasoning = content[7:think_end].strip()  # Start after <think>
                     # Remove the <think> block from the main content
-                    content = content[think_end + 8:].strip() # Start after </think>
+                    content = content[think_end + 8 :].strip()  # Start after </think>
             # If it doesn't start with <think>, or if </think> wasn't found, return content as is
             return content, reasoning
         elif content:
@@ -310,6 +310,8 @@ class ApiClient:
         Returns:
             The reasoning content string if found, None otherwise
         """
+        if not delta:
+            return None
         # reasoning_content: deepseek/infi-ai
         # reasoning: openrouter
         # <think> block implementation not in here

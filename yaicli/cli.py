@@ -5,6 +5,7 @@ from os.path import devnull
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import typer
 from prompt_toolkit import PromptSession, prompt
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
@@ -25,7 +26,9 @@ from yaicli.const import (
     CMD_MODE,
     DEFAULT_CODE_THEME,
     DEFAULT_INTERACTIVE_MAX_HISTORY,
+    DEFAULT_OS_NAME,
     DEFAULT_PROMPT,
+    DEFAULT_SHELL_NAME,
     EXEC_MODE,
     SHELL_PROMPT,
     TEMP_MODE,
@@ -38,7 +41,9 @@ from yaicli.utils import detect_os, detect_shell, filter_command
 class CLI:
     HISTORY_FILE = Path("~/.yaicli_history").expanduser()
 
-    def __init__(self, verbose: bool = False):
+    def __init__(
+        self, verbose: bool = False, api_client: Optional[ApiClient] = None, printer: Optional[Printer] = None
+    ):
         self.verbose = verbose
         self.console = get_console()
         self.bindings = KeyBindings()
@@ -48,9 +53,9 @@ class CLI:
         self.interactive_max_history = self.config.get("INTERACTIVE_MAX_HISTORY", DEFAULT_INTERACTIVE_MAX_HISTORY)
 
         # Detect OS and Shell if set to auto
-        if self.config.get("OS_NAME") == "auto":
+        if self.config.get("OS_NAME") == DEFAULT_OS_NAME:
             self.config["OS_NAME"] = detect_os(self.config)
-        if self.config.get("SHELL_NAME") == "auto":
+        if self.config.get("SHELL_NAME") == DEFAULT_SHELL_NAME:
             self.config["SHELL_NAME"] = detect_shell(self.config)
 
         if self.verbose:
@@ -61,8 +66,8 @@ class CLI:
                 self.console.print(f"  {key:<16}: {display_value}")
             self.console.print(Markdown("---", code_theme=self.config.get("CODE_THEME", DEFAULT_CODE_THEME)))
 
-        self.api_client = ApiClient(self.config, self.console, self.verbose)
-        self.printer = Printer(self.config, self.console, self.verbose)
+        self.api_client = api_client or ApiClient(self.config, self.console, self.verbose)
+        self.printer = printer or Printer(self.config, self.console, self.verbose)
 
         _origin_stderr = None
         if not sys.stdin.isatty():
@@ -247,10 +252,10 @@ class CLI:
         self.console.print("Press [bold yellow]TAB[/bold yellow] to switch mode")
         self.console.print(f"{CMD_CLEAR:<19}: Clear chat history")
         self.console.print(f"{CMD_HISTORY:<19}: Show chat history")
-        cmd_mode = f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"
-        self.console.print(f"{cmd_mode:<19}: Switch mode (Case insensitive)")
         cmd_exit = f"{CMD_EXIT}|Ctrl+D|Ctrl+C"
         self.console.print(f"{cmd_exit:<19}: Exit")
+        cmd_mode = f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"
+        self.console.print(f"{cmd_mode:<19}: Switch mode (Case insensitive)", style="dim")
 
     def _run_repl(self) -> None:
         """Run the main Read-Eval-Print Loop (REPL)."""
@@ -279,12 +284,12 @@ class CLI:
         self.current_mode = EXEC_MODE if is_shell_mode else TEMP_MODE
         if not self.config.get("API_KEY"):
             self.console.print("[bold red]Error:[/bold red] API key not found.")
-            sys.exit(1)
+            raise typer.Exit(code=1)
 
         content = self._handle_llm_response(prompt_arg)
 
         if content is None:
-            sys.exit(1)
+            raise typer.Exit(code=1)
 
         if is_shell_mode:
             self._confirm_and_execute(content)

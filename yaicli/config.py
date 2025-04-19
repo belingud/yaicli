@@ -6,6 +6,8 @@ from typing import Optional
 from rich import get_console
 from rich.console import Console
 
+from yaicli.utils import str2bool
+
 DEFAULT_CONFIG_MAP = {
     # Core API settings
     "BASE_URL": {"value": "https://api.openai.com/v1", "env_key": "YAI_BASE_URL", "type": str},
@@ -155,7 +157,7 @@ class Config(dict):
 
             try:
                 if target_type is bool:
-                    converted_value = str(raw_value).strip().lower() == "true"
+                    converted_value = str2bool(raw_value)
                 elif target_type in (int, float, str):
                     converted_value = target_type(raw_value)
             except (ValueError, TypeError) as e:
@@ -167,7 +169,7 @@ class Config(dict):
                 # Fallback to default string value if conversion fails
                 try:
                     if target_type is bool:
-                        converted_value = str(default_values_str[key]).strip().lower() == "true"
+                        converted_value = str2bool(default_values_str[key])
                     else:
                         converted_value = target_type(default_values_str[key])
                 except (ValueError, TypeError):

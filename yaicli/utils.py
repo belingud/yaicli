@@ -89,3 +89,24 @@ def filter_command(command: str) -> Optional[str]:
     else:
         # If the first line doesn't start with ```, return the entire command without the ``` characters
         return command.strip().replace("```", "")
+
+
+def str2bool(value: str) -> bool:
+    """Convert a string representation of truth to true (1) or false (0).
+    True values are 'y', 'yes', 't', 'true', 'on', and '1';
+    false values are 'n', 'no', 'f', 'false', 'off', and '0'.
+    Raises ValueError if 'value' is anything else.
+    """
+    if value in {False, True}:
+        return bool(value)
+
+    norm = value.strip().lower()
+
+    if norm in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+
+    if norm in {"0", "false", "f", "no", "n", "off"}:
+        return False
+
+    # Handle empty strings and other invalid values
+    raise ValueError(f"Invalid boolean value: {value}")
