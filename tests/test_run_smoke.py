@@ -2,13 +2,9 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock
 
-import pytest
-import typer
-from prompt_toolkit import PromptSession
-from prompt_toolkit.input import create_pipe_input
-from prompt_toolkit.output import DummyOutput
+import pytest # Import pytest
 
-from yaicli import CLI, CHAT_MODE, EXEC_MODE, TEMP_MODE
+from yaicli.cli import CLI, CHAT_MODE, EXEC_MODE, TEMP_MODE
 
 
 class MockResponse:
@@ -45,10 +41,11 @@ class TestRunSmoke(unittest.TestCase):
 
         # Create CLI instance with test configuration
         self.cli = CLI(verbose=False)
-        self.cli.load_config()
 
-        # Mock console to prevent actual output during tests
+        # Mock console AFTER CLI initialization
         self.cli.console = MagicMock()
+        # Ensure the printer instance uses the mocked console as well
+        self.cli.printer.console = self.cli.console
 
     def tearDown(self):
         # Clean up environment after tests
@@ -76,7 +73,7 @@ class TestRunSmoke(unittest.TestCase):
         self.assertEqual(self.cli.current_mode, TEMP_MODE)
 
     @patch("httpx.Client.post")
-    @patch("yaicli.CLI._confirm_and_execute")
+    @patch("yaicli.cli.CLI._confirm_and_execute")
     def test_shell_mode(self, mock_execute, mock_post):
         """Test shell command mode (ai --shell xxx)"""
         # Setup mock response
@@ -119,43 +116,92 @@ class TestRunSmoke(unittest.TestCase):
         call_args = mock_post.call_args[1]
         self.assertEqual(call_args["json"]["messages"][-1]["content"], "Hello AI")
 
-    @patch("httpx.Client.post")
-    def test_error_handling(self, mock_post):
-        """Test error handling in API calls"""
-        # Setup mock error response
-        mock_response = MockResponse({"error": "Invalid API key"}, status_code=401)
-        # Make the mock response raise an exception when raise_for_status is called
-        mock_response.raise_for_status = MagicMock(side_effect=Exception("HTTP Error: 401"))
-        mock_post.return_value = mock_response
-        
-        # The error is caught in _run_once method and printed to console
-        # We need to check that the console.print method was called with the error message
-        with patch.object(self.cli.console, "print") as mock_print:
-            self.cli.run(chat=False, shell=False, prompt="Hello AI")
-            # Find any call that contains the error message
-            error_calls = [call for call in mock_print.call_args_list if len(call[0]) > 0 and "Error:" in str(call[0][0])]
-            self.assertTrue(len(error_calls) > 0, "No error message was printed to console")
+    def test_error_handling(self):
+        """Test error handling in API calls (non-streaming)"""
+        # Ensure streaming is off for this test
+        self.cli.config["STREAM"] = False
 
-    @patch("httpx.Client.post")
-    def test_streaming_response(self, mock_post):
+        # Mock api_client.get_completion to raise an error
+        with patch.object(self.cli.api_client, 'get_completion', side_effect=Exception("Simulated API Error")) as mock_get_completion:
+            # Check that sys.exit(1) is called
+            with pytest.raises(SystemExit) as e:
+                self.cli.run(chat=False, shell=False, prompt="Error Prompt")
+
+            self.assertEqual(e.type, SystemExit)
+            self.assertEqual(e.value.code, 1)
+
+            # Verify get_completion was called
+            mock_get_completion.assert_called_once()
+            messages_arg = mock_get_completion.call_args[0][0]
+            self.assertEqual(messages_arg[-1]["content"], "Error Prompt")
+
+            # Verify error message was printed
+            self.cli.console.print.assert_any_call("[red]Error processing LLM response: Simulated API Error[/red]") # type: ignore
+
+    def test_streaming_response(self):
         """Test streaming response handling"""
         # Enable streaming for this test
-        os.environ["YAI_STREAM"] = "true"
-        self.cli.load_config()
+        self.cli.config["STREAM"] = True
 
-        # Setup mock streaming response
-        mock_response = MockResponse({}, stream=True)
-        mock_post.return_value = mock_response
+        # Mock the stream_completion method to yield the processed event format
+        def mock_stream_generator():
+            yield {'type': 'content', 'chunk': 'Hello', 'message': None} # Add type/message keys
+            yield {'type': 'content', 'chunk': ' World', 'message': None}
+            # Simulate a final chunk (often has null chunk or different type)
+            yield {'type': 'finish', 'chunk': None, 'message': None, 'reason': 'stop'}
 
-        # Run CLI with a simple prompt
-        self.cli.run(chat=False, shell=False, prompt="Hello AI")
+        # Patch api_client.stream_completion
+        with patch.object(self.cli.api_client, 'stream_completion', return_value=mock_stream_generator()) as mock_stream:
+            # Run CLI with a simple prompt
+            self.cli.run(chat=False, shell=False, prompt="Hello AI")
 
-        # Verify API was called
-        mock_post.assert_called_once()
+            # Verify stream_completion was called
+            mock_stream.assert_called_once()
+            messages_arg = mock_stream.call_args[0][0]
+            self.assertEqual(messages_arg[-1]["content"], "Hello AI")
 
-        # Verify content was processed (checking history)
+        # Verify content was processed and stored in history
         self.assertEqual(len(self.cli.history), 2)  # User message and assistant response
         self.assertEqual(self.cli.history[1]["content"], "Hello World")
+
+    def test_streaming_response_error(self):
+        """Test streaming response handling when stream processing fails (e.g., exception in generator)"""
+        # Enable streaming for this test
+        self.cli.config["STREAM"] = True
+
+        # Mock stream_completion to yield correct format then raise an error
+        def mock_stream_generator_error():
+            yield {'type': 'content', 'chunk': 'Partial', 'message': None} # Add type/message keys
+            raise Exception("Simulated stream error")
+
+        # Patch api_client.stream_completion
+        with patch.object(self.cli.api_client, 'stream_completion', return_value=mock_stream_generator_error()) as mock_stream:
+            # _handle_llm_response receives None.
+            # _run_once receives None and calls sys.exit(1).
+            with pytest.raises(SystemExit) as e:
+                self.cli.run(chat=False, shell=False, prompt="Error Prompt")
+
+            # Verify SystemExit code
+            self.assertEqual(e.type, SystemExit)
+            self.assertEqual(e.value.code, 1)
+
+            # Verify stream_completion was called
+            mock_stream.assert_called_once()
+            messages_arg = mock_stream.call_args[0][0]
+            self.assertEqual(messages_arg[-1]["content"], "Error Prompt")
+
+            # Verify error message was printed by the exception handler in display_stream
+            # Instead of assert_any_call, check call_args_list manually for robustness
+            error_msg = '[red]An error occurred during stream display: Simulated stream error[/red]'
+            found_call = False
+            # Print the recorded calls to see what was actually captured
+            print("DEBUG: Recorded calls to console.print:", self.cli.console.print.call_args_list) # type: ignore
+            for call_item in self.cli.console.print.call_args_list: # type: ignore
+                if call_item.args and call_item.args[0] == error_msg:
+                    found_call = True
+                    break
+            self.assertTrue(found_call, f"Expected console print call with '{error_msg}' not found.")
+            # self.cli.console.print.assert_any_call(error_msg) # type: ignore # Original assertion
 
 
 class TestPromptToolkitIntegration(unittest.TestCase):
@@ -182,7 +228,6 @@ class TestPromptToolkitIntegration(unittest.TestCase):
 
         # Create CLI instance
         cli = CLI(verbose=False)
-        cli.load_config()
         cli.console = MagicMock()
 
         # Instead of using prompt_toolkit's pipe input which causes EOFError,
