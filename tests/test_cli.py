@@ -38,7 +38,10 @@ def mock_config():
     config.items.return_value = [
         ("OS_NAME", "TestOS"),
         ("SHELL_NAME", "TestShell"),
-        ("CODE_THEME", "monokai")
+        ("CODE_THEME", "monokai"),
+        ("STREAM", True),
+        ("AUTO_SUGGEST", True),
+        ("INTERACTIVE_MAX_HISTORY", 25)
     ]
     return config
 
