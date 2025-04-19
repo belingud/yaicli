@@ -90,11 +90,7 @@ class ApiClient:
         elif isinstance(e, httpx.HTTPStatusError):
             self.console.print(f"Error calling API: {e.response.status_code} {e.response.reason_phrase}", style="red")
             if self.verbose:
-                try:
-                    error_details = e.response.json()
-                    self.console.print(f"Response Body: {json.dumps(error_details, indent=2)}")
-                except json.JSONDecodeError:
-                    self.console.print(f"Response Text: {e.response.text}")
+                self.console.print(f"Response Text: {e.response.text}")
         elif isinstance(e, httpx.RequestError):
             api_url = self.get_completion_url()
             self.console.print(f"Error: Could not connect to API endpoint '{api_url}'. {e}", style="red")
@@ -111,57 +107,58 @@ class ApiClient:
         """Get the request headers."""
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
+    def _process_completion_response(self, response_json: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
+        """Process the JSON response from a non-streamed completion request."""
+        answer_path = self.config["ANSWER_PATH"]
+        message_path = answer_path.rsplit(".", 1)[0]
+
+        # Extract content and reasoning using JMESPath
+        content = jmespath.search(answer_path, response_json)
+        message = jmespath.search(message_path, response_json)
+        reasoning = self._get_reasoning_content(
+            message
+        )  # Reuse reasoning extraction if applicable to the whole message
+
+        # Process string content and extract reasoning from <think> tags if present
+        if isinstance(content, str):
+            content = content.lstrip()
+            if content.startswith("<think>"):
+                think_end = content.find("</think>")
+                if think_end != -1:
+                    # Extract reasoning from <think> tag only if not already found via message path
+                    if reasoning is None:
+                        reasoning = content[7:think_end].strip() # Start after <think>
+                    # Remove the <think> block from the main content
+                    content = content[think_end + 8:].strip() # Start after </think>
+            # If it doesn't start with <think>, or if </think> wasn't found, return content as is
+            return content, reasoning
+        elif content:
+            self.console.print(
+                f"Warning: Unexpected content type from API: {type(content)}. Path: {answer_path}", style="yellow"
+            )
+            # Attempt to convert unexpected content to string, return existing reasoning
+            return str(content), reasoning
+        else:
+            self.console.print(f"Warning: Could not extract content using JMESPath '{answer_path}'.", style="yellow")
+            if self.verbose:
+                self.console.print(f"API Response: {response_json}")
+            return None, reasoning
+
     def completion(self, messages: List[Dict[str, str]]) -> Tuple[Optional[str], Optional[str]]:
         """Get a complete non-streamed response from the API."""
         url = self.get_completion_url()
         body = self._prepare_request_body(messages, stream=False)
-        answer_path = self.config["ANSWER_PATH"]
-        message_path = answer_path.rsplit(".", 1)[0]
-
         headers = self.get_headers()
 
         try:
             response = self.client.post(url, json=body, headers=headers)
             response.raise_for_status()
             response_json = response.json()
-
-            # Extract content and reasoning
-            content = jmespath.search(answer_path, response_json)
-            message = jmespath.search(message_path, response_json)
-            reasoning = self._get_reasoning_content(message)
-
-            # Process string content and extract reasoning from <think> tags if present
-            if isinstance(content, str):
-                think_start = content.find("<think>")
-                if think_start != -1:
-                    think_end = content.find("</think>", think_start)
-                    if think_end != -1:
-                        if reasoning is None:
-                            reasoning = content[think_start + 7 : think_end].strip()
-                        content = content[:think_start] + content[think_end + 8 :].strip()
-                return content, reasoning
-            elif content:
-                self.console.print(
-                    f"Warning: Unexpected content type from API: {type(content)}. Path: {answer_path}", style="yellow"
-                )
-                return str(content), reasoning  # Convert to string
-            else:
-                self.console.print(
-                    f"Warning: Could not extract content using JMESPath '{answer_path}'.", style="yellow"
-                )
-                if self.verbose:
-                    self.console.print(f"API Response: {response_json}")
-                return None, reasoning
+            # Delegate processing to the helper method
+            return self._process_completion_response(response_json)
 
         except httpx.HTTPError as e:
             self._handle_api_error(e)
-            return None, None
-        except Exception as e:
-            self.console.print(f"An unexpected error occurred during non-streamed API call: {e}", style="red")
-            if self.verbose:
-                import traceback
-
-                traceback.print_exc()
             return None, None
 
     def _handle_http_error(self, e: httpx.HTTPStatusError) -> Dict[str, Any]:
@@ -302,7 +299,7 @@ class ApiClient:
             yield {"type": EventTypeEnum.ERROR, "message": f"Unexpected stream error: {e}"}
 
     def _get_reasoning_content(self, delta: dict) -> Optional[str]:
-        """Extract reasoning content from delta if available.
+        """Extract reasoning content from delta if available based on specific keys.
 
         This method checks for various keys that might contain reasoning content
         in different API implementations.
@@ -317,18 +314,9 @@ class ApiClient:
         # reasoning: openrouter
         # <think> block implementation not in here
         for key in ("reasoning_content", "reasoning", "metadata"):
-            if key in delta and isinstance(delta[key], str):
-                return delta[key]
+            # Check if the key exists and its value is a non-empty string
+            value = delta.get(key)
+            if isinstance(value, str) and value:
+                return value
 
-        # Just in case
-        # Check for <think> block within content
-        # reasoning content is between <think> and </think>
-        if "content" in delta and isinstance(delta["content"], str):
-            content = delta["content"]
-            think_start = content.find("<think>")
-            if think_start != -1:
-                think_end = content.find("</think>", think_start)
-                if think_end != -1:
-                    return content[think_start + 7 : think_end].strip()
-
-        return None
+        return None  # Return None if no relevant key with a string value is found
