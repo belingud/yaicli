@@ -1,4 +1,4 @@
-"""Constants used in yaicli."""
+from enum import StrEnum
 
 CMD_CLEAR = "/clear"
 CMD_EXIT = "/exit"
@@ -11,6 +11,32 @@ TEMP_MODE = "temp"
 
 DEFAULT_CONFIG_PATH = "~/.config/yaicli/config.ini"
 DEFAULT_CODE_THEME = "monokai"
+DEFAULT_COMPLETION_PATH = "chat/completions"
+DEFAULT_ANSWER_PATH = "choices[0].message.content"
+DEFAULT_PROVIDER = "openai"
+DEFAULT_BASE_URL = "https://api.openai.com/v1"
+DEFAULT_MODEL = "gpt-4o"
+DEFAULT_SHELL_NAME = "auto"
+DEFAULT_OS_NAME = "auto"
+DEFAULT_STREAM = "true"
+DEFAULT_TEMPERATURE: float = 0.7
+DEFAULT_TOP_P: float = 1.0
+DEFAULT_MAX_TOKENS: int = 1024
+DEFAULT_MAX_HISTORY: int = 500
+DEFAULT_AUTO_SUGGEST = "true"
+DEFAULT_TIMEOUT: int = 60
+DEFAULT_INTERACTIVE_MAX_HISTORY: int = 25
+
+
+class EventTypeEnum(StrEnum):
+    """Enumeration of possible event types from the SSE stream."""
+
+    ERROR = "error"
+    REASONING = "reasoning"
+    REASONING_END = "reasoning_end"
+    CONTENT = "content"
+    FINISH = "finish"
+
 
 SHELL_PROMPT = """Your are a Shell Command Generator.
 Generate a command EXCLUSIVELY for {_os} OS with {_shell} shell.
@@ -34,28 +60,30 @@ DEFAULT_PROMPT = (
 # - type: the type of the configuration option
 DEFAULT_CONFIG_MAP = {
     # Core API settings
-    "BASE_URL": {"value": "https://api.openai.com/v1", "env_key": "YAI_BASE_URL", "type": str},
+    "BASE_URL": {"value": DEFAULT_BASE_URL, "env_key": "YAI_BASE_URL", "type": str},
     "API_KEY": {"value": "", "env_key": "YAI_API_KEY", "type": str},
-    "MODEL": {"value": "gpt-4o", "env_key": "YAI_MODEL", "type": str},
+    "MODEL": {"value": DEFAULT_MODEL, "env_key": "YAI_MODEL", "type": str},
     # System detection hints
-    "SHELL_NAME": {"value": "auto", "env_key": "YAI_SHELL_NAME", "type": str},
-    "OS_NAME": {"value": "auto", "env_key": "YAI_OS_NAME", "type": str},
+    "SHELL_NAME": {"value": DEFAULT_SHELL_NAME, "env_key": "YAI_SHELL_NAME", "type": str},
+    "OS_NAME": {"value": DEFAULT_OS_NAME, "env_key": "YAI_OS_NAME", "type": str},
     # API response parsing
-    "COMPLETION_PATH": {"value": "chat/completions", "env_key": "YAI_COMPLETION_PATH", "type": str},
-    "ANSWER_PATH": {"value": "choices[0].message.content", "env_key": "YAI_ANSWER_PATH", "type": str},
+    "COMPLETION_PATH": {"value": DEFAULT_COMPLETION_PATH, "env_key": "YAI_COMPLETION_PATH", "type": str},
+    "ANSWER_PATH": {"value": DEFAULT_ANSWER_PATH, "env_key": "YAI_ANSWER_PATH", "type": str},
     # API call parameters
-    "STREAM": {"value": "true", "env_key": "YAI_STREAM", "type": bool},
-    "TEMPERATURE": {"value": "0.7", "env_key": "YAI_TEMPERATURE", "type": float},
-    "TOP_P": {"value": "1.0", "env_key": "YAI_TOP_P", "type": float},
-    "MAX_TOKENS": {"value": "1024", "env_key": "YAI_MAX_TOKENS", "type": int},
+    "STREAM": {"value": DEFAULT_STREAM, "env_key": "YAI_STREAM", "type": bool},
+    "TEMPERATURE": {"value": DEFAULT_TEMPERATURE, "env_key": "YAI_TEMPERATURE", "type": float},
+    "TOP_P": {"value": DEFAULT_TOP_P, "env_key": "YAI_TOP_P", "type": float},
+    "MAX_TOKENS": {"value": DEFAULT_MAX_TOKENS, "env_key": "YAI_MAX_TOKENS", "type": int},
+    "TIMEOUT": {"value": DEFAULT_TIMEOUT, "env_key": "YAI_TIMEOUT", "type": int},
+    "INTERACTIVE_MAX_HISTORY": {"value": DEFAULT_INTERACTIVE_MAX_HISTORY, "env_key": "YAI_INTERACTIVE_MAX_HISTORY", "type": int},
     # UI/UX settings
     "CODE_THEME": {"value": DEFAULT_CODE_THEME, "env_key": "YAI_CODE_THEME", "type": str},
-    "MAX_HISTORY": {"value": "500", "env_key": "YAI_MAX_HISTORY", "type": int},
-    "AUTO_SUGGEST": {"value": "true", "env_key": "YAI_AUTO_SUGGEST", "type": bool},
+    "MAX_HISTORY": {"value": DEFAULT_MAX_HISTORY, "env_key": "YAI_MAX_HISTORY", "type": int},
+    "AUTO_SUGGEST": {"value": DEFAULT_AUTO_SUGGEST, "env_key": "YAI_AUTO_SUGGEST", "type": bool},
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
-PROVIDER=openai
+PROVIDER={DEFAULT_PROVIDER}
 BASE_URL={DEFAULT_CONFIG_MAP["BASE_URL"]["value"]}
 API_KEY={DEFAULT_CONFIG_MAP["API_KEY"]["value"]}
 MODEL={DEFAULT_CONFIG_MAP["MODEL"]["value"]}
@@ -75,6 +103,8 @@ STREAM={DEFAULT_CONFIG_MAP["STREAM"]["value"]}
 TEMPERATURE={DEFAULT_CONFIG_MAP["TEMPERATURE"]["value"]}
 TOP_P={DEFAULT_CONFIG_MAP["TOP_P"]["value"]}
 MAX_TOKENS={DEFAULT_CONFIG_MAP["MAX_TOKENS"]["value"]}
+TIMEOUT={DEFAULT_CONFIG_MAP["TIMEOUT"]["value"]}
+INTERACTIVE_MAX_HISTORY={DEFAULT_CONFIG_MAP["INTERACTIVE_MAX_HISTORY"]["value"]}
 
 # UI/UX
 CODE_THEME={DEFAULT_CONFIG_MAP["CODE_THEME"]["value"]}

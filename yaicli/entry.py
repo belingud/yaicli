@@ -4,7 +4,7 @@ from typing import Annotated, Optional
 import typer
 
 from yaicli.cli import CLI
-from yaicli.config import DEFAULT_CONFIG_INI
+from yaicli.const import DEFAULT_CONFIG_INI
 
 app = typer.Typer(
     name="yaicli",

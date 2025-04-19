@@ -1,7 +1,7 @@
 import configparser
 from os import getenv
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from rich import get_console
 from rich.console import Console
@@ -17,7 +17,6 @@ DEFAULT_CONFIG_MAP = {
     # API response parsing
     "COMPLETION_PATH": {"value": "chat/completions", "env_key": "YAI_COMPLETION_PATH", "type": str},
     "ANSWER_PATH": {"value": "choices[0].message.content", "env_key": "YAI_ANSWER_PATH", "type": str},
-    "MESSAGE_PATH": {"value": "choices[0].message", "env_key": "YAI_MESSAGE_PATH", "type": str},
     # API call parameters
     "STREAM": {"value": "true", "env_key": "YAI_STREAM", "type": bool},
     "TEMPERATURE": {"value": "0.7", "env_key": "YAI_TEMPERATURE", "type": float},
@@ -42,7 +41,6 @@ OS_NAME={DEFAULT_CONFIG_MAP["OS_NAME"]["value"]}
 # API paths (usually no need to change for OpenAI compatible APIs)
 COMPLETION_PATH={DEFAULT_CONFIG_MAP["COMPLETION_PATH"]["value"]}
 ANSWER_PATH={DEFAULT_CONFIG_MAP["ANSWER_PATH"]["value"]}
-MESSAGE_PATH={DEFAULT_CONFIG_MAP["MESSAGE_PATH"]["value"]}
 
 # true: streaming response, false: non-streaming
 STREAM={DEFAULT_CONFIG_MAP["STREAM"]["value"]}
@@ -66,27 +64,6 @@ class CasePreservingConfigParser(configparser.RawConfigParser):
 
     def optionxform(self, optionstr):
         return optionstr
-
-
-def load_config(console: Console) -> dict[str, Any]:
-    """Load LLM API configuration with priority:
-    1. Environment variables (highest priority)
-    2. Configuration file
-    3. Default values (lowest priority)
-
-    Applies type conversion based on DEFAULT_CONFIG_MAP after merging sources.
-
-    Note: This function is kept for backward compatibility.
-    New code should use the Config class directly.
-
-    Args:
-        console: Rich Console object for printing warnings.
-
-    Returns:
-        dict: merged configuration with appropriate types
-    """
-    config = Config(console)
-    return dict(config)
 
 
 class Config(dict):

@@ -24,6 +24,7 @@ from yaicli.const import (
     CMD_HISTORY,
     CMD_MODE,
     DEFAULT_CODE_THEME,
+    DEFAULT_INTERACTIVE_MAX_HISTORY,
     DEFAULT_PROMPT,
     EXEC_MODE,
     SHELL_PROMPT,
@@ -44,7 +45,7 @@ class CLI:
         self.config: Config = Config(self.console)
         self.current_mode: str = TEMP_MODE
         self.history = []
-        self.inline_max_history = 25
+        self.interactive_max_history = self.config.get("INTERACTIVE_MAX_HISTORY", DEFAULT_INTERACTIVE_MAX_HISTORY)
 
         # Detect OS and Shell if set to auto
         if self.config.get("OS_NAME") == "auto":
@@ -81,7 +82,7 @@ class CLI:
 
     def _check_history_len(self) -> None:
         """Check history length and remove oldest messages if necessary"""
-        target_len = self.inline_max_history * 2
+        target_len = self.interactive_max_history * 2
         if len(self.history) > target_len:
             self.history = self.history[-target_len:]
 
@@ -132,9 +133,7 @@ class CLI:
         if not cmd:
             self.console.print("No command generated or command is empty.", style="bold red")
             return
-        self.console.print(
-            Panel(cmd, title="Suggested Command", title_align="left", border_style="bold magenta", expand=False)
-        )
+        self.console.print(Panel(cmd, title="Command", title_align="left", border_style="bold magenta", expand=False))
         _input = Prompt.ask(
             r"Execute command? \[e]dit, \[y]es, \[n]o",
             choices=["y", "n", "e"],
@@ -185,24 +184,32 @@ class CLI:
     def _handle_llm_response(self, user_input: str) -> Optional[str]:
         """Get response from API (streaming or normal) and print it.
         Returns the full content string or None if an error occurred.
+
+        Args:
+            user_input (str): The user's input text.
+
+        Returns:
+            Optional[str]: The assistant's response content or None if an error occurred.
         """
         messages = self._build_messages(user_input)
-        full_content: Optional[str] = None
-        # TODO: 区分 reasoning 和 content  
+        content = None
+        reasoning = None
+
         try:
             if self.config.get("STREAM", True):
                 stream_iterator = self.api_client.stream_completion(messages)
-                full_content = self.printer.display_stream(stream_iterator)
+                content, reasoning = self.printer.display_stream(stream_iterator)
             else:
-                full_content, _ = self.api_client.get_completion(messages)
-                self.printer.display_normal(full_content)
+                content, reasoning = self.api_client.completion(messages)
+                self.printer.display_normal(content, reasoning)
 
-            if full_content is not None:
+            if content is not None:
+                # Add only the content (not reasoning) to history
                 self.history.extend(
-                    [{"role": "user", "content": user_input}, {"role": "assistant", "content": full_content}]
+                    [{"role": "user", "content": user_input}, {"role": "assistant", "content": content}]
                 )
                 self._check_history_len()
-                return full_content
+                return content
             else:
                 return None
         except Exception as e:
@@ -289,7 +296,7 @@ class CLI:
         try:
             self.session = PromptSession(
                 key_bindings=self.bindings,
-                history=LimitedFileHistory(self.HISTORY_FILE, max_entries=self.inline_max_history),
+                history=LimitedFileHistory(self.HISTORY_FILE, max_entries=self.interactive_max_history),
                 auto_suggest=AutoSuggestFromHistory() if self.config.get("AUTO_SUGGEST", True) else None,
                 enable_history_search=True,
             )
@@ -300,17 +307,9 @@ class CLI:
     def _setup_key_bindings(self) -> None:
         """Setup keyboard shortcuts (e.g., TAB for mode switching)."""
 
-        @self.bindings.add(Keys.ControlI)
+        @self.bindings.add(Keys.ControlI)  # TAB
         def _(event: KeyPressEvent) -> None:
-            # original_mode = self.current_mode
-            if self.current_mode == CHAT_MODE:
-                self.current_mode = EXEC_MODE
-            elif self.current_mode == EXEC_MODE:
-                self.current_mode = CHAT_MODE
-            else:
-                self.current_mode = CHAT_MODE
-            # if self.current_mode != original_mode:
-            # self.console.print(f"Switched to [bold yellow]{self.current_mode.upper()}[/bold yellow] mode")
+            self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
 
     def run(self, chat: bool, shell: bool, prompt: Optional[str]) -> None:
         """Main entry point to run the CLI (REPL or single command)."""

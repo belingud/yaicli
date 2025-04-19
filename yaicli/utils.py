@@ -5,13 +5,15 @@ from typing import Any, Optional, TypeVar
 
 from distro import name as distro_name
 
+from yaicli.const import DEFAULT_OS_NAME, DEFAULT_SHELL_NAME
+
 T = TypeVar("T", int, float, str)
 
 
 def detect_os(config: dict[str, Any]) -> str:
     """Detect operating system + version based on config or system info."""
-    os_name_config = config.get("OS_NAME", "auto")
-    if os_name_config != "auto":
+    os_name_config = config.get("OS_NAME", DEFAULT_OS_NAME)
+    if os_name_config != DEFAULT_OS_NAME:
         return os_name_config
 
     current_platform = platform.system()
@@ -26,8 +28,8 @@ def detect_os(config: dict[str, Any]) -> str:
 
 def detect_shell(config: dict[str, Any]) -> str:
     """Detect shell name based on config or environment."""
-    shell_name_config = config.get("SHELL_NAME", "auto")
-    if shell_name_config != "auto":
+    shell_name_config = config.get("SHELL_NAME", DEFAULT_SHELL_NAME)
+    if shell_name_config != DEFAULT_SHELL_NAME:
         return shell_name_config
 
     current_platform = platform.system()
