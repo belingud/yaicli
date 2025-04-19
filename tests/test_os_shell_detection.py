@@ -22,7 +22,7 @@ def test_detect_os_with_config(mock_system, os_name_config, expected_result):
         # Mock system call to avoid real detection
         mock_system.return_value = "Linux"
         with patch("yaicli.utils.distro_name", return_value="MockDistro"):
-            detect_os(config) # Call is needed for coverage, assert not needed here
+            detect_os(config)  # Call is needed for coverage, assert not needed here
             mock_system.assert_called_once()
 
 
@@ -70,6 +70,7 @@ def test_detect_os_other(mock_system):
     assert detect_os(config) == "SomeOtherOS"
     mock_system.assert_called_once()
 
+
 @pytest.mark.parametrize(
     "shell_name_config,expected_result",
     [
@@ -85,9 +86,9 @@ def test_detect_shell_with_config(mock_system, shell_name_config, expected_resul
         assert detect_shell(config) == expected_result
     else:
         # Mock system call to avoid real detection
-        mock_system.return_value = "Linux" # Assume Linux for auto-detection path
+        mock_system.return_value = "Linux"  # Assume Linux for auto-detection path
         with patch("yaicli.utils.getenv", return_value="/bin/mock_shell"):
-            detect_shell(config) # Call is needed for coverage
+            detect_shell(config)  # Call is needed for coverage
             mock_system.assert_called_once()
 
 
@@ -103,6 +104,7 @@ def test_detect_shell_windows_powershell(mock_getenv, mock_system):
     mock_system.assert_called_once()
     mock_getenv.assert_called_once_with("PSModulePath", "")
 
+
 @patch("yaicli.utils.platform.system")
 @patch("yaicli.utils.getenv")
 @patch("yaicli.utils.pathsep", ";")
@@ -115,6 +117,7 @@ def test_detect_shell_windows_cmd(mock_getenv, mock_system):
     mock_system.assert_called_once()
     mock_getenv.assert_called_once_with("PSModulePath", "")
 
+
 # New test for 'nt' platform
 @patch("yaicli.utils.platform.system")
 @patch("yaicli.utils.getenv")
@@ -123,7 +126,7 @@ def test_detect_shell_nt_platform(mock_getenv, mock_system):
     """Test Windows CMD detection on 'nt' platform"""
     config = {"SHELL_NAME": "auto"}
     mock_system.return_value = "nt"
-    mock_getenv.return_value = "a" # Assume CMD
+    mock_getenv.return_value = "a"  # Assume CMD
     assert detect_shell(config) == "cmd.exe"
     mock_system.assert_called_once()
     mock_getenv.assert_called_once_with("PSModulePath", "")
@@ -140,17 +143,19 @@ def test_detect_shell_linux(mock_getenv, mock_system):
     mock_system.assert_called_once()
     mock_getenv.assert_called_once_with("SHELL")
 
+
 # New test for SHELL with full path
 @patch("yaicli.utils.platform.system")
 @patch("yaicli.utils.getenv")
 def test_detect_shell_linux_fullpath(mock_getenv, mock_system):
     """Test Linux shell detection with full path in SHELL env var"""
     config = {"SHELL_NAME": "auto"}
-    mock_system.return_value = "Darwin" # Example non-Windows OS
+    mock_system.return_value = "Darwin"  # Example non-Windows OS
     mock_getenv.return_value = "/usr/local/bin/zsh"
     assert detect_shell(config) == "zsh"
     mock_system.assert_called_once()
     mock_getenv.assert_called_once_with("SHELL")
+
 
 @patch("yaicli.utils.platform.system")
 @patch("yaicli.utils.getenv")

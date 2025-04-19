@@ -13,17 +13,19 @@ def mock_cli_instance():
     """Fixture to provide a mock CLI instance."""
     return MagicMock()
 
+
 @pytest.fixture
 def mock_cli_class(mock_cli_instance):
     """Fixture to patch the CLI class."""
-    with patch('yaicli.entry.CLI', return_value=mock_cli_instance) as mock_class:
+    with patch("yaicli.entry.CLI", return_value=mock_cli_instance) as mock_class:
         yield mock_class
+
 
 # Need conftest fixtures to be available if CLI() accesses config/history
 # No extra setup needed if using global patched_config_path from conftest.py
 
-class TestTyperApp:
 
+class TestTyperApp:
     def test_help_option(self):
         """Test the --help option."""
         result = runner.invoke(app, ["--help"])
@@ -79,7 +81,7 @@ class TestTyperApp:
         """Test reading prompt from stdin."""
         stdin_text = "prompt from stdin"
         # Mock sys.stdin.isatty to return False, indicating pipe/redirect
-        with patch('sys.stdin.isatty', return_value=False):
+        with patch("sys.stdin.isatty", return_value=False):
             result = runner.invoke(app, input=stdin_text)
         assert result.exit_code == 0
         mock_cli_class.assert_called_once_with(verbose=False)
@@ -90,7 +92,7 @@ class TestTyperApp:
         stdin_text = "stdin part"
         arg_text = "arg part"
         expected_prompt = f"{stdin_text}\n\n{arg_text}"
-        with patch('sys.stdin.isatty', return_value=False):
+        with patch("sys.stdin.isatty", return_value=False):
             result = runner.invoke(app, [arg_text], input=stdin_text)
         assert result.exit_code == 0
         mock_cli_class.assert_called_once_with(verbose=False)
@@ -99,10 +101,10 @@ class TestTyperApp:
     def test_no_prompt_no_chat(self):
         """Test calling without prompt and without --chat."""
         # Ensure stdin is treated as a TTY
-        with patch('sys.stdin.isatty', return_value=True):
+        with patch("sys.stdin.isatty", return_value=True):
             result = runner.invoke(app)
-        assert result.exit_code == 0 # Typer exits with 0 after showing help by default
-        assert "Usage: main" in result.stdout # Should print help
+        assert result.exit_code == 0  # Typer exits with 0 after showing help by default
+        assert "Usage: main" in result.stdout  # Should print help
 
     def test_chat_with_prompt_warning(self, mock_cli_class, mock_cli_instance):
         """Test that a warning is printed (to real stdout) if --chat and prompt are used."""
@@ -127,4 +129,4 @@ class TestTyperApp:
         mock_cli_instance.run.side_effect = Exception("CLI Run Failed")
         result = runner.invoke(app, ["some prompt"])
         assert result.exit_code == 1
-        assert "An error occurred: CLI Run Failed" in result.stdout 
+        assert "An error occurred: CLI Run Failed" in result.stdout

@@ -10,10 +10,9 @@ def history_file(tmp_path):
 
 
 class TestLimitedFileHistory:
-
     def test_init_creates_file(self, history_file):
         """Test that the history file is created lazily on first append."""
-        assert not history_file.exists() # File should not exist initially
+        assert not history_file.exists()  # File should not exist initially
         history = LimitedFileHistory(str(history_file), max_entries=10)
 
         # Append a string, which should trigger file creation by the parent class
@@ -27,20 +26,20 @@ class TestLimitedFileHistory:
 
     def test_append_string_basic(self, history_file):
         """Test appending a few strings."""
-        history = LimitedFileHistory(str(history_file), max_entries=10, trim_every=100) # High trim_every
+        history = LimitedFileHistory(str(history_file), max_entries=10, trim_every=100)  # High trim_every
         history.append_string("command1")
         history.append_string("command2")
 
         content = history_file.read_text()
         assert "command1" in content
         assert "command2" in content
-        assert content.count("# ") == 2 # Check for two timestamp entries
+        assert content.count("# ") == 2  # Check for two timestamp entries
 
     def test_load_history_strings(self, history_file):
         """Test loading history strings from an existing file."""
         # Prepare a history file
         initial_content = (
-            "# 1678886400\n+command1\n" # Timestamp for 2023-03-15 12:00:00 UTC
+            "# 1678886400\n+command1\n"  # Timestamp for 2023-03-15 12:00:00 UTC
             "# 1678886460\n+command2\n"
             "# 1678886520\n+command3\n"
         )
@@ -57,28 +56,28 @@ class TestLimitedFileHistory:
         trim_threshold = 3
         history = LimitedFileHistory(str(history_file), max_entries=10, trim_every=trim_threshold)
 
-        with patch.object(history, '_trim_history', wraps=history._trim_history) as mock_trim:
+        with patch.object(history, "_trim_history", wraps=history._trim_history) as mock_trim:
             # Append threshold - 1 entries
             for i in range(trim_threshold - 1):
-                history.append_string(f"cmd{i}") # cmd0, cmd1
+                history.append_string(f"cmd{i}")  # cmd0, cmd1
             mock_trim.assert_not_called()
 
             # Append threshold-th entry
-            history.append_string(f"cmd{trim_threshold - 1}") # cmd2 -> Triggers trim
-            assert mock_trim.call_count == 1 # First call
+            history.append_string(f"cmd{trim_threshold - 1}")  # cmd2 -> Triggers trim
+            assert mock_trim.call_count == 1  # First call
 
             # Append one more entry
-            history.append_string(f"cmd{trim_threshold}") # cmd3
-            assert mock_trim.call_count == 1 # Count should still be 1
+            history.append_string(f"cmd{trim_threshold}")  # cmd3
+            assert mock_trim.call_count == 1  # Count should still be 1
 
             # Append up to (but not including) the next trigger point
             for i in range(trim_threshold + 1, trim_threshold * 2 - 1):
-                history.append_string(f"cmd{i}") # cmd4
-            assert mock_trim.call_count == 1 # Count should still be 1
+                history.append_string(f"cmd{i}")  # cmd4
+            assert mock_trim.call_count == 1  # Count should still be 1
 
             # Append the entry that triggers the second trim
-            history.append_string(f"cmd{trim_threshold * 2 - 1}") # cmd5 -> Triggers trim
-            assert mock_trim.call_count == 2 # Second call
+            history.append_string(f"cmd{trim_threshold * 2 - 1}")  # cmd5 -> Triggers trim
+            assert mock_trim.call_count == 2  # Second call
 
     def test_history_limit(self, history_file):
         """Test that history is correctly limited to max_entries."""
@@ -99,7 +98,7 @@ class TestLimitedFileHistory:
 
         # Verify file content after trimming
         content = history_file.read_text()
-        lines = content.strip().split('\n')
+        lines = content.strip().split("\n")
         # Count timestamp lines to verify number of entries in file
         timestamp_lines = [line for line in lines if line.startswith("# ")]
         assert len(timestamp_lines) == max_entries
@@ -116,9 +115,9 @@ class TestLimitedFileHistory:
         max_entries = 2
         history = LimitedFileHistory(str(history_file), max_entries=max_entries, trim_every=1)
 
-        history.append_string("line1\nline2") # Entry 1 (multi-line)
-        history.append_string("line3")       # Entry 2
-        history.append_string("line4\nline5\nline6") # Entry 3 (multi-line)
+        history.append_string("line1\nline2")  # Entry 1 (multi-line)
+        history.append_string("line3")  # Entry 2
+        history.append_string("line4\nline5\nline6")  # Entry 3 (multi-line)
 
         # File should only contain the last two entries (line3 and line4-6)
         content = history_file.read_text()
@@ -132,4 +131,4 @@ class TestLimitedFileHistory:
 
         # Verify loading strings
         loaded_strings = list(history.load_history_strings())
-        assert loaded_strings == ["line4\nline5\nline6", "line3"] 
+        assert loaded_strings == ["line4\nline5\nline6", "line3"]

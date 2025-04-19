@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock
 
-import pytest # Import pytest
+import pytest  # Import pytest
 
 from yaicli.cli import CLI, CHAT_MODE, EXEC_MODE, TEMP_MODE
 
@@ -121,8 +121,10 @@ class TestRunSmoke(unittest.TestCase):
         # Ensure streaming is off for this test
         self.cli.config["STREAM"] = False
 
-        # Mock api_client.get_completion to raise an error
-        with patch.object(self.cli.api_client, 'get_completion', side_effect=Exception("Simulated API Error")) as mock_get_completion:
+        # Mock api_client.completion to raise an error
+        with patch.object(
+            self.cli.api_client, "completion", side_effect=Exception("Simulated API Error")
+        ) as mock_get_completion:
             # Check that sys.exit(1) is called
             with pytest.raises(SystemExit) as e:
                 self.cli.run(chat=False, shell=False, prompt="Error Prompt")
@@ -136,7 +138,7 @@ class TestRunSmoke(unittest.TestCase):
             self.assertEqual(messages_arg[-1]["content"], "Error Prompt")
 
             # Verify error message was printed
-            self.cli.console.print.assert_any_call("[red]Error processing LLM response: Simulated API Error[/red]") # type: ignore
+            self.cli.console.print.assert_any_call("[red]Error processing LLM response: Simulated API Error[/red]")  # type: ignore
 
     def test_streaming_response(self):
         """Test streaming response handling"""
@@ -145,13 +147,15 @@ class TestRunSmoke(unittest.TestCase):
 
         # Mock the stream_completion method to yield the processed event format
         def mock_stream_generator():
-            yield {'type': 'content', 'chunk': 'Hello', 'message': None} # Add type/message keys
-            yield {'type': 'content', 'chunk': ' World', 'message': None}
+            yield {"type": "content", "chunk": "Hello", "message": None}  # Add type/message keys
+            yield {"type": "content", "chunk": " World", "message": None}
             # Simulate a final chunk (often has null chunk or different type)
-            yield {'type': 'finish', 'chunk': None, 'message': None, 'reason': 'stop'}
+            yield {"type": "finish", "chunk": None, "message": None, "reason": "stop"}
 
         # Patch api_client.stream_completion
-        with patch.object(self.cli.api_client, 'stream_completion', return_value=mock_stream_generator()) as mock_stream:
+        with patch.object(
+            self.cli.api_client, "stream_completion", return_value=mock_stream_generator()
+        ) as mock_stream:
             # Run CLI with a simple prompt
             self.cli.run(chat=False, shell=False, prompt="Hello AI")
 
@@ -171,11 +175,13 @@ class TestRunSmoke(unittest.TestCase):
 
         # Mock stream_completion to yield correct format then raise an error
         def mock_stream_generator_error():
-            yield {'type': 'content', 'chunk': 'Partial', 'message': None} # Add type/message keys
+            yield {"type": "content", "chunk": "Partial", "message": None}  # Add type/message keys
             raise Exception("Simulated stream error")
 
         # Patch api_client.stream_completion
-        with patch.object(self.cli.api_client, 'stream_completion', return_value=mock_stream_generator_error()) as mock_stream:
+        with patch.object(
+            self.cli.api_client, "stream_completion", return_value=mock_stream_generator_error()
+        ) as mock_stream:
             # _handle_llm_response receives None.
             # _run_once receives None and calls sys.exit(1).
             with pytest.raises(SystemExit) as e:
@@ -191,17 +197,20 @@ class TestRunSmoke(unittest.TestCase):
             self.assertEqual(messages_arg[-1]["content"], "Error Prompt")
 
             # Verify error message was printed by the exception handler in display_stream
-            # Instead of assert_any_call, check call_args_list manually for robustness
-            error_msg = '[red]An error occurred during stream display: Simulated stream error[/red]'
+            error_msg = "An error occurred during stream display: Simulated stream error"
+            error_style = "red"
+
             found_call = False
-            # Print the recorded calls to see what was actually captured
-            print("DEBUG: Recorded calls to console.print:", self.cli.console.print.call_args_list) # type: ignore
-            for call_item in self.cli.console.print.call_args_list: # type: ignore
-                if call_item.args and call_item.args[0] == error_msg:
+            for call_item in self.cli.console.print.call_args_list:  # type: ignore
+                args = call_item.args
+                kwargs = call_item.kwargs
+                if args and args[0] == error_msg and kwargs.get("style") == error_style:
                     found_call = True
                     break
-            self.assertTrue(found_call, f"Expected console print call with '{error_msg}' not found.")
-            # self.cli.console.print.assert_any_call(error_msg) # type: ignore # Original assertion
+
+            self.assertTrue(
+                found_call, f"Expected console print call with '{error_msg}' and style='{error_style}' not found."
+            )
 
 
 class TestPromptToolkitIntegration(unittest.TestCase):
