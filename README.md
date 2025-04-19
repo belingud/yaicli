@@ -112,6 +112,7 @@ Below are the available configuration options and override environment variables
 - **COMPLETION_PATH**: Path for completions endpoint, default: /chat/completions, env: YAI_COMPLETION_PATH
 - **ANSWER_PATH**: Json path expression to extract answer from response, default: choices[0].message.content, env: YAI_ANSWER_PATH
 - **STREAM**: Enable/disable streaming responses, default: true, env: YAI_STREAM
+- **TIMEOUT**: Timeout for API requests (default: 60), env: YAI_TIMEOUT
 - **CODE_THEME**: Theme for code blocks, default: monokia, env: YAI_CODE_THEME
 - **TEMPERATURE**: Temperature for response generation (default: 0.7), env: YAI_TEMPERATURE
 - **TOP_P**: Top-p sampling for response generation (default: 1.0), env: YAI_TOP_P
@@ -214,24 +215,26 @@ Run Options:
 ```bash
 ai -h
 
-Usage: ai [OPTIONS] [PROMPT]
+Usage: AI [OPTIONS] [PROMPT]
 
- yaicli - Your AI interface in cli.
+YAICLI: Your AI assistant in the command line.
 
-╭─ Arguments ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│   prompt      [PROMPT]  The prompt send to the LLM                                                                                                                      │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --template                      Show the config template.                                                                                                               │
-│ --install-completion            Install completion for the current shell.                                                                                               │
-│ --show-completion               Show completion for the current shell, to copy it or customize the installation.                                                        │
-│ --help                -h        Show this message and exit.                                                                                                             │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Run Option ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --chat     -c        Start in chat mode                                                                                                                                 │
-│ --shell    -s        Generate and execute shell command                                                                                                                 │
-│ --verbose  -V        Show verbose information                                                                                                                           │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ Call with a PROMPT to get a direct answer, use --shell to execute as command, or use --chat for an interactive session.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available. [default: None]                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                                                                                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Mode Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --chat   -c        Start in interactive chat mode.                                                                                                                       │
+│ --shell  -s        Generate and optionally execute a shell command (non-interactive).                                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Other Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --verbose   -V        Show verbose output (e.g., loaded config).                                                                                                         │
+│ --template            Show the default config file template and exit.                                                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
