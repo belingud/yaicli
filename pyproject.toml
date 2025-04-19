@@ -44,13 +44,18 @@ Repository = "https://github.com/belingud/yaicli"
 Documentation = "https://github.com/belingud/yaicli"
 
 [project.scripts]
-ai = "yaicli:app"
+ai = "yaicli.entry:app"
 
 [tool.uv]
 resolution = "highest"
 
 [dependency-groups]
-dev = ["bump2version>=1.0.1", "pytest>=8.3.5", "ruff>=0.11.2"]
+dev = [
+    "bump2version>=1.0.1",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+    "ruff>=0.11.2",
+]
 
 [tool.isort]
 profile = "black"
@@ -65,4 +70,4 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 exclude = ["test_*.py", "tests/*", ".gitignore"]
-include = ["yaicli.py", "pyproject.toml"]
+include = ["yaicli", "pyproject.toml"]
