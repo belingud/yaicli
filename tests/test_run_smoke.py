@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 import pytest  # Import pytest
+import click
 
 from yaicli.cli import CLI, CHAT_MODE, EXEC_MODE, TEMP_MODE
 
@@ -125,12 +126,12 @@ class TestRunSmoke(unittest.TestCase):
         with patch.object(
             self.cli.api_client, "completion", side_effect=Exception("Simulated API Error")
         ) as mock_get_completion:
-            # Check that sys.exit(1) is called
-            with pytest.raises(SystemExit) as e:
+            # Check that typer.Exit is called (which raises click.exceptions.Exit)
+            with pytest.raises(click.exceptions.Exit) as e:
                 self.cli.run(chat=False, shell=False, prompt="Error Prompt")
 
-            self.assertEqual(e.type, SystemExit)
-            self.assertEqual(e.value.code, 1)
+            # Verify exit code is 1
+            self.assertEqual(e.value.exit_code, 1)
 
             # Verify get_completion was called
             mock_get_completion.assert_called_once()
@@ -183,13 +184,12 @@ class TestRunSmoke(unittest.TestCase):
             self.cli.api_client, "stream_completion", return_value=mock_stream_generator_error()
         ) as mock_stream:
             # _handle_llm_response receives None.
-            # _run_once receives None and calls sys.exit(1).
-            with pytest.raises(SystemExit) as e:
+            # _run_once receives None and calls typer.Exit(code=1).
+            with pytest.raises(click.exceptions.Exit) as e:
                 self.cli.run(chat=False, shell=False, prompt="Error Prompt")
 
-            # Verify SystemExit code
-            self.assertEqual(e.type, SystemExit)
-            self.assertEqual(e.value.code, 1)
+            # Verify exit code
+            self.assertEqual(e.value.exit_code, 1)
 
             # Verify stream_completion was called
             mock_stream.assert_called_once()

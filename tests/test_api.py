@@ -228,7 +228,7 @@ class TestApiClientGetCompletion:
     def test_get_completion_with_reasoning(self, base_config, mock_console):
         """Test completion with reasoning in the response."""
         client = ApiClient(base_config, mock_console, verbose=False)
-        messages = [{"role": "user", "content": "Reasoning test"}]
+        messages = [{"role": "user", "content": "Thinking test"}]
         # Response with reasoning in the message
         api_response_json = {
             "choices": [
@@ -272,7 +272,7 @@ class TestApiClientGetCompletion:
 
             # The traceback shows the content is actually "After think", so the <think> tag IS being removed
             assert content == "After think"  # The content with <think> tag removed
-            assert reasoning == "Hidden reasoning"  # Reasoning extracted from the <think> tag
+            assert reasoning == "Hidden reasoning"  # Thinking extracted from the <think> tag
             mock_console.print.assert_not_called()
 
     def test_get_completion_api_error(self, base_config, mock_console):
@@ -448,7 +448,7 @@ class TestApiClientStreamCompletion:
     def test_stream_completion_with_reasoning(self, base_config, mock_console):
         """Test streaming completion including reasoning chunks."""
         client = ApiClient(base_config, mock_console, verbose=False)
-        messages = [{"role": "user", "content": "Reasoning test"}]
+        messages = [{"role": "user", "content": "Thinking test"}]
 
         # Create context manager and response mocks
         mock_response = MagicMock(spec=httpx.Response)
@@ -456,7 +456,7 @@ class TestApiClientStreamCompletion:
         mock_stream_cm.__enter__.return_value = mock_response
 
         sse_lines = [
-            b'data: {"choices":[{"delta":{"reasoning_content":"Thinking..."}}]}',  # Reasoning chunk
+            b'data: {"choices":[{"delta":{"reasoning_content":"Thinking..."}}]}',  # Thinking chunk
             b'data: {"choices":[{"delta":{"content":"Okay"}}]}',
             b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}',
             b"data: [DONE]",
