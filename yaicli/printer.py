@@ -136,7 +136,7 @@ class Printer:
             if not formatted_reasoning.startswith(self._REASONING_PREFIX):
                 formatted_reasoning = self._REASONING_PREFIX + formatted_reasoning
             # Reasoning prefix is now added per line
-            display_text += f"Reasoning:\n{formatted_reasoning}"
+            display_text += f"\nThinking:\n{formatted_reasoning}"
 
             # Only add newlines if there is content following the reasoning
             if content:
@@ -173,7 +173,7 @@ class Printer:
             else:
                 # If reasoning just started and no content yet
                 # Updated to match formatting
-                display_text = f"Reasoning:\n{self._REASONING_PREFIX}{cursor_char}"
+                display_text = f"\nThinking:\n{self._REASONING_PREFIX}{cursor_char}"
         else:
             # Add cursor at the end of normal content
             display_text += cursor_char

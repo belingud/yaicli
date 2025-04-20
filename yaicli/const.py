@@ -25,7 +25,7 @@ DEFAULT_MAX_TOKENS: int = 1024
 DEFAULT_MAX_HISTORY: int = 500
 DEFAULT_AUTO_SUGGEST = "true"
 DEFAULT_TIMEOUT: int = 60
-DEFAULT_INTERACTIVE_MAX_HISTORY: int = 25
+DEFAULT_INTERACTIVE_ROUND: int = 25
 
 
 class EventTypeEnum(StrEnum):
@@ -75,9 +75,9 @@ DEFAULT_CONFIG_MAP = {
     "TOP_P": {"value": DEFAULT_TOP_P, "env_key": "YAI_TOP_P", "type": float},
     "MAX_TOKENS": {"value": DEFAULT_MAX_TOKENS, "env_key": "YAI_MAX_TOKENS", "type": int},
     "TIMEOUT": {"value": DEFAULT_TIMEOUT, "env_key": "YAI_TIMEOUT", "type": int},
-    "INTERACTIVE_MAX_HISTORY": {
-        "value": DEFAULT_INTERACTIVE_MAX_HISTORY,
-        "env_key": "YAI_INTERACTIVE_MAX_HISTORY",
+    "INTERACTIVE_ROUND": {
+        "value": DEFAULT_INTERACTIVE_ROUND,
+        "env_key": "YAI_INTERACTIVE_ROUND",
         "type": int,
     },
     # UI/UX settings
@@ -108,7 +108,9 @@ TEMPERATURE={DEFAULT_CONFIG_MAP["TEMPERATURE"]["value"]}
 TOP_P={DEFAULT_CONFIG_MAP["TOP_P"]["value"]}
 MAX_TOKENS={DEFAULT_CONFIG_MAP["MAX_TOKENS"]["value"]}
 TIMEOUT={DEFAULT_CONFIG_MAP["TIMEOUT"]["value"]}
-INTERACTIVE_MAX_HISTORY={DEFAULT_CONFIG_MAP["INTERACTIVE_MAX_HISTORY"]["value"]}
+
+# Interactive mode parameters
+INTERACTIVE_ROUND={DEFAULT_CONFIG_MAP["INTERACTIVE_ROUND"]["value"]}
 
 # UI/UX
 CODE_THEME={DEFAULT_CONFIG_MAP["CODE_THEME"]["value"]}

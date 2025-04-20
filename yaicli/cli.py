@@ -25,7 +25,7 @@ from yaicli.const import (
     CMD_HISTORY,
     CMD_MODE,
     DEFAULT_CODE_THEME,
-    DEFAULT_INTERACTIVE_MAX_HISTORY,
+    DEFAULT_INTERACTIVE_ROUND,
     DEFAULT_OS_NAME,
     DEFAULT_PROMPT,
     DEFAULT_SHELL_NAME,
@@ -50,7 +50,7 @@ class CLI:
         self.config: Config = Config(self.console)
         self.current_mode: str = TEMP_MODE
         self.history = []
-        self.interactive_max_history = self.config.get("INTERACTIVE_MAX_HISTORY", DEFAULT_INTERACTIVE_MAX_HISTORY)
+        self.interactive_max_history = self.config.get("INTERACTIVE_MAX_HISTORY", DEFAULT_INTERACTIVE_ROUND)
 
         # Detect OS and Shell if set to auto
         if self.config.get("OS_NAME") == DEFAULT_OS_NAME:
@@ -138,7 +138,9 @@ class CLI:
         if not cmd:
             self.console.print("No command generated or command is empty.", style="bold red")
             return
-        self.console.print(Panel(cmd, title="Command", title_align="left", border_style="bold magenta", expand=False))
+        self.console.print(
+            Panel(cmd, title="Suggest Command", title_align="left", border_style="bold magenta", expand=False)
+        )
         _input = Prompt.ask(
             r"Execute command? \[e]dit, \[y]es, \[n]o",
             choices=["y", "n", "e"],
