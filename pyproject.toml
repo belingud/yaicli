@@ -45,6 +45,7 @@ Documentation = "https://github.com/belingud/yaicli"
 
 [project.scripts]
 ai = "yaicli.entry:app"
+yai = "yaicli.entry:app"
 
 [tool.uv]
 resolution = "highest"

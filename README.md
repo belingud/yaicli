@@ -1,282 +1,307 @@
-# YAICLI - Your AI Interface in Command Line
+# YAICLI - Your AI Command Line Interface
 
 [![PyPI version](https://img.shields.io/pypi/v/yaicli?style=for-the-badge)](https://pypi.org/project/yaicli/)
 ![GitHub License](https://img.shields.io/github/license/belingud/yaicli?style=for-the-badge)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/yaicli?logo=pypi&style=for-the-badge)
 ![Pepy Total Downloads](https://img.shields.io/pepy/dt/yaicli?style=for-the-badge&logo=python)
 
-YAICLI is a compact yet potent command-line AI assistant, allowing you to engage with Large Language Models (LLMs) such as ChatGPT's gpt-4o directly via your terminal. It offers multiple operation modes for everyday conversations, generating and executing shell commands, and one-shot quick queries.
+YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (LLMs) like GPT-4o directly to your terminal. Interact with AI through multiple modes: have natural conversations, generate and execute shell commands, or get quick answers without leaving your workflow.
 
-Support regular and deep thinking models.
+**Supports both standard and deep reasoning models across all major LLM providers.**
 
-> [!WARNING]
-> This is a work in progress, some features could change or be removed in the future.
+<p align="center">
+  <img src="https://vhs.charm.sh/vhs-5U1BBjJkTUBReRswsSgIVx.gif" alt="YAICLI Demo" width="85%">
+</p>
 
-## Features
+> [!NOTE]
+> YAICLI is actively developed. While core functionality is stable, some features may evolve in future releases.
 
-- **Smart Interaction Modes**:
-  - 💬 Chat Mode: Persistent dialogue with context tracking
-  - 🚀 Execute Mode: Generate & verify OS-specific commands (Windows/macOS/Linux)
-  - ⚡ Quick Query: Single-shot responses without entering REPL
+## ✨ Key Features
 
-- **Environment Intelligence**:
-  - Auto-detects shell type (CMD/PowerShell/bash/zsh)
-  - Dynamic command validation with 3-step confirmation
-  - Pipe input support (`cat log.txt | ai "analyze errors"`)
+### 🔄 Multiple Interaction Modes
+- **💬 Chat Mode**: Engage in persistent conversations with full context tracking
+- **🚀 Execute Mode**: Generate and safely run OS-specific shell commands
+- **⚡ Quick Query**: Get instant answers without entering interactive mode
 
-- **Enterprise LLM Support**:
-  - OpenAI API compatible endpoints
-  - Claude/Gemini/Cohere integration guides
-  - Custom JSON parsing with jmespath
+### 🧠 Smart Environment Awareness
+- **Auto-detection**: Identifies your shell (bash/zsh/PowerShell/CMD) and OS
+- **Safe Command Execution**: 3-step verification before running any command
+- **Flexible Input**: Pipe content directly (`cat log.txt | ai "analyze this"`)
 
-- **Terminal Experience**:
-  - Real-time streaming with cursor animation
-  - LRU history management (500 entries default)
+### 🔌 Universal LLM Compatibility
+- **OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
+- **Multi-Provider Support**: Easy configuration for Claude, Gemini, Cohere, etc.
+- **Custom Response Parsing**: Extract exactly what you need with jmespath
 
-- **DevOps Ready**:
-  - Layered configuration (Env > File > Defaults)
-  - Verbose debug mode with API tracing
+### 💻 Enhanced Terminal Experience
+- **Real-time Streaming**: See responses as they're generated with cursor animation
+- **Rich History Management**: LRU-based history with 500 entries by default
+- **Syntax Highlighting**: Beautiful code formatting with customizable themes
 
-## Installation
+### 🛠️ Developer-Friendly
+- **Layered Configuration**: Environment variables > Config file > Sensible defaults
+- **Debugging Tools**: Verbose mode with detailed API tracing
+- **Lightweight**: Minimal dependencies with focused functionality
+
+## 📦 Installation
 
 ### Prerequisites
 
 - Python 3.9 or higher
 
-### Install from PyPI
+### Quick Install
 
 ```bash
-# Install by pip
+# Using pip (recommended for most users)
 pip install yaicli
 
-# Install by pipx
+# Using pipx (isolated environment)
 pipx install yaicli
 
-# Install by uv
+# Using uv (faster installation)
 uv tool install yaicli
 ```
 
 ### Install from Source
 
 ```bash
-git clone https://github.com/yourusername/yaicli.git
+git clone https://github.com/belingud/yaicli.git
 cd yaicli
 pip install .
 ```
 
-## Configuration
+## ⚙️ Configuration
 
-On first run, YAICLI will create a default configuration file at `~/.config/yaicli/config.ini`. You'll need to edit this file to add your API key and customize other settings.
+YAICLI uses a simple configuration file to store your preferences and API keys.
 
-Just run `ai`, and it will create the config file for you. Then you can edit it to add your api key.
+### First-time Setup
 
-### Configuration File
+1. Run `ai` once to generate the default configuration file
+2. Edit `~/.config/yaicli/config.ini` to add your API key
+3. Customize other settings as needed
 
-The default configuration file is located at `~/.config/yaicli/config.ini`. Look at the example below:
+### Configuration File Structure
+
+The default configuration file is located at `~/.config/yaicli/config.ini`. You can use `ai --template` to see default settings, just as below:
 
 ```ini
 [core]
-PROVIDER=OPENAI
+PROVIDER=openai
 BASE_URL=https://api.openai.com/v1
-API_KEY=your_api_key_here
+API_KEY=
 MODEL=gpt-4o
 
-# auto detect shell and os
+# auto detect shell and os (or specify manually, e.g., bash, zsh, powershell.exe)
 SHELL_NAME=auto
 OS_NAME=auto
 
-# if you want to use custom completions path, you can set it here
-COMPLETION_PATH=/chat/completions
-# if you want to use custom answer path, you can set it here
+# API paths (usually no need to change for OpenAI compatible APIs)
+COMPLETION_PATH=chat/completions
 ANSWER_PATH=choices[0].message.content
 
-# true: streaming response
-# false: non-streaming response
+# true: streaming response, false: non-streaming
 STREAM=true
-CODE_THEME=monokia
 
+# LLM parameters
 TEMPERATURE=0.7
 TOP_P=1.0
 MAX_TOKENS=1024
+TIMEOUT=60
+
+# Interactive mode parameters
+INTERACTIVE_ROUND=25
+
+# UI/UX
+CODE_THEME=monokai
+MAX_HISTORY=500 # Max entries kept in history file
+AUTO_SUGGEST=true
 ```
 
-### Configuration Options
+### Configuration Options Reference
 
-Below are the available configuration options and override environment variables:
+| Option | Description | Default | Env Variable |
+|--------|-------------|---------|---------------|
+| `BASE_URL` | API endpoint URL | `https://api.openai.com/v1` | `YAI_BASE_URL` |
+| `API_KEY` | Your API key | - | `YAI_API_KEY` |
+| `MODEL` | LLM model to use | `gpt-4o` | `YAI_MODEL` |
+| `SHELL_NAME` | Shell type | `auto` | `YAI_SHELL_NAME` |
+| `OS_NAME` | Operating system | `auto` | `YAI_OS_NAME` |
+| `COMPLETION_PATH` | API completion path | `chat/completions` | `YAI_COMPLETION_PATH` |
+| `ANSWER_PATH` | JSON path for response | `choices[0].message.content` | `YAI_ANSWER_PATH` |
+| `STREAM` | Enable streaming | `true` | `YAI_STREAM` |
+| `TIMEOUT` | API timeout (seconds) | `60` | `YAI_TIMEOUT` |
+| `INTERACTIVE_ROUND` | Interactive mode rounds | `25` | `YAI_INTERACTIVE_ROUND` |
+| `CODE_THEME` | Syntax highlighting theme | `monokai` | `YAI_CODE_THEME` |
+| `TEMPERATURE` | Response randomness | `0.7` | `YAI_TEMPERATURE` |
+| `TOP_P` | Top-p sampling | `1.0` | `YAI_TOP_P` |
+| `MAX_TOKENS` | Max response tokens | `1024` | `YAI_MAX_TOKENS` |
+| `MAX_HISTORY` | Max history entries | `500` | `YAI_MAX_HISTORY` |
+| `AUTO_SUGGEST` | Enable history suggestions | `true` | `YAI_AUTO_SUGGEST` |
 
-- **BASE_URL**: API endpoint URL (default: OpenAI API), env: YAI_BASE_URL
-- **API_KEY**: Your API key for the LLM provider, env: YAI_API_KEY
-- **MODEL**: The model to use (e.g., gpt-4o, gpt-3.5-turbo), default: gpt-4o, env: YAI_MODEL
-- **SHELL_NAME**: Shell to use (auto for automatic detection), default: auto, env: YAI_SHELL_NAME
-- **OS_NAME**: OS to use (auto for automatic detection), default: auto, env: YAI_OS_NAME
-- **COMPLETION_PATH**: Path for completions endpoint, default: /chat/completions, env: YAI_COMPLETION_PATH
-- **ANSWER_PATH**: Json path expression to extract answer from response, default: choices[0].message.content, env: YAI_ANSWER_PATH
-- **STREAM**: Enable/disable streaming responses, default: true, env: YAI_STREAM
-- **TIMEOUT**: Timeout for API requests (default: 60), env: YAI_TIMEOUT
-- **CODE_THEME**: Theme for code blocks, default: monokia, env: YAI_CODE_THEME
-- **TEMPERATURE**: Temperature for response generation (default: 0.7), env: YAI_TEMPERATURE
-- **TOP_P**: Top-p sampling for response generation (default: 1.0), env: YAI_TOP_P
-- **MAX_TOKENS**: Maximum number of tokens for response generation (default: 1024), env: YAI_MAX_TOKENS
-- **MAX_HISTORY**: Max history size, default: 500, env: YAI_MAX_HISTORY
-- **AUTO_SUGGEST**: Auto suggest from history, default: true, env: YAI_AUTO_SUGGEST
+### LLM Provider Configuration
 
-Default config of `COMPLETION_PATH` and `ANSWER_PATH` is OpenAI compatible. If you are using OpenAI or other OpenAI compatible LLM provider, you can use the default config.
+YAICLI works with all major LLM providers. The default configuration is set up for OpenAI, but you can easily switch to other providers.
 
-If you wish to use other providers that are not compatible with the openai interface, you can use the following config:
+#### Pre-configured Provider Settings
 
-- claude:
-  - BASE_URL: https://api.anthropic.com/v1
-  - COMPLETION_PATH: /messages
-  - ANSWER_PATH: content.0.text
-- cohere:
-  - BASE_URL: https://api.cohere.com/v2
-  - COMPLETION_PATH: /chat
-  - ANSWER_PATH: message.content.[0].text
-- google:
-  - BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai
-  - COMPLETION_PATH: /chat/completions
-  - ANSWER_PATH: choices[0].message.content
+| Provider | BASE_URL | COMPLETION_PATH | ANSWER_PATH |
+|----------|----------|-----------------|-------------|
+| **OpenAI** (default) | `https://api.openai.com/v1` | `chat/completions` | `choices[0].message.content` |
+| **Claude** (native API) | `https://api.anthropic.com/v1` | `messages` | `content[0].text` |
+| **Claude** (OpenAI-compatible) | `https://api.anthropic.com/v1/openai` | `chat/completions` | `choices[0].message.content` |
+| **Cohere** | `https://api.cohere.com/v2` | `chat` | `message.content[0].text` |
+| **Google Gemini** | `https://generativelanguage.googleapis.com/v1beta/openai` | `chat/completions` | `choices[0].message.content` |
 
-You can use google OpenAI complete endpoint and leave `COMPLETION_PATH` and `ANSWER_PATH` as default. BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai. See https://ai.google.dev/gemini-api/docs/openai
+> **Note**: Many providers offer OpenAI-compatible endpoints that work with the default settings.
+> - Google Gemini: https://ai.google.dev/gemini-api/docs/openai
+> - Claude: https://docs.anthropic.com/en/api/openai-sdk
 
-Claude also has a testable OpenAI-compatible interface, you can just use Calude endpoint and leave `COMPLETION_PATH` and `ANSWER_PATH` as default. See: https://docs.anthropic.com/en/api/openai-sdk
+#### Custom Provider Configuration Guide
 
-If you not sure how to config `COMPLETION_PATH` and `ANSWER_PATH`, here is a guide:
+To configure a custom provider:
+
 1. **Find the API Endpoint**:
-   - Visit the documentation of the LLM provider you want to use.
-   - Find the API endpoint for the completion task. This is usually under the "API Reference" or "Developer Documentation" section.
+   - Check the provider's API documentation for their chat completion endpoint
+
 2. **Identify the Response Structure**:
-   - Look for the structure of the response. This typically includes fields like `choices`, `completion`, etc.
-3. **Identify the Path Expression**:
-   Forexample, claude response structure like this:
-   ```json
-      {
-      "content": [
-        {
-          "text": "Hi! My name is Claude.",
-          "type": "text"
-        }
-      ],
-      "id": "msg_013Zva2CMHLNnXjNJJKqJ2EF",
-      "model": "claude-3-7-sonnet-20250219",
-      "role": "assistant",
-      "stop_reason": "end_turn",
-      "stop_sequence": null,
-      "type": "message",
-      "usage": {
-        "input_tokens": 2095,
-        "output_tokens": 503
-      }
+   - Look at the JSON response format to find where the text content is located
+
+3. **Set the Path Expression**:
+   - Use jmespath syntax to specify the path to the text content
+
+**Example**: For Claude's native API, the response looks like:
+```json
+{
+  "content": [
+    {
+      "text": "Hi! My name is Claude.",
+      "type": "text"
     }
-   ```
-    We are looking for the `text` field, so the path should be 1.Key `content`, 2.First obj `[0]`, 3.Key `text`. So it should be `content.[0].text`.
+  ],
+  "id": "msg_013Zva2CMHLNnXjNJJKqJ2EF",
+  "model": "claude-3-7-sonnet-20250219",
+  "role": "assistant"
+}
+```
 
-**CODE_THEME**
+The path to extract the text is: `content.0.text`
 
-You can find the list of code theme here: https://pygments.org/styles/
+### Syntax Highlighting Themes
 
-Default: monokia
-![monikia](artwork/monokia.png)
+YAICLI supports all Pygments syntax highlighting themes. You can set your preferred theme in the config file:
 
-## Usage
+```ini
+CODE_THEME=monokai
+```
 
-### Basic Usage
+Browse available themes at: https://pygments.org/styles/
+
+![monokai theme example](artwork/monokia.png)
+
+## 🚀 Usage
+
+### Quick Start
 
 ```bash
-# One-shot mode
+# Get a quick answer
 ai "What is the capital of France?"
 
-# Chat mode
+# Start an interactive chat session
 ai --chat
 
-# Shell command generation mode
+# Generate and execute shell commands
 ai --shell "Create a backup of my Documents folder"
 
-# Verbose mode for debugging
+# Analyze code from a file
+cat app.py | ai "Explain what this code does"
+
+# Debug with verbose mode
 ai --verbose "Explain quantum computing"
 ```
 
-### Command Line Options
-
-Arguments:
-- `<PROMPT>`: Argument
-
-Options:
-- `--install-completion`: Install completion for the current shell
-- `--show-completion`: Show completion for the current shell, to copy it or customize the installation
-- `--help` or `-h`: Show this message and exit
-- `--template`: Show the config template.
-
-Run Options:
-- `--verbose` or `-V`: Show verbose information
-- `--chat` or `-c`: Start in chat mode
-- `--shell` or `-s`: Generate and execute shell command
-
-```bash
-ai -h
-
-Usage: AI [OPTIONS] [PROMPT]
-
-YAICLI: Your AI assistant in the command line.
-
- Call with a PROMPT to get a direct answer, use --shell to execute as command, or use --chat for an interactive session.
-
-╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available. [default: None]                                                                    │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                                                                                                            │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Mode Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --chat   -c        Start in interactive chat mode.                                                                                                                       │
-│ --shell  -s        Generate and optionally execute a shell command (non-interactive).                                                                                    │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Other Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --verbose   -V        Show verbose output (e.g., loaded config).                                                                                                         │
-│ --template            Show the default config file template and exit.                                                                                                    │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+### Command Line Reference
 
 ```
+Usage: ai [OPTIONS] [PROMPT]
+```
 
-### Interactive Mode
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--chat` | `-c` | Start in interactive chat mode |
+| `--shell` | `-s` | Generate and execute shell commands |
+| `--help` | `-h` | Show help message and exit |
+| `--verbose` | `-V` | Show detailed debug information |
+| `--template` | | Display the config template |
 
-In interactive mode (chat or shell), you can:
-- Type your queries and get responses
-- Use `Tab` to switch between Chat and Execute modes
-- Type '/exit' to exit
-- Type '/clear' to clear history
-- Type '/his' to show history
+### Interactive Mode Features
 
-### Shell Command Generation
+<table>
+<tr>
+<td width="50%">
 
-In Execute mode:
-1. Enter your request in natural language
-2. YAICLI will generate an appropriate shell command
-3. Review the command
-4. Confirm to execute or reject
+**Commands**
+- `/exit` - Exit the application
+- `/clear` - Clear conversation history
+- `/his` - Show command history
+- `/mode chat|exec` - Switch modes
 
-### Keyboard Shortcuts
-- `Tab`: Switch between Chat and Execute modes
-- `Ctrl+C`: Exit
-- `Ctrl+R`: Search history
-- `↑/↓`: Navigate history
+**Keyboard Shortcuts**
+- `Tab` - Toggle between Chat/Execute modes
+- `Ctrl+C` or `Ctrl+D` - Exit
+- `Ctrl+R` - Search history
+- `↑/↓` - Navigate through history
 
-### Stdin
-You can also pipe input to YAICLI:
+</td>
+<td width="50%">
+
+**Chat Mode** (💬)
+- Natural conversations with context
+- Markdown and code formatting
+- Reasoning display for complex queries
+
+**Execute Mode** (🚀)
+- Generate shell commands from descriptions
+- Review commands before execution
+- Edit commands before running
+- Safe execution with confirmation
+
+</td>
+</tr>
+</table>
+
+### Input Methods
+
+**Direct Input**
+```bash
+ai "What is the capital of France?"
+```
+
+**Piped Input**
 ```bash
 echo "What is the capital of France?" | ai
 ```
 
+**File Analysis**
 ```bash
-cat demo.py | ai "How to use this tool?"
+cat demo.py | ai "Explain this code"
 ```
 
-### History
-Support max history size. Set MAX_HISTORY in config file. Default is 500.
+**Combined Input**
+```bash
+cat error.log | ai "Why am I getting these errors in my Python app?"
+```
 
-## Examples
+### History Management
 
-### Have a Chat
+YAICLI maintains a history of your interactions (default: 500 entries) stored in `~/.yaicli_history`. You can:
+
+- Configure history size with `MAX_HISTORY` in config
+- Search history with `Ctrl+R` in interactive mode
+- View recent commands with `/his` command
+
+## 📱 Examples
+
+### Quick Answer Mode
 
 ```bash
 $ ai "What is the capital of France?"
@@ -284,7 +309,7 @@ Assistant:
 The capital of France is Paris.
 ```
 
-### Command Gen and Run
+### Command Generation & Execution
 
 ```bash
 $ ai -s 'Check the current directory size'
@@ -305,46 +330,48 @@ Output:
 ```bash
 $ ai --chat
 
-██    ██  █████  ██  ██████ ██      ██
- ██  ██  ██   ██ ██ ██      ██      ██
-  ████   ███████ ██ ██      ██      ██
-   ██    ██   ██ ██ ██      ██      ██
-   ██    ██   ██ ██  ██████ ███████ ██
+ ██    ██  █████  ██  ██████ ██      ██
+  ██  ██  ██   ██ ██ ██      ██      ██
+   ████   ███████ ██ ██      ██      ██
+    ██    ██   ██ ██ ██      ██      ██
+    ██    ██   ██ ██  ██████ ███████ ██
 
-Press TAB to change in chat and exec mode
-Type /clear to clear chat history
-Type /his to see chat history
-Press Ctrl+C or type /exit to exit
-
-💬 > Tell me about the solar system
+Welcome to YAICLI!
+Press TAB to switch mode
+/clear             : Clear chat history
+/his               : Show chat history
+/exit|Ctrl+D|Ctrl+C: Exit
+/mode chat|exec    : Switch mode (Case insensitive)
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ 💬 > Tell me about the solar system
 
 Assistant:
-Certainly! Here’s a brief overview of the solar system:
+Solar System Overview
 
- • Sun: The central star of the solar system, providing light and energy.
- • Planets:
-    • Mercury: Closest to the Sun, smallest planet.
-    • Venus: Second planet, known for its thick atmosphere and high surface temperature.
-    • Earth: Third planet, the only known planet to support life.
-    • Mars: Fourth planet, often called the "Red Planet" due to its reddish appearance.
-    • Jupiter: Largest planet, a gas giant with many moons.
-    • Saturn: Known for its prominent ring system, also a gas giant.
-    • Uranus: An ice giant, known for its unique axial tilt.
-    • Neptune: Another ice giant, known for its deep blue color.
- • Dwarf Planets:
-    • Pluto: Once considered the ninth planet, now classified as
+ • Central Star: The Sun (99% of system mass, nuclear fusion).
+ • Planets: 8 total.
+    • Terrestrial (rocky): Mercury, Venus, Earth, Mars.
+    • Gas Giants: Jupiter, Saturn.
+    • Ice Giants: Uranus, Neptune.
+ • Moons: Over 200 (e.g., Earth: 1, Jupiter: 95).
+ • Smaller Bodies:
+    • Asteroids (between Mars/Venus), comets ( icy, distant), * dwarf planets* (Pluto, Ceres).
+ • Oort Cloud: spherical shell of icy objects ~1–100,000天文單位 (AU) from Sun).
+ • Heliosphere: Solar wind boundary protecting Earth from cosmic radiation.
+
+Key Fact: Earth is the only confirmed habitable planet.
 
 🚀 > Check the current directory size
 Assistant:
 du -sh .
-╭─ Command ─╮
-│ du -sh .  │
-╰───────────╯
+╭─ Suggest Command ─╮
+│ du -sh .          │
+╰───────────────────╯
 Execute command? [e]dit, [y]es, [n]o (n): e
-Edit command, press enter to execute:
-du -sh ./
-Output:
-109M    ./
+Edit command: du -sh ./
+--- Executing ---
+ 55M    ./
+--- Finished ---
 🚀 >
 ```
 
@@ -354,9 +381,9 @@ Output:
 $ ai --shell "Find all PDF files in my Downloads folder"
 Assistant:
 find ~/Downloads -type f -name "*.pdf"
-╭─ Command ──────────────────────────────╮
-│ find ~/Downloads -type f -name "*.pdf" │
-╰────────────────────────────────────────╯
+╭─ Suggest Command ───────────────────────╮
+│ find ~/Downloads -type f -iname "*.pdf" │
+╰─────────────────────────────────────────╯
 Execute command? [e]dit, [y]es, [n]o (n): y
 Output:
 
@@ -365,24 +392,41 @@ Output:
 ...
 ```
 
-## Technical Implementation
+## 💻 Technical Details
 
-YAICLI is built using several Python libraries:
+### Architecture
 
-- **Typer**: Provides the command-line interface
-- **Rich**: Provides terminal content formatting and beautiful display
-- **prompt_toolkit**: Provides interactive command-line input experience
-- **httpx**: Handles API requests
-- **jmespath**: Parses JSON responses
+YAICLI is designed with a modular architecture that separates concerns and makes the codebase maintainable:
 
-## Contributing
+- **CLI Module**: Handles user interaction and command parsing
+- **API Client**: Manages communication with LLM providers
+- **Config Manager**: Handles layered configuration
+- **History Manager**: Maintains conversation history with LRU functionality
+- **Printer**: Formats and displays responses with rich formatting
 
-Contributions of code, issue reports, or feature suggestions are welcome.
+### Dependencies
 
-## License
+| Library | Purpose |
+|---------|----------|
+| [Typer](https://typer.tiangolo.com/) | Command-line interface with type hints |
+| [Rich](https://rich.readthedocs.io/) | Terminal formatting and beautiful display |
+| [prompt_toolkit](https://python-prompt-toolkit.readthedocs.io/) | Interactive input with history and auto-completion |
+| [httpx](https://www.python-httpx.org/) | Modern HTTP client with async support |
+| [jmespath](https://jmespath.org/) | JSON data extraction |
+
+## 👨‍💻 Contributing
+
+Contributions are welcome! Here's how you can help:
+
+- **Bug Reports**: Open an issue describing the bug and how to reproduce it
+- **Feature Requests**: Suggest new features or improvements
+- **Code Contributions**: Submit a PR with your changes
+- **Documentation**: Help improve or translate the documentation
+
+## 📃 License
 
 [Apache License 2.0](LICENSE)
 
 ---
 
-*YAICLI - Making your terminal smarter*
+<p align="center"><i>YAICLI - Your AI Command Line Interface</i></p>
