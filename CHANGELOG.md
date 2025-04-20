@@ -1,5 +1,34 @@
 
 ---
+## [0.1.0](https://github.com/belingud/yaicli/compare/v0.0.19..v0.1.0) - 2025-04-20
+
+### ⛰️  Features
+
+- split content and reasoning content for better display - ([83c7cff](https://github.com/belingud/yaicli/commit/83c7cffb6a278320ef6d3884ac6ff9a8a7c4910f)) - Belingud
+
+### 🚜 Refactor
+
+- Replace "reasoning" with "thinking" in tests, fix CLI exit - ([519d210](https://github.com/belingud/yaicli/commit/519d21024993db434671375310ce0417610d30ee)) - Belingud
+- Rename INTERACTIVE_MAX_HISTORY to INTERACTIVE_ROUND - ([ac17cad](https://github.com/belingud/yaicli/commit/ac17cadad1015cf4650a84f1ca566da4afc08e54)) - Belingud
+- refactor yaicli, imporve logic - ([71d19d6](https://github.com/belingud/yaicli/commit/71d19d6f0acc4ea1f139392473ddc7a968b78896)) - Belingud
+- extract completion response processing logic - ([d9f8d08](https://github.com/belingud/yaicli/commit/d9f8d085198bc1374f021f24204d81f23a923949)) - Belingud
+- refactor yaicli structure - ([e2ad1be](https://github.com/belingud/yaicli/commit/e2ad1bec6426120bf2ff162a248a7cf6b82e21c7)) - Belingud
+
+### 📚 Documentation
+
+- improve README with detailed features and usage - ([555f2b7](https://github.com/belingud/yaicli/commit/555f2b7832649b6de035298454f3332f2d1917a2)) - Belingud
+- add example artwork - ([8b40706](https://github.com/belingud/yaicli/commit/8b40706e644c9c7a1c31c19286accd23d055f578)) - Belingud
+- update README with timeout option and improved help text - ([cd0f031](https://github.com/belingud/yaicli/commit/cd0f031148bc1dfe19602ea23ff0a98c75464ad0)) - Belingud
+- update CHANGELOG for v0.0.19 release - ([4ff2781](https://github.com/belingud/yaicli/commit/4ff2781334957dd6b13dd694ac6f52f045094a95)) - Belingud
+
+### 🧪 Testing
+
+- add new options to mock CLI config - ([0279155](https://github.com/belingud/yaicli/commit/0279155bbb53db57c128834d35d17193970d2bbe)) - Belingud
+- update test case for refactor - ([d6072b3](https://github.com/belingud/yaicli/commit/d6072b39bc4e798030fe28ed09fede9150cd933e)) - Belingud
+- update tests for refactor - ([024edb7](https://github.com/belingud/yaicli/commit/024edb7f22fd479ecf2f225d5d8f7d59af4777e0)) - Belingud
+
+
+---
 ## [0.0.19](https://github.com/belingud/yaicli/compare/v0.0.18..v0.0.19) - 2025-04-16
 
 ### ⛰️  Features
