@@ -1,9 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 
 # Assuming your typer app object is named 'app' in yaicli.entry
-from yaicli.entry import app, DEFAULT_CONFIG_INI
+from yaicli.entry import DEFAULT_CONFIG_INI, app
 
 runner = CliRunner()
 

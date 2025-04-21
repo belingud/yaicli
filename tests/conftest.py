@@ -1,5 +1,7 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch
+
 import yaicli.config  # Import module to patch
 from yaicli.cli import CLI
 
@@ -26,3 +28,8 @@ def cli():
     # will use the temporary config path when calling load_config.
     app = CLI()
     return app
+
+
+@pytest.fixture(scope="function")
+def mock_console():
+    return MagicMock()

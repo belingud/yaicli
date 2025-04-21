@@ -1,11 +1,11 @@
 import os
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-import pytest  # Import pytest
 import click
+import pytest  # Import pytest
 
-from yaicli.cli import CLI, CHAT_MODE, EXEC_MODE, TEMP_MODE
+from yaicli.cli import CHAT_MODE, CLI, EXEC_MODE, TEMP_MODE
 
 
 class MockResponse:

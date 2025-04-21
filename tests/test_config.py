@@ -1,5 +1,7 @@
+from unittest.mock import MagicMock, mock_open, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, mock_open
+
 from yaicli.config import DEFAULT_CONFIG_MAP, Config
 
 

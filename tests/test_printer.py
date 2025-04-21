@@ -1,13 +1,13 @@
-import pytest
-from unittest.mock import MagicMock, patch, call
 import itertools
+from unittest.mock import MagicMock, call, patch
 
+import pytest
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 
-from yaicli.printer import Printer
 from yaicli.const import EventTypeEnum  # Import EventTypeEnum
+from yaicli.printer import Printer
 
 
 @pytest.fixture

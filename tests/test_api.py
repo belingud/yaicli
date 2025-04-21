@@ -1,8 +1,10 @@
-import pytest
-from unittest.mock import MagicMock, patch
-from yaicli.api import ApiClient, parse_stream_line
-import httpx
 import json
+from unittest.mock import MagicMock, patch
+
+import httpx
+import pytest
+
+from yaicli.api import ApiClient, parse_stream_line
 
 
 # Basic config fixture for testing
