@@ -22,7 +22,7 @@ def main(
         Optional[str], typer.Argument(help="The prompt to send to the LLM. Reads from stdin if available.")
     ] = None,
     chat: Annotated[
-        bool, typer.Option("--chat", "-c", help="Start in interactive chat mode.", rich_help_panel="Mode Options")
+        bool, typer.Option("--chat", "-c", help="Start in interactive chat mode.", rich_help_panel="Chat Options")
     ] = False,
     shell: Annotated[
         bool,
@@ -30,7 +30,16 @@ def main(
             "--shell",
             "-s",
             help="Generate and optionally execute a shell command (non-interactive).",
-            rich_help_panel="Mode Options",
+            rich_help_panel="Shell Options",
+        ),
+    ] = False,
+    list_chats: Annotated[
+        bool,
+        typer.Option(
+            "--list-chats",
+            "-lc",
+            help="List saved chat sessions.",
+            rich_help_panel="Chat Options",
         ),
     ] = False,
     verbose: Annotated[
@@ -67,18 +76,20 @@ def main(
                 final_prompt = stdin_content
 
     # Basic validation for conflicting options or missing prompt
-    if not final_prompt and not chat:
-        # If no prompt and not starting chat, show help
+    if not final_prompt and not chat and not list_chats:
+        # If no prompt, not starting chat, and not listing chats, show help
         typer.echo(ctx.get_help())
         raise typer.Exit()
-    if chat and final_prompt:
-        # Warn if both chat mode and a prompt are given (prompt will be ignored)
-        # Or, could use the prompt as the first message in chat mode
-        print("Warning: Starting in chat mode. Initial prompt argument will be ignored.")
 
     try:
         # Instantiate the main CLI class
         cli_instance = CLI(verbose=verbose)
+
+        # Handle list_chats option
+        if list_chats:
+            cli_instance._list_chats()
+            return
+
         # Run the appropriate mode
         cli_instance.run(chat=chat, shell=shell, prompt=final_prompt)
     except Exception as e:

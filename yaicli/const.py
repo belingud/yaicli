@@ -1,15 +1,21 @@
 from enum import StrEnum
+from pathlib import Path
+from tempfile import gettempdir
 
 CMD_CLEAR = "/clear"
 CMD_EXIT = "/exit"
 CMD_HISTORY = "/his"
 CMD_MODE = "/mode"
+CMD_SAVE_CHAT = "/save"
+CMD_LOAD_CHAT = "/load"
+CMD_LIST_CHATS = "/chats"
+CMD_DELETE_CHAT = "/delete"
 
 EXEC_MODE = "exec"
 CHAT_MODE = "chat"
 TEMP_MODE = "temp"
 
-DEFAULT_CONFIG_PATH = "~/.config/yaicli/config.ini"
+CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 DEFAULT_CODE_THEME = "monokai"
 DEFAULT_COMPLETION_PATH = "chat/completions"
 DEFAULT_ANSWER_PATH = "choices[0].message.content"
@@ -26,6 +32,8 @@ DEFAULT_MAX_HISTORY: int = 500
 DEFAULT_AUTO_SUGGEST = "true"
 DEFAULT_TIMEOUT: int = 60
 DEFAULT_INTERACTIVE_ROUND: int = 25
+DEFAULT_CHAT_HISTORY_DIR = Path(gettempdir()) / "yaicli/chats"
+DEFAULT_MAX_SAVED_CHATS = 20
 
 
 class EventTypeEnum(StrEnum):
@@ -66,7 +74,7 @@ DEFAULT_CONFIG_MAP = {
     # System detection hints
     "SHELL_NAME": {"value": DEFAULT_SHELL_NAME, "env_key": "YAI_SHELL_NAME", "type": str},
     "OS_NAME": {"value": DEFAULT_OS_NAME, "env_key": "YAI_OS_NAME", "type": str},
-    # API response parsing
+    # API paths (usually no need to change for OpenAI compatible APIs)
     "COMPLETION_PATH": {"value": DEFAULT_COMPLETION_PATH, "env_key": "YAI_COMPLETION_PATH", "type": str},
     "ANSWER_PATH": {"value": DEFAULT_ANSWER_PATH, "env_key": "YAI_ANSWER_PATH", "type": str},
     # API call parameters
@@ -84,6 +92,9 @@ DEFAULT_CONFIG_MAP = {
     "CODE_THEME": {"value": DEFAULT_CODE_THEME, "env_key": "YAI_CODE_THEME", "type": str},
     "MAX_HISTORY": {"value": DEFAULT_MAX_HISTORY, "env_key": "YAI_MAX_HISTORY", "type": int},
     "AUTO_SUGGEST": {"value": DEFAULT_AUTO_SUGGEST, "env_key": "YAI_AUTO_SUGGEST", "type": bool},
+    # Chat history settings
+    "CHAT_HISTORY_DIR": {"value": DEFAULT_CHAT_HISTORY_DIR, "env_key": "YAI_CHAT_HISTORY_DIR", "type": str},
+    "MAX_SAVED_CHATS": {"value": DEFAULT_MAX_SAVED_CHATS, "env_key": "YAI_MAX_SAVED_CHATS", "type": int},
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
@@ -114,6 +125,11 @@ INTERACTIVE_ROUND={DEFAULT_CONFIG_MAP["INTERACTIVE_ROUND"]["value"]}
 
 # UI/UX
 CODE_THEME={DEFAULT_CONFIG_MAP["CODE_THEME"]["value"]}
-MAX_HISTORY={DEFAULT_CONFIG_MAP["MAX_HISTORY"]["value"]} # Max entries kept in history file
+# Max entries kept in history file
+MAX_HISTORY={DEFAULT_CONFIG_MAP["MAX_HISTORY"]["value"]}
 AUTO_SUGGEST={DEFAULT_CONFIG_MAP["AUTO_SUGGEST"]["value"]}
+
+# Chat history settings
+CHAT_HISTORY_DIR={DEFAULT_CONFIG_MAP["CHAT_HISTORY_DIR"]["value"]}
+MAX_SAVED_CHATS={DEFAULT_CONFIG_MAP["MAX_SAVED_CHATS"]["value"]}
 """

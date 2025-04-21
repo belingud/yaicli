@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import time
 import traceback
 from os.path import devnull
 from pathlib import Path
@@ -17,13 +18,18 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from yaicli.api import ApiClient
+from yaicli.chat_manager import ChatManager, FileChatManager
 from yaicli.config import CONFIG_PATH, Config
 from yaicli.const import (
     CHAT_MODE,
     CMD_CLEAR,
+    CMD_DELETE_CHAT,
     CMD_EXIT,
     CMD_HISTORY,
+    CMD_LIST_CHATS,
+    CMD_LOAD_CHAT,
     CMD_MODE,
+    CMD_SAVE_CHAT,
     DEFAULT_CODE_THEME,
     DEFAULT_INTERACTIVE_ROUND,
     DEFAULT_OS_NAME,
@@ -42,15 +48,30 @@ class CLI:
     HISTORY_FILE = Path("~/.yaicli_history").expanduser()
 
     def __init__(
-        self, verbose: bool = False, api_client: Optional[ApiClient] = None, printer: Optional[Printer] = None
+        self,
+        verbose: bool = False,
+        api_client: Optional[ApiClient] = None,
+        printer: Optional[Printer] = None,
+        chat_manager: Optional[ChatManager] = None,
     ):
         self.verbose = verbose
         self.console = get_console()
         self.bindings = KeyBindings()
         self.config: Config = Config(self.console)
         self.current_mode: str = TEMP_MODE
+
         self.history = []
         self.interactive_max_history = self.config.get("INTERACTIVE_MAX_HISTORY", DEFAULT_INTERACTIVE_ROUND)
+        self.chat_title = None
+        self.chat_start_time = None
+        self.is_temp_session = True
+
+        # Get and create chat history directory from configuration
+        self.chat_history_dir = Path(self.config["CHAT_HISTORY_DIR"])
+        self.chat_history_dir.mkdir(parents=True, exist_ok=True)
+
+        # Initialize session manager
+        self.chat_manager = chat_manager or FileChatManager(self.config)
 
         # Detect OS and Shell if set to auto
         if self.config.get("OS_NAME") == DEFAULT_OS_NAME:
@@ -82,14 +103,101 @@ class CLI:
 
     def get_prompt_tokens(self) -> List[Tuple[str, str]]:
         """Return prompt tokens for current mode"""
-        qmark = "💬" if self.current_mode == CHAT_MODE else "🚀" if self.current_mode == EXEC_MODE else "📝"
-        return [("class:qmark", f" {qmark} "), ("class:prompt", "> ")]
+        mode_icon = "💬" if self.current_mode == CHAT_MODE else "🚀" if self.current_mode == EXEC_MODE else "📝"
+        return [("class:qmark", f" {mode_icon} "), ("class:prompt", "> ")]
 
     def _check_history_len(self) -> None:
         """Check history length and remove oldest messages if necessary"""
         target_len = self.interactive_max_history * 2
         if len(self.history) > target_len:
             self.history = self.history[-target_len:]
+
+    def _save_chat(self, title: Optional[str] = None) -> None:
+        """Save current chat history to a file using session manager."""
+        if not self.history:
+            self.console.print("No chat history to save.", style="yellow")
+            return
+
+        title = title or self.chat_title or f"Chat-{int(time.time())}"
+        saved_title = self.chat_manager.save_chat(self.history, title)
+
+        if not saved_title:
+            self.console.print("Failed to save chat.", style="bold red")
+            return
+
+        # Session list will be refreshed automatically by the save method
+        self.console.print(f"Chat saved as: {saved_title}", style="bold green")
+
+        # If this was a temporary session, mark it as non-temporary now that it's saved
+        if self.is_temp_session:
+            self.is_temp_session = False
+            self.chat_title = saved_title
+            self.chat_start_time = int(time.time())
+            self.console.print(
+                "Session is now marked as persistent and will be auto-saved on exit.", style="bold green"
+            )
+
+    def _list_chats(self) -> None:
+        """List all saved chat sessions using session manager."""
+        chats = self.chat_manager.list_chats()
+
+        if not chats:
+            self.console.print("No saved chats found.", style="yellow")
+            return
+
+        self.console.print("Saved Chats:", style="bold underline")
+        for chat in chats:
+            index = chat["index"]
+            title = chat["title"]
+            date = chat.get("date", "")
+
+            if date:
+                self.console.print(f"[dim]{index}.[/dim] [bold blue]{title}[/bold blue] - {date}")
+            else:
+                self.console.print(f"[dim]{index}.[/dim] [bold blue]{title}[/bold blue]")
+
+    def _refresh_chats(self) -> None:
+        """Force refresh the chat list."""
+        self.chat_manager.refresh_chats()
+
+    def _load_chat_by_index(self, index: int) -> bool:
+        """Load a chat session by its index using session manager."""
+        if not self.chat_manager.validate_chat_index(index):
+            self.console.print("Invalid chat index.", style="bold red")
+            return False
+
+        chat_data = self.chat_manager.load_chat(index)
+
+        if not chat_data:
+            self.console.print("Invalid chat index or chat not found.", style="bold red")
+            return False
+
+        self.history = chat_data.get("history", [])
+        self.chat_title = chat_data.get("title")
+        self.chat_start_time = chat_data.get("timestamp", int(time.time()))
+        self.is_temp_session = False
+
+        self.console.print(f"Loaded chat: {self.chat_title}", style="bold green")
+        return True
+
+    def _delete_chat_by_index(self, index: int) -> bool:
+        """Delete a chat session by its index using session manager."""
+        if not self.chat_manager.validate_chat_index(index):
+            self.console.print("Invalid chat index.", style="bold red")
+            return False
+
+        chat_data = self.chat_manager.load_chat(index)
+
+        if not chat_data:
+            self.console.print("Invalid chat index or chat not found.", style="bold red")
+            return False
+
+        if self.chat_manager.delete_chat(index):
+            self.console.print(f"Deleted chat: {chat_data['title']}", style="bold green")
+            return True
+        else:
+            self.console.print(f"Failed to delete chat: {chat_data['title']}", style="bold red")
+            return False
 
     def _handle_special_commands(self, user_input: str) -> Optional[bool]:
         """Handle special command return: True-continue loop, False-exit loop, None-non-special command"""
@@ -116,6 +224,42 @@ class CLI:
                         self.console.print("    Assistant:", style="bold green")
                         self.console.print(padded_md)
             return True
+
+        # Handle /save command - optional title parameter
+        if command.startswith(CMD_SAVE_CHAT):
+            parts = command.split(maxsplit=1)
+            title = parts[1] if len(parts) > 1 else None
+            self._save_chat(title)
+            return True
+
+        # Handle /load command - requires index parameter
+        if command.startswith(CMD_LOAD_CHAT):
+            parts = command.split(maxsplit=1)
+            if len(parts) == 2 and parts[1].isdigit():
+                # Try to parse as an index first
+                index = int(parts[1])
+                self._load_chat_by_index(index=index)
+            else:
+                self.console.print(f"Usage: {CMD_LOAD_CHAT} <index>", style="yellow")
+                self._list_chats()
+            return True
+
+        # Handle /delete command - requires index parameter
+        if command.startswith(CMD_DELETE_CHAT):
+            parts = command.split(maxsplit=1)
+            if len(parts) == 2 and parts[1].isdigit():
+                index = int(parts[1])
+                self._delete_chat_by_index(index=index)
+            else:
+                self.console.print(f"Usage: {CMD_DELETE_CHAT} <index>", style="yellow")
+                self._list_chats()
+            return True
+
+        # Handle /chats command to list saved chats
+        if command == CMD_LIST_CHATS:
+            self._list_chats()
+            return True
+
         # Handle /mode command
         if command.startswith(CMD_MODE):
             parts = command.split(maxsplit=1)
@@ -251,9 +395,25 @@ class CLI:
             style="bold cyan",
         )
         self.console.print("Welcome to YAICLI!", style="bold")
+
+        # Display session type
+        if self.is_temp_session:
+            self.console.print("Current: [bold yellow]Temporary Session[/bold yellow] (use /save to make persistent)")
+        else:
+            self.console.print(
+                f"Current: [bold green]Persistent Session[/bold green]{f': {self.chat_title}' if self.chat_title else ''}"
+            )
+
         self.console.print("Press [bold yellow]TAB[/bold yellow] to switch mode")
         self.console.print(f"{CMD_CLEAR:<19}: Clear chat history")
         self.console.print(f"{CMD_HISTORY:<19}: Show chat history")
+        save_cmd = f"{CMD_SAVE_CHAT} <title>"
+        self.console.print(f"{save_cmd:<19}: Save current chat")
+        load_cmd = f"{CMD_LOAD_CHAT} <index>"
+        self.console.print(f"{load_cmd:<19}: Load a saved chat")
+        delete_cmd = f"{CMD_DELETE_CHAT} <index>"
+        self.console.print(f"{delete_cmd:<19}: Delete a saved chat")
+        self.console.print(f"{CMD_LIST_CHATS:<19}: List saved chats")
         cmd_exit = f"{CMD_EXIT}|Ctrl+D|Ctrl+C"
         self.console.print(f"{cmd_exit:<19}: Exit")
         cmd_mode = f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"
@@ -263,6 +423,10 @@ class CLI:
         """Run the main Read-Eval-Print Loop (REPL)."""
         self.prepare_chat_loop()
         self._print_welcome_message()
+        chat_info = {}
+        if self.chat_title:
+            chat_info = self.chat_manager.load_chat_by_title(self.chat_title)
+            self.history = chat_info.get("history", [])
         while True:
             self.console.print(Markdown("---", code_theme=self.config.get("CODE_THEME", "monokai")))
             try:
@@ -279,6 +443,14 @@ class CLI:
                     break
             except (KeyboardInterrupt, EOFError):
                 break
+
+        # Auto-save chat history when exiting if there are messages and not a temporary session
+        if not self.is_temp_session and self.history:
+            if self.chat_title:
+                self._save_chat(self.chat_title)
+            else:
+                self._save_chat()
+
         self.console.print("\nExiting YAICLI... Goodbye!", style="bold green")
 
     def _run_once(self, prompt_arg: str, is_shell_mode: bool) -> None:
@@ -325,6 +497,20 @@ class CLI:
                 self.console.print("[bold red]Error:[/bold red] API key not found. Cannot start chat mode.")
                 return
             self.current_mode = CHAT_MODE
+
+            # Only set chat start time and title if a prompt is provided
+            if prompt:
+                self.chat_start_time = int(time.time())
+                self.chat_title = self.chat_manager.make_chat_title(prompt)
+                self.console.print(f"Chat title: [bold]{self.chat_title}[/bold]")
+                self.is_temp_session = False
+            else:
+                # Mark as temporary session if no prompt
+                self.is_temp_session = True
+                self.console.print(
+                    "Starting a temporary chat session (will not be saved automatically)", style="yellow"
+                )
+
             self._run_repl()
         elif prompt:
             self._run_once(prompt, shell)

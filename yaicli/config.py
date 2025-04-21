@@ -1,64 +1,18 @@
 import configparser
 from os import getenv
-from pathlib import Path
 from typing import Optional
 
 from rich import get_console
 from rich.console import Console
 
+from yaicli.const import (
+    CONFIG_PATH,
+    DEFAULT_CHAT_HISTORY_DIR,
+    DEFAULT_CONFIG_INI,
+    DEFAULT_CONFIG_MAP,
+    DEFAULT_MAX_SAVED_CHATS,
+)
 from yaicli.utils import str2bool
-
-DEFAULT_CONFIG_MAP = {
-    # Core API settings
-    "BASE_URL": {"value": "https://api.openai.com/v1", "env_key": "YAI_BASE_URL", "type": str},
-    "API_KEY": {"value": "", "env_key": "YAI_API_KEY", "type": str},
-    "MODEL": {"value": "gpt-4o", "env_key": "YAI_MODEL", "type": str},
-    # System detection hints
-    "SHELL_NAME": {"value": "auto", "env_key": "YAI_SHELL_NAME", "type": str},
-    "OS_NAME": {"value": "auto", "env_key": "YAI_OS_NAME", "type": str},
-    # API response parsing
-    "COMPLETION_PATH": {"value": "chat/completions", "env_key": "YAI_COMPLETION_PATH", "type": str},
-    "ANSWER_PATH": {"value": "choices[0].message.content", "env_key": "YAI_ANSWER_PATH", "type": str},
-    # API call parameters
-    "STREAM": {"value": "true", "env_key": "YAI_STREAM", "type": bool},
-    "TEMPERATURE": {"value": "0.7", "env_key": "YAI_TEMPERATURE", "type": float},
-    "TOP_P": {"value": "1.0", "env_key": "YAI_TOP_P", "type": float},
-    "MAX_TOKENS": {"value": "1024", "env_key": "YAI_MAX_TOKENS", "type": int},
-    # UI/UX settings
-    "CODE_THEME": {"value": "monokai", "env_key": "YAI_CODE_THEME", "type": str},
-    "MAX_HISTORY": {"value": "500", "env_key": "YAI_MAX_HISTORY", "type": int},
-    "AUTO_SUGGEST": {"value": "true", "env_key": "YAI_AUTO_SUGGEST", "type": bool},
-}
-
-DEFAULT_CONFIG_INI = f"""[core]
-PROVIDER=openai
-BASE_URL={DEFAULT_CONFIG_MAP["BASE_URL"]["value"]}
-API_KEY={DEFAULT_CONFIG_MAP["API_KEY"]["value"]}
-MODEL={DEFAULT_CONFIG_MAP["MODEL"]["value"]}
-
-# auto detect shell and os (or specify manually, e.g., bash, zsh, powershell.exe)
-SHELL_NAME={DEFAULT_CONFIG_MAP["SHELL_NAME"]["value"]}
-OS_NAME={DEFAULT_CONFIG_MAP["OS_NAME"]["value"]}
-
-# API paths (usually no need to change for OpenAI compatible APIs)
-COMPLETION_PATH={DEFAULT_CONFIG_MAP["COMPLETION_PATH"]["value"]}
-ANSWER_PATH={DEFAULT_CONFIG_MAP["ANSWER_PATH"]["value"]}
-
-# true: streaming response, false: non-streaming
-STREAM={DEFAULT_CONFIG_MAP["STREAM"]["value"]}
-
-# LLM parameters
-TEMPERATURE={DEFAULT_CONFIG_MAP["TEMPERATURE"]["value"]}
-TOP_P={DEFAULT_CONFIG_MAP["TOP_P"]["value"]}
-MAX_TOKENS={DEFAULT_CONFIG_MAP["MAX_TOKENS"]["value"]}
-
-# UI/UX
-CODE_THEME={DEFAULT_CONFIG_MAP["CODE_THEME"]["value"]}
-MAX_HISTORY={DEFAULT_CONFIG_MAP["MAX_HISTORY"]["value"]}
-AUTO_SUGGEST={DEFAULT_CONFIG_MAP["AUTO_SUGGEST"]["value"]}
-"""
-
-CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 
 
 class CasePreservingConfigParser(configparser.RawConfigParser):
@@ -95,9 +49,7 @@ class Config(dict):
         self.update(self._load_defaults())
 
         # Load from config file
-        file_config = self._load_from_file()
-        if file_config:
-            self.update(file_config)
+        self._load_from_file()
 
         # Load from environment variables and apply type conversion
         self._load_from_env()
@@ -110,6 +62,17 @@ class Config(dict):
             Dictionary with default configuration values
         """
         return {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
+
+    def _ensure_version_updated_config_keys(self):
+        """Ensure configuration keys added in version updates exist in the config file.
+        Appends missing keys to the config file if they don't exist.
+        """
+        with open(CONFIG_PATH, "r+", encoding="utf-8") as f:
+            config_content = f.read()
+            if "CHAT_HISTORY_DIR" not in config_content:
+                f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}")
+            if "MAX_SAVED_CHATS" not in config_content:
+                f.write(f"\nMAX_SAVED_CHATS={DEFAULT_MAX_SAVED_CHATS}")
 
     def _load_from_file(self) -> dict[str, str]:
         """Load configuration from the config file.
@@ -128,9 +91,19 @@ class Config(dict):
 
         config_parser = CasePreservingConfigParser()
         config_parser.read(CONFIG_PATH, encoding="utf-8")
-        if "core" in config_parser:
-            return {k: v for k, v in config_parser["core"].items() if k in DEFAULT_CONFIG_MAP and v.strip()}
-        return {}
+
+        if "core" not in config_parser:
+            return {}
+
+        # Get existing configuration values
+        for k, v in config_parser["core"].items():
+            if k in DEFAULT_CONFIG_MAP and v.strip():
+                self[k] = v
+
+        # Check if keys added in version updates are missing and add them
+        self._ensure_version_updated_config_keys()
+
+        return self
 
     def _load_from_env(self) -> None:
         """Load configuration from environment variables.
