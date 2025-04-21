@@ -1,5 +1,13 @@
 # Justfile for Python project management
 
+# Format
+format:
+    @echo "Formatting code with ruff..."
+    @ruff format yaicli
+    @ruff format tests
+    @echo "Formatting code with isort..."
+    @isort yaicli tests
+
 # Clean build artifacts
 clean:
     @echo "Cleaning build artifacts..."
