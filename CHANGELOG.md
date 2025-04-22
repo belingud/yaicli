@@ -1,5 +1,29 @@
 
 ---
+## [0.2.0](https://github.com/belingud/yaicli/compare/v0.1.0..v0.2.0) - 2025-04-22
+
+### ⛰️  Features
+
+- enhance chat management and command-line interface - ([6898273](https://github.com/belingud/yaicli/commit/68982737221b18416ba1eb8201c328203ada2b72)) - Belingud
+- add chat persistent - ([291d7b7](https://github.com/belingud/yaicli/commit/291d7b7a9c2595dcc2794e3b36617cb186a6dc56)) - Belingud
+
+### 📚 Documentation
+
+- improve documentation and add chat history features - ([c0f1545](https://github.com/belingud/yaicli/commit/c0f15453862bb23fca29c8f283dcd4c82181d1c5)) - Belingud
+- Update README to clarify project description - ([21d6389](https://github.com/belingud/yaicli/commit/21d6389ea70a8770ff798c9b4d4ba22d7d075533)) - Belingud
+- update CHANGELOG.md for v0.1.0 release - ([474aaa4](https://github.com/belingud/yaicli/commit/474aaa4a120366a607edc584a8d4b698a16390ca)) - Belingud
+
+### 🧪 Testing
+
+- Update chat management and CLI tests - ([1b3ccb0](https://github.com/belingud/yaicli/commit/1b3ccb027066ec3cd80e8a0d2f9fb0cc65908f50)) - Belingud
+- update test case for chat persistent - ([af4f7e7](https://github.com/belingud/yaicli/commit/af4f7e76c2129373b5c3f9ec5971bda14bd961ea)) - Belingud
+
+### Chroe
+
+- Add format command to Justfile - ([676ba1b](https://github.com/belingud/yaicli/commit/676ba1b1759c5439593f57e26d67b7c47b9b26bd)) - Belingud
+
+
+---
 ## [0.1.0](https://github.com/belingud/yaicli/compare/v0.0.19..v0.1.0) - 2025-04-20
 
 ### ⛰️  Features
