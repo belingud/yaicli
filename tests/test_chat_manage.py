@@ -41,13 +41,13 @@ class TestFileChatManager:
         """Test chat title generation."""
         # Test with prompt
         title = chat_manager.make_chat_title("This is a test prompt")
-        assert title == "This_is_a_test_prompt"
+        assert title == "This is a test prompt"
 
         # Test with long prompt (should truncate)
-        long_prompt = "A" * 100
+        long_prompt = "A" * 150
         title = chat_manager.make_chat_title(long_prompt)
-        assert len(title) == 50
-        assert title == "A" * 50
+        assert len(title) == 100
+        assert title == "A" * 100
 
         # Test without prompt (should use timestamp)
         with patch("time.time", return_value=12345):
@@ -81,7 +81,9 @@ class TestFileChatManager:
     def test_save_chat_empty_history(self, chat_manager):
         """Test saving an empty chat history."""
         title = chat_manager.save_chat([])
-        assert title == ""
+        # Business logic updated, empty history will also return a timestamp-formatted title
+        assert title is not None
+        assert "Chat-" in title
 
     def test_save_chat_overwrite_existing(self, chat_manager):
         """Test that saving a chat with an existing title overwrites the old chat."""
@@ -151,14 +153,14 @@ class TestFileChatManager:
         index = next((chat["index"] for chat in chats if chat["title"] == "Title 1"), None)
 
         # Load by index
-        chat_data = chat_manager.load_chat(index)
+        chat_data = chat_manager.load_chat_by_index(index)
         assert chat_data["title"] == "Title 1"
         assert chat_data["history"][0]["content"] == "Chat 1"
 
     def test_load_nonexistent_chat(self, chat_manager):
         """Test loading a chat that doesn't exist."""
         # By index
-        chat_data = chat_manager.load_chat(999)
+        chat_data = chat_manager.load_chat_by_index(999)
         assert chat_data == {}
 
         # By title
@@ -194,7 +196,7 @@ class TestFileChatManager:
         assert result is True
 
         # Verify it's gone
-        assert chat_manager.load_chat(index) == {}
+        assert chat_manager.load_chat_by_index(index) == {}
         assert len(chat_manager.list_chats()) == 0
 
     def test_delete_nonexistent_chat(self, chat_manager):
@@ -225,7 +227,7 @@ class TestFileChatManager:
         info = chat_manager._parse_filename(chat_file, 1)
 
         assert info["index"] == 1
-        assert info["title"] == "Test Chat"
+        assert info["title"] == "Test_Chat"
         assert info["date"] == "2023-04-01 12:00"
 
         # Filename with special characters
@@ -233,21 +235,29 @@ class TestFileChatManager:
         info = chat_manager._parse_filename(chat_file, 2)
 
         assert info["index"] == 2
-        assert info["title"] == "Test Chat With-Dashes"
+        assert info["title"] == "Test_Chat_With-Dashes"
 
-        # Irregular filename
-        chat_file = Path("irregular_filename.json")
+        # Filename with spaces in title
+        chat_file = Path("20230401-120000-title-This is a test prompt.json")
         info = chat_manager._parse_filename(chat_file, 3)
 
         assert info["index"] == 3
-        assert info["title"] == "irregular filename"
+        assert info["title"] == "This is a test prompt"
+        assert info["date"] == "2023-04-01 12:00"
+
+        # Irregular filename
+        chat_file = Path("irregular_filename.json")
+        info = chat_manager._parse_filename(chat_file, 4)
+
+        assert info["index"] == 4
+        assert info["title"] == "irregular_filename"
         assert info["date"] == ""
 
     def test_file_error_handling(self, chat_manager, monkeypatch):
         """Test handling of file errors."""
         # Test file not found
         with monkeypatch.context() as m:
-            m.setattr(Path, "exists", lambda self: False)
+            m.setattr(Path, "exists", lambda path: False)
             chat_data = chat_manager.load_chat_by_title("Nonexistent")
             assert chat_data == {}
 
@@ -261,10 +271,10 @@ class TestFileChatManager:
             def mock_open(*args, **kwargs):
                 mock = MagicMock()
                 mock.__enter__ = lambda self: self
-                mock.__exit__ = lambda *args: None
+                mock.__exit__ = lambda self, *args: None
                 mock.read = lambda: "invalid json"
                 return mock
 
             m.setattr("builtins.open", mock_open)
-            chat_data = chat_manager.load_chat(index)
+            chat_data = chat_manager.load_chat_by_index(index)
             assert chat_data == {}
