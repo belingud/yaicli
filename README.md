@@ -19,35 +19,40 @@ YAICLI is a powerful yet lightweight command-line AI assistant that brings the c
 ## ✨ Key Features
 
 ### 🔄 Multiple Interaction Modes
-- **💬 Chat Mode**: Engage in persistent conversations with full context tracking
-- **🚀 Execute Mode**: Generate and safely run OS-specific shell commands
-- **⚡ Quick Query**: Get instant answers without entering interactive mode
+
+-   **💬 Chat Mode**: Engage in persistent conversations with full context tracking
+-   **🚀 Execute Mode**: Generate and safely run OS-specific shell commands
+-   **⚡ Quick Query**: Get instant answers without entering interactive mode
 
 ### 🧠 Smart Environment Awareness
-- **Auto-detection**: Identifies your shell (bash/zsh/PowerShell/CMD) and OS
-- **Safe Command Execution**: 3-step verification before running any command
-- **Flexible Input**: Pipe content directly (`cat log.txt | ai "analyze this"`)
+
+-   **Auto-detection**: Identifies your shell (bash/zsh/PowerShell/CMD) and OS
+-   **Safe Command Execution**: 3-step verification before running any command
+-   **Flexible Input**: Pipe content directly (`cat log.txt | ai "analyze this"`)
 
 ### 🔌 Universal LLM Compatibility
-- **OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
-- **Multi-Provider Support**: Easy configuration for Claude, Gemini, Cohere, etc.
-- **Custom Response Parsing**: Extract exactly what you need with jmespath
+
+-   **OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
+-   **Multi-Provider Support**: Easy configuration for Claude, Gemini, Cohere, etc.
+-   **Custom Response Parsing**: Extract exactly what you need with jmespath
 
 ### 💻 Enhanced Terminal Experience
-- **Real-time Streaming**: See responses as they're generated with cursor animation
-- **Rich History Management**: LRU-based history with 500 entries by default
-- **Syntax Highlighting**: Beautiful code formatting with customizable themes
+
+-   **Real-time Streaming**: See responses as they're generated with cursor animation
+-   **Rich History Management**: LRU-based history with 500 entries by default
+-   **Syntax Highlighting**: Beautiful code formatting with customizable themes
 
 ### 🛠️ Developer-Friendly
-- **Layered Configuration**: Environment variables > Config file > Sensible defaults
-- **Debugging Tools**: Verbose mode with detailed API tracing
-- **Lightweight**: Minimal dependencies with focused functionality
+
+-   **Layered Configuration**: Environment variables > Config file > Sensible defaults
+-   **Debugging Tools**: Verbose mode with detailed API tracing
+-   **Lightweight**: Minimal dependencies with focused functionality
 
 ## 📦 Installation
 
 ### Prerequisites
 
-- Python 3.9 or higher
+-   Python 3.9 or higher
 
 ### Quick Install
 
@@ -115,28 +120,35 @@ INTERACTIVE_ROUND=25
 CODE_THEME=monokai
 MAX_HISTORY=500 # Max entries kept in history file
 AUTO_SUGGEST=true
+
+# Chat history settings
+CHAT_HISTORY_DIR={DEFAULT_CONFIG_MAP["CHAT_HISTORY_DIR"]["value"]}
+MAX_SAVED_CHATS={DEFAULT_CONFIG_MAP["MAX_SAVED_CHATS"]["value"]}
 ```
 
 ### Configuration Options Reference
 
-| Option | Description | Default | Env Variable |
-|--------|-------------|---------|---------------|
-| `BASE_URL` | API endpoint URL | `https://api.openai.com/v1` | `YAI_BASE_URL` |
-| `API_KEY` | Your API key | - | `YAI_API_KEY` |
-| `MODEL` | LLM model to use | `gpt-4o` | `YAI_MODEL` |
-| `SHELL_NAME` | Shell type | `auto` | `YAI_SHELL_NAME` |
-| `OS_NAME` | Operating system | `auto` | `YAI_OS_NAME` |
-| `COMPLETION_PATH` | API completion path | `chat/completions` | `YAI_COMPLETION_PATH` |
-| `ANSWER_PATH` | JSON path for response | `choices[0].message.content` | `YAI_ANSWER_PATH` |
-| `STREAM` | Enable streaming | `true` | `YAI_STREAM` |
-| `TIMEOUT` | API timeout (seconds) | `60` | `YAI_TIMEOUT` |
-| `INTERACTIVE_ROUND` | Interactive mode rounds | `25` | `YAI_INTERACTIVE_ROUND` |
-| `CODE_THEME` | Syntax highlighting theme | `monokai` | `YAI_CODE_THEME` |
-| `TEMPERATURE` | Response randomness | `0.7` | `YAI_TEMPERATURE` |
-| `TOP_P` | Top-p sampling | `1.0` | `YAI_TOP_P` |
-| `MAX_TOKENS` | Max response tokens | `1024` | `YAI_MAX_TOKENS` |
-| `MAX_HISTORY` | Max history entries | `500` | `YAI_MAX_HISTORY` |
-| `AUTO_SUGGEST` | Enable history suggestions | `true` | `YAI_AUTO_SUGGEST` |
+| Option              | Description                                 | Default                      | Env Variable            |
+| ------------------- | ------------------------------------------- | ---------------------------- | ----------------------- |
+| `PROVIDER`          | LLM provider (openai, claude, cohere, etc.) | `openai`                     | `YAI_PROVIDER`          |
+| `BASE_URL`          | API endpoint URL                            | `https://api.openai.com/v1`  | `YAI_BASE_URL`          |
+| `API_KEY`           | Your API key                                | -                            | `YAI_API_KEY`           |
+| `MODEL`             | LLM model to use                            | `gpt-4o`                     | `YAI_MODEL`             |
+| `SHELL_NAME`        | Shell type                                  | `auto`                       | `YAI_SHELL_NAME`        |
+| `OS_NAME`           | Operating system                            | `auto`                       | `YAI_OS_NAME`           |
+| `COMPLETION_PATH`   | API completion path                         | `chat/completions`           | `YAI_COMPLETION_PATH`   |
+| `ANSWER_PATH`       | JSON path for response                      | `choices[0].message.content` | `YAI_ANSWER_PATH`       |
+| `STREAM`            | Enable streaming                            | `true`                       | `YAI_STREAM`            |
+| `TIMEOUT`           | API timeout (seconds)                       | `60`                         | `YAI_TIMEOUT`           |
+| `INTERACTIVE_ROUND` | Interactive mode rounds                     | `25`                         | `YAI_INTERACTIVE_ROUND` |
+| `CODE_THEME`        | Syntax highlighting theme                   | `monokai`                    | `YAI_CODE_THEME`        |
+| `TEMPERATURE`       | Response randomness                         | `0.7`                        | `YAI_TEMPERATURE`       |
+| `TOP_P`             | Top-p sampling                              | `1.0`                        | `YAI_TOP_P`             |
+| `MAX_TOKENS`        | Max response tokens                         | `1024`                       | `YAI_MAX_TOKENS`        |
+| `MAX_HISTORY`       | Max history entries                         | `500`                        | `YAI_MAX_HISTORY`       |
+| `AUTO_SUGGEST`      | Enable history suggestions                  | `true`                       | `YAI_AUTO_SUGGEST`      |
+| `CHAT_HISTORY_DIR`  | Chat history directory                      | `<tempdir>/yaicli/history`   | `YAI_CHAT_HISTORY_DIR`  |
+| `MAX_SAVED_CHATS`   | Max saved chats                             | `20`                         | `YAI_MAX_SAVED_CHATS`   |
 
 ### LLM Provider Configuration
 
@@ -144,47 +156,51 @@ YAICLI works with all major LLM providers. The default configuration is set up f
 
 #### Pre-configured Provider Settings
 
-| Provider | BASE_URL | COMPLETION_PATH | ANSWER_PATH |
-|----------|----------|-----------------|-------------|
-| **OpenAI** (default) | `https://api.openai.com/v1` | `chat/completions` | `choices[0].message.content` |
-| **Claude** (native API) | `https://api.anthropic.com/v1` | `messages` | `content[0].text` |
-| **Claude** (OpenAI-compatible) | `https://api.anthropic.com/v1/openai` | `chat/completions` | `choices[0].message.content` |
-| **Cohere** | `https://api.cohere.com/v2` | `chat` | `message.content[0].text` |
-| **Google Gemini** | `https://generativelanguage.googleapis.com/v1beta/openai` | `chat/completions` | `choices[0].message.content` |
+| Provider                       | BASE_URL                                                  | COMPLETION_PATH    | ANSWER_PATH                  |
+| ------------------------------ | --------------------------------------------------------- | ------------------ | ---------------------------- |
+| **OpenAI** (default)           | `https://api.openai.com/v1`                               | `chat/completions` | `choices[0].message.content` |
+| **Claude** (native API)        | `https://api.anthropic.com/v1`                            | `messages`         | `content[0].text`            |
+| **Claude** (OpenAI-compatible) | `https://api.anthropic.com/v1/openai`                     | `chat/completions` | `choices[0].message.content` |
+| **Cohere**                     | `https://api.cohere.com/v2`                               | `chat`             | `message.content[0].text`    |
+| **Google Gemini**              | `https://generativelanguage.googleapis.com/v1beta/openai` | `chat/completions` | `choices[0].message.content` |
 
 > **Note**: Many providers offer OpenAI-compatible endpoints that work with the default settings.
-> - Google Gemini: https://ai.google.dev/gemini-api/docs/openai
-> - Claude: https://docs.anthropic.com/en/api/openai-sdk
+>
+> -   Google Gemini: https://ai.google.dev/gemini-api/docs/openai
+> -   Claude: https://docs.anthropic.com/en/api/openai-sdk
 
 #### Custom Provider Configuration Guide
 
 To configure a custom provider:
 
 1. **Find the API Endpoint**:
-   - Check the provider's API documentation for their chat completion endpoint
+
+    - Check the provider's API documentation for their chat completion endpoint
 
 2. **Identify the Response Structure**:
-   - Look at the JSON response format to find where the text content is located
+
+    - Look at the JSON response format to find where the text content is located
 
 3. **Set the Path Expression**:
-   - Use jmespath syntax to specify the path to the text content
+    - Use jmespath syntax to specify the path to the text content
 
 **Example**: For Claude's native API, the response looks like:
+
 ```json
 {
-  "content": [
-    {
-      "text": "Hi! My name is Claude.",
-      "type": "text"
-    }
-  ],
-  "id": "msg_013Zva2CMHLNnXjNJJKqJ2EF",
-  "model": "claude-3-7-sonnet-20250219",
-  "role": "assistant"
+    "content": [
+        {
+            "text": "Hi! My name is Claude.",
+            "type": "text"
+        }
+    ],
+    "id": "msg_013Zva2CMHLNnXjNJJKqJ2EF",
+    "model": "claude-3-7-sonnet-20250219",
+    "role": "assistant"
 }
 ```
 
-The path to extract the text is: `content.0.text`
+The path to extract the text is: `content.[0].text`
 
 ### Syntax Highlighting Themes
 
@@ -225,13 +241,13 @@ ai --verbose "Explain quantum computing"
 Usage: ai [OPTIONS] [PROMPT]
 ```
 
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--chat` | `-c` | Start in interactive chat mode |
-| `--shell` | `-s` | Generate and execute shell commands |
-| `--help` | `-h` | Show help message and exit |
-| `--verbose` | `-V` | Show detailed debug information |
-| `--template` | | Display the config template |
+| Option       | Short | Description                         |
+| ------------ | ----- | ----------------------------------- |
+| `--chat`     | `-c`  | Start in interactive chat mode      |
+| `--shell`    | `-s`  | Generate and execute shell commands |
+| `--help`     | `-h`  | Show help message and exit          |
+| `--verbose`  | `-V`  | Show detailed debug information     |
+| `--template` |       | Display the config template         |
 
 ### Interactive Mode Features
 
@@ -240,53 +256,146 @@ Usage: ai [OPTIONS] [PROMPT]
 <td width="50%">
 
 **Commands**
-- `/exit` - Exit the application
-- `/clear` - Clear conversation history
-- `/his` - Show command history
-- `/mode chat|exec` - Switch modes
+
+-   `/clear` - Clear conversation history
+-   `/his` - Show command history
+-   `/list` - List saved chats
+-   `/save <title>` - Save current chat with title
+-   `/load <index>` - Load a saved chat
+-   `/del <index>` - Delete a saved chat
+-   `/exit` - Exit the application
+-   `/mode chat|exec` - Switch modes
 
 **Keyboard Shortcuts**
-- `Tab` - Toggle between Chat/Execute modes
-- `Ctrl+C` or `Ctrl+D` - Exit
-- `Ctrl+R` - Search history
-- `↑/↓` - Navigate through history
+
+-   `Tab` - Toggle between Chat/Execute modes
+-   `Ctrl+C` or `Ctrl+D` - Exit
+-   `Ctrl+R` - Search history
+-   `↑/↓` - Navigate through history
 
 </td>
 <td width="50%">
 
 **Chat Mode** (💬)
-- Natural conversations with context
-- Markdown and code formatting
-- Reasoning display for complex queries
+
+-   Natural conversations with context
+-   Markdown and code formatting
+-   Reasoning display for complex queries
 
 **Execute Mode** (🚀)
-- Generate shell commands from descriptions
-- Review commands before execution
-- Edit commands before running
-- Safe execution with confirmation
+
+-   Generate shell commands from descriptions
+-   Review commands before execution
+-   Edit commands before running
+-   Safe execution with confirmation
 
 </td>
 </tr>
 </table>
 
+### Chat Persistent
+
+The `<PROMPT>` parameter in the chat mode will be used as a title to persist the chat content to the file system, with the save directory being a temporary directory, which may vary between machines, and it is determined on the first run.
+
+If the `<PROMPT>` parameter is not specified when entering `chat` mode, the session will be treated as a temporary session and will not be persisted. Of course, you can also manually call the `/save <title>` command to save during the chat.
+When you run the same `chat` command again, the previous session will be automatically loaded.
+
+```bash
+$ ai --chat "meaning of life"
+```
+
+> !NOTE: Chat mode is not supported when you redirect input to `ai` command.
+>
+> ```bash
+> $ cat error.log | ai --chat "Explain this error"
+> ```
+>
+> The above command will be parsed as `ai "cat error.log | ai "Explain this error"`.
+
+**Start a temporary chat session**
+
+```bash
+$ ai --chat
+```
+
+**Save a temporary chat session**
+
+```bash
+$ ai --chat
+Starting a temporary chat session (will not be saved automatically)
+...
+ 💬 > hi
+Assistant:
+Hello! How can I assist you today?
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ 💬 > /save "hello"
+Chat saved as: hello
+Session is now marked as persistent and will be auto-saved on exit.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ 💬 >
+```
+
+**Start a persistent chat session**
+
+```bash
+$ ai --chat "check disk usage"
+```
+
+**Load a saved chat session**
+
+```bash
+$ ai --chat hello
+Chat title: hello
+
+ ██    ██  █████  ██  ██████ ██      ██
+  ██  ██  ██   ██ ██ ██      ██      ██
+   ████   ███████ ██ ██      ██      ██
+    ██    ██   ██ ██ ██      ██      ██
+    ██    ██   ██ ██  ██████ ███████ ██
+
+Welcome to YAICLI!
+Current: Persistent Session: hello
+Press TAB to switch mode
+/clear             : Clear chat history
+/his               : Show chat history
+/list              : List saved chats
+/save <title>      : Save current chat
+/load <index>      : Load a saved chat
+/del <index>       : Delete a saved chat
+/exit|Ctrl+D|Ctrl+C: Exit
+/mode chat|exec    : Switch mode (Case insensitive)
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ 💬 > /his
+Chat History:
+1 User: hi
+    Assistant:
+    Hello! How can I assist you today?
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ 💬 >
+```
+
 ### Input Methods
 
 **Direct Input**
+
 ```bash
 ai "What is the capital of France?"
 ```
 
 **Piped Input**
+
 ```bash
 echo "What is the capital of France?" | ai
 ```
 
 **File Analysis**
+
 ```bash
 cat demo.py | ai "Explain this code"
 ```
 
 **Combined Input**
+
 ```bash
 cat error.log | ai "Why am I getting these errors in my Python app?"
 ```
@@ -295,9 +404,9 @@ cat error.log | ai "Why am I getting these errors in my Python app?"
 
 YAICLI maintains a history of your interactions (default: 500 entries) stored in `~/.yaicli_history`. You can:
 
-- Configure history size with `MAX_HISTORY` in config
-- Search history with `Ctrl+R` in interactive mode
-- View recent commands with `/his` command
+-   Configure history size with `MAX_HISTORY` in config
+-   Search history with `Ctrl+R` in interactive mode
+-   View recent commands with `/his` command
 
 ## 📱 Examples
 
@@ -329,6 +438,7 @@ Output:
 
 ```bash
 $ ai --chat
+Starting a temporary chat session (will not be saved automatically)
 
  ██    ██  █████  ██  ██████ ██      ██
   ██  ██  ██   ██ ██ ██      ██      ██
@@ -337,12 +447,17 @@ $ ai --chat
     ██    ██   ██ ██  ██████ ███████ ██
 
 Welcome to YAICLI!
+Current: Temporary Session (use /save to make persistent)
 Press TAB to switch mode
 /clear             : Clear chat history
 /his               : Show chat history
+/list              : List saved chats
+/save <title>      : Save current chat
+/load <index>      : Load a saved chat
+/del <index>       : Delete a saved chat
 /exit|Ctrl+D|Ctrl+C: Exit
 /mode chat|exec    : Switch mode (Case insensitive)
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 > Tell me about the solar system
 
 Assistant:
@@ -398,30 +513,30 @@ Output:
 
 YAICLI is designed with a modular architecture that separates concerns and makes the codebase maintainable:
 
-- **CLI Module**: Handles user interaction and command parsing
-- **API Client**: Manages communication with LLM providers
-- **Config Manager**: Handles layered configuration
-- **History Manager**: Maintains conversation history with LRU functionality
-- **Printer**: Formats and displays responses with rich formatting
+-   **CLI Module**: Handles user interaction and command parsing
+-   **API Client**: Manages communication with LLM providers
+-   **Config Manager**: Handles layered configuration
+-   **History Manager**: Maintains conversation history with LRU functionality
+-   **Printer**: Formats and displays responses with rich formatting
 
 ### Dependencies
 
-| Library | Purpose |
-|---------|----------|
-| [Typer](https://typer.tiangolo.com/) | Command-line interface with type hints |
-| [Rich](https://rich.readthedocs.io/) | Terminal formatting and beautiful display |
+| Library                                                         | Purpose                                            |
+| --------------------------------------------------------------- | -------------------------------------------------- |
+| [Typer](https://typer.tiangolo.com/)                            | Command-line interface with type hints             |
+| [Rich](https://rich.readthedocs.io/)                            | Terminal formatting and beautiful display          |
 | [prompt_toolkit](https://python-prompt-toolkit.readthedocs.io/) | Interactive input with history and auto-completion |
-| [httpx](https://www.python-httpx.org/) | Modern HTTP client with async support |
-| [jmespath](https://jmespath.org/) | JSON data extraction |
+| [httpx](https://www.python-httpx.org/)                          | Modern HTTP client with async support              |
+| [jmespath](https://jmespath.org/)                               | JSON data extraction                               |
 
 ## 👨‍💻 Contributing
 
 Contributions are welcome! Here's how you can help:
 
-- **Bug Reports**: Open an issue describing the bug and how to reproduce it
-- **Feature Requests**: Suggest new features or improvements
-- **Code Contributions**: Submit a PR with your changes
-- **Documentation**: Help improve or translate the documentation
+-   **Bug Reports**: Open an issue describing the bug and how to reproduce it
+-   **Feature Requests**: Suggest new features or improvements
+-   **Code Contributions**: Submit a PR with your changes
+-   **Documentation**: Help improve or translate the documentation
 
 ## 📃 License
 
