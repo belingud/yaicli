@@ -50,11 +50,13 @@ class CLI:
     def __init__(
         self,
         verbose: bool = False,
+        stdin: Optional[str] = None,
         api_client: Optional[ApiClient] = None,
         printer: Optional[Printer] = None,
         chat_manager: Optional[ChatManager] = None,
     ):
         self.verbose = verbose
+        self.stdin = stdin
         self.console = get_console()
         self.bindings = KeyBindings()
         self.config: Config = Config(self.console)
@@ -84,7 +86,7 @@ class CLI:
             self.console.print(f"Config file path: {CONFIG_PATH}")
             for key, value in self.config.items():
                 display_value = "****" if key == "API_KEY" and value else value
-                self.console.print(f"  {key:<16}: {display_value}")
+                self.console.print(f"  {key:<17}: {display_value}")
             self.console.print(Markdown("---", code_theme=self.config.get("CODE_THEME", DEFAULT_CODE_THEME)))
 
         self.api_client = api_client or ApiClient(self.config, self.console, self.verbose)
@@ -98,6 +100,7 @@ class CLI:
             self.session = PromptSession(key_bindings=self.bindings)
         finally:
             if _origin_stderr:
+                sys.stderr.flush()
                 sys.stderr.close()
                 sys.stderr = _origin_stderr
 
@@ -111,14 +114,11 @@ class CLI:
         target_len = self.interactive_max_history * 2
         if len(self.history) > target_len:
             self.history = self.history[-target_len:]
+            if self.verbose:
+                self.console.print(f"History trimmed to {target_len} messages.", style="dim")
 
     def _save_chat(self, title: Optional[str] = None) -> None:
         """Save current chat history to a file using session manager."""
-        if not self.history:
-            self.console.print("No chat history to save.", style="yellow")
-            return
-
-        title = title or self.chat_title or f"Chat-{int(time.time())}"
         saved_title = self.chat_manager.save_chat(self.history, title)
 
         if not saved_title:
@@ -166,7 +166,7 @@ class CLI:
             self.console.print("Invalid chat index.", style="bold red")
             return False
 
-        chat_data = self.chat_manager.load_chat(index)
+        chat_data = self.chat_manager.load_chat_by_index(index)
 
         if not chat_data:
             self.console.print("Invalid chat index or chat not found.", style="bold red")
@@ -186,7 +186,7 @@ class CLI:
             self.console.print("Invalid chat index.", style="bold red")
             return False
 
-        chat_data = self.chat_manager.load_chat(index)
+        chat_data = self.chat_manager.load_chat_by_index(index)
 
         if not chat_data:
             self.console.print("Invalid chat index or chat not found.", style="bold red")
@@ -213,13 +213,12 @@ class CLI:
                 self.console.print("History is empty.", style="yellow")
             else:
                 self.console.print("Chat History:", style="bold underline")
-                code_theme = self.config.get("CODE_THEME", "monokai")
                 for i in range(0, len(self.history), 2):
                     user_msg = self.history[i]
                     assistant_msg = self.history[i + 1] if (i + 1) < len(self.history) else None
                     self.console.print(f"[dim]{i // 2 + 1}[/dim] [bold blue]User:[/bold blue] {user_msg['content']}")
                     if assistant_msg:
-                        md = Markdown(assistant_msg["content"], code_theme=code_theme)
+                        md = Markdown(assistant_msg["content"], code_theme=self.config["CODE_THEME"])
                         padded_md = Padding(md, (0, 0, 0, 4))
                         self.console.print("    Assistant:", style="bold green")
                         self.console.print(padded_md)
@@ -228,7 +227,7 @@ class CLI:
         # Handle /save command - optional title parameter
         if command.startswith(CMD_SAVE_CHAT):
             parts = command.split(maxsplit=1)
-            title = parts[1] if len(parts) > 1 else None
+            title = parts[1] if len(parts) > 1 else self.chat_title
             self._save_chat(title)
             return True
 
@@ -255,7 +254,7 @@ class CLI:
                 self._list_chats()
             return True
 
-        # Handle /chats command to list saved chats
+        # Handle /list command to list saved chats
         if command == CMD_LIST_CHATS:
             self._list_chats()
             return True
@@ -320,9 +319,10 @@ class CLI:
     def get_system_prompt(self) -> str:
         """Return system prompt for current mode"""
         prompt_template = SHELL_PROMPT if self.current_mode == EXEC_MODE else DEFAULT_PROMPT
-        return prompt_template.format(
-            _os=self.config.get("OS_NAME", "Unknown OS"), _shell=self.config.get("SHELL_NAME", "Unknown Shell")
-        )
+        stdin = f"\n\nSTDIN\n{self.stdin}" if self.stdin else ""
+        if self.verbose and stdin:
+            self.console.print("Added STDIN to prompt", style="dim")
+        return prompt_template.format(_os=self.config["OS_NAME"], _shell=self.config["SHELL_NAME"]) + stdin
 
     def _build_messages(self, user_input: str) -> List[dict]:
         """Build the list of messages for the API call."""
@@ -407,13 +407,13 @@ class CLI:
         self.console.print("Press [bold yellow]TAB[/bold yellow] to switch mode")
         self.console.print(f"{CMD_CLEAR:<19}: Clear chat history")
         self.console.print(f"{CMD_HISTORY:<19}: Show chat history")
+        self.console.print(f"{CMD_LIST_CHATS:<19}: List saved chats")
         save_cmd = f"{CMD_SAVE_CHAT} <title>"
         self.console.print(f"{save_cmd:<19}: Save current chat")
         load_cmd = f"{CMD_LOAD_CHAT} <index>"
         self.console.print(f"{load_cmd:<19}: Load a saved chat")
         delete_cmd = f"{CMD_DELETE_CHAT} <index>"
         self.console.print(f"{delete_cmd:<19}: Delete a saved chat")
-        self.console.print(f"{CMD_LIST_CHATS:<19}: List saved chats")
         cmd_exit = f"{CMD_EXIT}|Ctrl+D|Ctrl+C"
         self.console.print(f"{cmd_exit:<19}: Exit")
         cmd_mode = f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"
@@ -423,12 +423,8 @@ class CLI:
         """Run the main Read-Eval-Print Loop (REPL)."""
         self.prepare_chat_loop()
         self._print_welcome_message()
-        chat_info = {}
-        if self.chat_title:
-            chat_info = self.chat_manager.load_chat_by_title(self.chat_title)
-            self.history = chat_info.get("history", [])
         while True:
-            self.console.print(Markdown("---", code_theme=self.config.get("CODE_THEME", "monokai")))
+            self.console.print(Markdown("---", code_theme=self.config["CODE_THEME"]))
             try:
                 user_input = self.session.prompt(self.get_prompt_tokens)
                 user_input = user_input.strip()
@@ -445,11 +441,8 @@ class CLI:
                 break
 
         # Auto-save chat history when exiting if there are messages and not a temporary session
-        if not self.is_temp_session and self.history:
-            if self.chat_title:
-                self._save_chat(self.chat_title)
-            else:
-                self._save_chat()
+        if not self.is_temp_session:
+            self._save_chat(self.chat_title)
 
         self.console.print("\nExiting YAICLI... Goodbye!", style="bold green")
 
@@ -482,6 +475,9 @@ class CLI:
         except Exception as e:
             self.console.print(f"[red]Error initializing prompt session history: {e}[/red]")
             self.session = PromptSession(key_bindings=self.bindings)
+        if self.chat_title:
+            chat_info = self.chat_manager.load_chat_by_title(self.chat_title)
+            self.history = chat_info.get("history", [])
 
     def _setup_key_bindings(self) -> None:
         """Setup keyboard shortcuts (e.g., TAB for mode switching)."""

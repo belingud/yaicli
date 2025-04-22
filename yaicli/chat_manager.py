@@ -40,7 +40,7 @@ class ChatManager(ABC):
         pass
 
     @abstractmethod
-    def load_chat(self, index: int) -> Dict[str, Any]:
+    def load_chat_by_index(self, index: int) -> Dict[str, Any]:
         """Load a chat by index and return the chat data"""
         pass
 
@@ -81,7 +81,7 @@ class FileChatManager(ChatManager):
     def make_chat_title(self, prompt: Optional[str] = None) -> str:
         """Make a chat title from a given full prompt"""
         if prompt:
-            return prompt[:50].replace(" ", "_")
+            return prompt[:100]
         else:
             return f"Chat-{int(time.time())}"
 
@@ -95,29 +95,41 @@ class FileChatManager(ChatManager):
 
     def _parse_filename(self, chat_file: Path, index: int) -> Dict[str, Any]:
         """Parse a chat filename and extract metadata"""
-        filename = chat_file.stem  # filename without extension
+        # filename: "20250421-214005-title-meaning of life"
+        filename = chat_file.stem
         parts = filename.split("-")
+        title_str_len = 6  # "title-" marker length
 
+        # Check if the filename has the expected format
         if len(parts) >= 4 and "title" in parts:
-            # Find the title after the "title" marker
-            title_index = parts.index("title") + 1
-            title = "-".join(parts[title_index:]).replace("_", " ")
+            str_title_index = filename.find("title")
+            if str_title_index == -1:
+                # If "title" is not found, use full filename as the title
+                # Just in case, fallback to use fullname, but this should never happen when `len(parts) >= 4 and "title" in parts`
+                str_title_index = 0
+                title_str_len = 0
 
+            # "20250421-214005-title-meaning of life" ==> "meaning of life"
+            title = filename[str_title_index + title_str_len :]
+            date_ = parts[0]
+            time_ = parts[1]
             # Format date
-            date_str = f"{parts[0][:4]}-{parts[0][4:6]}-{parts[0][6:]} {parts[1][:2]}:{parts[1][2:4]}"
+            date_str = f"{date_[:4]}-{date_[4:6]}-{date_[6:]} {time_[:2]}:{time_[2:4]}"
 
             # Calculate timestamp from date parts
             try:
-                date_time_str = f"{parts[0]}{parts[1]}"
+                date_time_str = f"{date_}{time_}"
                 timestamp = int(datetime.strptime(date_time_str, "%Y%m%d%H%M%S").timestamp())
             except ValueError:
                 timestamp = 0
         else:
             # Fallback for files that don't match expected format
-            title = filename.replace("_", " ")
+            title = filename
             date_str = ""
             timestamp = 0
 
+        # The actual title is stored in the JSON file, so we'll use that when loading
+        # This is just for the initial listing before the file is opened
         return {
             "index": index,
             "path": str(chat_file),
@@ -160,10 +172,10 @@ class FileChatManager(ChatManager):
         Returns:
             str: The title of the saved chat
         """
-        if not history:
-            return ""
+        history = history or []
 
         save_title = title or f"Chat-{int(time.time())}"
+        save_title = self.make_chat_title(save_title)
 
         # Check for existing session with the same title and delete it
         existing_chat = self.chats_map["title"].get(save_title)
@@ -178,7 +190,7 @@ class FileChatManager(ChatManager):
                 )
 
         timestamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
-        filename = f"{timestamp}-title-{save_title.replace(' ', '_')}.json"
+        filename = f"{timestamp}-title-{save_title}.json"
         filepath = self.chat_dir / filename
 
         try:
@@ -216,7 +228,7 @@ class FileChatManager(ChatManager):
             self.console.print(f"Error loading chat from {chat_info['path']}: {e}", style="dim")
             return {}
 
-    def load_chat(self, index: int) -> Dict[str, Any]:
+    def load_chat_by_index(self, index: int) -> Dict[str, Any]:
         """Load a chat by index and return the chat data"""
         if not self.validate_chat_index(index):
             return {}

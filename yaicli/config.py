@@ -69,41 +69,38 @@ class Config(dict):
         """
         with open(CONFIG_PATH, "r+", encoding="utf-8") as f:
             config_content = f.read()
-            if "CHAT_HISTORY_DIR" not in config_content:
-                f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}")
-            if "MAX_SAVED_CHATS" not in config_content:
-                f.write(f"\nMAX_SAVED_CHATS={DEFAULT_MAX_SAVED_CHATS}")
+            if "CHAT_HISTORY_DIR" not in config_content.strip():  # Check for empty lines
+                f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}\n")
+            if "MAX_SAVED_CHATS" not in config_content.strip():  # Check for empty lines
+                f.write(f"\nMAX_SAVED_CHATS={DEFAULT_MAX_SAVED_CHATS}\n")
 
-    def _load_from_file(self) -> dict[str, str]:
+    def _load_from_file(self) -> None:
         """Load configuration from the config file.
 
         Creates default config file if it doesn't exist.
-
-        Returns:
-            Dictionary with configuration values from file, or empty dict if no valid values
         """
         if not CONFIG_PATH.exists():
             self.console.print("Creating default configuration file.", style="bold yellow")
             CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             with open(CONFIG_PATH, "w", encoding="utf-8") as f:
                 f.write(DEFAULT_CONFIG_INI)
-            return {}
+            return
 
         config_parser = CasePreservingConfigParser()
         config_parser.read(CONFIG_PATH, encoding="utf-8")
 
-        if "core" not in config_parser:
-            return {}
+        # Check if "core" section exists in the config file
+        if "core" not in config_parser or not config_parser["core"]:
+            return
 
-        # Get existing configuration values
-        for k, v in config_parser["core"].items():
-            if k in DEFAULT_CONFIG_MAP and v.strip():
-                self[k] = v
+        for k, v in {"SHELL_NAME": "Unknown Shell", "OS_NAME": "Unknown OS"}.items():
+            if not config_parser["core"].get(k, "").strip():
+                config_parser["core"][k] = v
+
+        self.update(config_parser["core"])
 
         # Check if keys added in version updates are missing and add them
         self._ensure_version_updated_config_keys()
-
-        return self
 
     def _load_from_env(self) -> None:
         """Load configuration from environment variables.

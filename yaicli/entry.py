@@ -74,6 +74,11 @@ def main(
                 final_prompt = f"{stdin_content}\n\n{final_prompt}"
             else:
                 final_prompt = stdin_content
+        # prompt_toolkit will raise EOFError if stdin is redirected
+        # Set chat to False to avoid starting interactive mode
+        if chat:
+            print("Warning: --chat is ignored when stdin was redirected.")
+            chat = False
 
     # Basic validation for conflicting options or missing prompt
     if not final_prompt and not chat and not list_chats:
