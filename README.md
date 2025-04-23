@@ -122,8 +122,8 @@ MAX_HISTORY=500 # Max entries kept in history file
 AUTO_SUGGEST=true
 
 # Chat history settings
-CHAT_HISTORY_DIR={DEFAULT_CONFIG_MAP["CHAT_HISTORY_DIR"]["value"]}
-MAX_SAVED_CHATS={DEFAULT_CONFIG_MAP["MAX_SAVED_CHATS"]["value"]}
+CHAT_HISTORY_DIR=<tempdir>/yaicli/chats
+MAX_SAVED_CHATS=20
 ```
 
 ### Configuration Options Reference
