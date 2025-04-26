@@ -10,7 +10,7 @@ YAICLI is a powerful yet lightweight command-line AI assistant that brings the c
 **Supports both standard and deep reasoning models across all major LLM providers.**
 
 <p align="center">
-  <img src="https://vhs.charm.sh/vhs-5U1BBjJkTUBReRswsSgIVx.gif" alt="YAICLI Demo" width="85%">
+  <img src="https://vhs.charm.sh/vhs-5U1BBjJkTUBReRswsSgIVx.gif" alt="YAICLI Chat Demo" width="85%">
 </p>
 
 > [!NOTE]
@@ -47,6 +47,9 @@ YAICLI is a powerful yet lightweight command-line AI assistant that brings the c
 -   **Layered Configuration**: Environment variables > Config file > Sensible defaults
 -   **Debugging Tools**: Verbose mode with detailed API tracing
 -   **Lightweight**: Minimal dependencies with focused functionality
+
+
+![What is life](artwork/reasoning_example.png)
 
 ## 📦 Installation
 
@@ -120,6 +123,7 @@ INTERACTIVE_ROUND=25
 CODE_THEME=monokai
 MAX_HISTORY=500 # Max entries kept in history file
 AUTO_SUGGEST=true
+SHOW_REASONING=true
 
 # Chat history settings
 CHAT_HISTORY_DIR=<tempdir>/yaicli/chats
