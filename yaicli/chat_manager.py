@@ -5,10 +5,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TypedDict
 
-from rich import get_console
 from rich.console import Console
 
-from yaicli.config import Config
+from yaicli.console import get_console
+from yaicli.config import Config, cfg
+from yaicli.utils import option_callback
 
 
 class ChatsMap(TypedDict):
@@ -63,13 +64,14 @@ class ChatManager(ABC):
 class FileChatManager(ChatManager):
     """File system based chat manager implementation"""
 
-    def __init__(self, config: Config, console: Optional[Console] = None):
-        self.config = config
-        self.chat_dir = Path(self.config["CHAT_HISTORY_DIR"])
-        self.chat_dir.mkdir(parents=True, exist_ok=True)
-        self.max_saved_chats = self.config["MAX_SAVED_CHATS"]
+    console: Console = get_console()
+    config: Config = cfg
+    chat_dir = Path(config["CHAT_HISTORY_DIR"])
+    max_saved_chats = config["MAX_SAVED_CHATS"]
+    chat_dir.mkdir(parents=True, exist_ok=True)
+
+    def __init__(self):
         self._chats_map: Optional[ChatsMap] = None  # Cache for chat map
-        self.console = console or get_console()
 
     @property
     def chats_map(self) -> ChatsMap:
@@ -77,6 +79,18 @@ class FileChatManager(ChatManager):
         if self._chats_map is None:
             self._load_chats()
         return self._chats_map or {"index": {}, "title": {}}
+
+    @classmethod
+    @option_callback
+    def print_list_option(cls, _: Any):
+        """Print the list of chats"""
+        cls.console.print("Finding Chats...")
+        c = -1
+        for c, file in enumerate(sorted(cls.chat_dir.glob("*.json"), key=lambda f: f.stat().st_mtime)):
+            info = cls._parse_filename(file, c + 1)
+            cls.console.print(f"{c + 1}. {info['title']} ({info['date']})")
+        if c == -1:
+            cls.console.print("No chats found", style="dim")
 
     def make_chat_title(self, prompt: Optional[str] = None) -> str:
         """Make a chat title from a given full prompt"""
@@ -93,7 +107,8 @@ class FileChatManager(ChatManager):
         """Force refresh the chat list from disk"""
         self._load_chats()
 
-    def _parse_filename(self, chat_file: Path, index: int) -> Dict[str, Any]:
+    @staticmethod
+    def _parse_filename(chat_file: Path, index: int) -> Dict[str, Any]:
         """Parse a chat filename and extract metadata"""
         # filename: "20250421-214005-title-meaning of life"
         filename = chat_file.stem

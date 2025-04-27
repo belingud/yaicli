@@ -8,11 +8,7 @@ from rich.console import Console
 from yaicli.const import (
     DEFAULT_BASE_URL,
     DEFAULT_COMPLETION_PATH,
-    DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL,
-    DEFAULT_TEMPERATURE,
-    DEFAULT_TIMEOUT,
-    DEFAULT_TOP_P,
     EventTypeEnum,
 )
 
@@ -69,8 +65,8 @@ class ApiClient:
         self.completion_path = str(config.get("COMPLETION_PATH", DEFAULT_COMPLETION_PATH))
         self.api_key = str(config.get("API_KEY", ""))
         self.model = str(config.get("MODEL", DEFAULT_MODEL))
-        self.timeout = self.config.get("TIMEOUT", DEFAULT_TIMEOUT)
-        self.client = client or httpx.Client(timeout=self.config.get("TIMEOUT", DEFAULT_TIMEOUT))
+        self.timeout = self.config["TIMEOUT"]
+        self.client = client or httpx.Client(timeout=self.config["TIMEOUT"])
 
     def _prepare_request_body(self, messages: List[Dict[str, str]], stream: bool) -> Dict[str, Any]:
         """Prepare the common request body for API calls."""
@@ -78,9 +74,9 @@ class ApiClient:
             "messages": messages,
             "model": self.model,
             "stream": stream,
-            "temperature": self.config.get("TEMPERATURE", DEFAULT_TEMPERATURE),
-            "top_p": self.config.get("TOP_P", DEFAULT_TOP_P),
-            "max_tokens": self.config.get("MAX_TOKENS", DEFAULT_MAX_TOKENS),
+            "temperature": self.config["TEMPERATURE"],
+            "top_p": self.config["TOP_P"],
+            "max_tokens": self.config["MAX_TOKENS"],
         }
 
     def _handle_api_error(self, e: httpx.HTTPError) -> None:
@@ -315,7 +311,7 @@ class ApiClient:
         # reasoning_content: deepseek/infi-ai
         # reasoning: openrouter
         # <think> block implementation not in here
-        for key in ("reasoning_content", "reasoning", "metadata"):
+        for key in ("reasoning_content", "reasoning"):
             # Check if the key exists and its value is a non-empty string
             value = delta.get(key)
             if isinstance(value, str) and value:

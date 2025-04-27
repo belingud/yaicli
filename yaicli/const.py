@@ -1,6 +1,17 @@
 from enum import StrEnum
 from pathlib import Path
 from tempfile import gettempdir
+from typing import Any
+from rich.console import JustifyMethod
+
+
+class JustifyEnum(StrEnum):
+    DEFAULT = "default"
+    LEFT = "left"
+    CENTER = "center"
+    RIGHT = "right"
+    FULL = "full"
+
 
 CMD_CLEAR = "/clear"
 CMD_EXIT = "/exit"
@@ -14,8 +25,12 @@ CMD_DELETE_CHAT = "/del"
 EXEC_MODE = "exec"
 CHAT_MODE = "chat"
 TEMP_MODE = "temp"
+CODE_MODE = "code"
 
 CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
+ROLES_DIR = CONFIG_PATH.parent / "roles"
+
+# Default configuration values
 DEFAULT_CODE_THEME = "monokai"
 DEFAULT_COMPLETION_PATH = "chat/completions"
 DEFAULT_ANSWER_PATH = "choices[0].message.content"
@@ -30,10 +45,12 @@ DEFAULT_TOP_P: float = 1.0
 DEFAULT_MAX_TOKENS: int = 1024
 DEFAULT_MAX_HISTORY: int = 500
 DEFAULT_AUTO_SUGGEST = "true"
+DEFAULT_SHOW_REASONING = "true"
 DEFAULT_TIMEOUT: int = 60
 DEFAULT_INTERACTIVE_ROUND: int = 25
 DEFAULT_CHAT_HISTORY_DIR = Path(gettempdir()) / "yaicli/chats"
 DEFAULT_MAX_SAVED_CHATS = 20
+DEFAULT_JUSTIFY: JustifyMethod = "default"
 
 
 class EventTypeEnum(StrEnum):
@@ -46,19 +63,40 @@ class EventTypeEnum(StrEnum):
     FINISH = "finish"
 
 
-SHELL_PROMPT = """Your are a Shell Command Generator.
+SHELL_PROMPT = """Your are a Shell Command Generator named YAICLI.
 Generate a command EXCLUSIVELY for {_os} OS with {_shell} shell.
 If details are missing, offer the most logical solution.
 Ensure the output is a valid shell command.
 Combine multiple steps with `&&` when possible.
 Supply plain text only, avoiding Markdown formatting."""
 
-DEFAULT_PROMPT = (
-    "You are YAICLI, a system management and programing assistant, "
-    "You are managing {_os} operating system with {_shell} shell. "
-    "Your responses should be concise and use Markdown format (but dont't use ```markdown), "
-    "unless the user explicitly requests more details."
+DEFAULT_PROMPT = """
+You are YAICLI, a system management and programing assistant, 
+You are managing {_os} operating system with {_shell} shell. 
+Your responses should be concise and use Markdown format (but dont't use ```markdown), 
+unless the user explicitly requests more details.
+"""
+
+CODER_PROMPT = (
+    "You are YAICLI, a code assistant. "
+    "You are helping with programming tasks. "
+    "Your responses must ONLY contain code, with NO explanation, NO markdown formatting, and NO preamble. "
+    "If user does not specify the language, provide Python code. "
+    "Do not wrap code in markdown code blocks (```) or language indicators."
 )
+
+
+class DefaultRoleNames(StrEnum):
+    SHELL = "Shell Command Generator"
+    DEFAULT = "DEFAULT"
+    CODER = "Code Assistant"
+
+
+DEFAULT_ROLES: dict[str, dict[str, Any]] = {
+    DefaultRoleNames.SHELL: {"name": DefaultRoleNames.SHELL, "prompt": SHELL_PROMPT},
+    DefaultRoleNames.DEFAULT: {"name": DefaultRoleNames.DEFAULT, "prompt": DEFAULT_PROMPT},
+    DefaultRoleNames.CODER: {"name": DefaultRoleNames.CODER, "prompt": CODER_PROMPT},
+}
 
 # DEFAULT_CONFIG_MAP is a dictionary of the configuration options.
 # The key is the name of the configuration option.
@@ -92,6 +130,8 @@ DEFAULT_CONFIG_MAP = {
     "CODE_THEME": {"value": DEFAULT_CODE_THEME, "env_key": "YAI_CODE_THEME", "type": str},
     "MAX_HISTORY": {"value": DEFAULT_MAX_HISTORY, "env_key": "YAI_MAX_HISTORY", "type": int},
     "AUTO_SUGGEST": {"value": DEFAULT_AUTO_SUGGEST, "env_key": "YAI_AUTO_SUGGEST", "type": bool},
+    "SHOW_REASONING": {"value": DEFAULT_SHOW_REASONING, "env_key": "YAI_SHOW_REASONING", "type": bool},
+    "JUSTIFY": {"value": DEFAULT_JUSTIFY, "env_key": "YAI_JUSTIFY", "type": str},
     # Chat history settings
     "CHAT_HISTORY_DIR": {"value": DEFAULT_CHAT_HISTORY_DIR, "env_key": "YAI_CHAT_HISTORY_DIR", "type": str},
     "MAX_SAVED_CHATS": {"value": DEFAULT_MAX_SAVED_CHATS, "env_key": "YAI_MAX_SAVED_CHATS", "type": int},
@@ -128,6 +168,10 @@ CODE_THEME={DEFAULT_CONFIG_MAP["CODE_THEME"]["value"]}
 # Max entries kept in history file
 MAX_HISTORY={DEFAULT_CONFIG_MAP["MAX_HISTORY"]["value"]}
 AUTO_SUGGEST={DEFAULT_CONFIG_MAP["AUTO_SUGGEST"]["value"]}
+# Print reasoning content or not
+SHOW_REASONING={DEFAULT_CONFIG_MAP["SHOW_REASONING"]["value"]}
+# Text alignment (default, left, center, right, full)
+JUSTIFY={DEFAULT_CONFIG_MAP["JUSTIFY"]["value"]}
 
 # Chat history settings
 CHAT_HISTORY_DIR={DEFAULT_CONFIG_MAP["CHAT_HISTORY_DIR"]["value"]}

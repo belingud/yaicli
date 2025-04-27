@@ -1,20 +1,35 @@
-import itertools
 import time
 import traceback
 from typing import (
     Any,
     Dict,
     Iterator,
+    List,
     Optional,
     Tuple,
 )
 
-from rich import get_console
-from rich.console import Console
+from rich.console import Console, Group, RenderableType
 from rich.live import Live
 from rich.markdown import Markdown
 
-from yaicli.const import DEFAULT_CODE_THEME, EventTypeEnum
+from yaicli.console import get_console
+from yaicli.const import EventTypeEnum
+
+
+def plain_formatter(text: str, **kwargs: Any) -> str:
+    """Format the text for display, without Markdown formatting."""
+    return text
+
+
+def cursor_animation() -> Iterator[str]:
+    """Generate a cursor animation for the console."""
+    cursors = ["_", " "]
+    while True:
+        # Use current time to determine cursor state (changes every 0.5 seconds)
+        current_time = time.time()
+        # Alternate between cursors based on time
+        yield cursors[int(current_time * 2) % 2]
 
 
 class Printer:
@@ -23,12 +38,40 @@ class Printer:
     _REASONING_PREFIX = "> "
     _CURSOR_ANIMATION_SLEEP = 0.005
 
-    def __init__(self, config: Dict[str, Any], console: Console, verbose: bool = False):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        console: Console,
+        verbose: bool = False,
+        markdown: bool = True,
+        reasoning_markdown: Optional[bool] = None,
+        content_markdown: Optional[bool] = None,
+    ):
+        """Initialize the Printer class.
+
+        Args:
+            config (Dict[str, Any]): The configuration dictionary.
+            console (Console): The console object.
+            verbose (bool): Whether to print verbose output.
+            markdown (bool): Whether to use Markdown formatting for all output (legacy).
+            reasoning_markdown (Optional[bool]): Whether to use Markdown for reasoning sections.
+            content_markdown (Optional[bool]): Whether to use Markdown for content sections.
+        """
         self.config = config
         self.console = console or get_console()
         self.verbose = verbose
-        self.code_theme = config.get("CODE_THEME", DEFAULT_CODE_THEME)
+        self.code_theme = config["CODE_THEME"]
         self.in_reasoning: bool = False
+        # Print reasoning content or not
+        self.show_reasoning = config["SHOW_REASONING"]
+
+        # Use explicit settings if provided, otherwise fall back to the global markdown setting
+        self.reasoning_markdown = reasoning_markdown if reasoning_markdown is not None else markdown
+        self.content_markdown = content_markdown if content_markdown is not None else markdown
+
+        # Set formatters for reasoning and content
+        self.reasoning_formatter = Markdown if self.reasoning_markdown else plain_formatter
+        self.content_formatter = Markdown if self.content_markdown else plain_formatter
 
     def _reset_state(self) -> None:
         """Resets the printer state for a new stream."""
@@ -118,7 +161,7 @@ class Printer:
 
         return content, reasoning
 
-    def _format_display_text(self, content: str, reasoning: str) -> str:
+    def _format_display_text(self, content: str, reasoning: str) -> RenderableType:
         """Format the text for display, combining content and reasoning if needed.
 
         Args:
@@ -126,26 +169,39 @@ class Printer:
             reasoning (str): The reasoning text.
 
         Returns:
-            str: The formatted text for display.
+            RenderableType: The formatted text ready for display as a Rich renderable.
         """
-        display_text = ""
+        # Create list of display elements to avoid type issues with concatenation
+        display_elements: List[RenderableType] = []
 
-        # Add reasoning with proper formatting if it exists
-        if reasoning:
-            formatted_reasoning = reasoning.replace("\n", f"\n{self._REASONING_PREFIX}")
-            if not formatted_reasoning.startswith(self._REASONING_PREFIX):
-                formatted_reasoning = self._REASONING_PREFIX + formatted_reasoning
-            # Reasoning prefix is now added per line
-            display_text += f"\nThinking:\n{formatted_reasoning}"
+        reasoning = reasoning.strip()
+        # Format reasoning with proper formatting if it exists
+        if reasoning and self.show_reasoning:
+            raw_reasoning = reasoning.replace("\n", f"\n{self._REASONING_PREFIX}")
+            if not raw_reasoning.startswith(self._REASONING_PREFIX):
+                raw_reasoning = self._REASONING_PREFIX + raw_reasoning
 
-            # Only add newlines if there is content following the reasoning
-            if content:
-                display_text += "\n\n"
+            # Format the reasoning section
+            reasoning_header = "\nThinking:\n"
+            formatted_reasoning = self.reasoning_formatter(reasoning_header + raw_reasoning, code_theme=self.code_theme)
+            display_elements.append(formatted_reasoning)
 
-        # Add content
-        display_text += content
+        content = content.strip()
+        # Format content if it exists
+        if content:
+            formatted_content = self.content_formatter(content, code_theme=self.code_theme)
 
-        return display_text
+            # Add spacing between reasoning and content if both exist
+            if reasoning and self.show_reasoning:
+                display_elements.append("")
+
+            display_elements.append(formatted_content)
+
+        # Return based on what we have
+        if not display_elements:
+            return ""
+        # Use Rich Group to combine multiple renderables
+        return Group(*display_elements)
 
     def _update_live_display(self, live: Live, content: str, reasoning: str, cursor: Iterator[str]) -> None:
         """Update live display content and execute cursor animation
@@ -157,52 +213,56 @@ class Printer:
             reasoning (str): The current reasoning text.
             cursor (Iterator[str]): The cursor animation iterator.
         """
-        # Format display text without cursor first
-        display_text = self._format_display_text(content, reasoning)
+
         cursor_char = next(cursor)
 
-        # Add cursor at the end of reasoning or content depending on current state
-        if self.in_reasoning:
-            # Add cursor at the end of reasoning content
+        # Handle cursor placement based on current state
+        if self.in_reasoning and self.show_reasoning:
+            # For reasoning, add cursor in plaintext to reasoning section
             if reasoning:
-                # Append cursor directly if reasoning ends without newline, otherwise append after prefix
                 if reasoning.endswith("\n"):
-                    display_text += f"\n{self._REASONING_PREFIX}{cursor_char}"
+                    cursor_line = f"\n{self._REASONING_PREFIX}{cursor_char}"
                 else:
-                    display_text += cursor_char
-            else:
-                # If reasoning just started and no content yet
-                # Updated to match formatting
-                display_text = f"\nThinking:\n{self._REASONING_PREFIX}{cursor_char}"
-        else:
-            # Add cursor at the end of normal content
-            display_text += cursor_char
+                    cursor_line = cursor_char
 
-        markdown = Markdown(display_text, code_theme=self.code_theme)
-        live.update(markdown)
+                # Re-format with cursor added
+                raw_reasoning = reasoning + cursor_line.replace(self._REASONING_PREFIX, "")
+                formatted_display = self._format_display_text(content, raw_reasoning)
+            else:
+                # If reasoning just started with no content yet
+                reasoning_header = f"\nThinking:\n{self._REASONING_PREFIX}{cursor_char}"
+                formatted_reasoning = self.reasoning_formatter(reasoning_header, code_theme=self.code_theme)
+                formatted_display = Group(formatted_reasoning)
+        else:
+            # For content, add cursor to content section
+            formatted_content_with_cursor = content + cursor_char
+            formatted_display = self._format_display_text(formatted_content_with_cursor, reasoning)
+
+        live.update(formatted_display)
         time.sleep(self._CURSOR_ANIMATION_SLEEP)
 
-    def display_stream(self, stream_iterator: Iterator[Dict[str, Any]]) -> Tuple[Optional[str], Optional[str]]:
+    def display_stream(
+        self, stream_iterator: Iterator[Dict[str, Any]], with_assistant_prefix: bool = True
+    ) -> Tuple[Optional[str], Optional[str]]:
         """Display streaming response content
         Handle stream events and update the live display accordingly.
         This method separates content and reasoning blocks for display and further processing.
 
         Args:
             stream_iterator (Iterator[Dict[str, Any]]): The stream iterator to process.
+            with_assistant_prefix (bool): Whether to display the "Assistant:" prefix.
         Returns:
             Tuple[Optional[str], Optional[str]]: The final content and reasoning texts if successful, None otherwise.
         """
-        self.console.print("Assistant:", style="bold green")
+        with_assistant_prefix and self.console.print("Assistant:", style="bold green")
         self._reset_state()  # Reset state for the new stream
         content = ""
         reasoning = ""
-        # Removed in_reasoning local variable initialization
-        cursor = itertools.cycle(["_", " "])
+        cursor = cursor_animation()
 
         with Live(console=self.console) as live:
             try:
                 for event in stream_iterator:
-                    # Pass only content and reasoning, rely on self.in_reasoning
                     content, reasoning = self._handle_event(event, content, reasoning)
 
                     if event.get("type") in (
@@ -210,35 +270,40 @@ class Printer:
                         EventTypeEnum.REASONING,
                         EventTypeEnum.REASONING_END,
                     ):
-                        # Pass only necessary variables, rely on self.in_reasoning
                         self._update_live_display(live, content, reasoning, cursor)
 
                 # Remove cursor and finalize display
-                display_text = self._format_display_text(content, reasoning)
-                live.update(Markdown(display_text, code_theme=self.code_theme))
+                live.update(self._format_display_text(content, reasoning))
                 return content, reasoning
 
             except Exception as e:
                 self.console.print(f"An error occurred during stream display: {e}", style="red")
-                display_text = self._format_display_text(content, reasoning) + " [Display Error]"
-                live.update(Markdown(markup=display_text, code_theme=self.code_theme))
+                try:
+                    error_display = self._format_display_text(content + " [Display Error]", reasoning)
+                    live.update(error_display)
+                except Exception:
+                    # Fallback if formatting fails
+                    live.update(f"{content}\n[Display Error: {e}]")
                 if self.verbose:
                     traceback.print_exc()
                 return None, None
 
-    def display_normal(self, content: Optional[str], reasoning: Optional[str] = None) -> None:
+    def display_normal(
+        self, content: Optional[str], reasoning: Optional[str] = None, with_assistant_prefix: bool = True
+    ) -> None:
         """Display a complete, non-streamed response.
 
         Args:
             content (Optional[str]): The main content to display.
             reasoning (Optional[str]): The reasoning content to display.
+            with_assistant_prefix (bool): Whether to display the "Assistant:" prefix.
         """
-        self.console.print("Assistant:", style="bold green")
+        with_assistant_prefix and self.console.print("Assistant:", style="bold green")
 
         if content or reasoning:
             # Use the existing _format_display_text method
-            display_text = self._format_display_text(content or "", reasoning or "")
-            self.console.print(Markdown(display_text, code_theme=self.code_theme))
+            formatted_display = self._format_display_text(content or "", reasoning or "")
+            self.console.print(formatted_display)
             self.console.print()  # Add a newline for spacing
         else:
             self.console.print("Assistant did not provide any content.", style="yellow")
