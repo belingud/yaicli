@@ -5,7 +5,9 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/yaicli?logo=pypi&style=for-the-badge)
 ![Pepy Total Downloads](https://img.shields.io/pepy/dt/yaicli?style=for-the-badge&logo=python)
 
-YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (LLMs) like GPT-4o directly to your terminal. Interact with AI through multiple modes: have natural conversations, generate and execute shell commands, or get quick answers without leaving your workflow.
+YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (
+LLMs) like GPT-4o directly to your terminal. Interact with AI through multiple modes: have natural conversations,
+generate and execute shell commands, or get quick answers without leaving your workflow.
 
 **Supports both standard and deep reasoning models across all major LLM providers.**
 
@@ -20,34 +22,33 @@ YAICLI is a powerful yet lightweight command-line AI assistant that brings the c
 
 ### 🔄 Multiple Interaction Modes
 
--   **💬 Chat Mode**: Engage in persistent conversations with full context tracking
--   **🚀 Execute Mode**: Generate and safely run OS-specific shell commands
--   **⚡ Quick Query**: Get instant answers without entering interactive mode
+- **💬 Chat Mode**: Engage in persistent conversations with full context tracking
+- **🚀 Execute Mode**: Generate and safely run OS-specific shell commands
+- **⚡ Quick Query**: Get instant answers without entering interactive mode
 
 ### 🧠 Smart Environment Awareness
 
--   **Auto-detection**: Identifies your shell (bash/zsh/PowerShell/CMD) and OS
--   **Safe Command Execution**: 3-step verification before running any command
--   **Flexible Input**: Pipe content directly (`cat log.txt | ai "analyze this"`)
+- **Auto-detection**: Identifies your shell (bash/zsh/PowerShell/CMD) and OS
+- **Safe Command Execution**: 3-step verification before running any command
+- **Flexible Input**: Pipe content directly (`cat log.txt | ai "analyze this"`)
 
 ### 🔌 Universal LLM Compatibility
 
--   **OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
--   **Multi-Provider Support**: Easy configuration for Claude, Gemini, Cohere, etc.
--   **Custom Response Parsing**: Extract exactly what you need with jmespath
+- **OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
+- **Multi-Provider Support**: Easy configuration for Claude, Gemini, Cohere, etc.
+- **Custom Response Parsing**: Extract exactly what you need with jmespath
 
 ### 💻 Enhanced Terminal Experience
 
--   **Real-time Streaming**: See responses as they're generated with cursor animation
--   **Rich History Management**: LRU-based history with 500 entries by default
--   **Syntax Highlighting**: Beautiful code formatting with customizable themes
+- **Real-time Streaming**: See responses as they're generated with cursor animation
+- **Rich History Management**: LRU-based history with 500 entries by default
+- **Syntax Highlighting**: Beautiful code formatting with customizable themes
 
 ### 🛠️ Developer-Friendly
 
--   **Layered Configuration**: Environment variables > Config file > Sensible defaults
--   **Debugging Tools**: Verbose mode with detailed API tracing
--   **Lightweight**: Minimal dependencies with focused functionality
-
+- **Layered Configuration**: Environment variables > Config file > Sensible defaults
+- **Debugging Tools**: Verbose mode with detailed API tracing
+- **Lightweight**: Minimal dependencies with focused functionality
 
 ![What is life](artwork/reasoning_example.png)
 
@@ -55,7 +56,7 @@ YAICLI is a powerful yet lightweight command-line AI assistant that brings the c
 
 ### Prerequisites
 
--   Python 3.9 or higher
+- Python 3.9 or higher
 
 ### Quick Install
 
@@ -90,50 +91,55 @@ YAICLI uses a simple configuration file to store your preferences and API keys.
 
 ### Configuration File Structure
 
-The default configuration file is located at `~/.config/yaicli/config.ini`. You can use `ai --template` to see default settings, just as below:
+The default configuration file is located at `~/.config/yaicli/config.ini`. You can use `ai --template` to see default
+settings, just as below:
 
 ```ini
 [core]
-PROVIDER=openai
-BASE_URL=https://api.openai.com/v1
-API_KEY=
-MODEL=gpt-4o
+PROVIDER = openai
+BASE_URL = https://api.openai.com/v1
+API_KEY =
+MODEL = gpt-4o
 
 # auto detect shell and os (or specify manually, e.g., bash, zsh, powershell.exe)
-SHELL_NAME=auto
-OS_NAME=auto
+SHELL_NAME = auto
+OS_NAME = auto
 
 # API paths (usually no need to change for OpenAI compatible APIs)
-COMPLETION_PATH=chat/completions
-ANSWER_PATH=choices[0].message.content
+COMPLETION_PATH = chat/completions
+ANSWER_PATH = choices[0].message.content
 
 # true: streaming response, false: non-streaming
-STREAM=true
+STREAM = true
 
 # LLM parameters
-TEMPERATURE=0.7
-TOP_P=1.0
-MAX_TOKENS=1024
-TIMEOUT=60
+TEMPERATURE = 0.7
+TOP_P = 1.0
+MAX_TOKENS = 1024
+TIMEOUT = 60
 
 # Interactive mode parameters
-INTERACTIVE_ROUND=25
+INTERACTIVE_ROUND = 25
 
 # UI/UX
-CODE_THEME=monokai
-MAX_HISTORY=500 # Max entries kept in history file
-AUTO_SUGGEST=true
-SHOW_REASONING=true
+CODE_THEME = monokai
+# Max entries kept in history file
+MAX_HISTORY = 500
+AUTO_SUGGEST = true
+# Print reasoning content or not
+SHOW_REASONING = true
+# Text alignment (default, left, center, right, full)
+JUSTIFY = default
 
 # Chat history settings
-CHAT_HISTORY_DIR=<tempdir>/yaicli/chats
-MAX_SAVED_CHATS=20
+CHAT_HISTORY_DIR = <tempdir>/yaicli/chats
+MAX_SAVED_CHATS = 20
 ```
 
 ### Configuration Options Reference
 
 | Option              | Description                                 | Default                      | Env Variable            |
-| ------------------- | ------------------------------------------- | ---------------------------- | ----------------------- |
+|---------------------|---------------------------------------------|------------------------------|-------------------------|
 | `PROVIDER`          | LLM provider (openai, claude, cohere, etc.) | `openai`                     | `YAI_PROVIDER`          |
 | `BASE_URL`          | API endpoint URL                            | `https://api.openai.com/v1`  | `YAI_BASE_URL`          |
 | `API_KEY`           | Your API key                                | -                            | `YAI_API_KEY`           |
@@ -151,17 +157,20 @@ MAX_SAVED_CHATS=20
 | `MAX_TOKENS`        | Max response tokens                         | `1024`                       | `YAI_MAX_TOKENS`        |
 | `MAX_HISTORY`       | Max history entries                         | `500`                        | `YAI_MAX_HISTORY`       |
 | `AUTO_SUGGEST`      | Enable history suggestions                  | `true`                       | `YAI_AUTO_SUGGEST`      |
+| `SHOW_REASONING`    | Enable reasoning display                    | `true`                       | `YAI_SHOW_REASONING`    |
+| `JUSTIFY`           | Text alignment                              | `default`                    | `YAI_JUSTIFY`           |
 | `CHAT_HISTORY_DIR`  | Chat history directory                      | `<tempdir>/yaicli/history`   | `YAI_CHAT_HISTORY_DIR`  |
 | `MAX_SAVED_CHATS`   | Max saved chats                             | `20`                         | `YAI_MAX_SAVED_CHATS`   |
 
 ### LLM Provider Configuration
 
-YAICLI works with all major LLM providers. The default configuration is set up for OpenAI, but you can easily switch to other providers.
+YAICLI works with all major LLM providers. The default configuration is set up for OpenAI, but you can easily switch to
+other providers.
 
 #### Pre-configured Provider Settings
 
 | Provider                       | BASE_URL                                                  | COMPLETION_PATH    | ANSWER_PATH                  |
-| ------------------------------ | --------------------------------------------------------- | ------------------ | ---------------------------- |
+|--------------------------------|-----------------------------------------------------------|--------------------|------------------------------|
 | **OpenAI** (default)           | `https://api.openai.com/v1`                               | `chat/completions` | `choices[0].message.content` |
 | **Claude** (native API)        | `https://api.anthropic.com/v1`                            | `messages`         | `content[0].text`            |
 | **Claude** (OpenAI-compatible) | `https://api.anthropic.com/v1/openai`                     | `chat/completions` | `choices[0].message.content` |
@@ -170,8 +179,8 @@ YAICLI works with all major LLM providers. The default configuration is set up f
 
 > **Note**: Many providers offer OpenAI-compatible endpoints that work with the default settings.
 >
-> -   Google Gemini: https://ai.google.dev/gemini-api/docs/openai
-> -   Claude: https://docs.anthropic.com/en/api/openai-sdk
+> - Google Gemini: https://ai.google.dev/gemini-api/docs/openai
+> - Claude: https://docs.anthropic.com/en/api/openai-sdk
 
 #### Custom Provider Configuration Guide
 
@@ -192,15 +201,15 @@ To configure a custom provider:
 
 ```json
 {
-    "content": [
-        {
-            "text": "Hi! My name is Claude.",
-            "type": "text"
-        }
-    ],
-    "id": "msg_013Zva2CMHLNnXjNJJKqJ2EF",
-    "model": "claude-3-7-sonnet-20250219",
-    "role": "assistant"
+  "content": [
+    {
+      "text": "Hi! My name is Claude.",
+      "type": "text"
+    }
+  ],
+  "id": "msg_013Zva2CMHLNnXjNJJKqJ2EF",
+  "model": "claude-3-7-sonnet-20250219",
+  "role": "assistant"
 }
 ```
 
@@ -211,7 +220,7 @@ The path to extract the text is: `content.[0].text`
 YAICLI supports all Pygments syntax highlighting themes. You can set your preferred theme in the config file:
 
 ```ini
-CODE_THEME=monokai
+CODE_THEME = monokai
 ```
 
 Browse available themes at: https://pygments.org/styles/
@@ -246,7 +255,7 @@ Usage: ai [OPTIONS] [PROMPT]
 ```
 
 | Option       | Short | Description                         |
-| ------------ | ----- | ----------------------------------- |
+|--------------|-------|-------------------------------------|
 | `--chat`     | `-c`  | Start in interactive chat mode      |
 | `--shell`    | `-s`  | Generate and execute shell commands |
 | `--help`     | `-h`  | Show help message and exit          |
@@ -261,37 +270,37 @@ Usage: ai [OPTIONS] [PROMPT]
 
 **Commands**
 
--   `/clear` - Clear conversation history
--   `/his` - Show command history
--   `/list` - List saved chats
--   `/save <title>` - Save current chat with title
--   `/load <index>` - Load a saved chat
--   `/del <index>` - Delete a saved chat
--   `/exit` - Exit the application
--   `/mode chat|exec` - Switch modes
+- `/clear` - Clear conversation history
+- `/his` - Show command history
+- `/list` - List saved chats
+- `/save <title>` - Save current chat with title
+- `/load <index>` - Load a saved chat
+- `/del <index>` - Delete a saved chat
+- `/exit` - Exit the application
+- `/mode chat|exec` - Switch modes
 
 **Keyboard Shortcuts**
 
--   `Tab` - Toggle between Chat/Execute modes
--   `Ctrl+C` or `Ctrl+D` - Exit
--   `Ctrl+R` - Search history
--   `↑/↓` - Navigate through history
+- `Tab` - Toggle between Chat/Execute modes
+- `Ctrl+C` or `Ctrl+D` - Exit
+- `Ctrl+R` - Search history
+- `↑/↓` - Navigate through history
 
 </td>
 <td width="50%">
 
 **Chat Mode** (💬)
 
--   Natural conversations with context
--   Markdown and code formatting
--   Reasoning display for complex queries
+- Natural conversations with context
+- Markdown and code formatting
+- Reasoning display for complex queries
 
 **Execute Mode** (🚀)
 
--   Generate shell commands from descriptions
--   Review commands before execution
--   Edit commands before running
--   Safe execution with confirmation
+- Generate shell commands from descriptions
+- Review commands before execution
+- Edit commands before running
+- Safe execution with confirmation
 
 </td>
 </tr>
@@ -299,9 +308,12 @@ Usage: ai [OPTIONS] [PROMPT]
 
 ### Chat Persistent
 
-The `<PROMPT>` parameter in the chat mode will be used as a title to persist the chat content to the file system, with the save directory being a temporary directory, which may vary between machines, and it is determined on the first run.
+The `<PROMPT>` parameter in the chat mode will be used as a title to persist the chat content to the file system, with
+the save directory being a temporary directory, which may vary between machines, and it is determined on the first run.
 
-If the `<PROMPT>` parameter is not specified when entering `chat` mode, the session will be treated as a temporary session and will not be persisted. Of course, you can also manually call the `/save <title>` command to save during the chat.
+If the `<PROMPT>` parameter is not specified when entering `chat` mode, the session will be treated as a temporary
+session and will not be persisted. Of course, you can also manually call the `/save <title>` command to save during the
+chat.
 When you run the same `chat` command again, the previous session will be automatically loaded.
 
 ```bash
@@ -408,9 +420,9 @@ cat error.log | ai "Why am I getting these errors in my Python app?"
 
 YAICLI maintains a history of your interactions (default: 500 entries) stored in `~/.yaicli_history`. You can:
 
--   Configure history size with `MAX_HISTORY` in config
--   Search history with `Ctrl+R` in interactive mode
--   View recent commands with `/his` command
+- Configure history size with `MAX_HISTORY` in config
+- Search history with `Ctrl+R` in interactive mode
+- View recent commands with `/his` command
 
 ## 📱 Examples
 
@@ -517,16 +529,16 @@ Output:
 
 YAICLI is designed with a modular architecture that separates concerns and makes the codebase maintainable:
 
--   **CLI Module**: Handles user interaction and command parsing
--   **API Client**: Manages communication with LLM providers
--   **Config Manager**: Handles layered configuration
--   **History Manager**: Maintains conversation history with LRU functionality
--   **Printer**: Formats and displays responses with rich formatting
+- **CLI Module**: Handles user interaction and command parsing
+- **API Client**: Manages communication with LLM providers
+- **Config Manager**: Handles layered configuration
+- **History Manager**: Maintains conversation history with LRU functionality
+- **Printer**: Formats and displays responses with rich formatting
 
 ### Dependencies
 
 | Library                                                         | Purpose                                            |
-| --------------------------------------------------------------- | -------------------------------------------------- |
+|-----------------------------------------------------------------|----------------------------------------------------|
 | [Typer](https://typer.tiangolo.com/)                            | Command-line interface with type hints             |
 | [Rich](https://rich.readthedocs.io/)                            | Terminal formatting and beautiful display          |
 | [prompt_toolkit](https://python-prompt-toolkit.readthedocs.io/) | Interactive input with history and auto-completion |
@@ -537,10 +549,10 @@ YAICLI is designed with a modular architecture that separates concerns and makes
 
 Contributions are welcome! Here's how you can help:
 
--   **Bug Reports**: Open an issue describing the bug and how to reproduce it
--   **Feature Requests**: Suggest new features or improvements
--   **Code Contributions**: Submit a PR with your changes
--   **Documentation**: Help improve or translate the documentation
+- **Bug Reports**: Open an issue describing the bug and how to reproduce it
+- **Feature Requests**: Suggest new features or improvements
+- **Code Contributions**: Submit a PR with your changes
+- **Documentation**: Help improve or translate the documentation
 
 ## 📃 License
 
