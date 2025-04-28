@@ -19,19 +19,17 @@ def temp_chat_dir():
 def chat_manager(temp_chat_dir, mock_console):
     """Create a FileChatManager with a temporary directory for testing."""
     # Patch the class variables before instantiating
-    with (
-        patch.object(FileChatManager, "chat_dir", Path(temp_chat_dir)),
-        patch.object(FileChatManager, "max_saved_chats", 10),
-    ):
-        # Create a new manager that will use our patched values
-        manager = FileChatManager()
-        # Force-clear the chats map to ensure a clean state
-        manager._chats_map = None
-        # Ensure the directory exists
-        Path(temp_chat_dir).mkdir(parents=True, exist_ok=True)
-        yield manager
-        # Reset _chats_map to clear state between tests
-        manager._chats_map = None
+    FileChatManager.chat_dir = Path(temp_chat_dir)
+    FileChatManager.max_saved_chats = 10
+    # Create a new manager that will use our patched values
+    manager = FileChatManager()
+    # Force-clear the chats map to ensure a clean state
+    manager._chats_map = None
+    # Ensure the directory exists
+    Path(temp_chat_dir).mkdir(parents=True, exist_ok=True)
+    yield manager
+    # Reset _chats_map to clear state between tests
+    manager._chats_map = None
 
 
 class TestFileChatManager:
