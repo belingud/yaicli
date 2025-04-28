@@ -1,6 +1,9 @@
 # Justfile for Python project management
+# list of commands
+help:
+    @just -l
 
-# Format
+# Format code with ruff and isort
 format:
     @echo "Formatting code with ruff..."
     @ruff format yaicli
@@ -37,12 +40,12 @@ publish: build
     @echo "Publishing package..."
     @uv-publish
 
-# Install package in editable mode
+# Install package in editable mode by uv
 install:
     @echo "Installing packages..."
     @uv sync
 
-# Generate changelog from git log
+# Lock uv file and generate changelog from git log
 changelog:
     @echo "Lock and Generating changelog..."
     @uv lock
