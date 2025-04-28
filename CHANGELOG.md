@@ -2,6 +2,11 @@
 ---
 ## [0.3.0](https://github.com/belingud/yaicli/compare/v0.2.0..v0.3.0) - 2025-04-28
 
+1. Add roles create/delete/list/show commands
+2. Add role management functionality
+3. Improve configuration management
+4. Add reasoning show config, justify config
+
 ### ⛰️  Features
 
 - add roles and improve configuration management - ([fa883e9](https://github.com/belingud/yaicli/commit/fa883e9a39a9d72a60d1832b71c67a1bf6492b3c)) - Belingud
