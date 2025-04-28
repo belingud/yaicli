@@ -241,6 +241,9 @@ ai --chat
 # Generate and execute shell commands
 ai --shell "Create a backup of my Documents folder"
 
+# Generate code snippets, default in Python
+ai --code "Write a Python function to sort a list"
+
 # Analyze code from a file
 cat app.py | ai "Explain what this code does"
 
@@ -252,15 +255,48 @@ ai --verbose "Explain quantum computing"
 
 ```
 Usage: ai [OPTIONS] [PROMPT]
-```
 
-| Option       | Short | Description                         |
-|--------------|-------|-------------------------------------|
-| `--chat`     | `-c`  | Start in interactive chat mode      |
-| `--shell`    | `-s`  | Generate and execute shell commands |
-| `--help`     | `-h`  | Show help message and exit          |
-| `--verbose`  | `-V`  | Show detailed debug information     |
-| `--template` |       | Display the config template         |
+ YAICLI: Your AI assistant in the command line.
+ Call with a PROMPT to get a direct answer, use --shell to execute as command, or use --chat for an interactive session.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available. [default: None]                                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --install-completion            Install completion for the current shell.                                                                                                                │
+│ --show-completion               Show completion for the current shell, to copy it or customize the installation.                                                                         │
+│ --help                -h        Show this message and exit.                                                                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --model        -M      TEXT                       Specify the model to use.                                                                                                              │
+│ --temperature  -T      FLOAT RANGE [0.0<=x<=2.0]  Specify the temperature to use. [default: 0.7]                                                                                         │
+│ --top-p        -P      FLOAT RANGE [0.0<=x<=1.0]  Specify the top-p to use. [default: 1.0]                                                                                               │
+│ --max-tokens   -M      INTEGER RANGE [x>=1]       Specify the max tokens to use. [default: 1024]                                                                                         │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Role Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --role         -r      TEXT  Specify the assistant role to use. [default: DEFAULT]                                                                                                       │
+│ --create-role          TEXT  Create a new role with the specified name.                                                                                                                  │
+│ --delete-role          TEXT  Delete a role with the specified name.                                                                                                                      │
+│ --list-roles                 List all available roles.                                                                                                                                   │
+│ --show-role            TEXT  Show the role with the specified name.                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Chat Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --chat        -c        Start in interactive chat mode.                                                                                                                                  │
+│ --list-chats            List saved chat sessions.                                                                                                                                        │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Shell Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --shell  -s        Generate and optionally execute a shell command (non-interactive).                                                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Code Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --code          Generate and optionally execute a code block (non-interactive).                                                                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Other Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --verbose         -V                                                           Show verbose output (e.g., loaded config).                                                                │
+│ --template                                                                     Show the default config file template and exit.                                                           │
+│ --show-reasoning      --no-show-reasoning                                      Show reasoning content from the LLM. (default: True)                                                      │
+│ --justify         -j                         [default|left|center|right|full]  Specify the justify to use. [default: default]                                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
 
 ### Interactive Mode Features
 
@@ -416,6 +452,32 @@ cat demo.py | ai "Explain this code"
 cat error.log | ai "Why am I getting these errors in my Python app?"
 ```
 
+### Role Management
+
+```bash
+# Create a new role, you need to input the role description
+ai --create-role "Philosopher Master"
+
+# List all roles
+ai --list-roles
+
+# Show a role
+ai --show-role "Philosopher Master"
+
+# Delete a role
+ai --delete-role "Philosopher Master"
+```
+
+Once you create a role, you can use it in the `--role` option.
+
+```bash
+# Use a specific role
+ai --role "Philosopher Master" "What is the meaning of life?"
+
+# Use a role in chat
+ai --chat --role "Philosopher Master"
+```
+
 ### History Management
 
 YAICLI maintains a history of your interactions (default: 500 entries) stored in `~/.yaicli_history`. You can:
@@ -448,6 +510,23 @@ Edit command, press enter to execute:
 du -sh ./
 Output:
 109M    ./
+```
+
+### Code Generation
+
+In code mode, select the language for code generation. If none is specified, Python is the default.
+
+The `--code` mode outputs plain text, making it easy to copy, paste, or redirect to a file, especially when using the standard model.
+
+When using a deep reasoning model, the thinking content is displayed with syntax highlighting. To disable this, use the `--no-show-reasoning` option or set `SHOW_REASONING` to `false` in the configuration.
+
+```bash
+$ ai --code 'Write a fib generator'
+def fib_generator():
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
 ```
 
 ### Chat Mode Example
