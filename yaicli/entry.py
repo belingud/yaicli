@@ -1,5 +1,5 @@
 import sys
-from typing import Annotated, Optional, Any
+from typing import Annotated, Any, Optional
 
 import typer
 
@@ -24,7 +24,7 @@ def override_config(
     value: Any,
 ):
     """Override config with input value if value not equal to option default."""
-    if value != param.default:
+    if value != param.default and isinstance(param.name, str):
         cfg[param.name.upper()] = value
     return value
 

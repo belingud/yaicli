@@ -3,13 +3,13 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import typer
-from yaicli.console import get_console
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
 
 from yaicli.config import cfg
-from yaicli.const import DefaultRoleNames, DEFAULT_ROLES, ROLES_DIR
+from yaicli.console import get_console
+from yaicli.const import DEFAULT_ROLES, ROLES_DIR, DefaultRoleNames
 from yaicli.exceptions import RoleAlreadyExistsError, RoleCreationError
 from yaicli.utils import detect_os, detect_shell, option_callback
 

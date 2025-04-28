@@ -14,7 +14,8 @@ from rich.live import Live
 
 from yaicli.console import get_console
 from yaicli.const import EventTypeEnum
-from yaicli.render import JustifyMarkdown as Markdown, plain_formatter
+from yaicli.render import JustifyMarkdown as Markdown
+from yaicli.render import plain_formatter
 
 
 def cursor_animation() -> Iterator[str]:

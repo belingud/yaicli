@@ -7,8 +7,8 @@ from typing import Any, Dict, List, Optional, TypedDict, Union
 
 from rich.console import Console
 
-from yaicli.console import get_console
 from yaicli.config import Config, cfg
+from yaicli.console import get_console
 from yaicli.utils import option_callback
 
 

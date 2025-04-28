@@ -1,8 +1,10 @@
 from typing import Any, Optional, Union
+
 from rich.console import Console, JustifyMethod, OverflowMethod
 from rich.style import Style
-from yaicli.const import DEFAULT_JUSTIFY
+
 from yaicli.config import cfg
+from yaicli.const import DEFAULT_JUSTIFY
 
 _console = None
 

@@ -2,6 +2,7 @@ from enum import StrEnum
 from pathlib import Path
 from tempfile import gettempdir
 from typing import Any
+
 from rich.console import JustifyMethod
 
 

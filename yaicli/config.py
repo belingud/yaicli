@@ -11,8 +11,8 @@ from yaicli.const import (
     DEFAULT_CHAT_HISTORY_DIR,
     DEFAULT_CONFIG_INI,
     DEFAULT_CONFIG_MAP,
-    DEFAULT_MAX_SAVED_CHATS,
     DEFAULT_JUSTIFY,
+    DEFAULT_MAX_SAVED_CHATS,
 )
 from yaicli.utils import str2bool
 

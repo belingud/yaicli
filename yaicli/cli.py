@@ -17,7 +17,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from yaicli.api import ApiClient
-from yaicli.chat_manager import ChatManager, FileChatManager, ChatFileInfo
+from yaicli.chat_manager import ChatFileInfo, ChatManager, FileChatManager
 from yaicli.config import CONFIG_PATH, Config, cfg
 from yaicli.console import get_console
 from yaicli.const import (
