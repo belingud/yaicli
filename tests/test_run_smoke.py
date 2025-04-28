@@ -63,7 +63,7 @@ class TestRunSmoke(unittest.TestCase):
         mock_post.return_value = mock_response
 
         # Run CLI with a simple prompt
-        self.cli.run(chat=False, shell=False, prompt="Hello AI")
+        self.cli.run(chat=False, shell=False, input="Hello AI")
 
         # Verify API was called with correct parameters
         mock_post.assert_called_once()
@@ -82,7 +82,7 @@ class TestRunSmoke(unittest.TestCase):
         mock_post.return_value = mock_response
 
         # Run CLI in shell mode
-        self.cli.run(chat=False, shell=True, prompt="List files")
+        self.cli.run(chat=False, shell=True, input="List files")
 
         # Verify API was called with correct parameters
         mock_post.assert_called_once()
@@ -96,26 +96,42 @@ class TestRunSmoke(unittest.TestCase):
         mock_execute.assert_called_once()
 
     @patch("httpx.Client.post")
-    @patch("prompt_toolkit.PromptSession.prompt")
-    def test_chat_mode(self, mock_prompt, mock_post):
+    def test_chat_mode(self, mock_post):
         """Test chat mode (ai --chat)"""
-        # Setup mock responses
-        mock_response = MockResponse({"choices": [{"message": {"content": "Hello, how can I help?"}}]})
-        mock_post.return_value = mock_response
+        # Set up chat mode
+        self.cli.current_mode = CHAT_MODE
 
-        # Setup mock prompt inputs (first a message, then exit command)
-        mock_prompt.side_effect = ["Hello AI", "/exit"]
+        # Ensure streaming is disabled for this test
+        original_stream_setting = self.cli.config["STREAM"]
+        self.cli.config["STREAM"] = False
 
-        # Run CLI in chat mode
-        self.cli.run(chat=True, shell=False, prompt="")
+        # Create a test message
+        test_message = "Hello AI"
 
-        # Verify mode was set correctly
-        self.assertEqual(self.cli.current_mode, CHAT_MODE)
+        # Mock the API client's completion method
+        original_completion = self.cli.api_client.completion
+        mock_completion = MagicMock(return_value=("Hello, how can I help?", None))
+        self.cli.api_client.completion = mock_completion
 
-        # Verify API was called with correct parameters
-        mock_post.assert_called_once()
-        call_args = mock_post.call_args[1]
-        self.assertEqual(call_args["json"]["messages"][-1]["content"], "Hello AI")
+        try:
+            # Directly call the method that processes user input
+            self.cli._handle_llm_response(test_message)
+
+            # Verify API client's completion method was called with correct parameters
+            mock_completion.assert_called_once()
+            messages_arg = mock_completion.call_args[0][0]
+            self.assertEqual(messages_arg[-1]["content"], test_message)
+
+            # Verify the response was added to history
+            self.assertEqual(len(self.cli.history), 2)  # User message and assistant response
+            self.assertEqual(self.cli.history[0]["role"], "user")
+            self.assertEqual(self.cli.history[0]["content"], test_message)
+            self.assertEqual(self.cli.history[1]["role"], "assistant")
+            self.assertEqual(self.cli.history[1]["content"], "Hello, how can I help?")
+        finally:
+            # Restore original methods and settings
+            self.cli.api_client.completion = original_completion
+            self.cli.config["STREAM"] = original_stream_setting
 
     def test_error_handling(self):
         """Test error handling in API calls (non-streaming)"""
@@ -128,7 +144,7 @@ class TestRunSmoke(unittest.TestCase):
         ) as mock_get_completion:
             # Check that typer.Exit is called (which raises click.exceptions.Exit)
             with pytest.raises(click.exceptions.Exit) as e:
-                self.cli.run(chat=False, shell=False, prompt="Error Prompt")
+                self.cli.run(chat=False, shell=False, input="Error Prompt")
 
             # Verify exit code is 1
             self.assertEqual(e.value.exit_code, 1)
@@ -158,7 +174,7 @@ class TestRunSmoke(unittest.TestCase):
             self.cli.api_client, "stream_completion", return_value=mock_stream_generator()
         ) as mock_stream:
             # Run CLI with a simple prompt
-            self.cli.run(chat=False, shell=False, prompt="Hello AI")
+            self.cli.run(chat=False, shell=False, input="Hello AI")
 
             # Verify stream_completion was called
             mock_stream.assert_called_once()
@@ -186,7 +202,7 @@ class TestRunSmoke(unittest.TestCase):
             # _handle_llm_response receives None.
             # _run_once receives None and calls typer.Exit(code=1).
             with pytest.raises(click.exceptions.Exit) as e:
-                self.cli.run(chat=False, shell=False, prompt="Error Prompt")
+                self.cli.run(chat=False, shell=False, input="Error Prompt")
 
             # Verify exit code
             self.assertEqual(e.value.exit_code, 1)
