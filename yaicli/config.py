@@ -1,4 +1,5 @@
 import configparser
+from functools import lru_cache
 from os import getenv
 from typing import Optional
 
@@ -10,6 +11,7 @@ from yaicli.const import (
     DEFAULT_CHAT_HISTORY_DIR,
     DEFAULT_CONFIG_INI,
     DEFAULT_CONFIG_MAP,
+    DEFAULT_JUSTIFY,
     DEFAULT_MAX_SAVED_CHATS,
 )
 from yaicli.utils import str2bool
@@ -36,6 +38,7 @@ class Config(dict):
     def __init__(self, console: Optional[Console] = None):
         """Initializes and loads the configuration."""
         self.console = console or get_console()
+
         super().__init__()
         self.reload()
 
@@ -73,6 +76,8 @@ class Config(dict):
                 f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}\n")
             if "MAX_SAVED_CHATS" not in config_content.strip():  # Check for empty lines
                 f.write(f"\nMAX_SAVED_CHATS={DEFAULT_MAX_SAVED_CHATS}\n")
+            if "JUSTIFY" not in config_content.strip():
+                f.write(f"\nJUSTIFY={DEFAULT_JUSTIFY}\n")
 
     def _load_from_file(self) -> None:
         """Load configuration from the config file.
@@ -80,7 +85,7 @@ class Config(dict):
         Creates default config file if it doesn't exist.
         """
         if not CONFIG_PATH.exists():
-            self.console.print("Creating default configuration file.", style="bold yellow")
+            self.console.print("Creating default configuration file.", style="bold yellow", justify=self.get("JUSTIFY"))
             CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             with open(CONFIG_PATH, "w", encoding="utf-8") as f:
                 f.write(DEFAULT_CONFIG_INI)
@@ -135,6 +140,7 @@ class Config(dict):
                     f"[yellow]Warning:[/yellow] Invalid value '{raw_value}' for '{key}'. "
                     f"Expected type '{target_type.__name__}'. Using default value '{default_values_str[key]}'. Error: {e}",
                     style="dim",
+                    justify=self.get("JUSTIFY"),
                 )
                 # Fallback to default string value if conversion fails
                 try:
@@ -147,7 +153,17 @@ class Config(dict):
                     self.console.print(
                         f"[red]Error:[/red] Could not convert default value for '{key}'. Using raw value.",
                         style="error",
+                        justify=self.get("JUSTIFY"),
                     )
                     converted_value = raw_value  # Or assign a hardcoded safe default
 
             self[key] = converted_value
+
+
+@lru_cache(maxsize=1)
+def get_config() -> Config:
+    """Get the configuration singleton"""
+    return Config()
+
+
+cfg = get_config()

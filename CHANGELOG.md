@@ -1,5 +1,34 @@
 
 ---
+## [0.3.0](https://github.com/belingud/yaicli/compare/v0.2.0..v0.3.0) - 2025-04-28
+
+1. Add roles create/delete/list/show commands
+2. Add role management functionality
+3. Improve configuration management
+4. Add reasoning show config, justify config
+
+### ⛰️  Features
+
+- add roles and improve configuration management - ([fa883e9](https://github.com/belingud/yaicli/commit/fa883e9a39a9d72a60d1832b71c67a1bf6492b3c)) - Belingud
+
+### 🚜 Refactor
+
+- reorder imports and remove unused imports - ([28699dd](https://github.com/belingud/yaicli/commit/28699dde7df4c06ba252c5fa98923e373a28cfcd)) - Belingud
+- Improve typing and streamline code for maintainability, add role funtion - ([7f7230b](https://github.com/belingud/yaicli/commit/7f7230b6cf5ef07f7bc857f5ba9f710565886107)) - Belingud
+
+### 📚 Documentation
+
+- improve documentation and configuration details - ([28287d0](https://github.com/belingud/yaicli/commit/28287d0a622e1934a7fcb7da0158d65bf3b70be9)) - Belingud
+- Add reasoning example and update README - ([c80da0f](https://github.com/belingud/yaicli/commit/c80da0fdd957a13c91a6a55b4ee54dc10c5576ed)) - Belingud
+- Update README.md - ([1c169e5](https://github.com/belingud/yaicli/commit/1c169e5895ca0533ab1cfbca948872af30cdb4af)) - belingud
+- update CHANGELOG.md for v0.2.0 release - ([9cda1ea](https://github.com/belingud/yaicli/commit/9cda1eaa73c5e81e127eaac3ade8265a2a7ffb61)) - Belingud
+
+### 🧪 Testing
+
+- update CLI input handling and improve test cases for chat mode - ([7a12f71](https://github.com/belingud/yaicli/commit/7a12f716653db7e5215bfa421206951977d5a713)) - Belingud
+
+
+---
 ## [0.2.0](https://github.com/belingud/yaicli/compare/v0.1.0..v0.2.0) - 2025-04-22
 
 ### ⛰️  Features

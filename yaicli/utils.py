@@ -1,13 +1,32 @@
 import platform
 from os import getenv
 from os.path import basename, pathsep
-from typing import Any, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
+import typer
 from distro import name as distro_name
 
 from yaicli.const import DEFAULT_OS_NAME, DEFAULT_SHELL_NAME
 
-T = TypeVar("T", int, float, str)
+T = TypeVar("T", int, float, str, bool)
+
+
+def option_callback(func: Callable) -> Callable:  # pragma: no cover
+    """
+    A decorator for Typer option callbacks that ensures the application exits
+    after the callback function is executed.
+
+    Args:
+        func (Callable): The callback classmethod to wrap.
+    """
+
+    def wrapper(cls, value: T) -> T:
+        if not value:
+            return value
+        func(cls, value)
+        raise typer.Exit()
+
+    return wrapper
 
 
 def detect_os(config: dict[str, Any]) -> str:

@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from yaicli.chat_manager import FileChatManager
-from yaicli.config import Config
 
 
 @pytest.fixture
@@ -19,15 +18,20 @@ def temp_chat_dir():
 @pytest.fixture
 def chat_manager(temp_chat_dir, mock_console):
     """Create a FileChatManager with a temporary directory for testing."""
-    mock_config = MagicMock(spec=Config)
-    # Dictionary-like access for config
-    mock_config.__getitem__.side_effect = lambda key: {
-        "CHAT_HISTORY_DIR": temp_chat_dir,
-        "MAX_SAVED_CHATS": 10,
-    }.get(key)
-
-    manager = FileChatManager(config=mock_config, console=mock_console)
-    return manager
+    # Patch the class variables before instantiating
+    with (
+        patch.object(FileChatManager, "chat_dir", Path(temp_chat_dir)),
+        patch.object(FileChatManager, "max_saved_chats", 10),
+    ):
+        # Create a new manager that will use our patched values
+        manager = FileChatManager()
+        # Force-clear the chats map to ensure a clean state
+        manager._chats_map = None
+        # Ensure the directory exists
+        Path(temp_chat_dir).mkdir(parents=True, exist_ok=True)
+        yield manager
+        # Reset _chats_map to clear state between tests
+        manager._chats_map = None
 
 
 class TestFileChatManager:
@@ -118,29 +122,30 @@ class TestFileChatManager:
 
     def test_max_saved_chats(self, temp_chat_dir, mock_console):
         """Test that max_saved_chats is respected."""
-        # Create a manager with max 2 saved chats
-        mock_config = MagicMock(spec=Config)
-        mock_config.__getitem__.side_effect = lambda key: {
-            "CHAT_HISTORY_DIR": temp_chat_dir,
-            "MAX_SAVED_CHATS": 2,
-        }.get(key)
+        # Patch the FileChatManager class attributes
+        with (
+            patch.object(FileChatManager, "chat_dir", Path(temp_chat_dir)),
+            patch.object(FileChatManager, "max_saved_chats", 2),
+        ):
+            # Create a new manager with max 2 saved chats
+            manager = FileChatManager()
+            # Ensure a clean state
+            manager._chats_map = None
 
-        manager = FileChatManager(config=mock_config, console=mock_console)
+            # Save 3 chats
+            manager.save_chat([{"role": "user", "content": "Chat 1"}], "Title 1")
+            time.sleep(0.1)  # Ensure different timestamps
+            manager.save_chat([{"role": "user", "content": "Chat 2"}], "Title 2")
+            time.sleep(0.1)  # Ensure different timestamps
+            manager.save_chat([{"role": "user", "content": "Chat 3"}], "Title 3")
 
-        # Save 3 chats
-        manager.save_chat([{"role": "user", "content": "Chat 1"}], "Title 1")
-        time.sleep(0.1)  # Ensure different timestamps
-        manager.save_chat([{"role": "user", "content": "Chat 2"}], "Title 2")
-        time.sleep(0.1)  # Ensure different timestamps
-        manager.save_chat([{"role": "user", "content": "Chat 3"}], "Title 3")
-
-        # Should only keep the 2 most recent
-        chats = manager.list_chats()
-        assert len(chats) == 2
-        titles = [chat["title"] for chat in chats]
-        assert "Title 3" in titles
-        assert "Title 2" in titles
-        assert "Title 1" not in titles
+            # Should only keep the 2 most recent
+            chats = manager.list_chats()
+            assert len(chats) == 2
+            titles = [chat["title"] for chat in chats]
+            assert "Title 3" in titles
+            assert "Title 2" in titles
+            assert "Title 1" not in titles
 
     def test_load_chat_by_index(self, chat_manager):
         """Test loading a chat by index."""

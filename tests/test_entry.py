@@ -57,16 +57,16 @@ class TestTyperApp:
         prompt_text = "list files"
         result = runner.invoke(app, ["--shell", prompt_text])
         assert result.exit_code == 0
-        mock_cli_class.assert_called_once_with(verbose=False)
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=True, prompt=prompt_text)
+        mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
+        mock_cli_instance.run.assert_called_once_with(chat=False, shell=True, input=prompt_text, role="DEFAULT")
 
     def test_prompt_mode(self, mock_cli_class, mock_cli_instance):
         """Test invoking with just a prompt."""
         prompt_text = "what is the date?"
         result = runner.invoke(app, [prompt_text])
         assert result.exit_code == 0
-        mock_cli_class.assert_called_once_with(verbose=False)
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, prompt=prompt_text)
+        mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
+        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, input=prompt_text, role="DEFAULT")
 
     def test_verbose_mode(self, mock_cli_class, mock_cli_instance):
         """Test the --verbose flag."""
@@ -74,8 +74,8 @@ class TestTyperApp:
         result = runner.invoke(app, ["--verbose", prompt_text])
         assert result.exit_code == 0
         # Verify CLI was instantiated with verbose=True
-        mock_cli_class.assert_called_once_with(verbose=True)
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, prompt=prompt_text)
+        mock_cli_class.assert_called_once_with(verbose=True, role="DEFAULT")
+        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, input=prompt_text, role="DEFAULT")
 
     def test_stdin_prompt(self, mock_cli_class, mock_cli_instance):
         """Test reading prompt from stdin."""
@@ -84,8 +84,8 @@ class TestTyperApp:
         with patch("sys.stdin.isatty", return_value=False):
             result = runner.invoke(app, input=stdin_text)
         assert result.exit_code == 0
-        mock_cli_class.assert_called_once_with(verbose=False)
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, prompt=stdin_text)
+        mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
+        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, input=stdin_text, role="DEFAULT")
 
     def test_stdin_and_arg_prompt(self, mock_cli_class, mock_cli_instance):
         """Test combining stdin and argument prompt."""
@@ -95,8 +95,8 @@ class TestTyperApp:
         with patch("sys.stdin.isatty", return_value=False):
             result = runner.invoke(app, [arg_text], input=stdin_text)
         assert result.exit_code == 0
-        mock_cli_class.assert_called_once_with(verbose=False)
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, prompt=expected_prompt)
+        mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
+        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, input=expected_prompt, role="DEFAULT")
 
     def test_no_prompt_no_chat(self):
         """Test calling without prompt and without --chat."""
