@@ -17,7 +17,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from yaicli.api import ApiClient
-from yaicli.chat_manager import ChatManager, FileChatManager
+from yaicli.chat_manager import ChatManager, FileChatManager, ChatFileInfo
 from yaicli.config import CONFIG_PATH, Config, cfg
 from yaicli.console import get_console
 from yaicli.const import (
@@ -164,7 +164,7 @@ class CLI:
 
     def _list_chats(self) -> None:
         """List all saved chat sessions using session manager."""
-        chats = self.chat_manager.list_chats()
+        chats: list[ChatFileInfo] = self.chat_manager.list_chats()
 
         if not chats:
             self.console.print("No saved chats found.", style="yellow")

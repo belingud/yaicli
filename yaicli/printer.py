@@ -11,15 +11,10 @@ from typing import (
 
 from rich.console import Console, Group, RenderableType
 from rich.live import Live
-from rich.markdown import Markdown
 
 from yaicli.console import get_console
 from yaicli.const import EventTypeEnum
-
-
-def plain_formatter(text: str, **kwargs: Any) -> str:
-    """Format the text for display, without Markdown formatting."""
-    return text
+from yaicli.render import JustifyMarkdown as Markdown, plain_formatter
 
 
 def cursor_animation() -> Iterator[str]:
@@ -254,7 +249,8 @@ class Printer:
         Returns:
             Tuple[Optional[str], Optional[str]]: The final content and reasoning texts if successful, None otherwise.
         """
-        with_assistant_prefix and self.console.print("Assistant:", style="bold green")
+        if with_assistant_prefix:
+            self.console.print("Assistant:", style="bold green")
         self._reset_state()  # Reset state for the new stream
         content = ""
         reasoning = ""
@@ -278,12 +274,6 @@ class Printer:
 
             except Exception as e:
                 self.console.print(f"An error occurred during stream display: {e}", style="red")
-                try:
-                    error_display = self._format_display_text(content + " [Display Error]", reasoning)
-                    live.update(error_display)
-                except Exception:
-                    # Fallback if formatting fails
-                    live.update(f"{content}\n[Display Error: {e}]")
                 if self.verbose:
                     traceback.print_exc()
                 return None, None
@@ -298,8 +288,8 @@ class Printer:
             reasoning (Optional[str]): The reasoning content to display.
             with_assistant_prefix (bool): Whether to display the "Assistant:" prefix.
         """
-        with_assistant_prefix and self.console.print("Assistant:", style="bold green")
-
+        if with_assistant_prefix:
+            self.console.print("Assistant:", style="bold green")
         if content or reasoning:
             # Use the existing _format_display_text method
             formatted_display = self._format_display_text(content or "", reasoning or "")

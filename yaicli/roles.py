@@ -53,7 +53,7 @@ class RoleManager:
     console: Console = get_console()
 
     def __init__(self):
-        self.roles = self._load_roles()
+        self.roles: Dict[str, Role] = self._load_roles()
 
     def _load_roles(self) -> Dict[str, Role]:
         """Load all role configurations"""
@@ -61,7 +61,7 @@ class RoleManager:
         self.roles_dir.mkdir(parents=True, exist_ok=True)
 
         # Check if any role files exist
-        role_files = list(self.roles_dir.glob("*.json"))
+        role_files: list[Path] = list(self.roles_dir.glob("*.json"))
 
         if not role_files:
             # Fast path: no existing roles, just create defaults
@@ -98,6 +98,9 @@ class RoleManager:
     @classmethod
     @option_callback
     def print_list_option(cls, _: Any):
+        """Print the list of roles.
+        This method is a cli option callback.
+        """
         table = Table(show_header=True, show_footer=False)
         table.add_column("Name", style="dim")
         table.add_column("Filepath", style="dim")
@@ -107,7 +110,7 @@ class RoleManager:
         cls.console.print("Use `ai --show-role <name>` to view a role.", style="dim")
 
     def list_roles(self) -> list:
-        """List all available roles"""
+        """List all available roles info"""
         roles_list = []
         for role_id, role in sorted(self.roles.items()):
             roles_list.append(
@@ -124,6 +127,9 @@ class RoleManager:
     @classmethod
     @option_callback
     def show_role_option(cls, name: str):
+        """Show a role's prompt.
+        This method is a cli option callback.
+        """
         self = cls()
         role = self.get_role(name)
         if not role:
@@ -137,7 +143,10 @@ class RoleManager:
 
     @classmethod
     def check_id_ok(cls, role_id: str):
-        """Check if role exists"""
+        """Check if role exists by ID.
+        This method is a cli option callback.
+        If role does not exist, exit with error.
+        """
         if not role_id:
             return role_id
         self = cls()
@@ -164,7 +173,9 @@ class RoleManager:
     @classmethod
     @option_callback
     def create_role_option(cls, name: str):
-        """Create a new role configuration"""
+        """Create a new role and save it to file.
+        This method is a cli option callback.
+        """
         self = cls()
         if name in self.roles:
             self.console.print(f"Role '{name}' already exists", style="yellow")
@@ -179,7 +190,7 @@ class RoleManager:
         self.console.print(f"Role '{name}' created successfully", style="green")
 
     def create_role(self, role_id: str, role: Union[Role, Dict[str, Any]]) -> None:
-        """Create a new role configuration"""
+        """Create a new role and save it to file"""
         if role_id in self.roles:
             raise RoleAlreadyExistsError(f"Role '{role_id}' already exists")
         if isinstance(role, dict):
@@ -192,13 +203,15 @@ class RoleManager:
     @classmethod
     @option_callback
     def delete_role_option(cls, name: str):
-        """Delete a role configuration"""
+        """Delete a role and its file.
+        This method is a cli option callback.
+        """
         self = cls()
         if self.delete_role(name):
             self.console.print(f"Role '{name}' deleted successfully", style="green")
 
     def delete_role(self, role_id: str) -> bool:
-        """Delete a role configuration"""
+        """Delete a role and its file"""
         if role_id not in self.roles:
             self.console.print(f"Role '{role_id}' does not exist", style="red")
             return False
@@ -219,7 +232,7 @@ class RoleManager:
             return False
 
     def get_system_prompt(self, role_id: str) -> str:
-        """Get the system prompt for a role"""
+        """Get prompt from file by role ID"""
         role = self.get_role(role_id)
         if not role:
             # Fall back to default role if specified role doesn't exist

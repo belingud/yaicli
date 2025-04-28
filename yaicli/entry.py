@@ -23,8 +23,9 @@ def override_config(
     param: typer.CallbackParam,
     value: Any,
 ):
-    """Override config with input value."""
-    cfg[param.name.upper()] = value
+    """Override config with input value if value not equal to option default."""
+    if value != param.default:
+        cfg[param.name.upper()] = value
     return value
 
 
@@ -200,6 +201,7 @@ def main(
         typer.echo(ctx.get_help())
         raise typer.Exit()
 
+    # Use build-in role for --shell or --code mode
     if role and role != DefaultRoleNames.DEFAULT and (shell or code):
         print("Warning: --role is ignored when --shell or --code is used.")
         role = DefaultRoleNames.DEFAULT

@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional, TypedDict, Union
 
 from rich.console import Console
 
@@ -12,9 +12,21 @@ from yaicli.config import Config, cfg
 from yaicli.utils import option_callback
 
 
+class ChatFileInfo(TypedDict):
+    """Chat info, parse chat filename and store metadata"""
+
+    index: int
+    path: str
+    title: str
+    date: str
+    timestamp: int
+
+
 class ChatsMap(TypedDict):
-    title: Dict[str, dict]
-    index: Dict[int, dict]
+    """Chat info cache for chat manager"""
+
+    title: Dict[str, ChatFileInfo]
+    index: Dict[int, ChatFileInfo]
 
 
 class ChatManager(ABC):
@@ -31,7 +43,7 @@ class ChatManager(ABC):
         pass
 
     @abstractmethod
-    def list_chats(self) -> List[Dict[str, Any]]:
+    def list_chats(self) -> List[ChatFileInfo]:
         """List all saved chats and return the chat list"""
         pass
 
@@ -41,12 +53,12 @@ class ChatManager(ABC):
         pass
 
     @abstractmethod
-    def load_chat_by_index(self, index: int) -> Dict[str, Any]:
+    def load_chat_by_index(self, index: int) -> Union[ChatFileInfo, Dict]:
         """Load a chat by index and return the chat data"""
         pass
 
     @abstractmethod
-    def load_chat_by_title(self, title: str) -> Dict[str, Any]:
+    def load_chat_by_title(self, title: str) -> Union[ChatFileInfo, Dict]:
         """Load a chat by title and return the chat data"""
         pass
 
@@ -87,7 +99,7 @@ class FileChatManager(ChatManager):
         cls.console.print("Finding Chats...")
         c = -1
         for c, file in enumerate(sorted(cls.chat_dir.glob("*.json"), key=lambda f: f.stat().st_mtime)):
-            info = cls._parse_filename(file, c + 1)
+            info: ChatFileInfo = cls._parse_filename(file, c + 1)
             cls.console.print(f"{c + 1}. {info['title']} ({info['date']})")
         if c == -1:
             cls.console.print("No chats found", style="dim")
@@ -108,7 +120,7 @@ class FileChatManager(ChatManager):
         self._load_chats()
 
     @staticmethod
-    def _parse_filename(chat_file: Path, index: int) -> Dict[str, Any]:
+    def _parse_filename(chat_file: Path, index: int) -> ChatFileInfo:
         """Parse a chat filename and extract metadata"""
         # filename: "20250421-214005-title-meaning of life"
         filename = chat_file.stem
@@ -170,7 +182,7 @@ class FileChatManager(ChatManager):
 
         self._chats_map = chats_map
 
-    def list_chats(self) -> List[Dict[str, Any]]:
+    def list_chats(self) -> List[ChatFileInfo]:
         """List all saved chats and return the chat list"""
         return list(self.chats_map["index"].values())
 
@@ -218,7 +230,7 @@ class FileChatManager(ChatManager):
             self.console.print(f"Error saving chat '{save_title}': {e}", style="dim")
             return ""
 
-    def _load_chat_data(self, chat_info: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    def _load_chat_data(self, chat_info: Optional[ChatFileInfo]) -> Union[ChatFileInfo, Dict]:
         """Common method to load chat data from a chat info dict"""
         if not chat_info:
             return {}
@@ -243,14 +255,14 @@ class FileChatManager(ChatManager):
             self.console.print(f"Error loading chat from {chat_info['path']}: {e}", style="dim")
             return {}
 
-    def load_chat_by_index(self, index: int) -> Dict[str, Any]:
+    def load_chat_by_index(self, index: int) -> Union[ChatFileInfo, Dict]:
         """Load a chat by index and return the chat data"""
         if not self.validate_chat_index(index):
             return {}
         chat_info = self.chats_map.get("index", {}).get(index)
         return self._load_chat_data(chat_info)
 
-    def load_chat_by_title(self, title: str) -> Dict[str, Any]:
+    def load_chat_by_title(self, title: str) -> Union[ChatFileInfo, Dict]:
         """Load a chat by title and return the chat data"""
         chat_info = self.chats_map.get("title", {}).get(title)
         return self._load_chat_data(chat_info)

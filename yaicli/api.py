@@ -15,22 +15,11 @@ from yaicli.const import (
 
 def parse_stream_line(line: Union[bytes, str], console: Console, verbose: bool) -> Optional[dict]:
     """(Helper Function) Parse a single line from the SSE stream response."""
-    line_str: str
-    if isinstance(line, bytes):
-        try:
-            line_str = line.decode("utf-8")
-        except UnicodeDecodeError:
-            if verbose:
-                console.print(f"Warning: Could not decode stream line bytes: {line!r}", style="yellow")
-            return None
-    elif isinstance(line, str):
-        line_str = line
-    else:
-        # Handle unexpected line types
+    if not isinstance(line, (bytes, str)):
         if verbose:
-            console.print(f"Warning: Received unexpected line type: {type(line)}", style="yellow")
+            console.print(f"Warning: Received non-string/bytes line: {line!r}", style="yellow")
         return None
-
+    line_str: str = line.decode("utf-8") if isinstance(line, bytes) else line
     line_str = line_str.strip()
     if not line_str or not line_str.startswith("data: "):
         return None
@@ -76,7 +65,10 @@ class ApiClient:
             "stream": stream,
             "temperature": self.config["TEMPERATURE"],
             "top_p": self.config["TOP_P"],
-            "max_tokens": self.config["MAX_TOKENS"],
+            "max_tokens": self.config[
+                "MAX_TOKENS"
+            ],  # Openai: This value is now deprecated in favor of max_completion_tokens
+            "max_completion_tokens": self.config["MAX_TOKENS"],
         }
 
     def _handle_api_error(self, e: httpx.HTTPError) -> None:
@@ -186,7 +178,7 @@ class ApiClient:
         """Process a single chunk from the stream and yield events with updated reasoning state.
 
         Args:
-            parsed_data: The parsed JSON data from a stream line
+            parsed_data: The parsed JSON data from a streamline
             in_reasoning: Whether we're currently in a reasoning state
 
         Yields:
@@ -269,7 +261,7 @@ class ApiClient:
                     yield self._handle_http_error(e)
                     return
 
-                # Process the stream line by line
+                # Process the streamline by line
                 for line in response.iter_lines():
                     parsed_data = parse_stream_line(line, self.console, self.verbose)
                     if parsed_data is None:
