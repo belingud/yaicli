@@ -344,7 +344,6 @@ class CLI:
     def get_system_prompt(self) -> str:
         """Get the system prompt based on current role and mode"""
         # Use the role manager to get the system prompt
-        self.console.print(f"Using role: {self.role}")
         return self.role_manager.get_system_prompt(self.role)
 
     def _build_messages(self, user_input: str) -> List[dict]:
