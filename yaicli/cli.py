@@ -344,6 +344,7 @@ class CLI:
     def get_system_prompt(self) -> str:
         """Get the system prompt based on current role and mode"""
         # Use the role manager to get the system prompt
+        self.console.print(f"Using role: {self.role}")
         return self.role_manager.get_system_prompt(self.role)
 
     def _build_messages(self, user_input: str) -> List[dict]:
@@ -499,6 +500,7 @@ class CLI:
         @self.bindings.add(Keys.ControlI)  # TAB
         def _(event: KeyPressEvent) -> None:
             self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
+            self.role = DefaultRoleNames.SHELL if self.current_mode == EXEC_MODE else DefaultRoleNames.DEFAULT
 
     def _run_once(self, input: str, shell: bool) -> None:
         """Run a single command (non-interactive)."""
