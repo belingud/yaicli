@@ -130,7 +130,7 @@ def main(
     code: bool = typer.Option(
         False,
         "--code",
-        help="Generate and optionally execute a code block (non-interactive).",
+        help="Generate code in plaintext (non-interactive).",
         rich_help_panel="Code Options",
     ),
     # ------------------- Chat Options -------------------
