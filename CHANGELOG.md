@@ -1,5 +1,17 @@
 
 ---
+## [0.3.3](https://github.com/belingud/yaicli/compare/v0.3.2..v0.3.3) - 2025-04-29
+
+### 🚜 Refactor
+
+- remove redundant console print in CLI prompt logic - ([1cf8241](https://github.com/belingud/yaicli/commit/1cf824164db92cb7d91ab49ab44fd1e65ab35533)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.3.2 release - ([328f51b](https://github.com/belingud/yaicli/commit/328f51b79c7d1a982a942c833417841476ec70aa)) - Belingud
+
+
+---
 ## [0.3.2](https://github.com/belingud/yaicli/compare/v0.3.1..v0.3.2) - 2025-04-29
 
 ### 🐛 Bug Fixes
