@@ -232,7 +232,11 @@ class TestApiClientGetCompletion:
             # Verify httpx client call
             expected_url = "http://test.com/v1/chat/completions"
             expected_body = client._prepare_request_body(messages, stream=False)
-            expected_headers = {"Authorization": "Bearer test_key", "Content-Type": "application/json"}
+            expected_headers = {
+                "Authorization": "Bearer test_key",
+                "Content-Type": "application/json",
+                "X-Title": "Yaicli",
+            }
             mock_post.assert_called_once_with(expected_url, json=expected_body, headers=expected_headers)
             mock_response.raise_for_status.assert_called_once()
             assert content == "Hola"
