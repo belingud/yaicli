@@ -1,5 +1,37 @@
 
 ---
+## [0.3.3](https://github.com/belingud/yaicli/compare/v0.3.2..v0.3.3) - 2025-04-29
+
+### 🚜 Refactor
+
+- remove redundant console print in CLI prompt logic - ([1cf8241](https://github.com/belingud/yaicli/commit/1cf824164db92cb7d91ab49ab44fd1e65ab35533)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.3.2 release - ([328f51b](https://github.com/belingud/yaicli/commit/328f51b79c7d1a982a942c833417841476ec70aa)) - Belingud
+
+
+---
+## [0.3.2](https://github.com/belingud/yaicli/compare/v0.3.1..v0.3.2) - 2025-04-29
+
+### 🐛 Bug Fixes
+
+- mode change in repl should also change role - ([9dea555](https://github.com/belingud/yaicli/commit/9dea5552da2026c5de90a8a9ae8bb77708539100)) - Belingud
+
+### 📚 Documentation
+
+- Update CHANGELOG.md for release 0.3.1 - ([4511255](https://github.com/belingud/yaicli/commit/4511255df1a0c9f3be43a7ecdbc67f6272eb20dc)) - Belingud
+
+### 🧪 Testing
+
+- add X-Title header to API client test - ([f786c48](https://github.com/belingud/yaicli/commit/f786c48cc08aa824126e877c35a4e29e94612eea)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- configure GitHub Actions for PyPI publishing - ([b2d0cd4](https://github.com/belingud/yaicli/commit/b2d0cd46e77f3994ed0be49ab6a9ae0d943c7124)) - Belingud
+
+
+---
 ## [0.3.1](https://github.com/belingud/yaicli/compare/v0.3.0..v0.3.1) - 2025-04-29
 
 ### ⛰️  Features
