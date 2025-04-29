@@ -93,7 +93,11 @@ class ApiClient:
 
     def get_headers(self) -> Dict[str, str]:
         """Get the request headers."""
-        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        return {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "X-Title": "Yaicli",
+        }
 
     def _process_completion_response(self, response_json: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
         """Process the JSON response from a non-streamed completion request."""

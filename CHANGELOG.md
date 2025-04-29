@@ -1,5 +1,29 @@
 
 ---
+## [0.3.1](https://github.com/belingud/yaicli/compare/v0.3.0..v0.3.1) - 2025-04-29
+
+### ⛰️  Features
+
+- Add X-Title header to API requests - ([e30060b](https://github.com/belingud/yaicli/commit/e30060b64eafa2ad361c28ef6471e9eebe5e955d)) - Belingud
+- clarify --code option help message - ([74349c9](https://github.com/belingud/yaicli/commit/74349c9b38cd7773c53c211da955003294dcf04e)) - Belingud
+
+### 🚜 Refactor
+
+- simplify chat manager test setup - ([8650b05](https://github.com/belingud/yaicli/commit/8650b05df1e6228597be741a2d95c805cf6db0b9)) - Belingud
+
+### 📚 Documentation
+
+- refine CLI documentation and add code example - ([658ecf9](https://github.com/belingud/yaicli/commit/658ecf9444601277a5c63f57fe28ca6936365fba)) - Belingud
+- Update README with new features and usage examples - ([756942b](https://github.com/belingud/yaicli/commit/756942b9a80b13dfc49e0e773b1ff98b086c9c3e)) - Belingud
+- Update 0.3.0 feat changelog - ([34ad75a](https://github.com/belingud/yaicli/commit/34ad75ab026e44bd2749e9c99f97d187e4e50ca5)) - Belingud
+- update CHANGELOG for v0.3.0 - ([ce27418](https://github.com/belingud/yaicli/commit/ce27418275697b8a6919285a153c89326477913a)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update Justfile commands and descriptions - ([0c5b841](https://github.com/belingud/yaicli/commit/0c5b841201060eb3dc87ff68c0f6edecce3bb182)) - Belingud
+
+
+---
 ## [0.3.0](https://github.com/belingud/yaicli/compare/v0.2.0..v0.3.0) - 2025-04-28
 
 1. Add roles create/delete/list/show commands
