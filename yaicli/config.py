@@ -13,6 +13,7 @@ from yaicli.const import (
     DEFAULT_CONFIG_MAP,
     DEFAULT_JUSTIFY,
     DEFAULT_MAX_SAVED_CHATS,
+    DEFAULT_ROLE_MODIFY_WARNING,
 )
 from yaicli.utils import str2bool
 
@@ -78,6 +79,10 @@ class Config(dict):
                 f.write(f"\nMAX_SAVED_CHATS={DEFAULT_MAX_SAVED_CHATS}\n")
             if "JUSTIFY" not in config_content.strip():
                 f.write(f"\nJUSTIFY={DEFAULT_JUSTIFY}\n")
+            if "ROLE_MODIFY_WARNING" not in config_content.strip():
+                f.write(
+                    f"\n# Set to false to disable warnings about modified built-in roles\nROLE_MODIFY_WARNING={DEFAULT_ROLE_MODIFY_WARNING}\n"
+                )
 
     def _load_from_file(self) -> None:
         """Load configuration from the config file.
@@ -160,7 +165,7 @@ class Config(dict):
             self[key] = converted_value
 
 
-@lru_cache(maxsize=1)
+@lru_cache(1)
 def get_config() -> Config:
     """Get the configuration singleton"""
     return Config()

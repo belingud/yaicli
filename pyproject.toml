@@ -1,6 +1,6 @@
 [project]
 name = "yaicli"
-version = "0.3.3"
+version = "0.4.0"
 description = "A simple CLI tool to interact with LLM"
 authors = [{ name = "belingud", email = "im.victor@qq.com" }]
 readme = "README.md"
@@ -30,9 +30,10 @@ keywords = [
     "interact with llms",
 ]
 dependencies = [
+    "cohere>=5.15.0",
     "distro>=1.9.0",
     "httpx>=0.28.1",
-    "jmespath>=1.0.1",
+    "openai>=1.76.0",
     "prompt-toolkit>=3.0.50",
     "rich>=13.9.4",
     "socksio>=1.0.0",
