@@ -1,6 +1,6 @@
 from typing import Any, Dict, Iterator, List, Literal, Optional, Tuple, TypeVar
 
-from cohere import ClientV2, ChatResponse, StreamedChatResponseV2
+from cohere import ChatResponse, ClientV2, StreamedChatResponseV2
 from cohere.core.api_error import ApiError
 
 from yaicli.const import EventTypeEnum
@@ -33,7 +33,7 @@ class CohereClient(BaseClient):
         super().__init__(config, console, verbose)
         self.api_key = config["API_KEY"]
         self.model = config["MODEL"]
-        if not config['BASE_URL'] or "cohere" not in config["BASE_URL"]:
+        if not config["BASE_URL"] or "cohere" not in config["BASE_URL"]:
             # BASE_URL can be empty, in which case we use the default base_url
             self.base_url = "https://api.cohere.com"
         else:

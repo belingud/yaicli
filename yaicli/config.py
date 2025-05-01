@@ -80,7 +80,9 @@ class Config(dict):
             if "JUSTIFY" not in config_content.strip():
                 f.write(f"\nJUSTIFY={DEFAULT_JUSTIFY}\n")
             if "ROLE_MODIFY_WARNING" not in config_content.strip():
-                f.write(f"\n# Set to false to disable warnings about modified built-in roles\nROLE_MODIFY_WARNING={DEFAULT_ROLE_MODIFY_WARNING}\n")
+                f.write(
+                    f"\n# Set to false to disable warnings about modified built-in roles\nROLE_MODIFY_WARNING={DEFAULT_ROLE_MODIFY_WARNING}\n"
+                )
 
     def _load_from_file(self) -> None:
         """Load configuration from the config file.

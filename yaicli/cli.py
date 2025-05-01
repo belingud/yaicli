@@ -16,7 +16,6 @@ from rich.padding import Padding
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from yaicli.providers import create_api_client, BaseClient
 from yaicli.chat_manager import ChatFileInfo, ChatManager, FileChatManager
 from yaicli.config import CONFIG_PATH, Config, cfg
 from yaicli.console import get_console
@@ -40,6 +39,7 @@ from yaicli.const import (
 )
 from yaicli.history import LimitedFileHistory
 from yaicli.printer import Printer
+from yaicli.providers import BaseClient, create_api_client
 from yaicli.roles import RoleManager
 from yaicli.utils import detect_os, detect_shell, filter_command
 

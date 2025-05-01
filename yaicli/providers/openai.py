@@ -3,7 +3,8 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import openai
 from openai import OpenAI
 from openai.types.chat.chat_completion import ChatCompletion
-from openai.types.chat.chat_completion_chunk import ChoiceDelta, Choice
+from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
+
 from yaicli.const import EventTypeEnum
 from yaicli.providers.base import BaseClient
 
