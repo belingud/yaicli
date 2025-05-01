@@ -1,5 +1,39 @@
 
 ---
+## [0.4.0](https://github.com/belingud/yaicli/compare/v0.3.3..v0.4.0) - 2025-05-01
+
+**From this version, yaicli will use provider sdk instead of httpx raw request**
+
+Providers:
+- OpenAI
+- Cohere
+
+### ⛰️  Features
+
+- add provider-based API client architecture with OpenAI and Cohere support - ([9f68de1](https://github.com/belingud/yaicli/commit/9f68de1a545dc297abb2f5479820121cfd753099)) - Belingud
+- add role modify warning config and optimize lru_cache - ([9c25162](https://github.com/belingud/yaicli/commit/9c25162f26f6767d90ce24cb8d64780ad45c0219)) - Belingud
+- add role modification warnings and singleton pattern for RoleManager - ([e2f9596](https://github.com/belingud/yaicli/commit/e2f959665488b856acec863f121a1126f9529c7c)) - Belingud
+
+### 🚜 Refactor
+
+- reorganize imports and improve code formatting - ([c1ee133](https://github.com/belingud/yaicli/commit/c1ee13399d5cdd503821fadfe2dc8c4f56656854)) - Belingud
+
+### 📚 Documentation
+
+- refine README with updated configurations and provider info - ([90b8170](https://github.com/belingud/yaicli/commit/90b8170e1adefb21ab2fca88c15ca38aaa54ea91)) - Belingud
+- update changelog for v0.3.3 release - ([3c73873](https://github.com/belingud/yaicli/commit/3c73873afad339f5d247299b6ffeb3526e1827b3)) - Belingud
+
+### 🧪 Testing
+
+- add provider tests for base, cohere, openai, and factory - ([26e6ef2](https://github.com/belingud/yaicli/commit/26e6ef2ec80763910fe4114a0a1f2f1f8c50e9f9)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add chat demo cast and use asciinema for example - ([36f3dea](https://github.com/belingud/yaicli/commit/36f3dea8fecfdc05601c86311a8069b60640c893)) - Belingud
+- add yaicli to isort formatting in Justfile - ([d47def9](https://github.com/belingud/yaicli/commit/d47def9e4b021ba4eb7c63715cad2edb787195dd)) - Belingud
+
+
+---
 ## [0.3.3](https://github.com/belingud/yaicli/compare/v0.3.2..v0.3.3) - 2025-04-29
 
 ### 🚜 Refactor
