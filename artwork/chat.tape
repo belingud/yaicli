@@ -64,7 +64,7 @@ Set CursorBlink false
 Set PlaybackSpeed 1.5
 Set FontSize 32
 Set Width 1800
-Set Height 1200
+Set Height 1400
 Set TypingSpeed 0.5
 
 Set Shell zsh
@@ -72,14 +72,14 @@ Sleep 1s
 Type "ai -c"
 Sleep 1s
 Enter
-Sleep 1s
+Sleep 3s
 Type "Tell me about the solar system"
 Enter
-Sleep 6s
+Sleep 10s
 Tab
 Type "Check the current directory size"
 Enter
-Sleep 6s
+Sleep 10s
 Type y
 Enter
 Ctrl+C
