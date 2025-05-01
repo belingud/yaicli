@@ -11,9 +11,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 
 **Supports both standard and deep reasoning models across all major LLM providers.**
 
-<p align="center">
-  <img src="https://vhs.charm.sh/vhs-5U1BBjJkTUBReRswsSgIVx.gif" alt="YAICLI Chat Demo" width="85%">
-</p>
+<a href="https://asciinema.org/a/vyreM0n576GjGL2asjI3QzUIY" target="_blank"><img src="https://asciinema.org/a/vyreM0n576GjGL2asjI3QzUIY.svg" width="85%"/></a>
 
 > [!NOTE]
 > YAICLI is actively developed. While core functionality is stable, some features may evolve in future releases.
@@ -105,10 +103,6 @@ MODEL = gpt-4o
 SHELL_NAME = auto
 OS_NAME = auto
 
-# API paths (usually no need to change for OpenAI compatible APIs)
-COMPLETION_PATH = chat/completions
-ANSWER_PATH = choices[0].message.content
-
 # true: streaming response, false: non-streaming
 STREAM = true
 
@@ -138,29 +132,28 @@ MAX_SAVED_CHATS = 20
 
 ### Configuration Options Reference
 
-| Option              | Description                                 | Default                      | Env Variable            |
-|---------------------|---------------------------------------------|------------------------------|-------------------------|
-| `PROVIDER`          | LLM provider (openai, claude, cohere, etc.) | `openai`                     | `YAI_PROVIDER`          |
-| `BASE_URL`          | API endpoint URL                            | `https://api.openai.com/v1`  | `YAI_BASE_URL`          |
-| `API_KEY`           | Your API key                                | -                            | `YAI_API_KEY`           |
-| `MODEL`             | LLM model to use                            | `gpt-4o`                     | `YAI_MODEL`             |
-| `SHELL_NAME`        | Shell type                                  | `auto`                       | `YAI_SHELL_NAME`        |
-| `OS_NAME`           | Operating system                            | `auto`                       | `YAI_OS_NAME`           |
-| `COMPLETION_PATH`   | API completion path                         | `chat/completions`           | `YAI_COMPLETION_PATH`   |
-| `ANSWER_PATH`       | JSON path for response                      | `choices[0].message.content` | `YAI_ANSWER_PATH`       |
-| `STREAM`            | Enable streaming                            | `true`                       | `YAI_STREAM`            |
-| `TIMEOUT`           | API timeout (seconds)                       | `60`                         | `YAI_TIMEOUT`           |
-| `INTERACTIVE_ROUND` | Interactive mode rounds                     | `25`                         | `YAI_INTERACTIVE_ROUND` |
-| `CODE_THEME`        | Syntax highlighting theme                   | `monokai`                    | `YAI_CODE_THEME`        |
-| `TEMPERATURE`       | Response randomness                         | `0.7`                        | `YAI_TEMPERATURE`       |
-| `TOP_P`             | Top-p sampling                              | `1.0`                        | `YAI_TOP_P`             |
-| `MAX_TOKENS`        | Max response tokens                         | `1024`                       | `YAI_MAX_TOKENS`        |
-| `MAX_HISTORY`       | Max history entries                         | `500`                        | `YAI_MAX_HISTORY`       |
-| `AUTO_SUGGEST`      | Enable history suggestions                  | `true`                       | `YAI_AUTO_SUGGEST`      |
-| `SHOW_REASONING`    | Enable reasoning display                    | `true`                       | `YAI_SHOW_REASONING`    |
-| `JUSTIFY`           | Text alignment                              | `default`                    | `YAI_JUSTIFY`           |
-| `CHAT_HISTORY_DIR`  | Chat history directory                      | `<tempdir>/yaicli/history`   | `YAI_CHAT_HISTORY_DIR`  |
-| `MAX_SAVED_CHATS`   | Max saved chats                             | `20`                         | `YAI_MAX_SAVED_CHATS`   |
+| Option                | Description                                 | Default                     | Env Variable              |
+| --------------------- | ------------------------------------------- | --------------------------- | ------------------------- |
+| `PROVIDER`            | LLM provider (openai, claude, cohere, etc.) | `openai`                    | `YAI_PROVIDER`            |
+| `BASE_URL`            | API endpoint URL                            | `https://api.openai.com/v1` | `YAI_BASE_URL`            |
+| `API_KEY`             | Your API key                                | -                           | `YAI_API_KEY`             |
+| `MODEL`               | LLM model to use                            | `gpt-4o`                    | `YAI_MODEL`               |
+| `SHELL_NAME`          | Shell type                                  | `auto`                      | `YAI_SHELL_NAME`          |
+| `OS_NAME`             | Operating system                            | `auto`                      | `YAI_OS_NAME`             |
+| `STREAM`              | Enable streaming                            | `true`                      | `YAI_STREAM`              |
+| `TIMEOUT`             | API timeout (seconds)                       | `60`                        | `YAI_TIMEOUT`             |
+| `INTERACTIVE_ROUND`   | Interactive mode rounds                     | `25`                        | `YAI_INTERACTIVE_ROUND`   |
+| `CODE_THEME`          | Syntax highlighting theme                   | `monokai`                   | `YAI_CODE_THEME`          |
+| `TEMPERATURE`         | Response randomness                         | `0.7`                       | `YAI_TEMPERATURE`         |
+| `TOP_P`               | Top-p sampling                              | `1.0`                       | `YAI_TOP_P`               |
+| `MAX_TOKENS`          | Max response tokens                         | `1024`                      | `YAI_MAX_TOKENS`          |
+| `MAX_HISTORY`         | Max history entries                         | `500`                       | `YAI_MAX_HISTORY`         |
+| `AUTO_SUGGEST`        | Enable history suggestions                  | `true`                      | `YAI_AUTO_SUGGEST`        |
+| `SHOW_REASONING`      | Enable reasoning display                    | `true`                      | `YAI_SHOW_REASONING`      |
+| `JUSTIFY`             | Text alignment                              | `default`                   | `YAI_JUSTIFY`             |
+| `CHAT_HISTORY_DIR`    | Chat history directory                      | `<tempdir>/yaicli/history`  | `YAI_CHAT_HISTORY_DIR`    |
+| `MAX_SAVED_CHATS`     | Max saved chats                             | `20`                        | `YAI_MAX_SAVED_CHATS`     |
+| `ROLE_MODIFY_WARNING` | Warn user when modifying role               | `true`                      | `YAI_ROLE_MODIFY_WARNING` |
 
 ### LLM Provider Configuration
 
@@ -169,51 +162,22 @@ other providers.
 
 #### Pre-configured Provider Settings
 
-| Provider                       | BASE_URL                                                  | COMPLETION_PATH    | ANSWER_PATH                  |
-|--------------------------------|-----------------------------------------------------------|--------------------|------------------------------|
-| **OpenAI** (default)           | `https://api.openai.com/v1`                               | `chat/completions` | `choices[0].message.content` |
-| **Claude** (native API)        | `https://api.anthropic.com/v1`                            | `messages`         | `content[0].text`            |
-| **Claude** (OpenAI-compatible) | `https://api.anthropic.com/v1/openai`                     | `chat/completions` | `choices[0].message.content` |
-| **Cohere**                     | `https://api.cohere.com/v2`                               | `chat`             | `message.content[0].text`    |
-| **Google Gemini**              | `https://generativelanguage.googleapis.com/v1beta/openai` | `chat/completions` | `choices[0].message.content` |
+`provider` is not case sensitive.
+
+Claude and gemini native api will support soon.
+
+| Provider                       | BASE_URL                                                  |
+| ------------------------------ | --------------------------------------------------------- |
+| **OpenAI** (default)           | `https://api.openai.com/v1`                               |
+| **Claude** (native API)        | `https://api.anthropic.com/v1`                            |
+| **Claude** (OpenAI-compatible) | `https://api.anthropic.com/v1/openai`                     |
+| **Cohere**                     | `https://api.cohere.com`                                  |
+| **Gemini**                     | `https://generativelanguage.googleapis.com/v1beta/openai` |
 
 > **Note**: Many providers offer OpenAI-compatible endpoints that work with the default settings.
 >
 > - Google Gemini: https://ai.google.dev/gemini-api/docs/openai
 > - Claude: https://docs.anthropic.com/en/api/openai-sdk
-
-#### Custom Provider Configuration Guide
-
-To configure a custom provider:
-
-1. **Find the API Endpoint**:
-
-    - Check the provider's API documentation for their chat completion endpoint
-
-2. **Identify the Response Structure**:
-
-    - Look at the JSON response format to find where the text content is located
-
-3. **Set the Path Expression**:
-    - Use jmespath syntax to specify the path to the text content
-
-**Example**: For Claude's native API, the response looks like:
-
-```json
-{
-  "content": [
-    {
-      "text": "Hi! My name is Claude.",
-      "type": "text"
-    }
-  ],
-  "id": "msg_013Zva2CMHLNnXjNJJKqJ2EF",
-  "model": "claude-3-7-sonnet-20250219",
-  "role": "assistant"
-}
-```
-
-The path to extract the text is: `content.[0].text`
 
 ### Syntax Highlighting Themes
 
@@ -225,7 +189,7 @@ CODE_THEME = monokai
 
 Browse available themes at: https://pygments.org/styles/
 
-![monokai theme example](artwork/monokia.png)
+![monokia theme example](artwork/monokia.png)
 
 ## 🚀 Usage
 
@@ -625,12 +589,10 @@ YAICLI is designed with a modular architecture that separates concerns and makes
 ### Dependencies
 
 | Library                                                         | Purpose                                            |
-|-----------------------------------------------------------------|----------------------------------------------------|
+| --------------------------------------------------------------- | -------------------------------------------------- |
 | [Typer](https://typer.tiangolo.com/)                            | Command-line interface with type hints             |
 | [Rich](https://rich.readthedocs.io/)                            | Terminal formatting and beautiful display          |
 | [prompt_toolkit](https://python-prompt-toolkit.readthedocs.io/) | Interactive input with history and auto-completion |
-| [httpx](https://www.python-httpx.org/)                          | Modern HTTP client with async support              |
-| [jmespath](https://jmespath.org/)                               | JSON data extraction                               |
 
 ## 👨‍💻 Contributing
 
