@@ -107,7 +107,7 @@ class TestCLIInitialization:
         with (
             patch("yaicli.cli.get_console"),
             patch("yaicli.cli.Config"),
-            patch("yaicli.cli.ApiClient"),
+            patch("yaicli.providers.create_api_client"),
             patch("yaicli.cli.Printer"),
             patch("yaicli.cli.FileChatManager"),
             patch("pathlib.Path.mkdir"),
@@ -124,7 +124,7 @@ class TestCLIInitialization:
         with (
             patch("yaicli.cli.get_console") as mock_console_func,
             patch("yaicli.cli.Config"),
-            patch("yaicli.cli.ApiClient"),
+            patch("yaicli.providers.create_api_client"),
             patch("yaicli.cli.Printer"),
             patch("yaicli.cli.FileChatManager"),
             patch("pathlib.Path.mkdir"),

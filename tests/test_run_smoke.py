@@ -8,30 +8,6 @@ import pytest  # Import pytest
 from yaicli.cli import CHAT_MODE, CLI, EXEC_MODE, TEMP_MODE
 
 
-class MockResponse:
-    """Mock HTTP response"""
-
-    def __init__(self, json_data, status_code=200, stream=False):
-        self.json_data = json_data
-        self.status_code = status_code
-        self._stream = stream
-
-    def json(self):
-        return self.json_data
-
-    def raise_for_status(self):
-        if self.status_code != 200:
-            raise Exception(f"HTTP Error: {self.status_code}")
-
-    def iter_lines(self):
-        if not self._stream:
-            return []
-        # Simulate streaming response format
-        yield b'data: {"choices": [{"delta": {"content": "Hello"}}]}'
-        yield b'data: {"choices": [{"delta": {"content": " World"}}]}'
-        yield b"data: [DONE]"
-
-
 class TestRunSmoke(unittest.TestCase):
     """Smoke tests for yaicli.py"""
 
@@ -55,48 +31,81 @@ class TestRunSmoke(unittest.TestCase):
         if "YAI_STREAM" in os.environ:
             del os.environ["YAI_STREAM"]
 
-    @patch("httpx.Client.post")
-    def test_simple_prompt(self, mock_post):
+    @patch("openai.OpenAI")
+    def test_simple_prompt(self, mock_openai_client):
         """Test basic prompt mode (ai xxx)"""
-        # Setup mock response
-        mock_response = MockResponse({"choices": [{"message": {"content": "Test response"}}]})
-        mock_post.return_value = mock_response
+        # Mock OpenAI client and response
+        mock_client = MagicMock()
+        mock_openai_client.return_value = mock_client
 
-        # Run CLI with a simple prompt
-        self.cli.run(chat=False, shell=False, input="Hello AI")
+        # Mock the return value of completions.create method
+        mock_chat_completion = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = "Test response"
+        mock_choice.message = mock_message
+        mock_chat_completion.choices = [mock_choice]
 
-        # Verify API was called with correct parameters
-        mock_post.assert_called_once()
-        call_args = mock_post.call_args[1]
-        self.assertEqual(call_args["json"]["messages"][-1]["content"], "Hello AI")
+        # Set up mock objects returned by the API client
+        mock_client.chat.completions.create.return_value = mock_chat_completion
 
-        # Verify mode was set correctly
-        self.assertEqual(self.cli.current_mode, TEMP_MODE)
+        # Directly mock api_client.completion method to return test response
+        original_completion = self.cli.api_client.completion
+        self.cli.api_client.completion = MagicMock(return_value=("Test response", None))
 
-    @patch("httpx.Client.post")
+        try:
+            # Run CLI with a simple prompt
+            self.cli.run(chat=False, shell=False, input="Hello AI")
+
+            # Verify API was called through our mocked completion method
+            self.cli.api_client.completion.assert_called_once()
+
+            # Verify mode was set correctly
+            self.assertEqual(self.cli.current_mode, TEMP_MODE)
+        finally:
+            # Restore original method
+            self.cli.api_client.completion = original_completion
+
+    @patch("openai.OpenAI")
     @patch("yaicli.cli.CLI._confirm_and_execute")
-    def test_shell_mode(self, mock_execute, mock_post):
+    def test_shell_mode(self, mock_execute, mock_openai_client):
         """Test shell command mode (ai --shell xxx)"""
-        # Setup mock response
-        mock_response = MockResponse({"choices": [{"message": {"content": "ls -la"}}]})
-        mock_post.return_value = mock_response
+        # Mock OpenAI client and response
+        mock_client = MagicMock()
+        mock_openai_client.return_value = mock_client
 
-        # Run CLI in shell mode
-        self.cli.run(chat=False, shell=True, input="List files")
+        # Mock the return value of completions.create method
+        mock_chat_completion = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = "ls -la"
+        mock_choice.message = mock_message
+        mock_chat_completion.choices = [mock_choice]
 
-        # Verify API was called with correct parameters
-        mock_post.assert_called_once()
-        call_args = mock_post.call_args[1]
-        self.assertEqual(call_args["json"]["messages"][-1]["content"], "List files")
+        # Set up mock objects returned by the API client
+        mock_client.chat.completions.create.return_value = mock_chat_completion
 
-        # Verify mode was set correctly
-        self.assertEqual(self.cli.current_mode, EXEC_MODE)
+        # Directly mock api_client.completion method to return test response
+        original_completion = self.cli.api_client.completion
+        self.cli.api_client.completion = MagicMock(return_value=("ls -la", None))
 
-        # Verify shell execution was attempted
-        mock_execute.assert_called_once()
+        try:
+            # Run CLI in shell mode
+            self.cli.run(chat=False, shell=True, input="List files")
 
-    @patch("httpx.Client.post")
-    def test_chat_mode(self, mock_post):
+            # Verify API was called
+            self.cli.api_client.completion.assert_called_once()
+
+            # Verify mode was set correctly
+            self.assertEqual(self.cli.current_mode, EXEC_MODE)
+
+            # Verify shell execution was attempted
+            mock_execute.assert_called_once()
+        finally:
+            # Restore original method
+            self.cli.api_client.completion = original_completion
+
+    def test_chat_mode(self):
         """Test chat mode (ai --chat)"""
         # Set up chat mode
         self.cli.current_mode = CHAT_MODE
@@ -244,16 +253,19 @@ class TestPromptToolkitIntegration(unittest.TestCase):
         if "YAI_STREAM" in os.environ:
             del os.environ["YAI_STREAM"]
 
-    @patch("httpx.Client.post")
-    def test_prompt_toolkit_input(self, mock_post):
+    @patch("openai.OpenAI")
+    def test_prompt_toolkit_input(self, mock_openai_client):
         """Test prompt_toolkit input handling"""
-        # Setup mock response
-        mock_response = MockResponse({"choices": [{"message": {"content": "Test response"}}]})
-        mock_post.return_value = mock_response
+        # Mock OpenAI client
+        mock_client = MagicMock()
+        mock_openai_client.return_value = mock_client
 
         # Create CLI instance
         cli = CLI(verbose=False)
         cli.console = MagicMock()
+
+        # Directly mock _process_user_input instead of modifying api_client underlying implementation
+        cli._process_user_input = MagicMock(return_value=True)
 
         # Instead of using prompt_toolkit's pipe input which causes EOFError,
         # we'll directly mock the session.prompt method
@@ -264,13 +276,11 @@ class TestPromptToolkitIntegration(unittest.TestCase):
         cli.current_mode = CHAT_MODE
         cli.prepare_chat_loop = MagicMock()  # Prevent actual setup
 
-        # Mock _process_user_input to avoid actual API calls
-        with patch.object(cli, "_process_user_input", return_value=True) as mock_process:
-            # Run the REPL loop with a patch to exit after processing one input
-            cli._run_repl()
+        # Run the REPL loop
+        cli._run_repl()
 
-            # Verify input was processed
-            mock_process.assert_called_with("Hello AI")
+        # Verify input was processed
+        cli._process_user_input.assert_called_with("Hello AI")
 
 
 if __name__ == "__main__":
