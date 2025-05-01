@@ -9,6 +9,7 @@ format:
     @ruff format yaicli
     @ruff format tests
     @echo "Formatting code with isort..."
+    @isort yaicli yaicli
     @isort yaicli tests
 
 # Clean build artifacts
