@@ -19,19 +19,19 @@ class Role:
         self, name: str, prompt: str, variables: Optional[Dict[str, Any]] = None, filepath: Optional[str] = None
     ):
         self.name = name
-        self.prompt = prompt
+        self._prompt = prompt
         if not variables:
             variables = {"_os": detect_os(cfg), "_shell": detect_shell(cfg)}
         self.variables = variables
         self.filepath = filepath
 
-        self.prompt = self.prompt.format(**self.variables)
+        self.prompt = self._prompt.format(**self.variables)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert Role to dictionary for serialization"""
         return {
             "name": self.name,
-            "prompt": self.prompt,
+            "prompt": self._prompt,
         }
 
     @classmethod
@@ -51,13 +51,23 @@ class Role:
 class RoleManager:
     roles_dir: Path = ROLES_DIR
     console: Console = get_console()
+    _roles: Optional[Dict[str, Role]] = None
 
-    def __init__(self):
-        self.roles: Dict[str, Role] = self._load_roles()
+    def __new__(cls):
+        """Singleton class for RoleManager"""
+        if not hasattr(cls, "instance"):
+            cls.instance = super().__new__(cls)
+        return cls.instance
+
+    @property
+    def roles(self) -> Dict[str, Role]:
+        if self._roles is None:
+            self._roles = self._load_roles()
+        return self._roles
 
     def _load_roles(self) -> Dict[str, Role]:
         """Load all role configurations"""
-        roles = {}
+        roles: Dict[str, Role] = {}
         self.roles_dir.mkdir(parents=True, exist_ok=True)
 
         # Check if any role files exist
@@ -87,11 +97,34 @@ class RoleManager:
         # Ensure default roles exist
         for role_id, role_config in DEFAULT_ROLES.items():
             if role_id not in roles:
+                # Default role doesn't exist locally, create it
                 role_file = self.roles_dir / f"{role_id}.json"
                 filepath = str(role_file)
                 roles[role_id] = Role.from_dict(role_id, role_config, filepath)
                 with role_file.open("w", encoding="utf-8") as f:
                     json.dump(role_config, f, indent=2)
+            else:
+                # TODO: Maybe not necessary
+                # Check if the local role's prompt differs from the built-in one
+                local_role = roles[role_id]
+                builtin_prompt = role_config.get("prompt", "")
+
+                # Only show warning if ROLE_MODIFY_WARNING is enabled
+                if cfg["ROLE_MODIFY_WARNING"]:
+                    if local_role._prompt != builtin_prompt:
+                        self.console.print(
+                            f"[yellow]Warning:[/yellow] Local role '{role_id}' has a different prompt than the built-in role.",
+                            style="yellow",
+                        )
+                        self.console.print(
+                            "To reset to the built-in version, delete the local role file with: "
+                            f'[bold]ai --delete-role "{role_id}"[/bold]',
+                            style="dim",
+                        )
+                        self.console.print(
+                            "To disable this warning, set [bold]ROLE_MODIFY_WARNING=false[/bold] in your config file.",
+                            style="dim",
+                        )
 
         return roles
 
@@ -142,12 +175,12 @@ class RoleManager:
         return self.roles.get(role_id)
 
     @classmethod
-    def check_id_ok(cls, role_id: str):
+    def check_id_ok(cls, param: typer.CallbackParam, role_id: str):
         """Check if role exists by ID.
         This method is a cli option callback.
         If role does not exist, exit with error.
         """
-        if not role_id:
+        if not role_id or role_id == param.default:
             return role_id
         self = cls()
         if not self.role_exists(role_id):
@@ -216,11 +249,6 @@ class RoleManager:
             self.console.print(f"Role '{role_id}' does not exist", style="red")
             return False
 
-        # Don't allow deleting default roles
-        if role_id in DEFAULT_ROLES:
-            self.console.print(f"Cannot delete default role: '{role_id}'", style="red")
-            return False
-
         try:
             role = self.roles[role_id]
             if role.filepath:
@@ -244,5 +272,5 @@ class RoleManager:
                 role = Role.from_dict(DefaultRoleNames.DEFAULT, default_config)
 
         # Create a copy of the role with system variables
-        system_role = Role(name=role.name, prompt=role.prompt)
+        system_role = Role(name=role.name, prompt=role._prompt)
         return system_role.prompt

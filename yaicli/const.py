@@ -1,9 +1,11 @@
 from enum import StrEnum
 from pathlib import Path
 from tempfile import gettempdir
-from typing import Any
+from typing import Any, Literal
 
 from rich.console import JustifyMethod
+
+BOOL_STR = Literal["true", "false", "yes", "no", "y", "n", "1", "0", "on", "off"]
 
 
 class JustifyEnum(StrEnum):
@@ -33,25 +35,24 @@ ROLES_DIR = CONFIG_PATH.parent / "roles"
 
 # Default configuration values
 DEFAULT_CODE_THEME = "monokai"
-DEFAULT_COMPLETION_PATH = "chat/completions"
-DEFAULT_ANSWER_PATH = "choices[0].message.content"
 DEFAULT_PROVIDER = "openai"
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_MODEL = "gpt-4o"
 DEFAULT_SHELL_NAME = "auto"
 DEFAULT_OS_NAME = "auto"
-DEFAULT_STREAM = "true"
+DEFAULT_STREAM: BOOL_STR = "true"
 DEFAULT_TEMPERATURE: float = 0.7
 DEFAULT_TOP_P: float = 1.0
 DEFAULT_MAX_TOKENS: int = 1024
 DEFAULT_MAX_HISTORY: int = 500
-DEFAULT_AUTO_SUGGEST = "true"
-DEFAULT_SHOW_REASONING = "true"
+DEFAULT_AUTO_SUGGEST: BOOL_STR = "true"
+DEFAULT_SHOW_REASONING: BOOL_STR = "true"
 DEFAULT_TIMEOUT: int = 60
 DEFAULT_INTERACTIVE_ROUND: int = 25
-DEFAULT_CHAT_HISTORY_DIR = Path(gettempdir()) / "yaicli/chats"
+DEFAULT_CHAT_HISTORY_DIR: Path = Path(gettempdir()) / "yaicli/chats"
 DEFAULT_MAX_SAVED_CHATS = 20
 DEFAULT_JUSTIFY: JustifyMethod = "default"
+DEFAULT_ROLE_MODIFY_WARNING: BOOL_STR = "true"
 
 
 class EventTypeEnum(StrEnum):
@@ -64,12 +65,11 @@ class EventTypeEnum(StrEnum):
     FINISH = "finish"
 
 
-SHELL_PROMPT = """Your are a Shell Command Generator named YAICLI.
-Generate a command EXCLUSIVELY for {_os} OS with {_shell} shell.
-If details are missing, offer the most logical solution.
-Ensure the output is a valid shell command.
-Combine multiple steps with `&&` when possible.
-Supply plain text only, avoiding Markdown formatting."""
+SHELL_PROMPT = """You are YAICLI, a shell command generator.
+The context conversation may contain other types of messages, 
+but you should only respond with a single valid {_shell} shell command for {_os}.
+Do not include any explanations, comments, or formatting — only the command as plain text, avoiding Markdown formatting.
+"""
 
 DEFAULT_PROMPT = """
 You are YAICLI, a system management and programing assistant, 
@@ -113,9 +113,6 @@ DEFAULT_CONFIG_MAP = {
     # System detection hints
     "SHELL_NAME": {"value": DEFAULT_SHELL_NAME, "env_key": "YAI_SHELL_NAME", "type": str},
     "OS_NAME": {"value": DEFAULT_OS_NAME, "env_key": "YAI_OS_NAME", "type": str},
-    # API paths (usually no need to change for OpenAI compatible APIs)
-    "COMPLETION_PATH": {"value": DEFAULT_COMPLETION_PATH, "env_key": "YAI_COMPLETION_PATH", "type": str},
-    "ANSWER_PATH": {"value": DEFAULT_ANSWER_PATH, "env_key": "YAI_ANSWER_PATH", "type": str},
     # API call parameters
     "STREAM": {"value": DEFAULT_STREAM, "env_key": "YAI_STREAM", "type": bool},
     "TEMPERATURE": {"value": DEFAULT_TEMPERATURE, "env_key": "YAI_TEMPERATURE", "type": float},
@@ -136,6 +133,8 @@ DEFAULT_CONFIG_MAP = {
     # Chat history settings
     "CHAT_HISTORY_DIR": {"value": DEFAULT_CHAT_HISTORY_DIR, "env_key": "YAI_CHAT_HISTORY_DIR", "type": str},
     "MAX_SAVED_CHATS": {"value": DEFAULT_MAX_SAVED_CHATS, "env_key": "YAI_MAX_SAVED_CHATS", "type": int},
+    # Role settings
+    "ROLE_MODIFY_WARNING": {"value": DEFAULT_ROLE_MODIFY_WARNING, "env_key": "YAI_ROLE_MODIFY_WARNING", "type": bool},
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
@@ -147,10 +146,6 @@ MODEL={DEFAULT_CONFIG_MAP["MODEL"]["value"]}
 # auto detect shell and os (or specify manually, e.g., bash, zsh, powershell.exe)
 SHELL_NAME={DEFAULT_CONFIG_MAP["SHELL_NAME"]["value"]}
 OS_NAME={DEFAULT_CONFIG_MAP["OS_NAME"]["value"]}
-
-# API paths (usually no need to change for OpenAI compatible APIs)
-COMPLETION_PATH={DEFAULT_CONFIG_MAP["COMPLETION_PATH"]["value"]}
-ANSWER_PATH={DEFAULT_CONFIG_MAP["ANSWER_PATH"]["value"]}
 
 # true: streaming response, false: non-streaming
 STREAM={DEFAULT_CONFIG_MAP["STREAM"]["value"]}
@@ -177,4 +172,8 @@ JUSTIFY={DEFAULT_CONFIG_MAP["JUSTIFY"]["value"]}
 # Chat history settings
 CHAT_HISTORY_DIR={DEFAULT_CONFIG_MAP["CHAT_HISTORY_DIR"]["value"]}
 MAX_SAVED_CHATS={DEFAULT_CONFIG_MAP["MAX_SAVED_CHATS"]["value"]}
+
+# Role settings
+# Set to false to disable warnings about modified built-in roles
+ROLE_MODIFY_WARNING={DEFAULT_CONFIG_MAP["ROLE_MODIFY_WARNING"]["value"]}
 """
