@@ -16,7 +16,7 @@ from rich.padding import Padding
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from yaicli.api import ApiClient
+from yaicli.providers import create_api_client, BaseClient
 from yaicli.chat_manager import ChatFileInfo, ChatManager, FileChatManager
 from yaicli.config import CONFIG_PATH, Config, cfg
 from yaicli.console import get_console
@@ -51,7 +51,7 @@ class CLI:
         self,
         verbose: bool = False,
         stdin: Optional[str] = None,
-        api_client: Optional[ApiClient] = None,
+        api_client: Optional[BaseClient] = None,
         printer: Optional[Printer] = None,
         chat_manager: Optional[ChatManager] = None,
         role: Optional[str] = None,
@@ -64,9 +64,10 @@ class CLI:
         self.config: Config = cfg
         self.current_mode: str = TEMP_MODE
         self.role: str = role or DefaultRoleNames.DEFAULT.value
+        self.init_role: str = self.role  # --role can specify a role when enter interactive chat
 
         # Initialize role manager
-        self.role_manager = RoleManager()
+        self.role_manager = RoleManager()  # Singleton
 
         # Validate role
         if not self.role_manager.role_exists(self.role):
@@ -102,7 +103,7 @@ class CLI:
             self.console.print(f"Current role: {self.role}")
             self.console.print(Markdown("---", code_theme=self.config.get("CODE_THEME", DEFAULT_CODE_THEME)))
 
-        self.api_client = api_client or ApiClient(self.config, self.console, self.verbose)
+        self.api_client = api_client or create_api_client(self.config, self.console, self.verbose)
         self.printer = printer or Printer(self.config, self.console, self.verbose, markdown=True)
 
         _origin_stderr = None
@@ -348,7 +349,7 @@ class CLI:
 
     def _build_messages(self, user_input: str) -> List[dict]:
         """Build message list for LLM API"""
-        # Create the message list
+        # Create the message list with system prompt
         messages = [{"role": "system", "content": self.get_system_prompt()}]
 
         # Add previous conversation if available
@@ -419,7 +420,7 @@ class CLI:
    ████   ███████ ██ ██      ██      ██
     ██    ██   ██ ██ ██      ██      ██
     ██    ██   ██ ██  ██████ ███████ ██
- """,
+""",
             style="bold cyan",
         )
         self.console.print("Welcome to YAICLI!", style="bold")
@@ -499,7 +500,7 @@ class CLI:
         @self.bindings.add(Keys.ControlI)  # TAB
         def _(event: KeyPressEvent) -> None:
             self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
-            self.role = DefaultRoleNames.SHELL if self.current_mode == EXEC_MODE else DefaultRoleNames.DEFAULT
+            self.role = DefaultRoleNames.SHELL if self.current_mode == EXEC_MODE else self.init_role
 
     def _run_once(self, input: str, shell: bool) -> None:
         """Run a single command (non-interactive)."""
