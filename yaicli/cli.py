@@ -37,11 +37,19 @@ from yaicli.const import (
     TEMP_MODE,
     DefaultRoleNames,
 )
+from yaicli.function import get_function_manager
 from yaicli.history import LimitedFileHistory
 from yaicli.printer import Printer
-from yaicli.providers import BaseClient, create_api_client
+from yaicli.providers import create_api_client
+from yaicli.providers.base import BaseClient
 from yaicli.roles import RoleManager
 from yaicli.utils import detect_os, detect_shell, filter_command
+
+# 添加新的命令常量
+CMD_LIST_FUNCTIONS = "/functions"
+CMD_RELOAD_FUNCTIONS = "/reload-functions"
+CMD_ENABLE_FUNCTIONS = "/functions-on"
+CMD_DISABLE_FUNCTIONS = "/functions-off"
 
 
 class CLI:
@@ -225,79 +233,135 @@ class CLI:
             self.console.print(f"Failed to delete chat: {chat_data['title']}", style="bold red")
             return False
 
+    # ------------------- Function Command Methods -------------------
+    def _list_functions(self) -> None:
+        """List all available functions"""
+        function_mgr = get_function_manager()
+        function_names = function_mgr.get_available_function_names()
+
+        if not function_names:
+            self.console.print(
+                "No functions available. Use 'ai --install-functions' to install builtin functions.", style="yellow"
+            )
+            return
+
+        self.console.print("Available Functions:", style="bold underline")
+        for name in sorted(function_names):
+            self.console.print(f"- [bold blue]{name}[/bold blue]")
+
+    def _reload_functions(self) -> None:
+        """Reload all functions from functions directory"""
+        function_mgr = get_function_manager()
+        function_mgr.reload_functions()
+
+        # 不重新创建API客户端，而是更新其tools
+        self.api_client.tools = self.api_client._load_tools()
+
+        self.console.print("Functions reloaded successfully.", style="bold green")
+        self._list_functions()
+
     # ------------------- Special commands -------------------
     def _handle_special_commands(self, user_input: str) -> Optional[bool]:
-        """Handle special command return: True-continue loop, False-exit loop, None-non-special command"""
-        command = user_input.lower().strip()
-        if command == CMD_EXIT:
+        """Handle special slash commands, return None if not a special command,
+        True if the command was successful, False otherwise.
+        """
+        # Strip whitespace for command detection
+        cmd = user_input.strip().lower()
+
+        # Exit command
+        if cmd == CMD_EXIT:
+            return True
+
+        # Clear console command
+        if cmd == CMD_CLEAR:
+            self.console.clear()
+            self._print_welcome_message()
             return False
-        if command == CMD_CLEAR and self.current_mode == CHAT_MODE:
-            self.history.clear()
-            self.console.print("Chat history cleared", style="bold yellow")
-            return True
-        if command == CMD_HISTORY:
+
+        # Mode toggle command
+        if cmd == CMD_MODE:
+            self.current_mode = CHAT_MODE if self.current_mode == EXEC_MODE else EXEC_MODE
+            mode_name = "Chat Mode" if self.current_mode == CHAT_MODE else "Execute Mode"
+            self.console.print(f"Switched to {mode_name}", style="bold green")
+            return False
+
+        # History command
+        if cmd == CMD_HISTORY:
             if not self.history:
-                self.console.print("History is empty.", style="yellow")
-            else:
-                self.console.print("Chat History:", style="bold underline")
-                for i in range(0, len(self.history), 2):
-                    user_msg = self.history[i]
-                    assistant_msg = self.history[i + 1] if (i + 1) < len(self.history) else None
-                    self.console.print(f"[dim]{i // 2 + 1}[/dim] [bold blue]User:[/bold blue] {user_msg['content']}")
-                    if assistant_msg:
-                        md = Markdown(assistant_msg["content"], code_theme=self.config["CODE_THEME"])
-                        padded_md = Padding(md, (0, 0, 0, 4))
-                        self.console.print("    Assistant:", style="bold green")
-                        self.console.print(padded_md)
-            return True
+                self.console.print("No history yet.", style="yellow")
+                return False
 
-        # Handle /save command - optional title parameter
-        if command.startswith(CMD_SAVE_CHAT):
-            parts = command.split(maxsplit=1)
-            title = parts[1] if len(parts) > 1 else self.chat_title
+            history_id = 0
+            for i, msg in enumerate(self.history):
+                role = msg["role"]
+                content = msg.get("content", "")
+                if not content:
+                    continue  # Skip empty/system messages
+                tag = f"[{'You' if role == 'user' else 'AI'}]"
+                history_id += 1
+                self.console.print(f"[bold]{tag}[/bold] {content[:60]}{'...' if len(content) > 60 else ''}")
+            return False
+
+        # Save chat command
+        if cmd.startswith(CMD_SAVE_CHAT):
+            # Extract title if provided
+            parts = cmd.split(" ", 1)
+            title = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None
             self._save_chat(title)
-            return True
+            return False
 
-        # Handle /load command - requires index parameter
-        if command.startswith(CMD_LOAD_CHAT):
-            parts = command.split(maxsplit=1)
-            if len(parts) == 2 and parts[1].isdigit():
-                # Try to parse as an index first
-                index = int(parts[1])
-                self._load_chat_by_index(index=index)
-            else:
-                self.console.print(f"Usage: {CMD_LOAD_CHAT} <index>", style="yellow")
-                self._list_chats()
-            return True
-
-        # Handle /delete command - requires index parameter
-        if command.startswith(CMD_DELETE_CHAT):
-            parts = command.split(maxsplit=1)
-            if len(parts) == 2 and parts[1].isdigit():
-                index = int(parts[1])
-                self._delete_chat_by_index(index=index)
-            else:
-                self.console.print(f"Usage: {CMD_DELETE_CHAT} <index>", style="yellow")
-                self._list_chats()
-            return True
-
-        # Handle /list command to list saved chats
-        if command == CMD_LIST_CHATS:
+        # List chats command
+        if cmd == CMD_LIST_CHATS:
             self._list_chats()
-            return True
+            return False
 
-        # Handle /mode command
-        if command.startswith(CMD_MODE):
-            parts = command.split(maxsplit=1)
-            if len(parts) == 2 and parts[1] in [CHAT_MODE, EXEC_MODE]:
-                new_mode = parts[1]
-                if self.current_mode != new_mode:
-                    self.current_mode = new_mode
-                else:
-                    self.console.print(f"Already in {self.current_mode} mode.", style="yellow")
-            else:
-                self.console.print(f"Usage: {CMD_MODE} {CHAT_MODE}|{EXEC_MODE}", style="yellow")
-            return True
+        # Delete chat command
+        if cmd.startswith(CMD_DELETE_CHAT):
+            parts = cmd.split(" ", 1)
+            if len(parts) <= 1 or not parts[1].strip():
+                self.console.print("Usage: /delete <chat_index>", style="yellow")
+                return False
+            try:
+                index = int(parts[1].strip())
+                self._delete_chat_by_index(index)
+            except ValueError:
+                self.console.print("Invalid index. Please provide a number.", style="bold red")
+            return False
+
+        # Load chat command
+        if cmd.startswith(CMD_LOAD_CHAT):
+            parts = cmd.split(" ", 1)
+            if len(parts) <= 1 or not parts[1].strip():
+                self.console.print("Usage: /load <chat_index>", style="yellow")
+                return False
+            try:
+                index = int(parts[1].strip())
+                self._load_chat_by_index(index)
+            except ValueError:
+                self.console.print("Invalid index. Please provide a number.", style="bold red")
+            return False
+
+        # List functions command
+        if cmd == CMD_LIST_FUNCTIONS:
+            self._list_functions()
+            return False
+
+        # Reload functions command
+        if cmd == CMD_RELOAD_FUNCTIONS:
+            self._reload_functions()
+            return False
+
+        # Enable functions command
+        if cmd == CMD_ENABLE_FUNCTIONS:
+            self._enable_functions()
+            return False
+
+        # Disable functions command
+        if cmd == CMD_DISABLE_FUNCTIONS:
+            self._disable_functions()
+            return False
+
+        # Not a special command
         return None
 
     def _confirm_and_execute(self, raw_content: str) -> None:
@@ -379,7 +443,9 @@ class CLI:
                 stream_iterator = self.api_client.stream_completion(messages)
                 content, reasoning = self.printer.display_stream(stream_iterator, not is_code_mode)
             else:
-                content, reasoning = self.api_client.completion(messages)
+                llm_response = self.api_client.completion(messages)
+                content = llm_response.content
+                reasoning = llm_response.reasoning
                 self.printer.display_normal(content, reasoning, not is_code_mode)
 
             if content is not None:
@@ -445,8 +511,11 @@ class CLI:
         self.console.print(f"{delete_cmd:<19}: Delete a saved chat")
         cmd_exit = f"{CMD_EXIT}|Ctrl+D|Ctrl+C"
         self.console.print(f"{cmd_exit:<19}: Exit")
-        cmd_mode = f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"
-        self.console.print(f"{cmd_mode:<19}: Switch mode (Case insensitive)", style="dim")
+        self.console.print(f"{CMD_MODE:<19}: Switch mode", style="dim")
+        self.console.print(f"{CMD_LIST_FUNCTIONS:<19}: List available functions", style="dim")
+        self.console.print(f"{CMD_RELOAD_FUNCTIONS:<19}: Reload functions", style="dim")
+        self.console.print(f"{CMD_ENABLE_FUNCTIONS:<19}: Enable function calling", style="dim")
+        self.console.print(f"{CMD_DISABLE_FUNCTIONS:<19}: Disable function calling", style="dim")
 
     def _run_repl(self) -> None:
         """Run the main Read-Eval-Print Loop (REPL)."""
@@ -547,3 +616,18 @@ class CLI:
             self._run_once(input, shell=False)
         else:
             self.console.print("No chat or prompt provided. Exiting.")
+
+    # ------------------- Function Command Methods -------------------
+    def _enable_functions(self) -> None:
+        """Enable function calling in API requests"""
+        self.config["ENABLE_FUNCTIONS"] = True
+        self.console.print("Functions enabled.", style="bold green")
+        # Reload API client to apply changes
+        self.api_client._enable_functions()
+
+    def _disable_functions(self) -> None:
+        """Disable function calling in API requests"""
+        self.config["ENABLE_FUNCTIONS"] = False
+        self.console.print("Functions disabled.", style="bold red")
+        # Reload API client to apply changes
+        self.api_client._disable_functions()

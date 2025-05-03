@@ -155,6 +155,26 @@ class Printer:
                 return self._process_reasoning_chunk(str(chunk), content, reasoning)
             return self._process_content_chunk(str(chunk), content, reasoning)
 
+        # Handle tool call events
+        if event_type in (
+            EventTypeEnum.TOOL_CALL_START,
+            EventTypeEnum.TOOL_CALL_DELTA,
+            EventTypeEnum.TOOL_CALL_END,
+            EventTypeEnum.TOOL_RESULT,
+        ):
+            tool_call = event.get("tool_call", {})
+            tool_name = tool_call.get("name", "")
+            tool_args = tool_call.get("arguments", {})
+            tool_result = event.get("result", "")
+
+            if event_type == EventTypeEnum.TOOL_CALL_START:
+                content += f"\nCalling tool: {tool_name}\n"
+                content += f"Arguments: {tool_args}\n"
+            elif event_type == EventTypeEnum.TOOL_RESULT:
+                content += f"\nTool result: {tool_result}\n"
+
+            return content, reasoning
+
         return content, reasoning
 
     def _format_display_text(self, content: str, reasoning: str) -> RenderableType:

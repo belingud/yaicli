@@ -32,6 +32,7 @@ CODE_MODE = "code"
 
 CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 ROLES_DIR = CONFIG_PATH.parent / "roles"
+FUNCTIONS_DIR = CONFIG_PATH.parent / "functions"
 
 # Default configuration values
 DEFAULT_CODE_THEME = "monokai"
@@ -53,6 +54,7 @@ DEFAULT_CHAT_HISTORY_DIR: Path = Path(gettempdir()) / "yaicli/chats"
 DEFAULT_MAX_SAVED_CHATS = 20
 DEFAULT_JUSTIFY: JustifyMethod = "default"
 DEFAULT_ROLE_MODIFY_WARNING: BOOL_STR = "true"
+DEFAULT_ENABLE_FUNCTIONS: BOOL_STR = "true"
 
 
 class EventTypeEnum(StrEnum):
@@ -63,6 +65,11 @@ class EventTypeEnum(StrEnum):
     REASONING_END = "reasoning_end"
     CONTENT = "content"
     FINISH = "finish"
+    TOOL_CALL_START = "tool_call_start"
+    TOOL_CALL_DELTA = "tool_call_delta"
+    TOOL_CALL_END = "tool_call_end"
+    TOOL_RESULT = "tool_result"
+    TOOL_CALLS_FINISH = "tool_calls_finish"
 
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.
@@ -135,6 +142,8 @@ DEFAULT_CONFIG_MAP = {
     "MAX_SAVED_CHATS": {"value": DEFAULT_MAX_SAVED_CHATS, "env_key": "YAI_MAX_SAVED_CHATS", "type": int},
     # Role settings
     "ROLE_MODIFY_WARNING": {"value": DEFAULT_ROLE_MODIFY_WARNING, "env_key": "YAI_ROLE_MODIFY_WARNING", "type": bool},
+    # Function settings
+    "ENABLE_FUNCTIONS": {"value": DEFAULT_ENABLE_FUNCTIONS, "env_key": "YAI_ENABLE_FUNCTIONS", "type": bool},
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
@@ -176,4 +185,8 @@ MAX_SAVED_CHATS={DEFAULT_CONFIG_MAP["MAX_SAVED_CHATS"]["value"]}
 # Role settings
 # Set to false to disable warnings about modified built-in roles
 ROLE_MODIFY_WARNING={DEFAULT_CONFIG_MAP["ROLE_MODIFY_WARNING"]["value"]}
+
+# Function settings
+# Set to false to disable sending functions in API requests
+ENABLE_FUNCTIONS={DEFAULT_CONFIG_MAP["ENABLE_FUNCTIONS"]["value"]}
 """

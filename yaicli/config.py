@@ -1,7 +1,9 @@
 import configparser
-from functools import lru_cache
+import importlib.util
+import sys
 from os import getenv
-from typing import Optional
+from pathlib import Path
+from typing import Any, Dict, Optional, Type, cast
 
 from rich import get_console
 from rich.console import Console
@@ -11,11 +13,51 @@ from yaicli.const import (
     DEFAULT_CHAT_HISTORY_DIR,
     DEFAULT_CONFIG_INI,
     DEFAULT_CONFIG_MAP,
-    DEFAULT_JUSTIFY,
-    DEFAULT_MAX_SAVED_CHATS,
-    DEFAULT_ROLE_MODIFY_WARNING,
+    FUNCTIONS_DIR,
 )
 from yaicli.utils import str2bool
+
+
+class FunctionConfig:
+    """Function configuration container"""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.name = path.stem
+        self.enabled = True
+        self._schema: Dict[str, Any] = {}
+        self._function_class: Optional[Type] = None
+
+    @property
+    def schema(self) -> Dict[str, Any]:
+        """Get function's OpenAI schema"""
+        if not self._schema and self._function_class:
+            self._schema = getattr(self._function_class, "openai_schema", {})
+        return self._schema
+
+    @property
+    def function_class(self) -> Type:
+        """Get the function class"""
+        if self._function_class is None:
+            module = self._load_module()
+            self._function_class = module.Function
+        return cast(Type, self._function_class)
+
+    def _load_module(self):
+        """Dynamically import function module"""
+        module_name = f"yaicli.functions.{self.name}"
+        spec = importlib.util.spec_from_file_location(module_name, str(self.path))
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Failed to load spec for {self.path}")
+
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+
+        if not hasattr(module, "Function"):
+            raise ImportError(f"Module {self.path} must define a Function class")
+
+        return module
 
 
 class CasePreservingConfigParser(configparser.RawConfigParser):
@@ -75,14 +117,6 @@ class Config(dict):
             config_content = f.read()
             if "CHAT_HISTORY_DIR" not in config_content.strip():  # Check for empty lines
                 f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}\n")
-            if "MAX_SAVED_CHATS" not in config_content.strip():  # Check for empty lines
-                f.write(f"\nMAX_SAVED_CHATS={DEFAULT_MAX_SAVED_CHATS}\n")
-            if "JUSTIFY" not in config_content.strip():
-                f.write(f"\nJUSTIFY={DEFAULT_JUSTIFY}\n")
-            if "ROLE_MODIFY_WARNING" not in config_content.strip():
-                f.write(
-                    f"\n# Set to false to disable warnings about modified built-in roles\nROLE_MODIFY_WARNING={DEFAULT_ROLE_MODIFY_WARNING}\n"
-                )
 
     def _load_from_file(self) -> None:
         """Load configuration from the config file.
@@ -103,9 +137,10 @@ class Config(dict):
         if "core" not in config_parser or not config_parser["core"]:
             return
 
-        for k, v in {"SHELL_NAME": "Unknown Shell", "OS_NAME": "Unknown OS"}.items():
-            if not config_parser["core"].get(k, "").strip():
-                config_parser["core"][k] = v
+        # Set default values for SHELL_NAME and OS_NAME if not set
+        # for k, v in {"SHELL_NAME": "Unknown Shell", "OS_NAME": "Unknown OS"}.items():
+        #     if not config_parser["core"].get(k, "").strip():
+        #         config_parser["core"][k] = v
 
         self.update(config_parser["core"])
 
@@ -165,10 +200,18 @@ class Config(dict):
             self[key] = converted_value
 
 
-@lru_cache(1)
 def get_config() -> Config:
     """Get the configuration singleton"""
     return Config()
+
+
+def load_functions() -> list[FunctionConfig]:
+    """Load all functions from functions directory"""
+    if not FUNCTIONS_DIR.exists():
+        FUNCTIONS_DIR.mkdir(parents=True)
+        return []
+
+    return [FunctionConfig(path) for path in FUNCTIONS_DIR.glob("*.py") if path.name != "__init__.py"]
 
 
 cfg = get_config()

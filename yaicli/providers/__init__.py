@@ -1,7 +1,4 @@
 from yaicli.const import DEFAULT_PROVIDER
-from yaicli.providers.base import BaseClient
-from yaicli.providers.cohere import CohereClient
-from yaicli.providers.openai import OpenAIClient
 
 
 def create_api_client(config, console, verbose):
@@ -18,8 +15,12 @@ def create_api_client(config, console, verbose):
     provider = config.get("PROVIDER", DEFAULT_PROVIDER).lower()
 
     if provider == "openai":
+        from yaicli.providers.openai import OpenAIClient
+
         return OpenAIClient(config, console, verbose)
     elif provider == "cohere":
+        from yaicli.providers.cohere import CohereClient
+
         return CohereClient(config, console, verbose)
     # elif provider == "google":
     #     return GoogleApiClient(config, console, verbose)
@@ -27,8 +28,7 @@ def create_api_client(config, console, verbose):
     #     return ClaudeApiClient(config, console, verbose)
     else:
         # Fallback to openai client
+        from yaicli.providers.openai import OpenAIClient
+
         console.print(f"Using generic HTTP client for provider: {provider}", style="yellow")
         return OpenAIClient(config, console, verbose)
-
-
-__all__ = ["BaseClient", "OpenAIClient", "CohereClient", "create_api_client"]

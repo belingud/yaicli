@@ -4,14 +4,14 @@ from typing import Annotated, Any, Optional
 import typer
 
 from yaicli.chat_manager import FileChatManager
-from yaicli.cli import CLI
 from yaicli.config import cfg
 from yaicli.const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
+from yaicli.functions import install_functions, list_functions
 from yaicli.roles import RoleManager
 
 app = typer.Typer(
     name="yaicli",
-    help="YAICLI - Yet Another AI CLI Interface.",
+    help="YAICLI - Your AI assistant in the command line.",
     context_settings={"help_option_names": ["-h", "--help"]},
     pretty_exceptions_enable=False,  # Let the CLI handle errors gracefully
     rich_markup_mode="rich",  # Render rich text in help messages
@@ -157,6 +157,7 @@ def main(
     ),
     show_reasoning: bool = typer.Option(  # noqa: F841
         cfg["SHOW_REASONING"],
+        "--show-reasoning/--hide-reasoning",
         help=f"Show reasoning content from the LLM. [dim](default: {cfg['SHOW_REASONING']})[/dim]",
         rich_help_panel="Other Options",
         show_default=False,
@@ -168,6 +169,29 @@ def main(
         "-j",
         help="Specify the justify to use.",
         rich_help_panel="Other Options",
+        callback=override_config,
+    ),
+    # ------------------- Function Options -------------------
+    install_functions: bool = typer.Option(  # noqa: F841
+        False,
+        "--install-functions",
+        help="Install default functions.",
+        rich_help_panel="Function Options",
+        callback=install_functions,
+    ),
+    list_functions: bool = typer.Option(  # noqa: F841
+        False,
+        "--list-functions",
+        help="List all available functions.",
+        rich_help_panel="Function Options",
+        callback=list_functions,
+    ),
+    enable_functions: bool = typer.Option(  # noqa: F841
+        cfg["ENABLE_FUNCTIONS"],
+        "--enable-functions/--disable-functions",
+        help="Enable or disable function calling in API requests.",
+        rich_help_panel="Function Options",
+        show_default=True,
         callback=override_config,
     ),
 ):
@@ -209,25 +233,18 @@ def main(
     if code:
         role = DefaultRoleNames.CODER
 
-    try:
-        # Instantiate the main CLI class with the specified role
-        cli_instance = CLI(verbose=verbose, role=role)
+    from yaicli.cli import CLI
 
-        # Run the appropriate mode
-        cli_instance.run(
-            chat=chat,
-            shell=shell,
-            input=final_prompt,
-            role=role,
-        )
-    except Exception as e:
-        # Catch potential errors during CLI initialization or run
-        print(f"An error occurred: {e}")
-        if verbose:
-            import traceback
+    # Instantiate the main CLI class with the specified role
+    cli_instance = CLI(verbose=verbose, role=role)
 
-            traceback.print_exc()
-        raise typer.Exit(code=1)
+    # Run the appropriate mode
+    cli_instance.run(
+        chat=chat,
+        shell=shell,
+        input=final_prompt,
+        role=role,
+    )
 
 
 if __name__ == "__main__":
