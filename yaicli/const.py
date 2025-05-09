@@ -30,6 +30,7 @@ CHAT_MODE = "chat"
 TEMP_MODE = "temp"
 CODE_MODE = "code"
 
+HISTORY_FILE = Path("~/.yaicli_history").expanduser()
 CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 ROLES_DIR = CONFIG_PATH.parent / "roles"
 FUNCTIONS_DIR = CONFIG_PATH.parent / "functions"

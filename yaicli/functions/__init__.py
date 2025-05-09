@@ -1,10 +1,11 @@
+
 import shutil
 from pathlib import Path
 from typing import Any
 
-from yaicli.console import get_console
-from yaicli.const import FUNCTIONS_DIR
-from yaicli.utils import option_callback
+from ..console import get_console
+from ..const import FUNCTIONS_DIR
+from ..utils import option_callback
 
 console = get_console()
 
@@ -28,7 +29,7 @@ def install_functions(cls, _: Any) -> None:
 
 
 @option_callback
-def list_functions(cls, _: Any) -> None:
+def print_functions(cls, _: Any) -> None:
     """List all available buildin functions"""
     if not FUNCTIONS_DIR.exists():
         console.print("No installed functions found.")
@@ -36,4 +37,4 @@ def list_functions(cls, _: Any) -> None:
     for file in FUNCTIONS_DIR.glob("*.py"):
         if file.name.startswith("_"):
             continue
-        console.print(file.name)
+        console.print(file)

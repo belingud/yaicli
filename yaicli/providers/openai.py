@@ -1,456 +1,297 @@
-from typing import Any, Dict, Iterator, List, Optional
-import json
-
-from openai._client import OpenAI
-from openai._exceptions import APIConnectionError, APIStatusError, RateLimitError
-from openai.types.chat.chat_completion import ChatCompletion
-from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta, ChatCompletionChunk
+from dataclasses import dataclass
+from typing import Any, Dict, Generator, List, Optional
 
 from json_repair import repair_json
 
-from yaicli.const import EventTypeEnum
-from yaicli.providers.base import BaseClient, LLMResponse, ToolCall
-from yaicli.function import get_function_manager
+from openai._client import OpenAI
+from openai.types.chat.chat_completion import ChatCompletion
+from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
+
+from ..config import cfg
+from ..providers.base import ToolCall, LLMContent, LLMProvider, Message
+from ..role import Role
+from ..tools import Function, FunctionName, get_function, get_openai_schemas, list_functions
+from ..console import get_console
+from ..const import EventTypeEnum
+
+console = get_console()
 
 
-class OpenAIClient(BaseClient):
-    """OpenAI API client implementation using the official OpenAI Python library."""
+@dataclass
+class OpenAIProvider(LLMProvider):
+    """OpenAI provider implementation"""
 
-    def __init__(self, config: Dict[str, Any], console, verbose: bool):
-        """Initialize the OpenAI API client with configuration."""
-        super().__init__(config, console, verbose)
-        self.api_key = config["API_KEY"]
-        self.model = config["MODEL"]
-        self.base_url = config["BASE_URL"]
-
-        # Initialize the OpenAI client with our custom configuration
+    def __post_init__(self) -> None:
+        """Initialize OpenAI client"""
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
             timeout=self.timeout,
-            default_headers={"X-Title": "Yaicli"},
-            max_retries=2,  # Add retry logic for resilience
         )
+        self.pre_tool_call_id = None
 
-    def _prepare_request_params(self, messages: List[Dict[str, str]], stream: bool) -> Dict[str, Any]:
-        """Prepare the common request parameters for OpenAI API calls."""
-        params = {
-            "messages": messages,
+    def _convert_messages(self, messages: List[Message]) -> List[Dict[str, Any]]:
+        """Convert message format to OpenAI API required format"""
+        openai_messages = []
+        for msg in messages:
+            if msg.tool_call_id:
+                openai_messages.append(
+                    {"role": msg.role, "content": msg.content, "tool_call_id": msg.tool_call_id, "name": msg.name}
+                )
+            else:
+                openai_messages.append({"role": msg.role, "content": msg.content})
+        return openai_messages
+
+    def _convert_functions(self, _: List[Function]) -> List[Dict[str, Any]]:
+        """Convert function format to OpenAI API required format"""
+        return get_openai_schemas()
+
+    def completion(
+        self,
+        messages: List[Message],
+        role: Role,
+        stream: bool = False,
+    ) -> Generator[LLMContent, None, None]:
+        """Send message to OpenAI"""
+        openai_messages = self._convert_messages(messages)
+
+        # Prepare request parameters
+        params: Dict[str, Any] = {
             "model": self.model,
+            "messages": openai_messages,
+            "temperature": role.temperature,
+            "top_p": role.top_p,
             "stream": stream,
-            "temperature": self.config["TEMPERATURE"],
-            "top_p": self.config["TOP_P"],
-            # Openai: This value is now deprecated in favor of max_completion_tokens
-            "max_tokens": self.config["MAX_TOKENS"],
-            "max_completion_tokens": self.config["MAX_TOKENS"],
+            # Openai: This value is now deprecated in favor of max_completion_tokens.
+            "max_tokens": cfg["MAX_TOKENS"],
+            "max_completion_tokens": cfg["MAX_TOKENS"],
         }
 
-        # Add tools if available and functions are enabled
-        if self.tools and self.config["ENABLE_FUNCTIONS"]:
-            # Get function specs from FunctionManager
-            function_mgr = get_function_manager()
-            params["tools"] = function_mgr.function_specs
-            if self.verbose:
-                self.console.print("Tools:", style="bold underline")
-                for tool in params["tools"]:
-                    self.console.print(
-                        f"- {tool['function']['name']}: {tool['function']['description'].strip()}", style="yellow"
-                    )
-        elif self.tools and not self.config["ENABLE_FUNCTIONS"] and self.verbose:
-            self.console.print("Functions are disabled in configuration", style="yellow")
-
-        return params
-
-    def _process_completion_response(self, completion: ChatCompletion) -> LLMResponse:
-        """Process the response from a non-streamed OpenAI completion request."""
-        content = None
-        reasoning = None
-        # tool_calls = None
-        _id = name = arguments = ""
-        choice = completion.choices[0]
-
-        # Handle normal response
-        content = choice.message.content
-
-        # Check for reasoning in model_extra
-        if hasattr(completion.choices[0].message, "model_extra") and completion.choices[0].message.model_extra:
-            extra = completion.choices[0].message.model_extra
-            if extra and "reasoning" in extra:
-                reasoning = extra["reasoning"]
-
-        # If no reasoning in model_extra, try extracting from <think> tags
-        if reasoning is None and isinstance(completion.choices[0].message.content, str):
-            content = completion.choices[0].message.content.lstrip()
-            if content.startswith("<think>"):
-                think_end = content.find("</think>")
-                if think_end != -1:
-                    reasoning = content[7:think_end].strip()  # Start after <think>
-                    # Remove the <think> block from the main content
-                    content = content[think_end + 8 :].strip()  # Start after </think>
-
-        try:
-            parsed_content = json.loads(content or "")
-            if isinstance(parsed_content, dict):
-                try:
-                    choice = Choice.model_validate(parsed_content)
-                except Exception:
-                    pass
-        except json.JSONDecodeError:
-            pass
-        # Handle tool calls if present
-        if isinstance(choice, Choice):
-            tool_calls = choice.delta.tool_calls
+        # Add optional parameters
+        if cfg["ENABLE_FUNCTIONS"]:
+            params["tools"] = self._convert_functions(list_functions())
+            params["tool_choice"] = "auto"
+            params["parallel_tool_calls"] = False
+        # Send request
+        if stream:
+            llm_content_generator = self._handle_stream_response(self.client.chat.completions.create(**params))
         else:
-            tool_calls = choice.message.tool_calls
-        if tool_calls:
-            for tool_call in tool_calls:
-                if tool_call.function and tool_call.function.name:
-                    name = tool_call.function.name
-                if tool_call.function and tool_call.function.arguments:
-                    arguments += tool_call.function.arguments
-                if tool_call.id:
-                    _id = tool_call.id
-            try:
-                arguments = repair_json(arguments, ensure_ascii=False, return_objects=True)
-            except json.JSONDecodeError:
-                self.console.print(f"Invalid tool call arguments: {arguments}", style="red")
-                return LLMResponse(content=None, reasoning=None)
-            return LLMResponse(
-                content=None,
-                reasoning=None,
-                tool_calls=[ToolCall(id=_id, name=name, arguments=arguments)],
-            )
-        return LLMResponse(content=content, reasoning=reasoning)
-
-    def handle_tool_calls_response(
-        self, messages: List[Dict[str, Any]], tool_calls: List[ToolCall]
-    ) -> Optional[List[Dict[str, Any]]]:
-        """Process LLM response containing tool calls
-
-        Args:
-            response: Original LLM response containing tool calls
-            messages: Message history
-
-        Returns:
-            Final LLM response with tool call results
-        """
-        if not tool_calls:
-            return None
-
-        # Process tool calls
-        try:
-            results = self.process_tool_calls(tool_calls)
-        except Exception as e:
-            self.console.print(f"Error processing tool calls: {e}", style="red bold")
-            if self.verbose:
-                import traceback
-
-                self.console.print(traceback.format_exc(), style="red")
-            return None
-
-        # Add tool calls and results to message history
-        for i, result in enumerate(results):
-            tool_call = tool_calls[i]
-            # Add tool call message
-            # messages.append(
-            #     {
-            #         "role": "tool",
-            #         "content": None,
-            #         "tool_calls": [
-            #             {
-            #                 "id": tool_call.id,
-            #                 "function": {"name": tool_call.name, "arguments": json.dumps(tool_call.arguments)},
-            #             }
-            #         ],
-            #     }
-            # )
-
-            # Add tool call result message
-            result_content = json.dumps(result["result"]) if not isinstance(result["result"], str) else result["result"]
-            messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_call.name,
-                    "content": result_content,
-                }
-            )
-        return messages
-        # try:
-        #     # Get model's response to tool call results
-        #     return self.completion(messages)
-        # except Exception as e:
-        #     self.console.print(f"Feedback function result error: {e}", style="red bold")
-        #     if self.verbose:
-        #         import traceback
-
-        #         self.console.print(traceback.format_exc(), style="red")
-        #     return LLMResponse(content=f"Feedback function result error: {str(e)}", reasoning=None)
-
-    def completion(self, messages: List[Dict[str, str]]) -> LLMResponse:
-        """Get a complete non-streamed response from the OpenAI API."""
-        params = self._prepare_request_params(messages, stream=False)
-
-        try:
-            # Use context manager for proper resource management
-            response: ChatCompletion = self.client.chat.completions.create(**params)
-            if self.verbose:
-                self.console.print(f"Response: {response.to_dict()}")
-            llm_response = self._process_completion_response(response)
-
-            # Process tool calls
-            if llm_response.tool_calls:
-                self.console.print(f"Function calls detected: {llm_response.tool_calls}", style="bold blue")
-                result = self.handle_tool_calls_response(messages, llm_response.tool_calls)
-                if not result:
-                    return LLMResponse(content=None, reasoning=None)
+            llm_content_generator = self._handle_normal_response(self.client.chat.completions.create(**params))
+        # llm_content = self._handle_normal_response(self.client.chat.completions.create(**params))
+        for llm_content in llm_content_generator:
+            yield llm_content
+            if llm_content.tool_call:
+                if not self.pre_tool_call_id:
+                    self.pre_tool_call_id = llm_content.tool_call.id
+                elif self.pre_tool_call_id == llm_content.tool_call.id:
+                    continue
+                # If the response contains a tool call, execute the function
+                function = get_function(FunctionName(llm_content.tool_call.name))
+                if function is None:
+                    raise ValueError(f"Function {llm_content.tool_call.name} not found")
+                arguments = repair_json(llm_content.tool_call.arguments, return_objects=True)
+                function_result = function.execute(**dict(arguments))  # type: ignore
+                # Add the function result to the messages
+                messages.append(
+                    Message(
+                        role="tool",
+                        content=function_result,
+                        name=llm_content.tool_call.name,
+                        tool_call_id=llm_content.tool_call.id,
+                    )
+                )
+                if stream:
+                    yield from self.stream_completion(messages, role, stream=stream)
                 else:
-                    return self.completion(result)
+                    yield from self.completion(messages, role, stream=stream)
 
-            return llm_response
-        except APIConnectionError as e:
-            self.console.print(f"OpenAI connection error: {e}", style="red")
-            if self.verbose:
-                self.console.print(f"Underlying error: {e.__cause__}")
-            return LLMResponse(content=None, reasoning=None)
-        except RateLimitError as e:
-            self.console.print(f"OpenAI rate limit error (429): {e}", style="red")
-            return LLMResponse(content=None, reasoning=None)
-        except APIStatusError as e:
-            self.console.print(f"OpenAI API error (status {e.status_code}): {e}", style="red")
-            if self.verbose:
-                self.console.print(f"Response: {e.response}")
-            return LLMResponse(content=None, reasoning=None)
-        except Exception as e:
-            self.console.print(f"Unexpected error during OpenAI completion: {e}", style="red")
-            if self.verbose:
-                import traceback
+    def stream_completion(
+        self, messages: List[Message], role: Role, stream: bool = True
+    ) -> Generator[LLMContent, None, None]:
+        openai_messages = self._convert_messages(messages)
+        params: Dict[str, Any] = {
+            "model": self.model,
+            "messages": openai_messages,
+            "temperature": role.temperature,
+            "top_p": role.top_p,
+            "stream": stream,
+            # Openai: This value is now deprecated in favor of max_completion_tokens.
+            "max_tokens": cfg["MAX_TOKENS"],
+            "max_completion_tokens": cfg["MAX_TOKENS"],
+        }
+        # Add optional parameters
+        if cfg["ENABLE_FUNCTIONS"]:
+            params["tools"] = self._convert_functions(list_functions())
+            params["tool_choice"] = "auto"
+            params["parallel_tool_calls"] = False
+        llm_content_generator = self._handle_stream_response(self.client.chat.completions.create(**params))
+        for llm_content in llm_content_generator:
+            yield llm_content
+            if llm_content.tool_call:
+                if not self.pre_tool_call_id:
+                    self.pre_tool_call_id = llm_content.tool_call.id
+                elif self.pre_tool_call_id == llm_content.tool_call.id:
+                    continue
+                # If the response contains a tool call, execute the function
+                function = get_function(FunctionName(llm_content.tool_call.name))
+                if function is None:
+                    raise ValueError(f"Function {llm_content.tool_call.name} not found")
+                arguments = repair_json(llm_content.tool_call.arguments, return_objects=True)
+                function_result = function.execute(**dict(arguments))  # type: ignore
+                # Add the function result to the messages
+                messages.append(
+                    Message(
+                        role="tool",
+                        content=function_result,
+                        name=llm_content.tool_call.name,
+                        tool_call_id=llm_content.tool_call.id,
+                    )
+                )
+                yield from self.stream_completion(messages, role, stream=stream)
 
-                traceback.print_exc()
-            return LLMResponse(content=None, reasoning=None)
-
-    def stream_completion(self, messages: List[Dict[str, str]]) -> Iterator[Dict[str, Any]]:
-        """Connect to the OpenAI API and yield parsed stream events.
-
-        Args:
-            messages: The list of message dictionaries to send to the API
+    def _handle_normal_response(self, response: ChatCompletion) -> Generator[LLMContent, None, None]:
+        """Handle normal (non-streaming) response
 
         Yields:
-            Event dictionaries with the following structure:
-                - type: The event type (from EventTypeEnum)
-                - chunk/message/reason: The content of the event
-                - tool_call: Tool call information if present
+            LLMContent objects with event types
         """
-        params: Dict[str, Any] = self._prepare_request_params(messages, stream=True)
-        in_reasoning: bool = False
+        choice = response.choices[0]
+        full_content = choice.message.content or ""
+        reasoning = None
+        content = ""
+        finish_reason = choice.finish_reason
+        tool_call: Optional[ToolCall] = None
 
-        try:
-            # Use context manager to ensure proper cleanup
-            with self.client.chat.completions.create(**params) as stream:
-                for chunk in stream:
-                    choices: List[Choice] = chunk.choices
-                    if not choices:
-                        # Some APIs may return empty choices upon reaching the end of content.
-                        continue
-                    choice: Choice = choices[0]
-                    delta: ChoiceDelta = choice.delta
-                    finish_reason: Optional[str] = choice.finish_reason
+        # Check for reasoning in model_extra first
+        if hasattr(choice.message, "model_extra") and choice.message.model_extra:
+            model_extra = choice.message.model_extra
+            reasoning_from_extra = self._get_reasoning_content(model_extra)
+            if reasoning_from_extra:
+                yield LLMContent(event_type=EventTypeEnum.REASONING, content=reasoning_from_extra, finish_reason=finish_reason)
+                # If reasoning is from extra, the rest of full_content is actual content
+                content = full_content
+            else: # No reasoning in extra, parse content for think tags
+                content = full_content # Process full_content for think tags below
+        else: # No model_extra, parse content for think tags
+            content = full_content
 
-                    # Handle tool calls
-                    if hasattr(delta, "tool_calls") and delta.tool_calls:
-                        # Collect tool calls from this delta chunk
-                        for idx, tool_call in enumerate(delta.tool_calls):
-                            if hasattr(tool_call, "function") and tool_call.function:
-                                if not tool_call.function.name:
-                                    continue
-                                tool_call_data = {
-                                    "id": tool_call.id or f"tool_{idx}",
-                                    "name": tool_call.function.name,
-                                    "arguments": tool_call.function.arguments if tool_call.function.arguments else "{}",
-                                }
-                                # Store the tool call for later execution
-                                # if not hasattr(self, "_pending_tool_calls"):
-                                #     self._pending_tool_calls = {}
+        # Process content for <think> tags if not already handled by model_extra
+        if not reasoning and "<think>" in content and "</think>" in content:
+            processed_content = content.lstrip()
+            if processed_content.startswith("<think>"):
+                think_end = processed_content.find("</think>")
+                if think_end != -1:
+                    reasoning_text = processed_content[7:think_end].strip()
+                    yield LLMContent(event_type=EventTypeEnum.REASONING, content=reasoning_text, finish_reason=finish_reason)
+                    yield LLMContent(event_type=EventTypeEnum.REASONING_END, finish_reason=finish_reason)
+                    content = processed_content[think_end + 8 :].strip()
+                else: # Malformed think tag
+                    content = processed_content # Treat as normal content
+            else: # Think tags are present but not at the start, treat as normal content for now
+                content = processed_content
+        elif not reasoning : # No <think> tags and no reasoning from extra
+             content = full_content
 
-                                # # Accumulate arguments if they come in chunks
-                                # if tool_call.id in self._pending_tool_calls:
-                                #     # Update existing entry
-                                #     existing_args = self._pending_tool_calls[tool_call.id].get("arguments", "{}")
-                                #     if tool_call.function.arguments:
-                                #         # Append new arguments if any
-                                #         if existing_args == "{}":
-                                #             self._pending_tool_calls[tool_call.id]["arguments"] = tool_call.function.arguments
-                                #         else:
-                                #             self._pending_tool_calls[tool_call.id]["arguments"] += tool_call.function.arguments
 
-                                # Update name if provided
-                                #     if tool_call.function.name:
-                                #         self._pending_tool_calls[tool_call.id]["name"] = tool_call.function.name
-                                # else:
-                                #     # Add new entry
-                                #     self._pending_tool_calls[tool_call.id] = tool_call_data
+        if content:
+            yield LLMContent(event_type=EventTypeEnum.CONTENT, content=content, finish_reason=finish_reason)
 
-                                # Only yield for the first appearance of a tool call
-                                yield {
-                                    "type": EventTypeEnum.TOOL_CALL_START,
-                                    "tool_call": tool_call_data,
-                                }
-                                # messages.append(delta)
-                                result = self.process_tool_call(
-                                    ToolCall(
-                                        id=tool_call_data["id"],
-                                        name=tool_call_data["name"],
-                                        arguments=json.loads(tool_call_data["arguments"])
-                                        if tool_call_data["arguments"]
-                                        else {},
-                                    )
-                                )
-                                yield {
-                                    "type": EventTypeEnum.TOOL_RESULT,
-                                    "result": result,
-                                    "name": tool_call_data["name"],
-                                }
+        if hasattr(choice, "message") and hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
+            tool = choice.message.tool_calls[0]
+            tool_call_obj = ToolCall(tool.id, tool.function.name, tool.function.arguments)
+            # Yield a specific event for tool call if needed, or bundle with content
+            # For now, it's part of the last content event or a new one if no content
+            if content: # If there was preceding content, tool_call is part of that LLMContent
+                 # This might override previous yield if content was the last thing.
+                 # It's better to yield a new event for tool_call if it's meant to be separate.
+                 # Let's assume tool_call is associated with the last yielded content/reasoning event for now.
+                 # Or, more cleanly, yield a dedicated event if tool_call exists.
+                yield LLMContent(event_type=EventTypeEnum.CONTENT, content="", tool_call=tool_call_obj, finish_reason=finish_reason)
+            else: # No preceding content, tool_call is its own event
+                yield LLMContent(event_type=EventTypeEnum.CONTENT, content="", tool_call=tool_call_obj, finish_reason=finish_reason)
+        elif finish_reason and not content and not reasoning: # Ensure a finish event if nothing else was yielded
+            yield LLMContent(event_type=EventTypeEnum.FINISH, finish_reason=finish_reason)
 
-                    # Process model_extra for reasoning content
-                    if hasattr(delta, "model_extra") and delta.model_extra:
-                        reasoning: Optional[str] = self._get_reasoning_content(delta.model_extra)
-                        if reasoning:
-                            yield {"type": EventTypeEnum.REASONING, "chunk": reasoning}
-                            in_reasoning = True
-                            continue
 
-                    # Process content delta
-                    if hasattr(delta, "content") and delta.content:
-                        content_chunk = delta.content
-                        if in_reasoning and content_chunk:
-                            # Send reasoning end signal before content
-                            in_reasoning = False
-                            yield {"type": EventTypeEnum.REASONING_END, "chunk": ""}
-                            yield {"type": EventTypeEnum.CONTENT, "chunk": content_chunk}
-                        elif content_chunk:
-                            yield {"type": EventTypeEnum.CONTENT, "chunk": content_chunk}
-
-                    # Process finish reason
-                    if finish_reason:
-                        # Send reasoning end signal if still in reasoning state
-                        if in_reasoning:
-                            in_reasoning = False
-                            yield {"type": EventTypeEnum.REASONING_END, "chunk": ""}
-
-                        # Process tool call completion event
-                        if finish_reason == "tool_calls":
-                            if self.verbose:
-                                self.console.print("Model requested tool execution", style="blue bold")
-
-                            # Get all accumulated tool calls
-                            # tool_calls_to_process = []
-                            # if hasattr(self, "_pending_tool_calls"):
-                            #     for tool_id, tool_call in self._pending_tool_calls.items():
-                            #         tool_calls_to_process.append(tool_call)
-
-                            #     # Clear pending tool calls
-                            #     self._pending_tool_calls = {}
-
-                            # if self.verbose and tool_calls_to_process:
-                            #     self.console.print(f"Processing {len(tool_calls_to_process)} tool calls", style="blue")
-
-                            # Process each tool call in sequence
-                            # if tool_calls_to_process:
-                            #     for tool_call in tool_calls_to_process:
-                            #         yield from self.handle_streaming_tool_calls(messages, tool_call)
-                            else:
-                                yield {"type": EventTypeEnum.TOOL_CALLS_FINISH, "reason": finish_reason}
-                        else:
-                            yield {"type": EventTypeEnum.FINISH, "reason": finish_reason}
-
-        except APIConnectionError as e:
-            self.console.print(f"OpenAI connection error during streaming: {e}", style="red")
-            if self.verbose:
-                self.console.print(f"Underlying error: {e.__cause__}")
-            yield {"type": EventTypeEnum.ERROR, "message": str(e)}
-        except RateLimitError as e:
-            self.console.print(f"OpenAI rate limit error (429) during streaming: {e}", style="red")
-            yield {"type": EventTypeEnum.ERROR, "message": str(e)}
-        except APIStatusError as e:
-            self.console.print(f"OpenAI API error (status {e.status_code}) during streaming: {e}", style="red")
-            if self.verbose:
-                self.console.print(f"Response: {e.response}")
-            yield {"type": EventTypeEnum.ERROR, "message": str(e)}
-        except Exception as e:
-            self.console.print(f"Unexpected error during OpenAI streaming: {e}", style="red")
-            if self.verbose:
-                import traceback
-
-                traceback.print_exc()
-            yield {"type": EventTypeEnum.ERROR, "message": f"Unexpected stream error: {e}"}
-
-    def handle_streaming_tool_calls(
-        self, messages: List[Dict[str, Any]], tool_call_data: Dict[str, str]
-    ) -> Iterator[Dict[str, Any]]:
-        """Handle streaming tool calls
-
-        Args:
-            messages: Message history
-            tool_call_data: Tool call data
+    def _handle_stream_response(
+        self, response: Generator[ChatCompletionChunk, None, None]
+    ) -> Generator[LLMContent, None, None]:
+        """Handle streaming response
 
         Yields:
-            Tool call processing progress and result events
+            Generator yielding LLMContent objects with event types
         """
-        try:
-            # Parse tool call data
-            tool_call_id = tool_call_data.get("id", "tool_1")
-            name = tool_call_data.get("name", "")
-            arguments = tool_call_data.get("arguments", "{}")
+        tool_id = ""
+        tool_call_name = ""
+        arguments = ""
+        in_think_block = False # Manage <think> block state
 
-            # Create tool call object
-            try:
-                args_dict = json.loads(arguments)
-                tool_call = ToolCall(id=tool_call_id, name=name, arguments=args_dict)
-            except json.JSONDecodeError:
-                yield {"type": EventTypeEnum.ERROR, "message": f"Invalid tool call arguments: {arguments}"}
-                return
+        for chunk in response:
+            choice = chunk.choices[0]
+            delta_content = choice.delta.content or ""
+            finish_reason = choice.finish_reason
+            tool_call_chunks = choice.delta.tool_calls
 
-            # Execute tool call
-            try:
-                yield {"type": EventTypeEnum.TOOL_RESULT, "message": f"Executing tool call: {name}"}
-                result = self.process_tool_call(tool_call)
-                result_str = json.dumps(result) if not isinstance(result, str) else result
+            # Handle reasoning from model_extra (e.g. OpenRouter)
+            if hasattr(choice.delta, "model_extra") and choice.delta.model_extra:
+                model_extra = choice.delta.model_extra
+                reasoning_text = self._get_reasoning_content(model_extra)
+                if reasoning_text:
+                    yield LLMContent(event_type=EventTypeEnum.REASONING, content=reasoning_text)
+                    continue # Move to next chunk
 
-                # Add to message history
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": None,
-                        "tool_calls": [{"id": tool_call_id, "function": {"name": name, "arguments": arguments}}],
-                    }
-                )
+            # Handle <think> tags in delta_content
+            # This part needs careful handling for streaming
+            temp_content = delta_content
+            while temp_content:
+                if not in_think_block:
+                    think_start_index = temp_content.find("<think>")
+                    if think_start_index != -1:
+                        # Yield content before <think>
+                        if think_start_index > 0:
+                            yield LLMContent(event_type=EventTypeEnum.CONTENT, content=temp_content[:think_start_index])
+                        # Yield reasoning start and content within <think>
+                        temp_content = temp_content[think_start_index + 7:]
+                        in_think_block = True
+                        # Continue to find </think> or more reasoning content in the same chunk
+                    else: # No <think> tag, yield as content
+                        yield LLMContent(event_type=EventTypeEnum.CONTENT, content=temp_content)
+                        temp_content = "" # Consumed
+                else: # Inside a <think> block
+                    think_end_index = temp_content.find("</think>")
+                    if think_end_index != -1:
+                        # Yield reasoning content before </think>
+                        if think_end_index > 0:
+                            yield LLMContent(event_type=EventTypeEnum.REASONING, content=temp_content[:think_end_index])
+                        yield LLMContent(event_type=EventTypeEnum.REASONING_END)
+                        temp_content = temp_content[think_end_index + 8:]
+                        in_think_block = False
+                        # Continue to process rest of temp_content in the same chunk
+                    else: # No </think> tag, yield as reasoning
+                        yield LLMContent(event_type=EventTypeEnum.REASONING, content=temp_content)
+                        temp_content = "" # Consumed
 
-                messages.append({"role": "tool", "tool_call_id": tool_call_id, "name": name, "content": result_str})
+            if tool_call_chunks:
+                for tool_call_chunk in tool_call_chunks:
+                    if tool_call_chunk.id:
+                        tool_id = tool_call_chunk.id
+                    if tool_call_chunk.function:
+                        if tool_call_chunk.function.name:
+                            tool_call_name = tool_call_chunk.function.name
+                        if tool_call_chunk.function.arguments:
+                            arguments += tool_call_chunk.function.arguments
+                # Potentially yield delta tool calls, or accumulate and yield at the end / when finish_reason is tool_calls
+                # For simplicity, we accumulate and will yield a single ToolCall object later.
+                # However, a more robust solution might yield TOOL_CALL_DELTA events.
 
-                # Send result event
-                yield {"type": EventTypeEnum.TOOL_RESULT, "result": result_str, "name": name}
-
-                # Continue getting LLM response to tool call results
-                yield {"type": EventTypeEnum.CONTENT, "chunk": "\n\n"}
-                for event in self.stream_completion(messages):
-                    yield event
-
-            except Exception as e:
-                error_msg = f"Tool call execution error: {str(e)}"
-                yield {"type": EventTypeEnum.ERROR, "message": error_msg}
-
-                # Add error message to history
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": None,
-                        "tool_calls": [{"id": tool_call_id, "function": {"name": name, "arguments": arguments}}],
-                    }
-                )
-
-                messages.append(
-                    {"role": "tool", "tool_call_id": tool_call_id, "name": name, "content": f"Error: {str(e)}"}
-                )
-
-        except Exception as e:
-            yield {"type": EventTypeEnum.ERROR, "message": f"Error processing tool call: {str(e)}"}
+            if finish_reason:
+                if tool_id and tool_call_name and arguments: # If accumulated tool call parts exist
+                    tool_call_obj = ToolCall(tool_id, tool_call_name, arguments)
+                    yield LLMContent(event_type=EventTypeEnum.TOOL_CALL_END, tool_call=tool_call_obj, finish_reason=finish_reason)
+                    # Reset for next potential tool call
+                    tool_id, tool_call_name, arguments = "", "", ""
+                else: # General finish reason
+                    yield LLMContent(event_type=EventTypeEnum.FINISH, finish_reason=finish_reason)
+                if in_think_block: # If stream ends while still in think block
+                    yield LLMContent(event_type=EventTypeEnum.REASONING_END)
+                    in_think_block = False

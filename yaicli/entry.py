@@ -3,11 +3,12 @@ from typing import Annotated, Any, Optional
 
 import typer
 
-from yaicli.chat_manager import FileChatManager
+from yaicli.chat import FileChatManager
 from yaicli.config import cfg
 from yaicli.const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
-from yaicli.functions import install_functions, list_functions
-from yaicli.roles import RoleManager
+from yaicli.functions import install_functions, print_functions
+from yaicli.role import RoleManager
+
 
 app = typer.Typer(
     name="yaicli",
@@ -118,7 +119,7 @@ def main(
         help="Start in interactive chat mode.",
         rich_help_panel="Chat Options",
     ),
-    # ------------------- Shell Options -------------------
+    # # ------------------- Shell Options -------------------
     shell: bool = typer.Option(
         False,
         "--shell",
@@ -126,7 +127,7 @@ def main(
         help="Generate and optionally execute a shell command (non-interactive).",
         rich_help_panel="Shell Options",
     ),
-    # ------------------- Code Options -------------------
+    # # ------------------- Code Options -------------------
     code: bool = typer.Option(
         False,
         "--code",
@@ -184,7 +185,7 @@ def main(
         "--list-functions",
         help="List all available functions.",
         rich_help_panel="Function Options",
-        callback=list_functions,
+        callback=print_functions,
     ),
     enable_functions: bool = typer.Option(  # noqa: F841
         cfg["ENABLE_FUNCTIONS"],
@@ -203,7 +204,7 @@ def main(
         print(DEFAULT_CONFIG_INI)
         raise typer.Exit()
 
-    # Combine prompt argument with stdin content if available
+    # # Combine prompt argument with stdin content if available
     final_prompt = prompt
     if not sys.stdin.isatty():
         stdin_content = sys.stdin.read().strip()
@@ -225,25 +226,24 @@ def main(
         typer.echo(ctx.get_help())
         raise typer.Exit()
 
-    # Use build-in role for --shell or --code mode
+    # # Use build-in role for --shell or --code mode
     if role and role != DefaultRoleNames.DEFAULT and (shell or code):
         print("Warning: --role is ignored when --shell or --code is used.")
         role = DefaultRoleNames.DEFAULT
 
-    if code:
-        role = DefaultRoleNames.CODER
-
     from yaicli.cli import CLI
 
+    role = CLI.judge_role(code, shell, role)
+
     # Instantiate the main CLI class with the specified role
-    cli_instance = CLI(verbose=verbose, role=role)
+    cli = CLI(verbose=verbose, role=role)
 
     # Run the appropriate mode
-    cli_instance.run(
+    cli.run(
         chat=chat,
         shell=shell,
+        code=code,
         input=final_prompt,
-        role=role,
     )
 
 

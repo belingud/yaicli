@@ -1,181 +1,73 @@
-import time
-import traceback
-from typing import (
-    Any,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-)
+from dataclasses import dataclass, field
+from typing import Iterator, List, Tuple
 
-from rich.console import Console, Group, RenderableType
+from rich.console import Group
+from rich.console import RenderableType
 from rich.live import Live
 
-from yaicli.console import get_console
-from yaicli.const import EventTypeEnum
-from yaicli.render import JustifyMarkdown as Markdown
-from yaicli.render import plain_formatter
+from .providers.base import LLMContent
+from .config import Config, get_config
+from .console import YaiConsole, get_console
+from .render import Markdown, plain_formatter
+from .const import EventTypeEnum
 
 
-def cursor_animation() -> Iterator[str]:
-    """Generate a cursor animation for the console."""
-    cursors = ["_", " "]
-    while True:
-        # Use current time to determine cursor state (changes every 0.5 seconds)
-        current_time = time.time()
-        # Alternate between cursors based on time
-        yield cursors[int(current_time * 2) % 2]
-
-
+@dataclass
 class Printer:
-    """Handles printing responses to the console, including stream processing."""
+    console: YaiConsole = field(default_factory=get_console)
+    config: Config = field(default_factory=get_config)
 
-    _REASONING_PREFIX = "> "
-    _CURSOR_ANIMATION_SLEEP = 0.005
+    _REASONING_PREFIX: str = "> "
+    _UPDATE_INTERVAL: float = 0.01
+    _CURSOR_ANIMATION_SLEEP: float = 0.01
 
-    def __init__(
-        self,
-        config: Dict[str, Any],
-        console: Console,
-        verbose: bool = False,
-        markdown: bool = True,
-        reasoning_markdown: Optional[bool] = None,
-        content_markdown: Optional[bool] = None,
-    ):
-        """Initialize the Printer class.
-
-        Args:
-            config (Dict[str, Any]): The configuration dictionary.
-            console (Console): The console object.
-            verbose (bool): Whether to print verbose output.
-            markdown (bool): Whether to use Markdown formatting for all output (legacy).
-            reasoning_markdown (Optional[bool]): Whether to use Markdown for reasoning sections.
-            content_markdown (Optional[bool]): Whether to use Markdown for content sections.
-        """
-        self.config = config
-        self.console = console or get_console()
-        self.verbose = verbose
-        self.code_theme = config["CODE_THEME"]
-        self.in_reasoning: bool = False
-        # Print reasoning content or not
-        self.show_reasoning = config["SHOW_REASONING"]
-
-        # Use explicit settings if provided, otherwise fall back to the global markdown setting
-        self.reasoning_markdown = reasoning_markdown if reasoning_markdown is not None else markdown
-        self.content_markdown = content_markdown if content_markdown is not None else markdown
-
-        # Set formatters for reasoning and content
+    def __post_init__(self):
+        self.code_theme: str = self.config["CODE_THEME"]
+        self.show_reasoning: bool = self.config["SHOW_REASONING"]
+        self.reasoning_markdown = self.config.get("REASONING_MARKDOWN", True)
+        self.content_markdown = self.config.get("CONTENT_MARKDOWN", True)
+        self.in_reasoning = False
         self.reasoning_formatter = Markdown if self.reasoning_markdown else plain_formatter
         self.content_formatter = Markdown if self.content_markdown else plain_formatter
 
-    def _reset_state(self) -> None:
-        """Resets the printer state for a new stream."""
-        self.in_reasoning = False
+    def _format_reasoning(self, text: str, content_buffer: str, reasoning_buffer: str) -> Tuple[str, str]:
+        """Format reasoning text, add header if it's a new block."""
+        if not self.show_reasoning or not text:
+            return content_buffer, reasoning_buffer
+        reasoning_buffer += text
+        return content_buffer, reasoning_buffer
 
-    def _process_reasoning_chunk(self, chunk: str, content: str, reasoning: str) -> Tuple[str, str]:
-        """Adds a reasoning chunk to the reasoning text.
-        This method handles the processing of reasoning chunks, and update the reasoning state
-        when <think> tag is closed.
+    def _format_content(self, text: str, content_buffer: str, reasoning_buffer: str) -> Tuple[str, str]:
+        """Format content text."""
+        if content_buffer == "":
+            text = text.lstrip()  # Remove leading whitespace from first chunk
+        content_buffer += text
+        return content_buffer, reasoning_buffer
 
-        Args:
-            chunk (str): The reasoning chunk to process.
-            content (str): The current content text.
-            reasoning (str): The current reasoning text.
+    def process_stream_event(self, llm_content: LLMContent, content: str, reasoning: str) -> Tuple[str, str]:
+        """Process a single LLMContent event and return updated content and reasoning."""
+        reasoning_out = reasoning
+        content_out = content
 
-        Returns:
-            Tuple[str, str]: The updated content text and reasoning text.
-        """
-        if not self.in_reasoning:
-            self.in_reasoning = True
-            reasoning = ""
-
-        tmp = chunk.replace("\n", f"\n{self._REASONING_PREFIX}")
-        tmp_reasoning = reasoning + tmp
-
-        reasoning += chunk
-        if "</think>" in tmp_reasoning:
+        if llm_content.event_type == EventTypeEnum.REASONING:
+            if not self.in_reasoning: # Start of a new reasoning block
+                self.in_reasoning = True
+            reasoning_out += llm_content.content # content field now holds reasoning text for REASONING event
+        elif llm_content.event_type == EventTypeEnum.REASONING_END:
             self.in_reasoning = False
-            reasoning, content = reasoning.split("</think>", maxsplit=1)
-        return content, reasoning
+        elif llm_content.event_type == EventTypeEnum.CONTENT:
+            if self.in_reasoning : # Should not happen if REASONING_END is always sent
+                self.in_reasoning = False # Safety: exit reasoning mode if content arrives
+            if content_out == "":
+                content_out = llm_content.content.lstrip()
+            else:
+                content_out += llm_content.content
+        elif llm_content.reasoning is not None: # Deprecated path
+            content_out, reasoning_out = self._process_reasoning_chunk(llm_content.reasoning, content_out, reasoning_out)
+        elif llm_content.content:
+            content_out, reasoning_out = self._process_content_chunk(llm_content.content, content_out, reasoning_out)
 
-    def _process_content_chunk(self, chunk: str, content: str, reasoning: str) -> Tuple[str, str]:
-        """Adds a content chunk to the content text.
-        This method handles the processing of content chunks, and update the reasoning state
-        when <think> tag is opened.
-
-        Args:
-            chunk (str): The content chunk to process.
-            content (str): The current content text.
-            reasoning (str): The current reasoning text.
-
-        Returns:
-            Tuple[str, str]: The updated content text and reasoning text.
-        """
-        if content == "":
-            chunk = chunk.lstrip()  # Remove leading whitespace from first chunk
-
-        if self.in_reasoning:
-            self.in_reasoning = False
-        content += chunk
-
-        if content.startswith("<think>"):
-            # Remove <think> tag and leading whitespace
-            self.in_reasoning = True
-            reasoning = content[7:].lstrip()
-            content = ""  # Content starts after the initial <think> tag
-
-        return content, reasoning
-
-    def _handle_event(self, event: Dict[str, Any], content: str, reasoning: str) -> Tuple[str, str]:
-        """Process a single stream event and return the updated content and reasoning.
-
-        Args:
-            event (Dict[str, Any]): The stream event to process.
-            content (str): The current content text (non-reasoning).
-            reasoning (str): The current reasoning text.
-        Returns:
-            Tuple[str, str]: The updated content text and reasoning text.
-        """
-        event_type = event.get("type")
-        chunk = event.get("chunk")
-
-        if event_type == EventTypeEnum.ERROR and self.verbose:
-            self.console.print(f"Stream error: {event.get('message')}", style="dim")
-            return content, reasoning
-
-        # Handle explicit reasoning end event
-        if event_type == EventTypeEnum.REASONING_END:
-            if self.in_reasoning:
-                self.in_reasoning = False
-            return content, reasoning
-
-        if event_type in (EventTypeEnum.REASONING, EventTypeEnum.CONTENT) and chunk:
-            if event_type == EventTypeEnum.REASONING or self.in_reasoning:
-                return self._process_reasoning_chunk(str(chunk), content, reasoning)
-            return self._process_content_chunk(str(chunk), content, reasoning)
-
-        # Handle tool call events
-        if event_type in (
-            EventTypeEnum.TOOL_CALL_START,
-            EventTypeEnum.TOOL_CALL_DELTA,
-            EventTypeEnum.TOOL_CALL_END,
-            EventTypeEnum.TOOL_RESULT,
-        ):
-            tool_call = event.get("tool_call", {})
-            tool_name = tool_call.get("name", "")
-            tool_args = tool_call.get("arguments", {})
-            tool_result = event.get("result", "")
-
-            if event_type == EventTypeEnum.TOOL_CALL_START:
-                content += f"\nCalling tool: {tool_name}\n"
-                content += f"Arguments: {tool_args}\n"
-            elif event_type == EventTypeEnum.TOOL_RESULT:
-                content += f"\nTool result: {tool_result}\n"
-
-            return content, reasoning
-
-        return content, reasoning
+        return content_out, reasoning_out
 
     def _format_display_text(self, content: str, reasoning: str) -> RenderableType:
         """Format the text for display, combining content and reasoning if needed.
@@ -219,102 +111,76 @@ class Printer:
         # Use Rich Group to combine multiple renderables
         return Group(*display_elements)
 
-    def _update_live_display(self, live: Live, content: str, reasoning: str, cursor: Iterator[str]) -> None:
-        """Update live display content and execute cursor animation
-        Sleep for a short duration to control the cursor animation speed.
+    def display_normal(self, content_iterator: Iterator[LLMContent]) -> None:
+        """Process and display non-stream LLMContent, including reasoning and content parts."""
+        content_buffer = ""
+        reasoning_buffer = ""
+        self.in_reasoning = False # Reset state for normal display
+        
+        for chunk in content_iterator:
+            # Use the new process_stream_event logic for normal display as well
+            content_buffer, reasoning_buffer = self.process_stream_event(chunk, content_buffer, reasoning_buffer)
+                
+        self.console.print(self._format_display_text(content_buffer, reasoning_buffer))
 
-        Args:
-            live (Live): The live display object.
-            content (str): The current content text.
-            reasoning (str): The current reasoning text.
-            cursor (Iterator[str]): The cursor animation iterator.
-        """
-
-        cursor_char = next(cursor)
-
-        # Handle cursor placement based on current state
-        if self.in_reasoning and self.show_reasoning:
-            # For reasoning, add cursor in plaintext to reasoning section
-            if reasoning:
-                if reasoning.endswith("\n"):
-                    cursor_line = f"\n{self._REASONING_PREFIX}{cursor_char}"
-                else:
-                    cursor_line = cursor_char
-
-                # Re-format with cursor added
-                raw_reasoning = reasoning + cursor_line.replace(self._REASONING_PREFIX, "")
-                formatted_display = self._format_display_text(content, raw_reasoning)
-            else:
-                # If reasoning just started with no content yet
-                reasoning_header = f"\nThinking:\n{self._REASONING_PREFIX}{cursor_char}"
-                formatted_reasoning = self.reasoning_formatter(reasoning_header, code_theme=self.code_theme)
-                formatted_display = Group(formatted_reasoning)
-        else:
-            # For content, add cursor to content section
-            formatted_content_with_cursor = content + cursor_char
-            formatted_display = self._format_display_text(formatted_content_with_cursor, reasoning)
-
-        live.update(formatted_display)
-        time.sleep(self._CURSOR_ANIMATION_SLEEP)
-
-    def display_stream(
-        self, stream_iterator: Iterator[Dict[str, Any]], with_assistant_prefix: bool = True
-    ) -> Tuple[Optional[str], Optional[str]]:
-        """Display streaming response content
-        Handle stream events and update the live display accordingly.
-        This method separates content and reasoning blocks for display and further processing.
-
-        Args:
-            stream_iterator (Iterator[Dict[str, Any]]): The stream iterator to process.
-            with_assistant_prefix (bool): Whether to display the "Assistant:" prefix.
-        Returns:
-            Tuple[Optional[str], Optional[str]]: The final content and reasoning texts if successful, None otherwise.
-        """
-        if with_assistant_prefix:
-            self.console.print("Assistant:", style="bold green")
-        self._reset_state()  # Reset state for the new stream
-        content = ""
-        reasoning = ""
-        cursor = cursor_animation()
+    def display_stream(self, stream_iterator: Iterator[LLMContent]) -> None:
+        """Process and display LLMContent stream, including reasoning and content parts."""
+        content_buffer = ""
+        reasoning_buffer = ""
 
         with Live(console=self.console) as live:
-            try:
-                for event in stream_iterator:
-                    content, reasoning = self._handle_event(event, content, reasoning)
+            for chunk in stream_iterator:
+                content_buffer, reasoning_buffer = self.process_stream_event(chunk, content_buffer, reasoning_buffer)
+                live.update(self._format_display_text(content_buffer, reasoning_buffer))
 
-                    if event.get("type") in (
-                        EventTypeEnum.CONTENT,
-                        EventTypeEnum.REASONING,
-                        EventTypeEnum.REASONING_END,
-                    ):
-                        self._update_live_display(live, content, reasoning, cursor)
-
-                # Remove cursor and finalize display
-                live.update(self._format_display_text(content, reasoning))
-                return content, reasoning
-
-            except Exception as e:
-                self.console.print(f"An error occurred during stream display: {e}", style="red")
-                if self.verbose:
-                    traceback.print_exc()
-                return None, None
-
-    def display_normal(
-        self, content: Optional[str], reasoning: Optional[str] = None, with_assistant_prefix: bool = True
-    ) -> None:
-        """Display a complete, non-streamed response.
+    def _process_reasoning_chunk(self, chunk: str, content: str, reasoning: str) -> Tuple[str, str]:
+        """Adds a reasoning chunk to the reasoning text.
+        This method handles the processing of reasoning chunks, and update the reasoning state
+        when <think> tag is closed.
 
         Args:
-            content (Optional[str]): The main content to display.
-            reasoning (Optional[str]): The reasoning content to display.
-            with_assistant_prefix (bool): Whether to display the "Assistant:" prefix.
+            chunk (str): The reasoning chunk to process.
+            content (str): The current content text.
+            reasoning (str): The current reasoning text.
+
+        Returns:
+            Tuple[str, str]: The updated content text and reasoning text.
         """
-        if with_assistant_prefix:
-            self.console.print("Assistant:", style="bold green")
-        if content or reasoning:
-            # Use the existing _format_display_text method
-            formatted_display = self._format_display_text(content or "", reasoning or "")
-            self.console.print(formatted_display)
-            self.console.print()  # Add a newline for spacing
-        else:
-            self.console.print("Assistant did not provide any content.", style="yellow")
+        if not self.in_reasoning:
+            self.in_reasoning = True
+            reasoning = ""
+
+        reasoning += chunk
+        if "</think>" in reasoning:
+            self.in_reasoning = False
+            reasoning, content = reasoning.split("</think>", maxsplit=1)
+        return content, reasoning
+    
+    def _process_content_chunk(self, chunk: str, content: str, reasoning: str) -> Tuple[str, str]:
+        """Adds a content chunk to the content text.
+        This method handles the processing of content chunks, and update the reasoning state
+        when <think> tag is opened.
+
+        Args:
+            chunk (str): The content chunk to process.
+            content (str): The current content text.
+            reasoning (str): The current reasoning text.
+
+        Returns:
+            Tuple[str, str]: The updated content text and reasoning text.
+        """
+        if content == "":
+            chunk = chunk.lstrip()  # Remove leading whitespace from first chunk
+
+        if self.in_reasoning:
+            self.in_reasoning = False
+        content += chunk
+
+        if content.startswith("<think>"):
+            # Remove <think> tag and leading whitespace
+            self.in_reasoning = True
+            reasoning = content[7:].lstrip()
+            content = ""  # Content starts after the initial <think> tag
+
+        return content, reasoning
+

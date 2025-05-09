@@ -35,6 +35,7 @@ dependencies = [
     "httpx>=0.28.1",
     "instructor>=1.7.9",
     "json-repair>=0.44.1",
+    "litellm>=1.67.5",
     "openai>=1.76.0",
     "prompt-toolkit>=3.0.50",
     "rich>=13.9.4",
