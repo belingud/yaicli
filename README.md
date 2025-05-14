@@ -16,6 +16,8 @@ generate and execute shell commands, or get quick answers without leaving your w
 > [!NOTE]
 > YAICLI is actively developed. While core functionality is stable, some features may evolve in future releases.
 
+> We support Function Call since v0.5.0!
+
 ## ✨ Key Features
 
 ### 🔄 Multiple Interaction Modes
