@@ -7,7 +7,7 @@ from typing import Any, Optional
 from rich import get_console
 from rich.console import Console
 
-from yaicli.const import (
+from .const import (
     CONFIG_PATH,
     DEFAULT_CHAT_HISTORY_DIR,
     DEFAULT_CONFIG_INI,
@@ -15,7 +15,7 @@ from yaicli.const import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
 )
-from yaicli.utils import str2bool
+from .utils import str2bool
 
 
 class CasePreservingConfigParser(configparser.RawConfigParser):

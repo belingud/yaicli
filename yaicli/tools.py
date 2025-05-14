@@ -4,8 +4,8 @@ from typing import Any, Dict, List, NewType, Optional
 
 from instructor import OpenAISchema
 
-from yaicli.const import FUNCTIONS_DIR
-from yaicli.console import get_console
+from .console import get_console
+from .const import FUNCTIONS_DIR
 
 console = get_console()
 
@@ -80,7 +80,7 @@ def get_function(name: FunctionName) -> Function:
     func_map = get_func_name_map()
     if name in func_map:
         return func_map[FunctionName(name)]
-    raise ValueError(f"Function {name} not found")
+    raise ValueError(f"Function {name!r} not found")
 
 
 def get_openai_schemas() -> List[Dict[str, Any]]:

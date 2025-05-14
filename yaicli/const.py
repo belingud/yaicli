@@ -24,6 +24,7 @@ CMD_SAVE_CHAT = "/save"
 CMD_LOAD_CHAT = "/load"
 CMD_LIST_CHATS = "/list"
 CMD_DELETE_CHAT = "/del"
+CMD_HELP = ("/help", "?")
 
 EXEC_MODE = "exec"
 CHAT_MODE = "chat"
@@ -43,7 +44,7 @@ DEFAULT_MODEL = "gpt-4o"
 DEFAULT_SHELL_NAME = "auto"
 DEFAULT_OS_NAME = "auto"
 DEFAULT_STREAM: BOOL_STR = "true"
-DEFAULT_TEMPERATURE: float = 0.7
+DEFAULT_TEMPERATURE: float = 0.5
 DEFAULT_TOP_P: float = 1.0
 DEFAULT_MAX_TOKENS: int = 1024
 DEFAULT_MAX_HISTORY: int = 500
@@ -56,6 +57,7 @@ DEFAULT_MAX_SAVED_CHATS = 20
 DEFAULT_JUSTIFY: JustifyMethod = "default"
 DEFAULT_ROLE_MODIFY_WARNING: BOOL_STR = "true"
 DEFAULT_ENABLE_FUNCTIONS: BOOL_STR = "true"
+DEFAULT_SHOW_FUNCTION_OUTPUT: BOOL_STR = "true"
 
 
 class EventTypeEnum(StrEnum):
@@ -145,6 +147,11 @@ DEFAULT_CONFIG_MAP = {
     "ROLE_MODIFY_WARNING": {"value": DEFAULT_ROLE_MODIFY_WARNING, "env_key": "YAI_ROLE_MODIFY_WARNING", "type": bool},
     # Function settings
     "ENABLE_FUNCTIONS": {"value": DEFAULT_ENABLE_FUNCTIONS, "env_key": "YAI_ENABLE_FUNCTIONS", "type": bool},
+    "SHOW_FUNCTION_OUTPUT": {
+        "value": DEFAULT_SHOW_FUNCTION_OUTPUT,
+        "env_key": "YAI_SHOW_FUNCTION_OUTPUT",
+        "type": bool,
+    },
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
@@ -190,4 +197,6 @@ ROLE_MODIFY_WARNING={DEFAULT_CONFIG_MAP["ROLE_MODIFY_WARNING"]["value"]}
 # Function settings
 # Set to false to disable sending functions in API requests
 ENABLE_FUNCTIONS={DEFAULT_CONFIG_MAP["ENABLE_FUNCTIONS"]["value"]}
+# Set to false to disable showing function output in the response
+SHOW_FUNCTION_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_FUNCTION_OUTPUT"]["value"]}
 """

@@ -1,15 +1,15 @@
 import json
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, TypeVar
 
 import typer
 from rich.table import Table
 
-from yaicli.config import cfg
-from yaicli.console import YaiConsole, get_console
-from yaicli.const import DEFAULT_ROLES, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, ROLES_DIR, DefaultRoleNames
-from yaicli.utils import detect_os, detect_shell, option_callback
+from .config import cfg
+from .console import YaiConsole, get_console
+from .const import DEFAULT_ROLES, ROLES_DIR, DefaultRoleNames
+from .utils import detect_os, detect_shell, option_callback
 
 T = TypeVar("T")
 
@@ -18,8 +18,6 @@ T = TypeVar("T")
 class Role:
     name: str
     prompt: str
-    temperature: float = DEFAULT_TEMPERATURE
-    top_p: float = DEFAULT_TOP_P
     variables: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -81,9 +79,9 @@ class RoleManager:
             raise ValueError(f"Role '{name}' does not exist.")
         return self.roles[name]
 
-    def create_role(self, name: str, description: str, temperature: float = 0.7, top_p: float = 1.0) -> Role:
+    def create_role(self, name: str, description: str) -> Role:
         """Create and save a new role"""
-        role = Role(name=name, prompt=description, temperature=temperature, top_p=top_p)
+        role = Role(name=name, prompt=description)
         self.roles[name] = role
 
         # Save to file
@@ -167,11 +165,9 @@ class RoleManager:
 
         # Get role description
         description = typer.prompt("Enter role description")
-        temperature = typer.prompt("Enter temperature (0.0-2.0)", default="0.7", type=float)
-        top_p = typer.prompt("Enter top-p (0.0-1.0)", default="1.0", type=float)
 
         # Create role
-        role = role_manager.create_role(value, description, temperature, top_p)
+        role = role_manager.create_role(value, description)
         cls.console.print(f"Created role: {role.name}", style="green")
 
     @classmethod
@@ -212,8 +208,6 @@ class RoleManager:
         # Show role information
         cls.console.print(f"[bold]Name:[/bold] {role.name}")
         cls.console.print(f"[bold]Description:[/bold] {role.prompt}")
-        cls.console.print(f"[bold]Temperature:[/bold] {role.temperature}")
-        cls.console.print(f"[bold]Top-P:[/bold] {role.top_p}")
 
     @classmethod
     def check_id_ok(cls, value: str) -> str:

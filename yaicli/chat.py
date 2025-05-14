@@ -1,17 +1,18 @@
 import json
 import os
-from pathlib import Path
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional, Union
 
 from rich.table import Table
 
-from yaicli.config import cfg
-from yaicli.console import YaiConsole, get_console
-from yaicli.providers.base import Message
-from yaicli.utils import option_callback
+from .config import cfg
+from .console import YaiConsole, get_console
+from .schemas import ChatMessage
+from .exceptions import ChatDeleteError, ChatLoadError, ChatSaveError
+from .utils import option_callback
 
 console: YaiConsole = get_console()
 
@@ -22,13 +23,13 @@ class Chat:
 
     idx: Optional[str] = None
     title: str = field(default_factory=lambda: f"Chat {datetime.now().strftime('%Y%m%d-%H%M%S')}")
-    history: List[Message] = field(default_factory=list)
+    history: List[ChatMessage] = field(default_factory=list)
     date: str = field(default_factory=lambda: datetime.now().isoformat())
     path: Optional[Path] = None
 
     def add_message(self, role: str, content: str) -> None:
         """Add message to the session"""
-        self.history.append(Message(role=role, content=content))
+        self.history.append(ChatMessage(role=role, content=content))
 
     def to_dict(self) -> Dict:
         """Convert to dictionary representation"""
@@ -52,6 +53,65 @@ class Chat:
             chat.add_message(msg_data["role"], msg_data["content"])
 
         return chat
+
+    def load(self) -> bool:
+        """Load chat history from file
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if self.path is None or not self.path.exists():
+            return False
+
+        try:
+            with open(self.path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self.title = data.get("title", self.title)
+                self.date = data.get("date", self.date)
+                self.history = [ChatMessage(role=msg["role"], content=msg["content"]) for msg in data.get("history", [])]
+            return True
+        except (json.JSONDecodeError, OSError) as e:
+            raise ChatLoadError(f"Error loading chat: {e}") from e
+
+    def save(self, chat_dir: Path) -> bool:
+        """Save chat to file
+
+        Args:
+            chat_dir: Directory to save chat file
+
+        Returns:
+            bool: True if successful, False otherwise
+
+        Raises:
+            ChatSaveError: If there's an error saving the chat
+        """
+        if not self.history:
+            raise ChatSaveError("No history in chat to save")
+
+        # Ensure chat has a title
+        if not self.title:
+            self.title = f"Chat-{int(time.time())}"
+
+        # Update timestamp if not set
+        if not self.date:
+            self.date = datetime.now().isoformat()
+
+        # Create a descriptive filename with timestamp and title
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        filename = f"{timestamp}-title-{self.title}.json"
+        chat_path = chat_dir / filename
+
+        try:
+            # Save the chat as JSON
+            with open(chat_path, "w", encoding="utf-8") as f:
+                json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
+
+            # Update chat's path to the new file
+            self.path = chat_path
+            return True
+        except Exception as e:
+            error_msg = f"Error saving chat '{self.title}': {e}"
+            raise ChatSaveError(error_msg) from e
 
 
 @dataclass
@@ -85,20 +145,20 @@ class FileChatManager:
             try:
                 # Parse basic chat info from filename
                 chat = self._parse_filename(chat_file)
+                chat.idx = str(i + 1)
 
                 # Add to maps
                 chats_map["title"][chat.title] = chat
                 chats_map["index"][str(i + 1)] = chat
             except Exception as e:
                 # Log the error but continue processing other files
-                console.print(f"Error parsing session file {chat_file}: {e}", style="dim")
-                continue
+                raise ChatLoadError(f"Error parsing session file {chat_file}: {e}") from e
 
         self._chats_map = chats_map
 
     def new_chat(self, title: str = "") -> Chat:
         """Create a new chat session"""
-        chat_id = f"chat_{int(time.time())}"
+        chat_id = str(int(time.time()))
         self.current_chat = Chat(idx=chat_id, title=title)
         return self.current_chat
 
@@ -111,57 +171,53 @@ class FileChatManager:
 
     def save_chat(self, chat: Optional[Chat] = None) -> str:
         """Save chat session to file
-        1. Check for existing chat with the same title and delete it
-        2. Update chat's idx to match new filename
-        3. Save the chat to file
-        4. If over the maximum number of saved chats, delete the oldest chat
 
         Args:
             chat (Optional[Chat], optional): The chat to save. If None, uses current_chat.
 
         Returns:
-            str: The title of the saved chat, or empty string if failed
+            str: The title of the saved chat
+
+        Raises:
+            ChatSaveError: If there's an error saving the chat
         """
         if chat is None:
             chat = self.current_chat
 
         if chat is None:
-            return ""
-
-        save_title = chat.title or f"Chat-{int(time.time())}"
+            raise ChatSaveError("No chat found")
 
         # Check for existing chat with the same title and delete it
-        for filename in self.chat_dir.glob("*.json"):
-            try:
-                with open(filename, "r") as f:
-                    file_data = json.load(f)
-                    if file_data.get("title") == save_title and file_data.get("idx") != chat.idx:
-                        try:
-                            filename.unlink()
-                        except OSError as e:
-                            console.print(f"Warning: Failed to delete existing chat file {filename}: {e}", style="dim")
-            except (json.JSONDecodeError, OSError):
-                pass
+        if chat.title:
+            self._delete_existing_chat_with_title(chat.title)
 
-        # Create a more descriptive filename with timestamp and title
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        filename = f"{timestamp}-title-{save_title}.json"
-        chat_path = self.chat_dir / filename
+        # Save the chat using its own method - this will throw ChatSaveError if it fails
+        chat.save(self.chat_dir)
 
-        try:
-            with open(chat_path, "w", encoding="utf-8") as f:
-                json.dump(chat.to_dict(), f, indent=2, ensure_ascii=False)
+        # If we get here, the save was successful
+        # Clean up old chats if we exceed the maximum
+        self._cleanup_old_chats()
 
-            # If over the maximum number of saved chats, delete the oldest chat
-            self._cleanup_old_chats()
+        # Reset the chats map to force a refresh on next access
+        self._chats_map = None
 
-            # Reset the chats map to force a refresh on next access
-            self._chats_map = None
+        return chat.title
 
-            return save_title
-        except Exception as e:
-            console.print(f"Error saving chat '{save_title}': {e}", style="dim")
-            return ""
+    def _delete_existing_chat_with_title(self, title: str) -> None:
+        """Delete any existing chat with the given title"""
+        if not title:
+            return
+
+        # Use chats_map to find the chat by title
+        if title in self.chats_map["title"]:
+            chat = self.chats_map["title"][title]
+            if chat.path and chat.path.exists():
+                try:
+                    chat.path.unlink()
+                    # Reset the chats map to force a refresh
+                    self._chats_map = None
+                except OSError as e:
+                    raise ChatDeleteError(f"Warning: Failed to delete existing chat file {chat.path}: {e}") from e
 
     def _cleanup_old_chats(self) -> None:
         """Clean up expired chat files"""
@@ -181,43 +237,50 @@ class FileChatManager:
             except (OSError, IOError):
                 pass
 
-    def load_chat(self, chat_id: str) -> Optional[Chat]:
+    def load_chat(self, chat_id: str) -> Chat:
         """Load a chat session by ID"""
         chat_path = self.chat_dir / f"{chat_id}.json"
 
         if not chat_path.exists():
-            return None
+            return Chat(idx=chat_id)
 
-        try:
-            with open(chat_path, "r") as f:
-                chat_data = json.load(f)
+        # Create a chat object with the path and load its history
+        chat = Chat(idx=chat_id, path=chat_path)
+        if chat.load():
+            self.current_chat = chat
+            return chat
+        else:
+            return Chat(idx=chat_id)
 
-            self.current_chat = Chat.from_dict(chat_data)
-            return self.current_chat
-        except (json.JSONDecodeError, KeyError):
-            return None
-
-    def load_chat_by_index(self, index: str) -> Optional[Chat]:
+    def load_chat_by_index(self, index: str) -> Chat:
         """Load a chat session by index"""
         if index not in self.chats_map["index"]:
-            return None
+            return Chat(idx=index)
 
         chat = self.chats_map["index"][index]
-        if chat.idx is None:
-            return None
-        return self.load_chat(chat.idx)
+        if chat.path is None:
+            return chat
 
-    def load_chat_by_title(self, title: str) -> Optional[Chat]:
+        # Load the chat history using the Chat class's load method
+        if chat.load():
+            self.current_chat = chat
+        return chat
+
+    def load_chat_by_title(self, title: str) -> Chat:
         """Load a chat session by title"""
         if title not in self.chats_map["title"]:
-            return None
+            return Chat(title=title)
 
         chat = self.chats_map["title"][title]
-        if chat.idx is None:
-            return None
-        return self.load_chat(chat.idx)
+        if chat.path is None:
+            return chat
 
-    def validate_chat_index(self, index: str) -> bool:
+        # Load the chat history using the Chat class's load method
+        if chat.load():
+            self.current_chat = chat
+        return chat
+
+    def validate_chat_index(self, index: Union[str, int]) -> bool:
         """Validate a chat index and return success status"""
         return index in self.chats_map["index"]
 
@@ -230,26 +293,25 @@ class FileChatManager:
         """List all saved chat sessions"""
         return list(self.chats_map["index"].values())
 
-    def delete_chat(self, chat_id: str) -> bool:
-        """Delete a chat session by ID"""
-        chat_path = self.chat_dir / f"{chat_id}.json"
-
-        if not chat_path.exists():
+    def delete_chat(self, chat_path: os.PathLike) -> bool:
+        """Delete a chat session by path"""
+        path = Path(chat_path)
+        if not path.exists():
             return False
 
         try:
-            chat_path.unlink()
+            path.unlink()
 
             # If the current chat is deleted, set it to None
-            if self.current_chat and self.current_chat.idx == chat_id:
+            if self.current_chat and self.current_chat.path == path:
                 self.current_chat = None
 
             # Reset the chats map to force a refresh on next access
             self._chats_map = None
 
             return True
-        except (OSError, IOError):
-            return False
+        except (OSError, IOError) as e:
+            raise ChatDeleteError(f"Error deleting chat: {e}") from e
 
     def delete_chat_by_index(self, index: str) -> bool:
         """Delete a chat session by index"""
@@ -257,9 +319,10 @@ class FileChatManager:
             return False
 
         chat = self.chats_map["index"][index]
-        if chat.idx is None:
+        if chat.path is None:
             return False
-        return self.delete_chat(chat.idx)
+
+        return self.delete_chat(chat.path)
 
     def print_chats(self) -> None:
         """Print all saved chat sessions"""
@@ -326,7 +389,7 @@ class FileChatManager:
             # timestamp = 0
 
         # Create a minimal Chat object with the parsed info
-        return Chat(idx=chat_file.stem, title=title, date=date_str, path=chat_file)
+        return Chat(title=title, date=date_str, path=chat_file)
 
 
 # Create a global chat manager instance

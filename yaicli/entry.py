@@ -3,12 +3,11 @@ from typing import Annotated, Any, Optional
 
 import typer
 
-from yaicli.chat import FileChatManager
-from yaicli.config import cfg
-from yaicli.const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
-from yaicli.functions import install_functions, print_functions
-from yaicli.role import RoleManager
-
+from .chat import FileChatManager
+from .config import cfg
+from .const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
+from .functions import install_functions, print_functions
+from .role import RoleManager
 
 app = typer.Typer(
     name="yaicli",
@@ -72,6 +71,14 @@ def main(
         help="Specify the max tokens to use.",
         rich_help_panel="LLM Options",
         min=1,
+        callback=override_config,
+    ),
+    stream: bool = typer.Option(  # noqa: F841
+        cfg["STREAM"],
+        "--stream/--no-stream",
+        help=f"Specify whether to stream the response. [dim](default: {'stream' if cfg['STREAM'] else 'no-stream'})[/dim]",
+        rich_help_panel="LLM Options",
+        show_default=False,
         callback=override_config,
     ),
     # ------------------- Role Options -------------------
@@ -159,7 +166,7 @@ def main(
     show_reasoning: bool = typer.Option(  # noqa: F841
         cfg["SHOW_REASONING"],
         "--show-reasoning/--hide-reasoning",
-        help=f"Show reasoning content from the LLM. [dim](default: {cfg['SHOW_REASONING']})[/dim]",
+        help=f"Show reasoning content from the LLM. [dim](default: {'show' if cfg['SHOW_REASONING'] else 'hide'})[/dim]",
         rich_help_panel="Other Options",
         show_default=False,
         callback=override_config,
@@ -190,9 +197,17 @@ def main(
     enable_functions: bool = typer.Option(  # noqa: F841
         cfg["ENABLE_FUNCTIONS"],
         "--enable-functions/--disable-functions",
-        help="Enable or disable function calling in API requests.",
+        help=f"Enable/disable function calling in API requests [dim](default: {'enabled' if cfg['ENABLE_FUNCTIONS'] else 'disabled'})[/dim]",
         rich_help_panel="Function Options",
-        show_default=True,
+        show_default=False,
+        callback=override_config,
+    ),
+    show_function_output: bool = typer.Option(  # noqa: F841
+        cfg["SHOW_FUNCTION_OUTPUT"],
+        "--show-function-output/--hide-function-output",
+        help=f"Show the output of functions [dim](default: {'show' if cfg['SHOW_FUNCTION_OUTPUT'] else 'hide'})[/dim]",
+        rich_help_panel="Function Options",
+        show_default=False,
         callback=override_config,
     ),
 ):
@@ -219,12 +234,9 @@ def main(
         if chat:
             print("Warning: --chat is ignored when stdin was redirected.")
             chat = False
-
-    # Basic validation for conflicting options or missing prompt
-    if not any([final_prompt, chat, list_chats, list_roles, create_role]):
-        # If no prompt, not starting chat, and not listing chats or roles, show help
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
+    if not any([final_prompt, chat]):
+        print(ctx.get_help())
+        return
 
     # # Use build-in role for --shell or --code mode
     if role and role != DefaultRoleNames.DEFAULT and (shell or code):
@@ -233,7 +245,7 @@ def main(
 
     from yaicli.cli import CLI
 
-    role = CLI.judge_role(code, shell, role)
+    role = CLI.evaluate_role_name(code, shell, role)
 
     # Instantiate the main CLI class with the specified role
     cli = CLI(verbose=verbose, role=role)
@@ -243,7 +255,7 @@ def main(
         chat=chat,
         shell=shell,
         code=code,
-        input=final_prompt,
+        user_input=final_prompt,
     )
 
 

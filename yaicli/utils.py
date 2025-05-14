@@ -1,14 +1,12 @@
-import json
 import platform
 from os import getenv
 from os.path import basename, pathsep
-import re
 from typing import Any, Callable, Optional, TypeVar
 
 import typer
 from distro import name as distro_name
 
-from yaicli.const import DEFAULT_OS_NAME, DEFAULT_SHELL_NAME
+from .const import DEFAULT_OS_NAME, DEFAULT_SHELL_NAME
 
 T = TypeVar("T", int, float, str, bool)
 
@@ -120,7 +118,7 @@ def str2bool(value: Any) -> bool:
     """
     if value in {False, True}:
         return bool(value)
-    
+
     if not isinstance(value, str):
         return value
 
@@ -134,60 +132,3 @@ def str2bool(value: Any) -> bool:
 
     # Handle empty strings and other invalid values
     raise ValueError(f"Invalid boolean value: {value}")
-
-
-def fix_common_json_issues(s: str) -> str:
-    """Fix common JSON issues in the string.
-
-    This function handles:
-    - Missing closing curly brackets
-    - Escaped quotes (e.g. \\" -> ")
-    - Illegal line breaks
-    - Outer quotes (sometimes the model returns a JSON string as a whole)
-
-    Args:
-        s (str): The string to fix
-
-    Returns:
-        str: The fixed string
-    """
-    s = s.strip()
-
-    # Complete the closing curly brackets
-    if s.count("{") > s.count("}"):
-        s += "}"
-
-    # Replace escaped quotes (e.g. \\" -> ")
-    s = s.replace(r"\\", r"")
-
-    # Replace illegal line breaks
-    s = re.sub(r"[\r\n]+", " ", s)
-
-    # Remove outer quotes (sometimes the model returns a JSON string as a whole)
-    if s.startswith('"') and s.endswith('"'):
-        s = s[1:-1]
-
-    return s
-
-
-
-def parse_json(s: str) -> dict[str, Any]:
-    """Parse a JSON string.
-
-    This function handles:
-    - Missing closing curly brackets
-    - Escaped quotes (e.g. \\" -> ")
-    - Illegal line breaks
-    - Outer quotes (sometimes the model returns a JSON string as a whole)
-
-    Args:
-        s (str): The string to parse
-
-    Returns:
-        dict[str, Any]: The parsed JSON object
-    """
-    try:
-        return json.loads(s)
-    except json.JSONDecodeError:
-        # Try to fix common JSON issues
-        return json.loads(fix_common_json_issues(s))
