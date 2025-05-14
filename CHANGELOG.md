@@ -1,8 +1,24 @@
 
 ---
+## [0.5.1](https://github.com/belingud/yaicli/compare/v0.5.0..v0.5.1) - 2025-05-14
+
+### 🚜 Refactor
+
+- remove unused command line argument - ([2daf0e0](https://github.com/belingud/yaicli/commit/2daf0e04c2ee2e9b1cbac030f19ea6a5653f03d7)) - Belingud
+
+### 📚 Documentation
+
+- add function call support to README - ([191b5ae](https://github.com/belingud/yaicli/commit/191b5aed9ea4d4b42747a258bf2fb8b8c41ebc83)) - Belingud
+- Update CHANGELOG.md for v0.5.0 release - ([db7a328](https://github.com/belingud/yaicli/commit/db7a328746b45e2b99c176842fc157e0fc063cf3)) - Belingud
+
+
+---
 ## [0.5.0](https://github.com/belingud/yaicli/compare/v0.4.0..v0.5.0) - 2025-05-14
 
 ### ⛰️  Features
+
+[!IMPORTANT]
+- Add Function Call support.
 
 - Add reasoning effort configuration and function output panel - ([f21d29b](https://github.com/belingud/yaicli/commit/f21d29bcd1b9ebf411a6329dd98b659ded5ec1fa)) - Belingud
 - refactor client and printer logic, add function call support - ([9f008be](https://github.com/belingud/yaicli/commit/9f008bed2f1ef42665da0c453474044bb809c9ce)) - Belingud
