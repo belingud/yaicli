@@ -1,5 +1,17 @@
 
 ---
+## [0.5.4](https://github.com/belingud/yaicli/compare/v0.5.3..v0.5.4) - 2025-05-14
+
+### 📚 Documentation
+
+- Update CHANGELOG.md for v0.5.3 release - ([a0bf128](https://github.com/belingud/yaicli/commit/a0bf1286fce96ff4074c2b2284186e9261c8ca64)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- Update dependencies - ([698a054](https://github.com/belingud/yaicli/commit/698a054224e49194b59cd6e096a91804a0b859d5)) - Belingud
+
+
+---
 ## [0.5.3](https://github.com/belingud/yaicli/compare/v0.5.2..v0.5.3) - 2025-05-14
 
 ### 📚 Documentation

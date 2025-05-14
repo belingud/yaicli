@@ -1821,7 +1821,7 @@ wheels = [
 
 [[package]]
 name = "yaicli"
-version = "0.5.3"
+version = "0.5.4"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -1857,7 +1857,7 @@ requires-dist = [
     { name = "prompt-toolkit", specifier = ">=3.0.50" },
     { name = "rich", specifier = ">=13.9.4" },
     { name = "socksio", specifier = ">=1.0.0" },
-    { name = "typer", specifier = "==0.15.3" },
+    { name = "typer", specifier = ">=0.15.2" },
 ]
 
 [package.metadata.requires-dev]
