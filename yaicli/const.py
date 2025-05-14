@@ -1,7 +1,7 @@
 from enum import StrEnum
 from pathlib import Path
 from tempfile import gettempdir
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from rich.console import JustifyMethod
 
@@ -24,14 +24,17 @@ CMD_SAVE_CHAT = "/save"
 CMD_LOAD_CHAT = "/load"
 CMD_LIST_CHATS = "/list"
 CMD_DELETE_CHAT = "/del"
+CMD_HELP = ("/help", "?")
 
 EXEC_MODE = "exec"
 CHAT_MODE = "chat"
 TEMP_MODE = "temp"
 CODE_MODE = "code"
 
+HISTORY_FILE = Path("~/.yaicli_history").expanduser()
 CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 ROLES_DIR = CONFIG_PATH.parent / "roles"
+FUNCTIONS_DIR = CONFIG_PATH.parent / "functions"
 
 # Default configuration values
 DEFAULT_CODE_THEME = "monokai"
@@ -41,7 +44,7 @@ DEFAULT_MODEL = "gpt-4o"
 DEFAULT_SHELL_NAME = "auto"
 DEFAULT_OS_NAME = "auto"
 DEFAULT_STREAM: BOOL_STR = "true"
-DEFAULT_TEMPERATURE: float = 0.7
+DEFAULT_TEMPERATURE: float = 0.5
 DEFAULT_TOP_P: float = 1.0
 DEFAULT_MAX_TOKENS: int = 1024
 DEFAULT_MAX_HISTORY: int = 500
@@ -53,6 +56,9 @@ DEFAULT_CHAT_HISTORY_DIR: Path = Path(gettempdir()) / "yaicli/chats"
 DEFAULT_MAX_SAVED_CHATS = 20
 DEFAULT_JUSTIFY: JustifyMethod = "default"
 DEFAULT_ROLE_MODIFY_WARNING: BOOL_STR = "true"
+DEFAULT_ENABLE_FUNCTIONS: BOOL_STR = "true"
+DEFAULT_SHOW_FUNCTION_OUTPUT: BOOL_STR = "true"
+DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium"]] = None
 
 
 class EventTypeEnum(StrEnum):
@@ -63,6 +69,11 @@ class EventTypeEnum(StrEnum):
     REASONING_END = "reasoning_end"
     CONTENT = "content"
     FINISH = "finish"
+    TOOL_CALL_START = "tool_call_start"
+    TOOL_CALL_DELTA = "tool_call_delta"
+    TOOL_CALL_END = "tool_call_end"
+    TOOL_RESULT = "tool_result"
+    TOOL_CALLS_FINISH = "tool_calls_finish"
 
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.
@@ -119,6 +130,7 @@ DEFAULT_CONFIG_MAP = {
     "TOP_P": {"value": DEFAULT_TOP_P, "env_key": "YAI_TOP_P", "type": float},
     "MAX_TOKENS": {"value": DEFAULT_MAX_TOKENS, "env_key": "YAI_MAX_TOKENS", "type": int},
     "TIMEOUT": {"value": DEFAULT_TIMEOUT, "env_key": "YAI_TIMEOUT", "type": int},
+    "REASONING_EFFORT": {"value": DEFAULT_REASONING_EFFORT, "env_key": "YAI_REASONING_EFFORT", "type": str},
     "INTERACTIVE_ROUND": {
         "value": DEFAULT_INTERACTIVE_ROUND,
         "env_key": "YAI_INTERACTIVE_ROUND",
@@ -135,6 +147,13 @@ DEFAULT_CONFIG_MAP = {
     "MAX_SAVED_CHATS": {"value": DEFAULT_MAX_SAVED_CHATS, "env_key": "YAI_MAX_SAVED_CHATS", "type": int},
     # Role settings
     "ROLE_MODIFY_WARNING": {"value": DEFAULT_ROLE_MODIFY_WARNING, "env_key": "YAI_ROLE_MODIFY_WARNING", "type": bool},
+    # Function settings
+    "ENABLE_FUNCTIONS": {"value": DEFAULT_ENABLE_FUNCTIONS, "env_key": "YAI_ENABLE_FUNCTIONS", "type": bool},
+    "SHOW_FUNCTION_OUTPUT": {
+        "value": DEFAULT_SHOW_FUNCTION_OUTPUT,
+        "env_key": "YAI_SHOW_FUNCTION_OUTPUT",
+        "type": bool,
+    },
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
@@ -155,6 +174,7 @@ TEMPERATURE={DEFAULT_CONFIG_MAP["TEMPERATURE"]["value"]}
 TOP_P={DEFAULT_CONFIG_MAP["TOP_P"]["value"]}
 MAX_TOKENS={DEFAULT_CONFIG_MAP["MAX_TOKENS"]["value"]}
 TIMEOUT={DEFAULT_CONFIG_MAP["TIMEOUT"]["value"]}
+REASONING_EFFORT=
 
 # Interactive mode parameters
 INTERACTIVE_ROUND={DEFAULT_CONFIG_MAP["INTERACTIVE_ROUND"]["value"]}
@@ -176,4 +196,10 @@ MAX_SAVED_CHATS={DEFAULT_CONFIG_MAP["MAX_SAVED_CHATS"]["value"]}
 # Role settings
 # Set to false to disable warnings about modified built-in roles
 ROLE_MODIFY_WARNING={DEFAULT_CONFIG_MAP["ROLE_MODIFY_WARNING"]["value"]}
+
+# Function settings
+# Set to false to disable sending functions in API requests
+ENABLE_FUNCTIONS={DEFAULT_CONFIG_MAP["ENABLE_FUNCTIONS"]["value"]}
+# Set to false to disable showing function output in the response
+SHOW_FUNCTION_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_FUNCTION_OUTPUT"]["value"]}
 """

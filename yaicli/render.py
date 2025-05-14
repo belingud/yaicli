@@ -2,7 +2,7 @@ from typing import Any
 
 from rich.markdown import Markdown
 
-from yaicli.config import cfg
+from .config import cfg
 
 
 class JustifyMarkdown(Markdown):

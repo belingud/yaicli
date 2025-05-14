@@ -3,15 +3,15 @@ from typing import Annotated, Any, Optional
 
 import typer
 
-from yaicli.chat_manager import FileChatManager
-from yaicli.cli import CLI
-from yaicli.config import cfg
-from yaicli.const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
-from yaicli.roles import RoleManager
+from .chat import FileChatManager
+from .config import cfg
+from .const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
+from .functions import install_functions, print_functions
+from .role import RoleManager
 
 app = typer.Typer(
     name="yaicli",
-    help="YAICLI - Yet Another AI CLI Interface.",
+    help="YAICLI - Your AI assistant in the command line.",
     context_settings={"help_option_names": ["-h", "--help"]},
     pretty_exceptions_enable=False,  # Let the CLI handle errors gracefully
     rich_markup_mode="rich",  # Render rich text in help messages
@@ -67,10 +67,17 @@ def main(
     max_tokens: int = typer.Option(  # noqa: F841
         cfg["MAX_TOKENS"],
         "--max-tokens",
-        "-M",
         help="Specify the max tokens to use.",
         rich_help_panel="LLM Options",
         min=1,
+        callback=override_config,
+    ),
+    stream: bool = typer.Option(  # noqa: F841
+        cfg["STREAM"],
+        "--stream/--no-stream",
+        help=f"Specify whether to stream the response. [dim](default: {'stream' if cfg['STREAM'] else 'no-stream'})[/dim]",
+        rich_help_panel="LLM Options",
+        show_default=False,
         callback=override_config,
     ),
     # ------------------- Role Options -------------------
@@ -118,7 +125,7 @@ def main(
         help="Start in interactive chat mode.",
         rich_help_panel="Chat Options",
     ),
-    # ------------------- Shell Options -------------------
+    # # ------------------- Shell Options -------------------
     shell: bool = typer.Option(
         False,
         "--shell",
@@ -126,7 +133,7 @@ def main(
         help="Generate and optionally execute a shell command (non-interactive).",
         rich_help_panel="Shell Options",
     ),
-    # ------------------- Code Options -------------------
+    # # ------------------- Code Options -------------------
     code: bool = typer.Option(
         False,
         "--code",
@@ -157,7 +164,8 @@ def main(
     ),
     show_reasoning: bool = typer.Option(  # noqa: F841
         cfg["SHOW_REASONING"],
-        help=f"Show reasoning content from the LLM. [dim](default: {cfg['SHOW_REASONING']})[/dim]",
+        "--show-reasoning/--hide-reasoning",
+        help=f"Show reasoning content from the LLM. [dim](default: {'show' if cfg['SHOW_REASONING'] else 'hide'})[/dim]",
         rich_help_panel="Other Options",
         show_default=False,
         callback=override_config,
@@ -170,6 +178,37 @@ def main(
         rich_help_panel="Other Options",
         callback=override_config,
     ),
+    # ------------------- Function Options -------------------
+    install_functions: bool = typer.Option(  # noqa: F841
+        False,
+        "--install-functions",
+        help="Install default functions.",
+        rich_help_panel="Function Options",
+        callback=install_functions,
+    ),
+    list_functions: bool = typer.Option(  # noqa: F841
+        False,
+        "--list-functions",
+        help="List all available functions.",
+        rich_help_panel="Function Options",
+        callback=print_functions,
+    ),
+    enable_functions: bool = typer.Option(  # noqa: F841
+        cfg["ENABLE_FUNCTIONS"],
+        "--enable-functions/--disable-functions",
+        help=f"Enable/disable function calling in API requests [dim](default: {'enabled' if cfg['ENABLE_FUNCTIONS'] else 'disabled'})[/dim]",
+        rich_help_panel="Function Options",
+        show_default=False,
+        callback=override_config,
+    ),
+    show_function_output: bool = typer.Option(  # noqa: F841
+        cfg["SHOW_FUNCTION_OUTPUT"],
+        "--show-function-output/--hide-function-output",
+        help=f"Show the output of functions [dim](default: {'show' if cfg['SHOW_FUNCTION_OUTPUT'] else 'hide'})[/dim]",
+        rich_help_panel="Function Options",
+        show_default=False,
+        callback=override_config,
+    ),
 ):
     """YAICLI: Your AI assistant in the command line.
 
@@ -179,7 +218,7 @@ def main(
         print(DEFAULT_CONFIG_INI)
         raise typer.Exit()
 
-    # Combine prompt argument with stdin content if available
+    # # Combine prompt argument with stdin content if available
     final_prompt = prompt
     if not sys.stdin.isatty():
         stdin_content = sys.stdin.read().strip()
@@ -194,40 +233,29 @@ def main(
         if chat:
             print("Warning: --chat is ignored when stdin was redirected.")
             chat = False
+    if not any([final_prompt, chat]):
+        print(ctx.get_help())
+        return
 
-    # Basic validation for conflicting options or missing prompt
-    if not any([final_prompt, chat, list_chats, list_roles, create_role]):
-        # If no prompt, not starting chat, and not listing chats or roles, show help
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
-
-    # Use build-in role for --shell or --code mode
+    # # Use build-in role for --shell or --code mode
     if role and role != DefaultRoleNames.DEFAULT and (shell or code):
         print("Warning: --role is ignored when --shell or --code is used.")
         role = DefaultRoleNames.DEFAULT
 
-    if code:
-        role = DefaultRoleNames.CODER
+    from yaicli.cli import CLI
 
-    try:
-        # Instantiate the main CLI class with the specified role
-        cli_instance = CLI(verbose=verbose, role=role)
+    role = CLI.evaluate_role_name(code, shell, role)
 
-        # Run the appropriate mode
-        cli_instance.run(
-            chat=chat,
-            shell=shell,
-            input=final_prompt,
-            role=role,
-        )
-    except Exception as e:
-        # Catch potential errors during CLI initialization or run
-        print(f"An error occurred: {e}")
-        if verbose:
-            import traceback
+    # Instantiate the main CLI class with the specified role
+    cli = CLI(verbose=verbose, role=role)
 
-            traceback.print_exc()
-        raise typer.Exit(code=1)
+    # Run the appropriate mode
+    cli.run(
+        chat=chat,
+        shell=shell,
+        code=code,
+        user_input=final_prompt,
+    )
 
 
 if __name__ == "__main__":

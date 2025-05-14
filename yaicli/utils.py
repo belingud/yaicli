@@ -6,7 +6,7 @@ from typing import Any, Callable, Optional, TypeVar
 import typer
 from distro import name as distro_name
 
-from yaicli.const import DEFAULT_OS_NAME, DEFAULT_SHELL_NAME
+from .const import DEFAULT_OS_NAME, DEFAULT_SHELL_NAME
 
 T = TypeVar("T", int, float, str, bool)
 
@@ -110,7 +110,7 @@ def filter_command(command: str) -> Optional[str]:
         return command.strip().replace("```", "")
 
 
-def str2bool(value: str) -> bool:
+def str2bool(value: Any) -> bool:
     """Convert a string representation of truth to true (1) or false (0).
     True values are 'y', 'yes', 't', 'true', 'on', and '1';
     false values are 'n', 'no', 'f', 'false', 'off', and '0'.
@@ -118,6 +118,9 @@ def str2bool(value: str) -> bool:
     """
     if value in {False, True}:
         return bool(value)
+
+    if not isinstance(value, str):
+        return value
 
     norm = value.strip().lower()
 

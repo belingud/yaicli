@@ -1,21 +1,21 @@
 import configparser
+from dataclasses import dataclass
 from functools import lru_cache
 from os import getenv
-from typing import Optional
+from typing import Any, Optional
 
 from rich import get_console
 from rich.console import Console
 
-from yaicli.const import (
+from .const import (
     CONFIG_PATH,
     DEFAULT_CHAT_HISTORY_DIR,
     DEFAULT_CONFIG_INI,
     DEFAULT_CONFIG_MAP,
-    DEFAULT_JUSTIFY,
-    DEFAULT_MAX_SAVED_CHATS,
-    DEFAULT_ROLE_MODIFY_WARNING,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_TOP_P,
 )
-from yaicli.utils import str2bool
+from .utils import str2bool
 
 
 class CasePreservingConfigParser(configparser.RawConfigParser):
@@ -23,6 +23,17 @@ class CasePreservingConfigParser(configparser.RawConfigParser):
 
     def optionxform(self, optionstr):
         return optionstr
+
+
+@dataclass
+class ProviderConfig:
+    """Provider configuration"""
+
+    api_key: str
+    model: str
+    base_url: Optional[str] = None
+    temperature: float = DEFAULT_TEMPERATURE
+    top_p: float = DEFAULT_TOP_P
 
 
 class Config(dict):
@@ -50,7 +61,7 @@ class Config(dict):
         """
         # Start with defaults
         self.clear()
-        self.update(self._load_defaults())
+        self._load_defaults()
 
         # Load from config file
         self._load_from_file()
@@ -59,13 +70,15 @@ class Config(dict):
         self._load_from_env()
         self._apply_type_conversion()
 
-    def _load_defaults(self) -> dict[str, str]:
+    def _load_defaults(self) -> dict[str, Any]:
         """Load default configuration values as strings.
 
         Returns:
             Dictionary with default configuration values
         """
-        return {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
+        defaults = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
+        self.update(defaults)
+        return defaults
 
     def _ensure_version_updated_config_keys(self):
         """Ensure configuration keys added in version updates exist in the config file.
@@ -75,14 +88,6 @@ class Config(dict):
             config_content = f.read()
             if "CHAT_HISTORY_DIR" not in config_content.strip():  # Check for empty lines
                 f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}\n")
-            if "MAX_SAVED_CHATS" not in config_content.strip():  # Check for empty lines
-                f.write(f"\nMAX_SAVED_CHATS={DEFAULT_MAX_SAVED_CHATS}\n")
-            if "JUSTIFY" not in config_content.strip():
-                f.write(f"\nJUSTIFY={DEFAULT_JUSTIFY}\n")
-            if "ROLE_MODIFY_WARNING" not in config_content.strip():
-                f.write(
-                    f"\n# Set to false to disable warnings about modified built-in roles\nROLE_MODIFY_WARNING={DEFAULT_ROLE_MODIFY_WARNING}\n"
-                )
 
     def _load_from_file(self) -> None:
         """Load configuration from the config file.
@@ -90,7 +95,7 @@ class Config(dict):
         Creates default config file if it doesn't exist.
         """
         if not CONFIG_PATH.exists():
-            self.console.print("Creating default configuration file.", style="bold yellow", justify=self.get("JUSTIFY"))
+            self.console.print("Creating default configuration file.", style="bold yellow", justify=self["JUSTIFY"])
             CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             with open(CONFIG_PATH, "w", encoding="utf-8") as f:
                 f.write(DEFAULT_CONFIG_INI)
@@ -107,7 +112,7 @@ class Config(dict):
             if not config_parser["core"].get(k, "").strip():
                 config_parser["core"][k] = v
 
-        self.update(config_parser["core"])
+        self.update(dict(config_parser["core"]))
 
         # Check if keys added in version updates are missing and add them
         self._ensure_version_updated_config_keys()
@@ -128,24 +133,26 @@ class Config(dict):
         Updates the configuration dictionary in-place with properly typed values.
         Falls back to default values if conversion fails.
         """
-        default_values_str = self._load_defaults()
+        default_values_str = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
 
         for key, config_info in DEFAULT_CONFIG_MAP.items():
             target_type = config_info["type"]
-            raw_value = self.get(key, default_values_str.get(key))
+            raw_value = self[key]
             converted_value = None
 
             try:
+                if raw_value is None:
+                    raw_value = default_values_str.get(key, "")
                 if target_type is bool:
                     converted_value = str2bool(raw_value)
                 elif target_type in (int, float, str):
                     converted_value = target_type(raw_value)
             except (ValueError, TypeError) as e:
                 self.console.print(
-                    f"[yellow]Warning:[/yellow] Invalid value '{raw_value}' for '{key}'. "
+                    f"[yellow]Warning:[/] Invalid value '{raw_value}' for '{key}'. "
                     f"Expected type '{target_type.__name__}'. Using default value '{default_values_str[key]}'. Error: {e}",
                     style="dim",
-                    justify=self.get("JUSTIFY"),
+                    justify=self["JUSTIFY"],
                 )
                 # Fallback to default string value if conversion fails
                 try:
@@ -158,7 +165,7 @@ class Config(dict):
                     self.console.print(
                         f"[red]Error:[/red] Could not convert default value for '{key}'. Using raw value.",
                         style="error",
-                        justify=self.get("JUSTIFY"),
+                        justify=self["JUSTIFY"],
                     )
                     converted_value = raw_value  # Or assign a hardcoded safe default
 

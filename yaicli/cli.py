@@ -2,9 +2,9 @@ import subprocess
 import sys
 import time
 import traceback
-from os.path import devnull
+from os import devnull
 from pathlib import Path
-from typing import List, Literal, Optional, Tuple
+from typing import Optional, Union
 
 import typer
 from prompt_toolkit import PromptSession, prompt
@@ -16,96 +16,90 @@ from rich.padding import Padding
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from yaicli.chat_manager import ChatFileInfo, ChatManager, FileChatManager
-from yaicli.config import CONFIG_PATH, Config, cfg
-from yaicli.console import get_console
-from yaicli.const import (
+from .chat import Chat, FileChatManager, chat_mgr
+from .client import LitellmClient, ChatMessage
+from .config import cfg
+from .console import get_console
+from .const import (
     CHAT_MODE,
     CMD_CLEAR,
     CMD_DELETE_CHAT,
     CMD_EXIT,
+    CMD_HELP,
     CMD_HISTORY,
     CMD_LIST_CHATS,
     CMD_LOAD_CHAT,
     CMD_MODE,
     CMD_SAVE_CHAT,
-    DEFAULT_CODE_THEME,
-    DEFAULT_INTERACTIVE_ROUND,
+    CONFIG_PATH,
     DEFAULT_OS_NAME,
     DEFAULT_SHELL_NAME,
     EXEC_MODE,
+    HISTORY_FILE,
     TEMP_MODE,
     DefaultRoleNames,
 )
-from yaicli.history import LimitedFileHistory
-from yaicli.printer import Printer
-from yaicli.providers import BaseClient, create_api_client
-from yaicli.roles import RoleManager
-from yaicli.utils import detect_os, detect_shell, filter_command
+from .exceptions import ChatSaveError
+from .history import LimitedFileHistory
+from .printer import Printer
+from .role import Role, RoleManager, role_mgr
+from .utils import detect_os, detect_shell, filter_command
 
 
 class CLI:
-    HISTORY_FILE = Path("~/.yaicli_history").expanduser()
-
     def __init__(
         self,
         verbose: bool = False,
-        stdin: Optional[str] = None,
-        api_client: Optional[BaseClient] = None,
-        printer: Optional[Printer] = None,
-        chat_manager: Optional[ChatManager] = None,
-        role: Optional[str] = None,
+        role: str = DefaultRoleNames.DEFAULT,
+        chat_manager: Optional[FileChatManager] = None,
+        role_manager: Optional[RoleManager] = None,
+        client=None,
     ):
-        # General settings
-        self.verbose = verbose
-        self.stdin = stdin
+        self.verbose: bool = verbose
+        # --role can specify a role when enter interactive chat
+        # TAB will switch between role and shell
+        self.init_role: str = role
+        self.role_name: str = role
+
         self.console = get_console()
+        self.chat_manager = chat_manager or chat_mgr
+        self.role_manager = role_manager or role_mgr
+        self.role: Role = self.role_manager.get_role(self.role_name)
+        self.printer = Printer()
+        self.client = client or LitellmClient(verbose=self.verbose)
+
         self.bindings = KeyBindings()
-        self.config: Config = cfg
+
         self.current_mode: str = TEMP_MODE
-        self.role: str = role or DefaultRoleNames.DEFAULT.value
-        self.init_role: str = self.role  # --role can specify a role when enter interactive chat
 
-        # Initialize role manager
-        self.role_manager = RoleManager()  # Singleton
-
-        # Validate role
-        if not self.role_manager.role_exists(self.role):
-            self.console.print(f"Role '{self.role}' not found, using default role.", style="yellow")
-            self.role = DefaultRoleNames.DEFAULT.value
-
-        # Interactive chat mode settings
-        self.history = []
-        self.interactive_max_history = self.config.get("INTERACTIVE_MAX_HISTORY", DEFAULT_INTERACTIVE_ROUND)
-        self.chat_title = None
+        self.interactive_round = cfg["INTERACTIVE_ROUND"]
         self.chat_start_time = None
         self.is_temp_session = True
+        self.chat = Chat(title="", history=[])
 
         # Get and create chat history directory from configuration
-        self.chat_history_dir = Path(self.config["CHAT_HISTORY_DIR"])
-        self.chat_history_dir.mkdir(parents=True, exist_ok=True)
-
-        # Initialize chat manager
-        self.chat_manager = chat_manager or FileChatManager()
+        self.chat_history_dir = Path(cfg["CHAT_HISTORY_DIR"])
+        # if not self.chat_history_dir.exists():
+        #     self.chat_history_dir.mkdir(parents=True, exist_ok=True)
 
         # Detect OS and Shell if set to auto
-        if self.config.get("OS_NAME") == DEFAULT_OS_NAME:
-            self.config["OS_NAME"] = detect_os(self.config)
-        if self.config.get("SHELL_NAME") == DEFAULT_SHELL_NAME:
-            self.config["SHELL_NAME"] = detect_shell(self.config)
+        if cfg["OS_NAME"] == DEFAULT_OS_NAME:
+            cfg["OS_NAME"] = detect_os(cfg)
+        if cfg["SHELL_NAME"] == DEFAULT_SHELL_NAME:
+            cfg["SHELL_NAME"] = detect_shell(cfg)
 
         if self.verbose:
+            # Print verbose configuration
             self.console.print("Loading Configuration:", style="bold cyan")
             self.console.print(f"Config file path: {CONFIG_PATH}")
-            for key, value in self.config.items():
+            for key, value in cfg.items():
                 display_value = "****" if key == "API_KEY" and value else value
-                self.console.print(f"  {key:<17}: {display_value}")
-            self.console.print(f"Current role: {self.role}")
-            self.console.print(Markdown("---", code_theme=self.config.get("CODE_THEME", DEFAULT_CODE_THEME)))
+                self.console.print(f"  {key:<20}: {display_value}")
+            self.console.print(f"Current role: {self.role_name}")
+            self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
 
-        self.api_client = api_client or create_api_client(self.config, self.console, self.verbose)
-        self.printer = printer or Printer(self.config, self.console, self.verbose, markdown=True)
-
+        # Disable prompt_toolkit warning when use non-tty input,
+        # e.g. when use pipe or redirect
         _origin_stderr = None
         if not sys.stdin.isatty():
             _origin_stderr = sys.stderr
@@ -118,46 +112,63 @@ class CLI:
                 sys.stderr.close()
                 sys.stderr = _origin_stderr
 
-    def get_prompt_tokens(self) -> List[Tuple[str, str]]:
+    def set_role(self, role_name: str) -> None:
+        self.role_name = role_name
+        self.role = self.role_manager.get_role(role_name)
+        if role_name in (DefaultRoleNames.CODER, DefaultRoleNames.SHELL):
+            cfg["ENABLE_FUNCTIONS"] = False
+        if role_name == DefaultRoleNames.CODER:
+            self.printer = Printer(content_markdown=False)
+        elif role_name == DefaultRoleNames.SHELL:
+            self.current_mode = EXEC_MODE
+
+    @classmethod
+    def evaluate_role_name(cls, code: bool = False, shell: bool = False, role: str = ""):
+        """
+        Judge the role based on the code, shell, and role options.
+        Code and shell are highest priority, then role, then default.
+        """
+        if code is True:
+            return DefaultRoleNames.CODER
+        if shell is True:
+            return DefaultRoleNames.SHELL
+        if role:
+            return role
+        return DefaultRoleNames.DEFAULT
+
+    def get_prompt_tokens(self) -> list[tuple[str, str]]:
         """Return prompt tokens for current mode"""
         mode_icon = "💬" if self.current_mode == CHAT_MODE else "🚀" if self.current_mode == EXEC_MODE else "📝"
         return [("class:qmark", f" {mode_icon} "), ("class:prompt", "> ")]
 
     def _check_history_len(self) -> None:
         """Check history length and remove the oldest messages if necessary"""
-        target_len = self.interactive_max_history * 2
-        if len(self.history) > target_len:
-            self.history = self.history[-target_len:]
+        target_len = self.interactive_round * 2
+        if len(self.chat.history) > target_len:
+            self.chat.history = self.chat.history[-target_len:]
             if self.verbose:
-                self.console.print(f"History trimmed to {target_len} messages.", style="dim")
-
-    # ------------------- Role Command Methods -------------------
-    def set_role(self, role: str) -> None:
-        """Set the current role for the assistant"""
-        if not self.role_manager.role_exists(role):
-            self.console.print(f"Role '{role}' not found.", style="bold red")
-            return
-
-        self.role = role
-        if self.role == DefaultRoleNames.CODER:
-            self.printer = Printer(self.config, self.console, self.verbose, content_markdown=False)
+                self.console.print(f"Dialogue trimmed to {target_len} messages.", style="dim")
 
     # ------------------- Chat Command Methods -------------------
-    def _save_chat(self, title: Optional[str] = None) -> None:
+    def _save_chat(self, title: Union[str, None] = None) -> None:
         """Save current chat history to a file using session manager."""
-        saved_title = self.chat_manager.save_chat(self.history, title)
+        # Update title if provided
+        if title:
+            self.chat.title = title
 
-        if not saved_title:
-            self.console.print("Failed to save chat.", style="bold red")
+        # Save chat and get the saved title back
+        try:
+            saved_title = self.chat_manager.save_chat(self.chat)
+        except ChatSaveError as e:
+            self.console.print(f"Failed to save chat: {e}", style="red")
             return
 
         # Session list will be refreshed automatically by the save method
         self.console.print(f"Chat saved as: {saved_title}", style="bold green")
 
-        # If this was a temporary session, mark it as non-temporary now that it's saved
+        # Mark session as persistent if it was temporary
         if self.is_temp_session:
             self.is_temp_session = False
-            self.chat_title = saved_title
             self.chat_start_time = int(time.time())
             self.console.print(
                 "Session is now marked as persistent and will be auto-saved on exit.", style="bold green"
@@ -165,7 +176,7 @@ class CLI:
 
     def _list_chats(self) -> None:
         """List all saved chat sessions using session manager."""
-        chats: list[ChatFileInfo] = self.chat_manager.list_chats()
+        chats: list[Chat] = self.chat_manager.list_chats()
 
         if not chats:
             self.console.print("No saved chats found.", style="yellow")
@@ -173,9 +184,9 @@ class CLI:
 
         self.console.print("Saved Chats:", style="bold underline")
         for chat in chats:
-            index = chat["index"]
-            title = chat["title"]
-            date = chat.get("date", "")
+            index = chat.idx
+            title = chat.title
+            date = chat.date
 
             if date:
                 self.console.print(f"[dim]{index}.[/dim] [bold blue]{title}[/bold blue] - {date}")
@@ -186,7 +197,7 @@ class CLI:
         """Force refresh the chat list."""
         self.chat_manager.refresh_chats()
 
-    def _load_chat_by_index(self, index: int) -> bool:
+    def _load_chat_by_index(self, index: str) -> bool:
         """Load a chat session by its index using session manager."""
         if not self.chat_manager.validate_chat_index(index):
             self.console.print("Invalid chat index.", style="bold red")
@@ -198,15 +209,14 @@ class CLI:
             self.console.print("Invalid chat index or chat not found.", style="bold red")
             return False
 
-        self.history = chat_data.get("history", [])
-        self.chat_title = chat_data.get("title")
-        self.chat_start_time = chat_data.get("timestamp", int(time.time()))
+        self.chat = chat_data
+        self.chat_start_time = chat_data.date
         self.is_temp_session = False
 
-        self.console.print(f"Loaded chat: {self.chat_title}", style="bold green")
+        self.console.print(f"Loaded chat: {self.chat.title}", style="bold green")
         return True
 
-    def _delete_chat_by_index(self, index: int) -> bool:
+    def _delete_chat_by_index(self, index: str) -> bool:
         """Delete a chat session by its index using session manager."""
         if not self.chat_manager.validate_chat_index(index):
             self.console.print("Invalid chat index.", style="bold red")
@@ -218,34 +228,41 @@ class CLI:
             self.console.print("Invalid chat index or chat not found.", style="bold red")
             return False
 
-        if self.chat_manager.delete_chat(index):
-            self.console.print(f"Deleted chat: {chat_data['title']}", style="bold green")
+        if chat_data.path is None:
+            self.console.print(f"Chat has no associated file to delete: {chat_data.title}", style="bold red")
+            return False
+
+        if self.chat_manager.delete_chat(chat_data.path):
+            self.console.print(f"Deleted chat: {chat_data.title}", style="bold green")
             return True
         else:
-            self.console.print(f"Failed to delete chat: {chat_data['title']}", style="bold red")
+            self.console.print(f"Failed to delete chat: {chat_data.title}", style="bold red")
             return False
 
     # ------------------- Special commands -------------------
-    def _handle_special_commands(self, user_input: str) -> Optional[bool]:
-        """Handle special command return: True-continue loop, False-exit loop, None-non-special command"""
+    def _handle_special_commands(self, user_input: str) -> Union[bool, str]:
+        """Handle special command return: True-continue loop, False-exit loop, str-non-special command"""
         command = user_input.lower().strip()
+        if command in CMD_HELP:
+            self.print_help()
+            return True
         if command == CMD_EXIT:
             return False
         if command == CMD_CLEAR and self.current_mode == CHAT_MODE:
-            self.history.clear()
+            self.chat.history.clear()
             self.console.print("Chat history cleared", style="bold yellow")
             return True
         if command == CMD_HISTORY:
-            if not self.history:
+            if not self.chat.history:
                 self.console.print("History is empty.", style="yellow")
             else:
                 self.console.print("Chat History:", style="bold underline")
-                for i in range(0, len(self.history), 2):
-                    user_msg = self.history[i]
-                    assistant_msg = self.history[i + 1] if (i + 1) < len(self.history) else None
-                    self.console.print(f"[dim]{i // 2 + 1}[/dim] [bold blue]User:[/bold blue] {user_msg['content']}")
+                for i in range(0, len(self.chat.history), 2):
+                    user_msg = self.chat.history[i]
+                    assistant_msg = self.chat.history[i + 1] if (i + 1) < len(self.chat.history) else None
+                    self.console.print(f"[dim]{i // 2 + 1}[/dim] [bold blue]User:[/bold blue] {user_msg.content}")
                     if assistant_msg:
-                        md = Markdown(assistant_msg["content"], code_theme=self.config["CODE_THEME"])
+                        md = Markdown(assistant_msg.content, code_theme=cfg["CODE_THEME"])
                         padded_md = Padding(md, (0, 0, 0, 4))
                         self.console.print("    Assistant:", style="bold green")
                         self.console.print(padded_md)
@@ -254,7 +271,7 @@ class CLI:
         # Handle /save command - optional title parameter
         if command.startswith(CMD_SAVE_CHAT):
             parts = command.split(maxsplit=1)
-            title = parts[1] if len(parts) > 1 else self.chat_title
+            title = parts[1] if len(parts) > 1 else self.chat.title
             self._save_chat(title)
             return True
 
@@ -263,8 +280,7 @@ class CLI:
             parts = command.split(maxsplit=1)
             if len(parts) == 2 and parts[1].isdigit():
                 # Try to parse as an index first
-                index = int(parts[1])
-                self._load_chat_by_index(index=index)
+                self._load_chat_by_index(index=parts[1])
             else:
                 self.console.print(f"Usage: {CMD_LOAD_CHAT} <index>", style="yellow")
                 self._list_chats()
@@ -274,8 +290,7 @@ class CLI:
         if command.startswith(CMD_DELETE_CHAT):
             parts = command.split(maxsplit=1)
             if len(parts) == 2 and parts[1].isdigit():
-                index = int(parts[1])
-                self._delete_chat_by_index(index=index)
+                self._delete_chat_by_index(index=parts[1])
             else:
                 self.console.print(f"Usage: {CMD_DELETE_CHAT} <index>", style="yellow")
                 self._list_chats()
@@ -293,12 +308,75 @@ class CLI:
                 new_mode = parts[1]
                 if self.current_mode != new_mode:
                     self.current_mode = new_mode
+                    self.set_role(DefaultRoleNames.SHELL if self.current_mode == EXEC_MODE else self.init_role)
                 else:
                     self.console.print(f"Already in {self.current_mode} mode.", style="yellow")
             else:
                 self.console.print(f"Usage: {CMD_MODE} {CHAT_MODE}|{EXEC_MODE}", style="yellow")
             return True
-        return None
+        return user_input
+
+    def _build_messages(self, user_input: str) -> list[ChatMessage]:
+        """Build message list for LLM API"""
+        # Create the message list with system prompt
+        messages = [ChatMessage(role="system", content=self.role.prompt)]
+
+        # Add previous conversation if available
+        for msg in self.chat.history:
+            messages.append(msg)
+
+        # Add user input
+        messages.append(ChatMessage(role="user", content=user_input))
+        return messages
+
+    def _handle_llm_response(self, user_input: str) -> Optional[str]:
+        """Get response from API (streaming or normal) and print it.
+        Returns the full content string or None if an error occurred.
+
+        Args:
+            user_input (str): The user's input text.
+
+        Returns:
+            Optional[str]: The assistant's response content or None if an error occurred.
+        """
+        messages = self._build_messages(user_input)
+        if self.verbose:
+            self.console.print(messages)
+        if self.role != DefaultRoleNames.CODER:
+            self.console.print("Assistant:", style="bold green")
+        try:
+            response = self.client.completion(messages, stream=cfg["STREAM"])
+            if cfg["STREAM"]:
+                content, _ = self.printer.display_stream(response, messages)
+            else:
+                content, _ = self.printer.display_normal(response, messages)
+
+            # Just return the content, message addition is handled in _process_user_input
+            return content if content is not None else None
+        except Exception as e:
+            self.console.print(f"Error processing LLM response: {e}", style="red")
+            if self.verbose:
+                traceback.print_exc()
+            return None
+
+    def _process_user_input(self, user_input: str) -> bool:
+        """Process user input: get response, print, update history, maybe execute.
+        Returns True to continue REPL, False to exit on critical error.
+        """
+        content = self._handle_llm_response(user_input)
+
+        if content is None:
+            return True
+
+        # Update chat history using Chat's add_message method
+        self.chat.add_message("user", user_input)
+        self.chat.add_message("assistant", content)
+
+        self._check_history_len()
+
+        if self.current_mode == EXEC_MODE:
+            self._confirm_and_execute(content)
+        return True
 
     def _confirm_and_execute(self, raw_content: str) -> None:
         """Review, edit and execute the command"""
@@ -312,7 +390,7 @@ class CLI:
         _input = Prompt.ask(
             r"Execute command? \[e]dit, \[y]es, \[n]o",
             choices=["y", "n", "e"],
-            default="n",
+            default="y",
             case_sensitive=False,
             show_choices=False,
         )
@@ -332,85 +410,41 @@ class CLI:
                 self.console.print("\nEdit cancelled.", style="yellow")
                 return
         if executed_cmd:
-            self.console.print("--- Executing --- ", style="bold green")
+            self.console.print("Executing...", style="bold green")
             try:
                 subprocess.call(executed_cmd, shell=True)
             except Exception as e:
-                self.console.print(f"[red]Failed to execute command: {e}[/red]")
-            self.console.print("--- Finished ---", style="bold green")
+                self.console.print(f"Failed to execute command: {e}", style="red")
         elif _input != "e":
             self.console.print("Execution cancelled.", style="yellow")
 
-    # ------------------- LLM Methods -------------------
-    def get_system_prompt(self) -> str:
-        """Get the system prompt based on current role and mode"""
-        # Use the role manager to get the system prompt
-        return self.role_manager.get_system_prompt(self.role)
-
-    def _build_messages(self, user_input: str) -> List[dict]:
-        """Build message list for LLM API"""
-        # Create the message list with system prompt
-        messages = [{"role": "system", "content": self.get_system_prompt()}]
-
-        # Add previous conversation if available
-        for msg in self.history:
-            messages.append(msg)
-
-        # Add user input
-        messages.append({"role": "user", "content": user_input})
-        return messages
-
-    def _handle_llm_response(self, user_input: str) -> Optional[str]:
-        """Get response from API (streaming or normal) and print it.
-        Returns the full content string or None if an error occurred.
-
-        Args:
-            user_input (str): The user's input text.
-
-        Returns:
-            Optional[str]: The assistant's response content or None if an error occurred.
-        """
-        messages = self._build_messages(user_input)
-        if self.verbose:
-            self.console.print(messages)
-        is_code_mode = self.role == DefaultRoleNames.CODER
-        try:
-            if self.config["STREAM"]:
-                stream_iterator = self.api_client.stream_completion(messages)
-                content, reasoning = self.printer.display_stream(stream_iterator, not is_code_mode)
-            else:
-                content, reasoning = self.api_client.completion(messages)
-                self.printer.display_normal(content, reasoning, not is_code_mode)
-
-            if content is not None:
-                # Add only the content (not reasoning) to history
-                self.history.extend(
-                    [{"role": "user", "content": user_input}, {"role": "assistant", "content": content}]
-                )
-                self._check_history_len()
-                return content
-            else:
-                return None
-        except Exception as e:
-            self.console.print(f"[red]Error processing LLM response: {e}[/red]")
-            if self.verbose:
-                traceback.print_exc()
-            return None
-
-    def _process_user_input(self, user_input: str) -> bool:
-        """Process user input: get response, print, update history, maybe execute.
-        Returns True to continue REPL, False to exit on critical error.
-        """
-        content = self._handle_llm_response(user_input)
-
-        if content is None:
-            return True
-
-        if self.current_mode == EXEC_MODE:
-            self._confirm_and_execute(content)
-        return True
-
     # ------------------- REPL Methods -------------------
+    def prepare_chat_loop(self) -> None:
+        """Setup key bindings and history for interactive modes."""
+        self.current_mode = CHAT_MODE
+        self._setup_key_bindings()
+        HISTORY_FILE.touch(exist_ok=True)
+
+        # Set up the prompt session with command history
+        try:
+            self.session = PromptSession(
+                key_bindings=self.bindings,
+                history=LimitedFileHistory(HISTORY_FILE, max_entries=self.interactive_round),
+                auto_suggest=AutoSuggestFromHistory() if cfg.get("AUTO_SUGGEST", True) else None,
+                enable_history_search=True,
+            )
+        except Exception as e:
+            self.console.print(f"Error initializing prompt session history: {e}", style="red")
+            self.session = PromptSession(key_bindings=self.bindings)
+
+    def _setup_key_bindings(self) -> None:
+        """Setup keyboard shortcuts (e.g., TAB for mode switching)."""
+
+        @self.bindings.add(Keys.ControlI)  # TAB
+        def _(event: KeyPressEvent) -> None:
+            self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
+            self.set_role(DefaultRoleNames.SHELL if self.current_mode == EXEC_MODE else self.init_role)
+
     def _print_welcome_message(self) -> None:
         """Prints the initial welcome banner and instructions."""
         self.console.print(
@@ -430,10 +464,14 @@ class CLI:
             self.console.print("Current: [bold yellow]Temporary Session[/bold yellow] (use /save to make persistent)")
         else:
             self.console.print(
-                f"Current: [bold green]Persistent Session[/bold green]{f': {self.chat_title}' if self.chat_title else ''}"
+                f"Current: [bold green]Persistent Session[/bold green]{f': {self.chat.title}' if self.chat.title else ''}"
             )
+        self.print_help()
 
+    def print_help(self):
         self.console.print("Press [bold yellow]TAB[/bold yellow] to switch mode")
+        help_cmd = "|".join(CMD_HELP)
+        self.console.print(f"{help_cmd:<19}: Show help message")
         self.console.print(f"{CMD_CLEAR:<19}: Clear chat history")
         self.console.print(f"{CMD_HISTORY:<19}: Show chat history")
         self.console.print(f"{CMD_LIST_CHATS:<19}: List saved chats")
@@ -452,98 +490,59 @@ class CLI:
         """Run the main Read-Eval-Print Loop (REPL)."""
         self.prepare_chat_loop()
         self._print_welcome_message()
+
+        # Main REPL loop
         while True:
-            self.console.print(Markdown("---", code_theme=self.config["CODE_THEME"]))
+            self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
             try:
+                # Get user input
                 user_input = self.session.prompt(self.get_prompt_tokens)
                 user_input = user_input.strip()
                 if not user_input:
                     continue
-                command_result = self._handle_special_commands(user_input)
-                if command_result is False:
+
+                # Handle special commands
+                _continue = self._handle_special_commands(user_input)
+                if _continue is False:  # Exit command
                     break
-                if command_result is True:
+                if _continue is True:  # Other special command
                     continue
-                if not self._process_user_input(user_input):
-                    break
+
+                # Process regular chat input
+                try:
+                    if not self._process_user_input(user_input):
+                        break
+                except KeyboardInterrupt:
+                    self.console.print("KeyboardInterrupt", style="yellow")
+                    continue
             except (KeyboardInterrupt, EOFError):
                 break
 
         # Auto-save chat history when exiting if there are messages and not a temporary session
-        if not self.is_temp_session:
-            self._save_chat(self.chat_title)
+        if not self.is_temp_session and self.chat.history:
+            self._save_chat(self.chat.title)
 
         self.console.print("\nExiting YAICLI... Goodbye!", style="bold green")
 
-    def prepare_chat_loop(self) -> None:
-        """Setup key bindings and history for interactive modes."""
-        self._setup_key_bindings()
-        self.HISTORY_FILE.touch(exist_ok=True)
-        try:
-            self.session = PromptSession(
-                key_bindings=self.bindings,
-                history=LimitedFileHistory(self.HISTORY_FILE, max_entries=self.interactive_max_history),
-                auto_suggest=AutoSuggestFromHistory() if self.config.get("AUTO_SUGGEST", True) else None,
-                enable_history_search=True,
-            )
-        except Exception as e:
-            self.console.print(f"[red]Error initializing prompt session history: {e}[/red]")
-            self.session = PromptSession(key_bindings=self.bindings)
-        if self.chat_title:
-            chat_info = self.chat_manager.load_chat_by_title(self.chat_title)
-            self.is_temp_session = False
-            self.history = chat_info.get("history", [])
+    def _run_once(self, user_input: str, shell: bool = False, code: bool = False) -> None:
+        """Handle default mode"""
+        self.set_role(self.evaluate_role_name(code, shell, self.init_role))
+        self._process_user_input(user_input)
 
-    def _setup_key_bindings(self) -> None:
-        """Setup keyboard shortcuts (e.g., TAB for mode switching)."""
+    def run(self, chat: bool = False, shell: bool = False, code: bool = False, user_input: Optional[str] = None):
+        if not user_input and not chat:
+            self.console.print("No input provided.", style="bold red")
+            raise typer.Abort()
 
-        @self.bindings.add(Keys.ControlI)  # TAB
-        def _(event: KeyPressEvent) -> None:
-            self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
-            self.role = DefaultRoleNames.SHELL if self.current_mode == EXEC_MODE else self.init_role
-
-    def _run_once(self, input: str, shell: bool) -> None:
-        """Run a single command (non-interactive)."""
-        self.current_mode = EXEC_MODE if shell else TEMP_MODE
-        if not self.config.get("API_KEY"):
-            self.console.print("[bold red]Error:[/bold red] API key not found.")
-            raise typer.Exit(code=1)
-
-        content = self._handle_llm_response(input)
-
-        if content is None:
-            raise typer.Exit(code=1)
-
-        if shell:
-            self._confirm_and_execute(content)
-
-    # ------------------- Main Entry Point -------------------
-    def run(
-        self,
-        chat: bool,
-        shell: bool,
-        input: Optional[str],
-        role: Optional[str | Literal[DefaultRoleNames.DEFAULT]] = None,
-    ) -> None:
-        """Run the CLI in the appropriate mode with the selected role."""
-        self.set_role(role or self.role)
-
-        # Now handle normal operation
-        if shell:
-            # Set mode to shell
-            self.role = DefaultRoleNames.SHELL
-            if input:
-                self._run_once(input, shell=True)
-            else:
-                self.console.print("No prompt provided for shell mode.", style="yellow")
-        elif chat:
-            # Start interactive chat mode
-            self.current_mode = CHAT_MODE
-            self.chat_title = input if input else None
-            self.prepare_chat_loop()
+        if chat:
+            # If user provided a title, try to load that chat
+            if user_input and isinstance(user_input, str):
+                loaded_chat = self.chat_manager.load_chat_by_title(user_input)
+                if loaded_chat:
+                    self.chat = loaded_chat
+                    self.is_temp_session = False
+            # Run the interactive chat REPL
             self._run_repl()
-        elif input:
-            # Run once with the given prompt
-            self._run_once(input, shell=False)
         else:
-            self.console.print("No chat or prompt provided. Exiting.")
+            # Run in single-use mode
+            self._run_once(user_input or "", shell=shell, code=code)

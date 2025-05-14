@@ -1,6 +1,6 @@
 [project]
 name = "yaicli"
-version = "0.4.0"
+version = "0.5.1"
 description = "A simple CLI tool to interact with LLM"
 authors = [{ name = "belingud", email = "im.victor@qq.com" }]
 readme = "README.md"
@@ -30,9 +30,11 @@ keywords = [
     "interact with llms",
 ]
 dependencies = [
-    "cohere>=5.15.0",
     "distro>=1.9.0",
     "httpx>=0.28.1",
+    "instructor>=1.7.9",
+    "json-repair>=0.44.1",
+    "litellm>=1.67.5",
     "openai>=1.76.0",
     "prompt-toolkit>=3.0.50",
     "rich>=13.9.4",
@@ -46,7 +48,7 @@ Documentation = "https://github.com/belingud/yaicli"
 
 [project.scripts]
 ai = "yaicli.entry:app"
-yai = "yaicli.entry:app"
+yaicli = "yaicli.entry:app"
 
 [tool.uv]
 resolution = "highest"

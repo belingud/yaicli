@@ -1,5 +1,45 @@
 
 ---
+## [0.5.1](https://github.com/belingud/yaicli/compare/v0.5.0..v0.5.1) - 2025-05-14
+
+### 🚜 Refactor
+
+- remove unused command line argument - ([2daf0e0](https://github.com/belingud/yaicli/commit/2daf0e04c2ee2e9b1cbac030f19ea6a5653f03d7)) - Belingud
+
+### 📚 Documentation
+
+- add function call support to README - ([191b5ae](https://github.com/belingud/yaicli/commit/191b5aed9ea4d4b42747a258bf2fb8b8c41ebc83)) - Belingud
+- Update CHANGELOG.md for v0.5.0 release - ([db7a328](https://github.com/belingud/yaicli/commit/db7a328746b45e2b99c176842fc157e0fc063cf3)) - Belingud
+
+
+---
+## [0.5.0](https://github.com/belingud/yaicli/compare/v0.4.0..v0.5.0) - 2025-05-14
+
+### ⛰️  Features
+
+[!IMPORTANT]
+- Add Function Call support.
+
+- Add reasoning effort configuration and function output panel - ([f21d29b](https://github.com/belingud/yaicli/commit/f21d29bcd1b9ebf411a6329dd98b659ded5ec1fa)) - Belingud
+- refactor client and printer logic, add function call support - ([9f008be](https://github.com/belingud/yaicli/commit/9f008bed2f1ef42665da0c453474044bb809c9ce)) - Belingud
+- add non-stream completion function call - ([572e2e2](https://github.com/belingud/yaicli/commit/572e2e212c1911155467bcc85274e6f536526899)) - Belingud
+- add non-stream completion function call - ([13d6154](https://github.com/belingud/yaicli/commit/13d6154ff95a1622365efb49b2b48931c4fcc070)) - Belingud
+
+### 📚 Documentation
+
+- Enhance README with function calling and provider info - ([ab69e5c](https://github.com/belingud/yaicli/commit/ab69e5ca1befe0d14b974451ec96262a6db7a3c0)) - Belingud
+- update changelog for v0.4.0 release - ([66db3ee](https://github.com/belingud/yaicli/commit/66db3eed4fd9866b1711477753092de6ab171d57)) - Belingud
+
+### 🧪 Testing
+
+- update test case for refactored project - ([26e0faf](https://github.com/belingud/yaicli/commit/26e0faf8ebf7ce9ebebcc096371f000183c00b4a)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update dependencies and script name - ([562d930](https://github.com/belingud/yaicli/commit/562d930fcddf5b874f1eefb9db08a1966490ef37)) - Belingud
+
+
+---
 ## [0.4.0](https://github.com/belingud/yaicli/compare/v0.3.3..v0.4.0) - 2025-05-01
 
 **From this version, yaicli will use provider sdk instead of httpx raw request**
