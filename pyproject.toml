@@ -30,7 +30,6 @@ keywords = [
     "interact with llms",
 ]
 dependencies = [
-    "cohere>=5.15.0",
     "distro>=1.9.0",
     "httpx>=0.28.1",
     "instructor>=1.7.9",
@@ -49,7 +48,7 @@ Documentation = "https://github.com/belingud/yaicli"
 
 [project.scripts]
 ai = "yaicli.entry:app"
-yai = "yaicli.entry:app"
+yaicli = "yaicli.entry:app"
 
 [tool.uv]
 resolution = "highest"
