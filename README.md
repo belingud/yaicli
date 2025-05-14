@@ -1,4 +1,9 @@
-# YAICLI: Your AI assistant in the command line.
+# YAICLI: Your AI assistant in command line.
+
+<p align="center">
+  <img src="artwork/logo.png" width="150" alt="YAICLI Logo" />
+</p>
+
 
 [![PyPI version](https://img.shields.io/pypi/v/yaicli?style=for-the-badge)](https://pypi.org/project/yaicli/)
 ![GitHub License](https://img.shields.io/github/license/belingud/yaicli?style=for-the-badge)
