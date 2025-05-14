@@ -1,7 +1,7 @@
 from enum import StrEnum
 from pathlib import Path
 from tempfile import gettempdir
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from rich.console import JustifyMethod
 
@@ -58,6 +58,7 @@ DEFAULT_JUSTIFY: JustifyMethod = "default"
 DEFAULT_ROLE_MODIFY_WARNING: BOOL_STR = "true"
 DEFAULT_ENABLE_FUNCTIONS: BOOL_STR = "true"
 DEFAULT_SHOW_FUNCTION_OUTPUT: BOOL_STR = "true"
+DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium"]] = None
 
 
 class EventTypeEnum(StrEnum):
@@ -129,6 +130,7 @@ DEFAULT_CONFIG_MAP = {
     "TOP_P": {"value": DEFAULT_TOP_P, "env_key": "YAI_TOP_P", "type": float},
     "MAX_TOKENS": {"value": DEFAULT_MAX_TOKENS, "env_key": "YAI_MAX_TOKENS", "type": int},
     "TIMEOUT": {"value": DEFAULT_TIMEOUT, "env_key": "YAI_TIMEOUT", "type": int},
+    "REASONING_EFFORT": {"value": DEFAULT_REASONING_EFFORT, "env_key": "YAI_REASONING_EFFORT", "type": str},
     "INTERACTIVE_ROUND": {
         "value": DEFAULT_INTERACTIVE_ROUND,
         "env_key": "YAI_INTERACTIVE_ROUND",
@@ -172,6 +174,7 @@ TEMPERATURE={DEFAULT_CONFIG_MAP["TEMPERATURE"]["value"]}
 TOP_P={DEFAULT_CONFIG_MAP["TOP_P"]["value"]}
 MAX_TOKENS={DEFAULT_CONFIG_MAP["MAX_TOKENS"]["value"]}
 TIMEOUT={DEFAULT_CONFIG_MAP["TIMEOUT"]["value"]}
+REASONING_EFFORT=
 
 # Interactive mode parameters
 INTERACTIVE_ROUND={DEFAULT_CONFIG_MAP["INTERACTIVE_ROUND"]["value"]}

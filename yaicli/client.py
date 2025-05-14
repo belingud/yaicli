@@ -7,6 +7,7 @@ from json_repair import repair_json
 from litellm.types.utils import Choices
 from litellm.types.utils import Message as ChoiceMessage
 from litellm.types.utils import ModelResponse
+from rich.panel import Panel
 
 from .config import cfg
 from .console import get_console
@@ -64,7 +65,7 @@ class LitellmClient:
 
     def _execute_tool_call(self, tool_call: ToolCall) -> tuple[str, bool]:
         """Call function and return result"""
-        console.print(f"@Function call: {tool_call.name}", style="blue")
+        console.print(f"@Function call: {tool_call.name}({tool_call.arguments})", style="blue")
 
         # 1. Get function
         try:
@@ -91,7 +92,15 @@ class LitellmClient:
         try:
             function_result = function.execute(**arguments)
             if cfg["SHOW_FUNCTION_OUTPUT"]:
-                console.print(f"Function output:\n{function_result}")
+                panel = Panel(
+                    function_result,
+                    title="Function output",
+                    title_align="left",
+                    expand=False,
+                    border_style="blue",
+                    style="dim",
+                )
+                console.print(panel)
             return function_result, True
         except Exception as e:
             error_msg = f"Call function error: {e}\nFunction name: {tool_call.name!r}\nArguments: {arguments!r}"
@@ -122,6 +131,7 @@ class LitellmClient:
             # litellm api params
             "api_key": self.api_key,
             "base_url": self.base_url,
+            "reasoning_effort": cfg["REASONING_EFFORT"],
         }
 
         # Add optional parameters
