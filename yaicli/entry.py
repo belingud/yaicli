@@ -67,7 +67,6 @@ def main(
     max_tokens: int = typer.Option(  # noqa: F841
         cfg["MAX_TOKENS"],
         "--max-tokens",
-        "-M",
         help="Specify the max tokens to use.",
         rich_help_panel="LLM Options",
         min=1,
