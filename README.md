@@ -33,8 +33,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 ### 🔌 Universal LLM Compatibility
 
 - **OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
-- **Multi-Provider Support**: Easy configuration for Claude, Gemini, Cohere, etc.
-- **Custom Response Parsing**: Extract exactly what you need with jmespath
+- **Multi-Provider Support**: Using litellm to support all major LLM providers
 
 ### 💻 Enhanced Terminal Experience
 
@@ -46,7 +45,11 @@ generate and execute shell commands, or get quick answers without leaving your w
 
 - **Layered Configuration**: Environment variables > Config file > Sensible defaults
 - **Debugging Tools**: Verbose mode with detailed API tracing
-- **Lightweight**: Minimal dependencies with focused functionality
+
+### 📚 Function Calling
+
+- **Function Calling**: Enable function calling in API requests
+- **Function Output**: Show the output of functions
 
 ![What is life](artwork/reasoning_example.png)
 
@@ -94,66 +97,79 @@ settings, just as below:
 
 ```ini
 [core]
-PROVIDER = openai
-BASE_URL = https://api.openai.com/v1
-API_KEY =
-MODEL = gpt-4o
+PROVIDER=openai
+BASE_URL=https://api.openai.com/v1
+API_KEY=
+MODEL=gpt-4o
 
 # auto detect shell and os (or specify manually, e.g., bash, zsh, powershell.exe)
-SHELL_NAME = auto
-OS_NAME = auto
+SHELL_NAME=auto
+OS_NAME=auto
 
 # true: streaming response, false: non-streaming
-STREAM = true
+STREAM=true
 
 # LLM parameters
-TEMPERATURE = 0.7
-TOP_P = 1.0
-MAX_TOKENS = 1024
-TIMEOUT = 60
+TEMPERATURE=0.5
+TOP_P=1.0
+MAX_TOKENS=1024
+TIMEOUT=60
+REASONING_EFFORT=
 
 # Interactive mode parameters
-INTERACTIVE_ROUND = 25
+INTERACTIVE_ROUND=25
 
 # UI/UX
-CODE_THEME = monokai
+CODE_THEME=monokai
 # Max entries kept in history file
-MAX_HISTORY = 500
-AUTO_SUGGEST = true
+MAX_HISTORY=500
+AUTO_SUGGEST=true
 # Print reasoning content or not
-SHOW_REASONING = true
+SHOW_REASONING=true
 # Text alignment (default, left, center, right, full)
-JUSTIFY = default
+JUSTIFY=default
 
 # Chat history settings
-CHAT_HISTORY_DIR = <tempdir>/yaicli/chats
-MAX_SAVED_CHATS = 20
+CHAT_HISTORY_DIR=<tmpdir>/yaicli/chats
+MAX_SAVED_CHATS=20
+
+# Role settings
+# Set to false to disable warnings about modified built-in roles
+ROLE_MODIFY_WARNING=true
+
+# Function settings
+# Set to false to disable sending functions in API requests
+ENABLE_FUNCTIONS=true
+# Set to false to disable showing function output in the response
+SHOW_FUNCTION_OUTPUT=true
 ```
 
 ### Configuration Options Reference
 
-| Option                | Description                                 | Default                     | Env Variable              |
-| --------------------- | ------------------------------------------- | --------------------------- | ------------------------- |
-| `PROVIDER`            | LLM provider (openai, claude, cohere, etc.) | `openai`                    | `YAI_PROVIDER`            |
-| `BASE_URL`            | API endpoint URL                            | `https://api.openai.com/v1` | `YAI_BASE_URL`            |
-| `API_KEY`             | Your API key                                | -                           | `YAI_API_KEY`             |
-| `MODEL`               | LLM model to use                            | `gpt-4o`                    | `YAI_MODEL`               |
-| `SHELL_NAME`          | Shell type                                  | `auto`                      | `YAI_SHELL_NAME`          |
-| `OS_NAME`             | Operating system                            | `auto`                      | `YAI_OS_NAME`             |
-| `STREAM`              | Enable streaming                            | `true`                      | `YAI_STREAM`              |
-| `TIMEOUT`             | API timeout (seconds)                       | `60`                        | `YAI_TIMEOUT`             |
-| `INTERACTIVE_ROUND`   | Interactive mode rounds                     | `25`                        | `YAI_INTERACTIVE_ROUND`   |
-| `CODE_THEME`          | Syntax highlighting theme                   | `monokai`                   | `YAI_CODE_THEME`          |
-| `TEMPERATURE`         | Response randomness                         | `0.7`                       | `YAI_TEMPERATURE`         |
-| `TOP_P`               | Top-p sampling                              | `1.0`                       | `YAI_TOP_P`               |
-| `MAX_TOKENS`          | Max response tokens                         | `1024`                      | `YAI_MAX_TOKENS`          |
-| `MAX_HISTORY`         | Max history entries                         | `500`                       | `YAI_MAX_HISTORY`         |
-| `AUTO_SUGGEST`        | Enable history suggestions                  | `true`                      | `YAI_AUTO_SUGGEST`        |
-| `SHOW_REASONING`      | Enable reasoning display                    | `true`                      | `YAI_SHOW_REASONING`      |
-| `JUSTIFY`             | Text alignment                              | `default`                   | `YAI_JUSTIFY`             |
-| `CHAT_HISTORY_DIR`    | Chat history directory                      | `<tempdir>/yaicli/history`  | `YAI_CHAT_HISTORY_DIR`    |
-| `MAX_SAVED_CHATS`     | Max saved chats                             | `20`                        | `YAI_MAX_SAVED_CHATS`     |
-| `ROLE_MODIFY_WARNING` | Warn user when modifying role               | `true`                      | `YAI_ROLE_MODIFY_WARNING` |
+| Option                 | Description                                 | Default                     | Env Variable               |
+| ---------------------- | ------------------------------------------- | --------------------------- | -------------------------- |
+| `PROVIDER`             | LLM provider (openai, claude, cohere, etc.) | `openai`                    | `YAI_PROVIDER`             |
+| `BASE_URL`             | API endpoint URL                            | `https://api.openai.com/v1` | `YAI_BASE_URL`             |
+| `API_KEY`              | Your API key                                | -                           | `YAI_API_KEY`              |
+| `MODEL`                | LLM model to use                            | `gpt-4o`                    | `YAI_MODEL`                |
+| `SHELL_NAME`           | Shell type                                  | `auto`                      | `YAI_SHELL_NAME`           |
+| `OS_NAME`              | Operating system                            | `auto`                      | `YAI_OS_NAME`              |
+| `STREAM`               | Enable streaming                            | `true`                      | `YAI_STREAM`               |
+| `TIMEOUT`              | API timeout (seconds)                       | `60`                        | `YAI_TIMEOUT`              |
+| `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                        | `YAI_INTERACTIVE_ROUND`    |
+| `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                   | `YAI_CODE_THEME`           |
+| `TEMPERATURE`          | Response randomness                         | `0.7`                       | `YAI_TEMPERATURE`          |
+| `TOP_P`                | Top-p sampling                              | `1.0`                       | `YAI_TOP_P`                |
+| `MAX_TOKENS`           | Max response tokens                         | `1024`                      | `YAI_MAX_TOKENS`           |
+| `MAX_HISTORY`          | Max history entries                         | `500`                       | `YAI_MAX_HISTORY`          |
+| `AUTO_SUGGEST`         | Enable history suggestions                  | `true`                      | `YAI_AUTO_SUGGEST`         |
+| `SHOW_REASONING`       | Enable reasoning display                    | `true`                      | `YAI_SHOW_REASONING`       |
+| `JUSTIFY`              | Text alignment                              | `default`                   | `YAI_JUSTIFY`              |
+| `CHAT_HISTORY_DIR`     | Chat history directory                      | `<tempdir>/yaicli/chats`    | `YAI_CHAT_HISTORY_DIR`     |
+| `MAX_SAVED_CHATS`      | Max saved chats                             | `20`                        | `YAI_MAX_SAVED_CHATS`      |
+| `ROLE_MODIFY_WARNING`  | Warn user when modifying role               | `true`                      | `YAI_ROLE_MODIFY_WARNING`  |
+| `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                      | `YAI_ENABLE_FUNCTIONS`     |
+| `SHOW_FUNCTION_OUTPUT` | Show function output in response            | `true`                      | `YAI_SHOW_FUNCTION_OUTPUT` |
 
 ### LLM Provider Configuration
 
@@ -161,10 +177,6 @@ YAICLI works with all major LLM providers. The default configuration is set up f
 other providers.
 
 #### Pre-configured Provider Settings
-
-`provider` is not case sensitive.
-
-Claude and gemini native api will support soon.
 
 | Provider                       | BASE_URL                                                  |
 | ------------------------------ | --------------------------------------------------------- |
@@ -178,6 +190,16 @@ Claude and gemini native api will support soon.
 >
 > - Google Gemini: https://ai.google.dev/gemini-api/docs/openai
 > - Claude: https://docs.anthropic.com/en/api/openai-sdk
+
+If you not sure about base_url or just use the default provider base_url, just leave it blank.
+
+```ini
+[core]
+PROVIDER=cohere
+BASE_URL=
+API_KEY=xxx
+MODEL=command-r-plus
+```
 
 ### Syntax Highlighting Themes
 
@@ -223,43 +245,50 @@ ai --verbose "Explain quantum computing"
  YAICLI: Your AI assistant in the command line.
  Call with a PROMPT to get a direct answer, use --shell to execute as command, or use --chat for an interactive session.
 
-╭─ Arguments ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available. [default: None]                                   │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --install-completion            Install completion for the current shell.                                                               │
-│ --show-completion               Show completion for the current shell, to copy it or customize the installation.                        │
-│ --help                -h        Show this message and exit.                                                                             │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --model        -M      TEXT                       Specify the model to use.                                                             │
-│ --temperature  -T      FLOAT RANGE [0.0<=x<=2.0]  Specify the temperature to use. [default: 0.7]                                        │
-│ --top-p        -P      FLOAT RANGE [0.0<=x<=1.0]  Specify the top-p to use. [default: 1.0]                                              │
-│ --max-tokens   -M      INTEGER RANGE [x>=1]       Specify the max tokens to use. [default: 1024]                                        │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Role Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --role         -r      TEXT  Specify the assistant role to use. [default: DEFAULT]                                                      │
-│ --create-role          TEXT  Create a new role with the specified name.                                                                 │
-│ --delete-role          TEXT  Delete a role with the specified name.                                                                     │
-│ --list-roles                 List all available roles.                                                                                  │
-│ --show-role            TEXT  Show the role with the specified name.                                                                     │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Chat Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --chat        -c        Start in interactive chat mode.                                                                                 │
-│ --list-chats            List saved chat sessions.                                                                                       │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Shell Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --shell  -s        Generate and optionally execute a shell command (non-interactive).                                                   │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Code Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --code          Generate code in plaintext (non-interactive).                                                                           │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Other Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --verbose         -V                                                           Show verbose output (e.g., loaded config).               │
-│ --template                                                                     Show the default config file template and exit.          │
-│ --show-reasoning      --no-show-reasoning                                      Show reasoning content from the LLM. (default: True)     │
-│ --justify         -j                         [default|left|center|right|full]  Specify the justify to use. [default: default]           │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Arguments ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available. [default: None]                             │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --install-completion            Install completion for the current shell.                                                         │
+│ --show-completion               Show completion for the current shell, to copy it or customize the installation.                  │
+│ --help                -h        Show this message and exit.                                                                       │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --model        -M                 TEXT                       Specify the model to use.                                            │
+│ --temperature  -T                 FLOAT RANGE [0.0<=x<=2.0]  Specify the temperature to use. [default: 0.5]                       │
+│ --top-p        -P                 FLOAT RANGE [0.0<=x<=1.0]  Specify the top-p to use. [default: 1.0]                             │
+│ --max-tokens   -M                 INTEGER RANGE [x>=1]       Specify the max tokens to use. [default: 1024]                       │
+│ --stream           --no-stream                               Specify whether to stream the response. (default: stream)            │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Role Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --role         -r      TEXT  Specify the assistant role to use. [default: DEFAULT]                                                │
+│ --create-role          TEXT  Create a new role with the specified name.                                                           │
+│ --delete-role          TEXT  Delete a role with the specified name.                                                               │
+│ --list-roles                 List all available roles.                                                                            │
+│ --show-role            TEXT  Show the role with the specified name.                                                               │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Chat Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --chat        -c        Start in interactive chat mode.                                                                           │
+│ --list-chats            List saved chat sessions.                                                                                 │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Shell Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --shell  -s        Generate and optionally execute a shell command (non-interactive).                                             │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Code Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --code          Generate code in plaintext (non-interactive).                                                                     │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Other Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --verbose         -V                                                        Show verbose output (e.g., loaded config).            │
+│ --template                                                                  Show the default config file template and exit.       │
+│ --show-reasoning      --hide-reasoning                                      Show reasoning content from the LLM. (default: show)  │
+│ --justify         -j                      [default|left|center|right|full]  Specify the justify to use. [default: default]        │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Function Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --install-functions                                   Install default functions.                                                  │
+│ --list-functions                                      List all available functions.                                               │
+│ --enable-functions        --disable-functions         Enable/disable function calling in API requests (default: disabled)         │
+│ --show-function-output    --hide-function-output      Show the output of functions (default: show)                                │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### Interactive Mode Features
@@ -270,6 +299,7 @@ ai --verbose "Explain quantum computing"
 
 **Commands**
 
+- `/help|?` - Show help message
 - `/clear` - Clear conversation history
 - `/his` - Show command history
 - `/list` - List saved chats
@@ -573,6 +603,51 @@ $ ai --code "write a fib generator" --model deepseek-r1
 ```
 
 ![fib code example](artwork/reasoning_code_example.png)
+
+### Function Call
+
+To use function call, you need to install default functions by `ai --install-functions`.
+After that, you can check the functions by `ai --list-functions`.
+You can also define your own functions by adding them to the config folder in `~/.config/yaicli/functions/` (`C:\Users\<user>\.config\yaicli\functions` on Windows).
+
+`--enable-functions` option is corresponds to the configuration key `ENABLE_FUNCTIONS`.
+
+```shell
+ai 'check the current dir total size' --enable-functions
+Assistant:
+Thinking:
+
+▌ Okay, the user wants to check the current directory's total size. Hmm, how do I do that in macOS with zsh?
+▌ I remember that the command to get disk usage is usually 'du'. But wait, the default 'du' might not give the total size of the
+▌ current directory directly. Let me think. Oh right, if I use 'du -sh' with the current directory, that should give the total size
+▌ in human-readable format.
+▌ Wait, but sometimes the -s option summarizes the directory. So 'du -sh .' would calculate the total size of the current directory
+▌ and its subdirectories. That should work. Let me confirm the syntax. Yeah, 'du -sh .' is the right command here.
+▌ The user is using zsh, but the 'du' command is standard, so it should be available. I need to execute this shell command. The
+▌ function provided is execute_shell_command, so I'll call that with the shell command 'du -sh .' as the argument.
+▌ I should make sure the parameters are correctly formatted. The function requires a shell_command string. Alright, that's all.
+▌ Let's generate the tool call.
+
+{"index":0,"finish_reason":"tool_calls","delta":{"role":"assistant","content":null,"audio":null,"tool_calls":[{"id":"call_202505141526
+36cc3f776ae8f14b56_0","index":0,"type":"function","function":{"name":"execute_shell_command","arguments":"{"shell_command": "du -sh
+."}","outputs":null},"code_interpreter":null,"retrieval":null,"drawing_tool":null,"web_browser":null,"search_intent":null,"search_resu
+lt":null}],"tool_call_id":null,"attachments":null,"metadata":null}}
+@Function call: execute_shell_command({"shell_command": "du -sh ."})
+╭─ Function output ─────╮
+│ Exit code: 0, Output: │
+│ 156M    .             │
+│                       │
+╰───────────────────────╯
+Thinking:
+
+▌ Okay, the user asked to check the current directory's total size. I used the 'du -sh .' command, which stands for disk usage,
+▌ summarize, and current directory. The output was "156M". So I need to present this in a concise way.
+▌ First, confirm the command was executed. Then, report the result clearly. Since the user didn't ask for extra details, keep it
+▌ simple. Just state the total size as 156MB. Maybe mention the command used for transparency. Alright, that should cover it without
+▌ overcomplicating.
+
+Current directory size: 156M (using du -sh .).
+```
 
 ## 💻 Technical Details
 
