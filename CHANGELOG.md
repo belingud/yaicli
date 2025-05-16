@@ -1,5 +1,34 @@
 
 ---
+## [0.5.4](https://github.com/belingud/yaicli/compare/v0.5.3..v0.5.4) - 2025-05-14
+
+### 📚 Documentation
+
+- Update CHANGELOG.md for v0.5.3 release - ([a0bf128](https://github.com/belingud/yaicli/commit/a0bf1286fce96ff4074c2b2284186e9261c8ca64)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- Update dependencies - ([698a054](https://github.com/belingud/yaicli/commit/698a054224e49194b59cd6e096a91804a0b859d5)) - Belingud
+
+
+---
+## [0.5.3](https://github.com/belingud/yaicli/compare/v0.5.2..v0.5.3) - 2025-05-14
+
+### 📚 Documentation
+
+- update CHANGELOG.md for v0.5.2 release - ([4393332](https://github.com/belingud/yaicli/commit/4393332566110fa2c0ceac8b223923039987c579)) - Belingud
+
+
+---
+## [0.5.2](https://github.com/belingud/yaicli/compare/v0.5.1..v0.5.2) - 2025-05-14
+
+### 📚 Documentation
+
+- Update sologan and logo - ([1ccd4b5](https://github.com/belingud/yaicli/commit/1ccd4b56fcbd0fcc6f028c48e9b2b19a0f1972f5)) - Belingud
+- Update CHANGELOG.md for v0.5.1 release - ([d7023dc](https://github.com/belingud/yaicli/commit/d7023dcb82b17e37c8e493c6209c04d3a7d893d1)) - Belingud
+
+
+---
 ## [0.5.1](https://github.com/belingud/yaicli/compare/v0.5.0..v0.5.1) - 2025-05-14
 
 ### 🚜 Refactor

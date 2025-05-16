@@ -1,6 +1,6 @@
 [project]
 name = "yaicli"
-version = "0.5.1"
+version = "0.5.4"
 description = "A simple CLI tool to interact with LLM"
 authors = [{ name = "belingud", email = "im.victor@qq.com" }]
 readme = "README.md"
@@ -30,6 +30,7 @@ keywords = [
     "interact with llms",
 ]
 dependencies = [
+    "click<8.2.0",
     "distro>=1.9.0",
     "httpx>=0.28.1",
     "instructor>=1.7.9",

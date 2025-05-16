@@ -11,7 +11,7 @@ from .role import RoleManager
 
 app = typer.Typer(
     name="yaicli",
-    help="YAICLI - Your AI assistant in the command line.",
+    help="YAICLI - Your AI assistant in command line.",
     context_settings={"help_option_names": ["-h", "--help"]},
     pretty_exceptions_enable=False,  # Let the CLI handle errors gracefully
     rich_markup_mode="rich",  # Render rich text in help messages

@@ -1,4 +1,10 @@
-# YAICLI: Your AI assistant in the command line.
+# YAICLI: Your AI assistant in command line.
+
+<p align="center">
+  <img src="artwork/logo.png" width="150" alt="YAICLI Logo" />
+</p>
+
+<a href="https://www.producthunt.com/posts/yaicli?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-yaicli" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=965413&theme=neutral&t=1747386335651" alt="Yaicli - Yaicli&#0058;&#0032;Your&#0032;AI&#0032;assistant&#0032;in&#0032;the&#0032;command&#0032;line&#0046; | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
 [![PyPI version](https://img.shields.io/pypi/v/yaicli?style=for-the-badge)](https://pypi.org/project/yaicli/)
 ![GitHub License](https://img.shields.io/github/license/belingud/yaicli?style=for-the-badge)
