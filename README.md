@@ -253,50 +253,50 @@ ai --verbose "Explain quantum computing"
  YAICLI: Your AI assistant in the command line.
  Call with a PROMPT to get a direct answer, use --shell to execute as command, or use --chat for an interactive session.
 
-╭─ Arguments ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available. [default: None]                             │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --install-completion            Install completion for the current shell.                                                         │
-│ --show-completion               Show completion for the current shell, to copy it or customize the installation.                  │
-│ --help                -h        Show this message and exit.                                                                       │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --model        -M                 TEXT                       Specify the model to use.                                            │
-│ --temperature  -T                 FLOAT RANGE [0.0<=x<=2.0]  Specify the temperature to use. [default: 0.5]                       │
-│ --top-p        -P                 FLOAT RANGE [0.0<=x<=1.0]  Specify the top-p to use. [default: 1.0]                             │
-│ --max-tokens   -M                 INTEGER RANGE [x>=1]       Specify the max tokens to use. [default: 1024]                       │
-│ --stream           --no-stream                               Specify whether to stream the response. (default: stream)            │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Role Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --role         -r      TEXT  Specify the assistant role to use. [default: DEFAULT]                                                │
-│ --create-role          TEXT  Create a new role with the specified name.                                                           │
-│ --delete-role          TEXT  Delete a role with the specified name.                                                               │
-│ --list-roles                 List all available roles.                                                                            │
-│ --show-role            TEXT  Show the role with the specified name.                                                               │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Chat Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --chat        -c        Start in interactive chat mode.                                                                           │
-│ --list-chats            List saved chat sessions.                                                                                 │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Shell Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --shell  -s        Generate and optionally execute a shell command (non-interactive).                                             │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Code Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --code          Generate code in plaintext (non-interactive).                                                                     │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Other Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --verbose         -V                                                        Show verbose output (e.g., loaded config).            │
-│ --template                                                                  Show the default config file template and exit.       │
-│ --show-reasoning      --hide-reasoning                                      Show reasoning content from the LLM. (default: show)  │
-│ --justify         -j                      [default|left|center|right|full]  Specify the justify to use. [default: default]        │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Function Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --install-functions                                   Install default functions.                                                  │
-│ --list-functions                                      List all available functions.                                               │
-│ --enable-functions        --disable-functions         Enable/disable function calling in API requests (default: disabled)         │
-│ --show-function-output    --hide-function-output      Show the output of functions (default: show)                                │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available. [default: None]                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --install-completion            Install completion for the current shell.                                                        │
+│ --show-completion               Show completion for the current shell, to copy it or customize the installation.                 │
+│ --help                -h        Show this message and exit.                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --model        -M                 TEXT                       Specify the model to use.                                           │
+│ --temperature  -T                 FLOAT RANGE [0.0<=x<=2.0]  Specify the temperature to use. [default: 0.5]                      │
+│ --top-p        -P                 FLOAT RANGE [0.0<=x<=1.0]  Specify the top-p to use. [default: 1.0]                            │
+│ --max-tokens                      INTEGER RANGE [x>=1]       Specify the max tokens to use. [default: 1024]                      │
+│ --stream           --no-stream                               Specify whether to stream the response. (default: stream)           │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Role Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --role         -r      TEXT  Specify the assistant role to use. [default: DEFAULT]                                               │
+│ --create-role          TEXT  Create a new role with the specified name.                                                          │
+│ --delete-role          TEXT  Delete a role with the specified name.                                                              │
+│ --list-roles                 List all available roles.                                                                           │
+│ --show-role            TEXT  Show the role with the specified name.                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Chat Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --chat        -c        Start in interactive chat mode.                                                                          │
+│ --list-chats            List saved chat sessions.                                                                                │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Shell Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --shell  -s        Generate and optionally execute a shell command (non-interactive).                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Code Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --code          Generate code in plaintext (non-interactive).                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Other Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --verbose         -V                                                        Show verbose output (e.g., loaded config).           │
+│ --template                                                                  Show the default config file template and exit.      │
+│ --show-reasoning      --hide-reasoning                                      Show reasoning content from the LLM. (default: show) │
+│ --justify         -j                      [default|left|center|right|full]  Specify the justify to use. [default: default]       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Function Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --install-functions                                   Install default functions.                                                 │
+│ --list-functions                                      List all available functions.                                              │
+│ --enable-functions        --disable-functions         Enable/disable function calling in API requests (default: disabled)        │
+│ --show-function-output    --hide-function-output      Show the output of functions (default: show)                               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### Interactive Mode Features
