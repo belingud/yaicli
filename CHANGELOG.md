@@ -1,5 +1,19 @@
 
 ---
+## [0.5.5](https://github.com/belingud/yaicli/compare/v0.5.4..v0.5.5) - 2025-05-21
+
+### 🚜 Refactor
+
+- Improve case-insensitive command handling in CLI - ([a9f1382](https://github.com/belingud/yaicli/commit/a9f13829a66c7e9c3a7726222964f99aece1555b)) - Belingud
+
+### 📚 Documentation
+
+- add producthunt badge to README - ([3b2d98b](https://github.com/belingud/yaicli/commit/3b2d98b586b0d25917aba8c25d12c7f548b489f0)) - Belingud
+- add example image for reasoning shell - ([99ff117](https://github.com/belingud/yaicli/commit/99ff1171e1ffef550d1ee3ba01137664428384b8)) - Belingud
+- update CHANGELOG.md for v0.5.4 release - ([fb5d95a](https://github.com/belingud/yaicli/commit/fb5d95a145f23760b2b0d72c078014e5874a16c4)) - Belingud
+
+
+---
 ## [0.5.4](https://github.com/belingud/yaicli/compare/v0.5.3..v0.5.4) - 2025-05-14
 
 ### 📚 Documentation
