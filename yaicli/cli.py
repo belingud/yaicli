@@ -242,17 +242,21 @@ class CLI:
     # ------------------- Special commands -------------------
     def _handle_special_commands(self, user_input: str) -> Union[bool, str]:
         """Handle special command return: True-continue loop, False-exit loop, str-non-special command"""
-        command = user_input.lower().strip()
-        if command in CMD_HELP:
+        lower_input = user_input.lower().strip()
+        if lower_input in CMD_HELP:
+            # case-insensitive
             self.print_help()
             return True
-        if command == CMD_EXIT:
+        if lower_input == CMD_EXIT:
+            # case-insensitive
             return False
-        if command == CMD_CLEAR and self.current_mode == CHAT_MODE:
+        if lower_input == CMD_CLEAR and self.current_mode == CHAT_MODE:
+            # case-insensitive
             self.chat.history.clear()
             self.console.print("Chat history cleared", style="bold yellow")
             return True
-        if command == CMD_HISTORY:
+        if lower_input == CMD_HISTORY:
+            # case-insensitive
             if not self.chat.history:
                 self.console.print("History is empty.", style="yellow")
             else:
@@ -269,15 +273,17 @@ class CLI:
             return True
 
         # Handle /save command - optional title parameter
-        if command.startswith(CMD_SAVE_CHAT):
-            parts = command.split(maxsplit=1)
+        if lower_input.startswith(CMD_SAVE_CHAT):
+            # Save chat with title from user raw input, case-sensitive
+            parts = user_input.split(maxsplit=1)
             title = parts[1] if len(parts) > 1 else self.chat.title
             self._save_chat(title)
             return True
 
         # Handle /load command - requires index parameter
-        if command.startswith(CMD_LOAD_CHAT):
-            parts = command.split(maxsplit=1)
+        if lower_input.startswith(CMD_LOAD_CHAT):
+            # Load chat by index from user raw input, case-sensitive
+            parts = user_input.split(maxsplit=1)
             if len(parts) == 2 and parts[1].isdigit():
                 # Try to parse as an index first
                 self._load_chat_by_index(index=parts[1])
@@ -287,8 +293,9 @@ class CLI:
             return True
 
         # Handle /delete command - requires index parameter
-        if command.startswith(CMD_DELETE_CHAT):
-            parts = command.split(maxsplit=1)
+        if lower_input.startswith(CMD_DELETE_CHAT):
+            # Delete chat by index from user raw input, case-sensitive
+            parts = user_input.split(maxsplit=1)
             if len(parts) == 2 and parts[1].isdigit():
                 self._delete_chat_by_index(index=parts[1])
             else:
@@ -297,13 +304,15 @@ class CLI:
             return True
 
         # Handle /list command to list saved chats
-        if command == CMD_LIST_CHATS:
+        if lower_input == CMD_LIST_CHATS:
+            # case-insensitive
             self._list_chats()
             return True
 
         # Handle /mode command
-        if command.startswith(CMD_MODE):
-            parts = command.split(maxsplit=1)
+        if lower_input.startswith(CMD_MODE):
+            # Switch mode by lower user input, case-insensitive
+            parts = lower_input.split(maxsplit=1)
             if len(parts) == 2 and parts[1] in [CHAT_MODE, EXEC_MODE]:
                 new_mode = parts[1]
                 if self.current_mode != new_mode:
