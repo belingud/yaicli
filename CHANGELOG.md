@@ -1,5 +1,22 @@
 
 ---
+## [0.5.6](https://github.com/belingud/yaicli/compare/v0.5.5..v0.5.6) - 2025-05-22
+
+### 🐛 Bug Fixes
+
+- update project config and simplify printer logic - ([029b7e2](https://github.com/belingud/yaicli/commit/029b7e26c0502e4ae7f32931cdaa2dd2f1d167a8)) - Belingud
+
+### 📚 Documentation
+
+- Fix formatting in README - ([7e440da](https://github.com/belingud/yaicli/commit/7e440da0fe9492736bf1ad160095447d5fce010b)) - Belingud
+- update CHANGELOG.md for v0.5.5 release - ([5d12c69](https://github.com/belingud/yaicli/commit/5d12c692d5f692f8d5ede2e57f0a2a81a16e75a8)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add 'ai' as alternative command in pyproject.toml - ([d1852f1](https://github.com/belingud/yaicli/commit/d1852f175ec3a821498640df8755f6e165d71fff)) - Belingud
+
+
+---
 ## [0.5.5](https://github.com/belingud/yaicli/compare/v0.5.4..v0.5.5) - 2025-05-21
 
 ### 🚜 Refactor
