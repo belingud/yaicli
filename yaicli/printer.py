@@ -93,13 +93,7 @@ class Printer:
         """
         # Process reasoning field first (if present)
         if chunk_reasoning:
-            if self.in_reasoning:
-                # Already in reasoning mode, append to reasoning
-                reasoning += chunk_reasoning
-            else:
-                # Force reasoning mode for explicit reasoning field
-                self.in_reasoning = True
-                reasoning += chunk_reasoning
+            reasoning += chunk_reasoning
 
         # Then process content field (if present)
         if chunk_content:
