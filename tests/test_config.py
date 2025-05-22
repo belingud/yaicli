@@ -25,6 +25,7 @@ def get_typed_defaults():
             elif isinstance(val, str) and val:
                 try:
                     import json
+
                     defaults[key] = json.loads(val)
                 except json.JSONDecodeError:
                     defaults[key] = {}  # Fallback to empty dict if invalid JSON
@@ -194,7 +195,7 @@ EXTRA_BODY={"custom_param": 123, "option": true}
         def mock_getenv(key, default=None):
             env_vars = {
                 "YAI_EXTRA_HEADERS": '{"X-API-Key": "abc123", "Content-Type": "application/json"}',
-                "YAI_EXTRA_BODY": '{"debug": true, "version": "2.0"}'
+                "YAI_EXTRA_BODY": '{"debug": true, "version": "2.0"}',
             }
             return env_vars.get(key, default)
 
@@ -218,10 +219,7 @@ EXTRA_BODY={"custom_param": 123, "option": true}
         """Test handling of invalid JSON in EXTRA_HEADERS and EXTRA_BODY"""
 
         def mock_getenv(key, default=None):
-            env_vars = {
-                "YAI_EXTRA_HEADERS": '{invalid json}',
-                "YAI_EXTRA_BODY": '{also invalid}'
-            }
+            env_vars = {"YAI_EXTRA_HEADERS": "{invalid json}", "YAI_EXTRA_BODY": "{also invalid}"}
             return env_vars.get(key, default)
 
         with (

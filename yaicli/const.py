@@ -1,4 +1,11 @@
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:
+    from enum import Enum
+
+    class StrEnum(str, Enum):
+        """Compatible with python below 3.11"""
+
 from pathlib import Path
 from tempfile import gettempdir
 from typing import Any, Literal, Optional
@@ -61,21 +68,6 @@ DEFAULT_ROLE_MODIFY_WARNING: BOOL_STR = "true"
 DEFAULT_ENABLE_FUNCTIONS: BOOL_STR = "true"
 DEFAULT_SHOW_FUNCTION_OUTPUT: BOOL_STR = "true"
 DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium"]] = None
-
-
-class EventTypeEnum(StrEnum):
-    """Enumeration of possible event types from the SSE stream."""
-
-    ERROR = "error"
-    REASONING = "reasoning"
-    REASONING_END = "reasoning_end"
-    CONTENT = "content"
-    FINISH = "finish"
-    TOOL_CALL_START = "tool_call_start"
-    TOOL_CALL_DELTA = "tool_call_delta"
-    TOOL_CALL_END = "tool_call_end"
-    TOOL_RESULT = "tool_result"
-    TOOL_CALLS_FINISH = "tool_calls_finish"
 
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.

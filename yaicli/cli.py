@@ -17,7 +17,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .chat import Chat, FileChatManager, chat_mgr
-from .client import LitellmClient, ChatMessage
+from .client import ChatMessage, LitellmClient
 from .config import cfg
 from .console import get_console
 from .const import (
