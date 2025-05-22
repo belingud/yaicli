@@ -8,8 +8,8 @@ from rich.live import Live
 from .client import RefreshLive
 from .config import Config, get_config
 from .console import YaiConsole, get_console
-from .schemas import ChatMessage
 from .render import Markdown, plain_formatter
+from .schemas import ChatMessage
 
 if TYPE_CHECKING:
     from .schemas import LLMResponse

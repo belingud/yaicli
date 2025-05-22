@@ -11,7 +11,7 @@ from rich.panel import Panel
 
 from .config import cfg
 from .console import get_console
-from .schemas import LLMResponse, ChatMessage, ToolCall
+from .schemas import ChatMessage, LLMResponse, ToolCall
 from .tools import (
     Function,
     FunctionName,

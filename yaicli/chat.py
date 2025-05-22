@@ -10,8 +10,8 @@ from rich.table import Table
 
 from .config import cfg
 from .console import YaiConsole, get_console
-from .schemas import ChatMessage
 from .exceptions import ChatDeleteError, ChatLoadError, ChatSaveError
+from .schemas import ChatMessage
 from .utils import option_callback
 
 console: YaiConsole = get_console()
@@ -68,7 +68,9 @@ class Chat:
                 data = json.load(f)
                 self.title = data.get("title", self.title)
                 self.date = data.get("date", self.date)
-                self.history = [ChatMessage(role=msg["role"], content=msg["content"]) for msg in data.get("history", [])]
+                self.history = [
+                    ChatMessage(role=msg["role"], content=msg["content"]) for msg in data.get("history", [])
+                ]
             return True
         except (json.JSONDecodeError, OSError) as e:
             raise ChatLoadError(f"Error loading chat: {e}") from e

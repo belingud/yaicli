@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 
 from rich.console import Group
 
-from yaicli.schemas import ChatMessage
 from yaicli.printer import Printer
+from yaicli.schemas import ChatMessage
 
 
 class TestPrinter(unittest.TestCase):

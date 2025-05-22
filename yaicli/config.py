@@ -1,8 +1,8 @@
 import configparser
+import json
 from dataclasses import dataclass
 from functools import lru_cache
 from os import getenv
-import json
 from typing import Optional
 
 from rich import get_console
