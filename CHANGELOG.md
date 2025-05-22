@@ -1,5 +1,18 @@
 
 ---
+## [0.5.7](https://github.com/belingud/yaicli/compare/v0.5.6..v0.5.7) - 2025-05-22
+
+### ⛰️  Features
+
+- add support for EXTRA_HEADERS and EXTRA_BODY configuration - ([7f8622f](https://github.com/belingud/yaicli/commit/7f8622fec170c31e9cb0116eb2f7f300ca1a62df)) - Belingud
+
+### 📚 Documentation
+
+- update README with new config options and dependencies - ([ebe2023](https://github.com/belingud/yaicli/commit/ebe202385bad3ae085f9a7e90f235fcbc1acfad0)) - Belingud
+- update CHANGELOG.md for v0.5.6 release - ([2cf8e82](https://github.com/belingud/yaicli/commit/2cf8e823d42dfd0d45d6f1a219fda27db39854e4)) - Belingud
+
+
+---
 ## [0.5.6](https://github.com/belingud/yaicli/compare/v0.5.5..v0.5.6) - 2025-05-22
 
 ### 🐛 Bug Fixes
