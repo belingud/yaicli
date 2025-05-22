@@ -1,5 +1,17 @@
 
 ---
+## [0.5.8](https://github.com/belingud/yaicli/compare/v0.5.7..v0.5.8) - 2025-05-22
+
+### 🚜 Refactor
+
+- move schemas imports and update StrEnum compatibility - ([a8a5b3b](https://github.com/belingud/yaicli/commit/a8a5b3b8e5dd2d817e71aa4e4d6585d33724062c)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG.md for v0.5.7 release - ([a0a641a](https://github.com/belingud/yaicli/commit/a0a641a032eac9737d7c1f99544651f9f958e322)) - Belingud
+
+
+---
 ## [0.5.7](https://github.com/belingud/yaicli/compare/v0.5.6..v0.5.7) - 2025-05-22
 
 ### ⛰️  Features
