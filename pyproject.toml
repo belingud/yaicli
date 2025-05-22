@@ -48,6 +48,7 @@ Repository = "https://github.com/belingud/yaicli"
 Documentation = "https://github.com/belingud/yaicli"
 
 [project.scripts]
+ai = "yaicli.entry:app"
 yaicli = "yaicli.entry:app"
 
 [tool.pytest.ini_options]
