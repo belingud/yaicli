@@ -2,7 +2,8 @@ import configparser
 from dataclasses import dataclass
 from functools import lru_cache
 from os import getenv
-from typing import Any, Optional
+import json
+from typing import Optional
 
 from rich import get_console
 from rich.console import Console
@@ -70,17 +71,12 @@ class Config(dict):
         self._load_from_env()
         self._apply_type_conversion()
 
-    def _load_defaults(self) -> dict[str, Any]:
-        """Load default configuration values as strings.
-
-        Returns:
-            Dictionary with default configuration values
-        """
+    def _load_defaults(self) -> None:
+        """Load default configuration values as strings."""
         defaults = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
         self.update(defaults)
-        return defaults
 
-    def _ensure_version_updated_config_keys(self):
+    def _ensure_version_updated_config_keys(self) -> None:
         """Ensure configuration keys added in version updates exist in the config file.
         Appends missing keys to the config file if they don't exist.
         """
@@ -133,7 +129,7 @@ class Config(dict):
         Updates the configuration dictionary in-place with properly typed values.
         Falls back to default values if conversion fails.
         """
-        default_values_str = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
+        default_values_map = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
 
         for key, config_info in DEFAULT_CONFIG_MAP.items():
             target_type = config_info["type"]
@@ -142,25 +138,29 @@ class Config(dict):
 
             try:
                 if raw_value is None:
-                    raw_value = default_values_str.get(key, "")
+                    raw_value = default_values_map.get(key, "")
                 if target_type is bool:
                     converted_value = str2bool(raw_value)
                 elif target_type in (int, float, str):
                     converted_value = target_type(raw_value)
-            except (ValueError, TypeError) as e:
+                elif target_type is dict and raw_value:
+                    converted_value = json.loads(raw_value)
+            except (ValueError, TypeError, json.JSONDecodeError) as e:
                 self.console.print(
                     f"[yellow]Warning:[/] Invalid value '{raw_value}' for '{key}'. "
-                    f"Expected type '{target_type.__name__}'. Using default value '{default_values_str[key]}'. Error: {e}",
+                    f"Expected type '{target_type.__name__}'. Using default value '{default_values_map[key]}'. Error: {e}",
                     style="dim",
                     justify=self["JUSTIFY"],
                 )
                 # Fallback to default string value if conversion fails
                 try:
                     if target_type is bool:
-                        converted_value = str2bool(default_values_str[key])
-                    else:
-                        converted_value = target_type(default_values_str[key])
-                except (ValueError, TypeError):
+                        converted_value = str2bool(default_values_map[key])
+                    elif target_type in (int, float, str):
+                        converted_value = target_type(default_values_map[key])
+                    elif target_type is dict:
+                        converted_value = json.loads(default_values_map[key])
+                except (ValueError, TypeError, json.JSONDecodeError):
                     # If default also fails (unlikely), keep the raw merged value or a sensible default
                     self.console.print(
                         f"[red]Error:[/red] Could not convert default value for '{key}'. Using raw value.",
