@@ -46,6 +46,8 @@ class LitellmClient:
     def __post_init__(self) -> None:
         """Initialize OpenAI client"""
         self.pre_tool_call_id = None
+        if cfg["PROVIDER"] == "openrouter":
+            cfg["EXTRA_HEADERS"].update({"X-Title": "Yaicli", "HTTP-Referer": "https://github.com/belingud/yaicli"})
 
     def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """Convert message format to OpenAI API required format"""
@@ -135,6 +137,10 @@ class LitellmClient:
         }
 
         # Add optional parameters
+        if cfg["EXTRA_HEADERS"]:
+            params["extra_headers"] = cfg["EXTRA_HEADERS"]
+        if cfg["EXTRA_BODY"]:
+            params["extra_body"] = cfg["EXTRA_BODY"]
         if cfg["ENABLE_FUNCTIONS"]:
             params["tools"] = self._convert_functions(list_functions())
             params["tool_choice"] = "auto"

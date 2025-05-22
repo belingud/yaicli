@@ -51,6 +51,8 @@ DEFAULT_MAX_HISTORY: int = 500
 DEFAULT_AUTO_SUGGEST: BOOL_STR = "true"
 DEFAULT_SHOW_REASONING: BOOL_STR = "true"
 DEFAULT_TIMEOUT: int = 60
+DEFAULT_EXTRA_HEADERS: str = "{}"
+DEFAULT_EXTRA_BODY: str = "{}"
 DEFAULT_INTERACTIVE_ROUND: int = 25
 DEFAULT_CHAT_HISTORY_DIR: Path = Path(gettempdir()) / "yaicli/chats"
 DEFAULT_MAX_SAVED_CHATS = 20
@@ -130,6 +132,8 @@ DEFAULT_CONFIG_MAP = {
     "TOP_P": {"value": DEFAULT_TOP_P, "env_key": "YAI_TOP_P", "type": float},
     "MAX_TOKENS": {"value": DEFAULT_MAX_TOKENS, "env_key": "YAI_MAX_TOKENS", "type": int},
     "TIMEOUT": {"value": DEFAULT_TIMEOUT, "env_key": "YAI_TIMEOUT", "type": int},
+    "EXTRA_HEADERS": {"value": DEFAULT_EXTRA_HEADERS, "env_key": "YAI_EXTRA_HEADERS", "type": dict},
+    "EXTRA_BODY": {"value": DEFAULT_EXTRA_BODY, "env_key": "YAI_EXTRA_BODY", "type": dict},
     "REASONING_EFFORT": {"value": DEFAULT_REASONING_EFFORT, "env_key": "YAI_REASONING_EFFORT", "type": str},
     "INTERACTIVE_ROUND": {
         "value": DEFAULT_INTERACTIVE_ROUND,
@@ -174,6 +178,10 @@ TEMPERATURE={DEFAULT_CONFIG_MAP["TEMPERATURE"]["value"]}
 TOP_P={DEFAULT_CONFIG_MAP["TOP_P"]["value"]}
 MAX_TOKENS={DEFAULT_CONFIG_MAP["MAX_TOKENS"]["value"]}
 TIMEOUT={DEFAULT_CONFIG_MAP["TIMEOUT"]["value"]}
+# json string
+EXTRA_HEADERS=
+# json string
+EXTRA_BODY=
 REASONING_EFFORT=
 
 # Interactive mode parameters

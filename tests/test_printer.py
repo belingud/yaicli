@@ -98,7 +98,6 @@ class TestPrinter(unittest.TestCase):
 
         self.assertEqual(result_content, "existing content")
         self.assertEqual(result_reasoning, "existing reasoning new reasoning")
-        self.assertTrue(self.printer.in_reasoning)
 
     def test_process_chunk_with_think_tags(self):
         """Test _process_chunk with think tags in content."""

@@ -1,5 +1,35 @@
 
 ---
+## [0.5.7](https://github.com/belingud/yaicli/compare/v0.5.6..v0.5.7) - 2025-05-22
+
+### ⛰️  Features
+
+- add support for EXTRA_HEADERS and EXTRA_BODY configuration - ([7f8622f](https://github.com/belingud/yaicli/commit/7f8622fec170c31e9cb0116eb2f7f300ca1a62df)) - Belingud
+
+### 📚 Documentation
+
+- update README with new config options and dependencies - ([ebe2023](https://github.com/belingud/yaicli/commit/ebe202385bad3ae085f9a7e90f235fcbc1acfad0)) - Belingud
+- update CHANGELOG.md for v0.5.6 release - ([2cf8e82](https://github.com/belingud/yaicli/commit/2cf8e823d42dfd0d45d6f1a219fda27db39854e4)) - Belingud
+
+
+---
+## [0.5.6](https://github.com/belingud/yaicli/compare/v0.5.5..v0.5.6) - 2025-05-22
+
+### 🐛 Bug Fixes
+
+- update project config and simplify printer logic - ([029b7e2](https://github.com/belingud/yaicli/commit/029b7e26c0502e4ae7f32931cdaa2dd2f1d167a8)) - Belingud
+
+### 📚 Documentation
+
+- Fix formatting in README - ([7e440da](https://github.com/belingud/yaicli/commit/7e440da0fe9492736bf1ad160095447d5fce010b)) - Belingud
+- update CHANGELOG.md for v0.5.5 release - ([5d12c69](https://github.com/belingud/yaicli/commit/5d12c692d5f692f8d5ede2e57f0a2a81a16e75a8)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add 'ai' as alternative command in pyproject.toml - ([d1852f1](https://github.com/belingud/yaicli/commit/d1852f175ec3a821498640df8755f6e165d71fff)) - Belingud
+
+
+---
 ## [0.5.5](https://github.com/belingud/yaicli/compare/v0.5.4..v0.5.5) - 2025-05-21
 
 ### 🚜 Refactor

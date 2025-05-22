@@ -19,6 +19,17 @@ def get_typed_defaults():
         type_ = info["type"]
         if type_ is bool:
             defaults[key] = str(val).strip().lower() == "true"
+        elif type_ is dict:
+            if isinstance(val, dict):
+                defaults[key] = val
+            elif isinstance(val, str) and val:
+                try:
+                    import json
+                    defaults[key] = json.loads(val)
+                except json.JSONDecodeError:
+                    defaults[key] = {}  # Fallback to empty dict if invalid JSON
+            else:
+                defaults[key] = {}  # Empty dict for empty strings or None
         else:
             try:
                 defaults[key] = type_(val)
@@ -154,6 +165,79 @@ MODEL=gpt-4-turbo
 
             # Console should have been called with warning messages at least 3 times
             assert mock_console.print.call_count >= 3
+
+    def test_extra_headers_and_body(self, mock_console):
+        """Test that EXTRA_HEADERS and EXTRA_BODY are correctly loaded and converted"""
+        mock_config_content = """[core]
+EXTRA_HEADERS={"X-Custom-Header": "value", "Authorization": "Bearer token"}
+EXTRA_BODY={"custom_param": 123, "option": true}
+"""
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data=mock_config_content)),
+            patch("yaicli.config.getenv", return_value=None),
+        ):
+            config = Config(mock_console)
+
+            # Check the headers are loaded correctly as a dict
+            assert isinstance(config["EXTRA_HEADERS"], dict)
+            assert config["EXTRA_HEADERS"] == {"X-Custom-Header": "value", "Authorization": "Bearer token"}
+
+            # Check the body is loaded correctly as a dict
+            assert isinstance(config["EXTRA_BODY"], dict)
+            assert config["EXTRA_BODY"] == {"custom_param": 123, "option": True}
+
+    def test_extra_headers_and_body_from_env(self, mock_console):
+        """Test that EXTRA_HEADERS and EXTRA_BODY are correctly loaded from environment variables"""
+
+        def mock_getenv(key, default=None):
+            env_vars = {
+                "YAI_EXTRA_HEADERS": '{"X-API-Key": "abc123", "Content-Type": "application/json"}',
+                "YAI_EXTRA_BODY": '{"debug": true, "version": "2.0"}'
+            }
+            return env_vars.get(key, default)
+
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            patch("builtins.open", mock_open()),
+            patch("pathlib.Path.mkdir"),
+            patch("yaicli.config.getenv", side_effect=mock_getenv),
+        ):
+            config = Config(mock_console)
+
+            # Check headers from env vars
+            assert isinstance(config["EXTRA_HEADERS"], dict)
+            assert config["EXTRA_HEADERS"] == {"X-API-Key": "abc123", "Content-Type": "application/json"}
+
+            # Check body from env vars
+            assert isinstance(config["EXTRA_BODY"], dict)
+            assert config["EXTRA_BODY"] == {"debug": True, "version": "2.0"}
+
+    def test_invalid_extra_headers_and_body(self, mock_console):
+        """Test handling of invalid JSON in EXTRA_HEADERS and EXTRA_BODY"""
+
+        def mock_getenv(key, default=None):
+            env_vars = {
+                "YAI_EXTRA_HEADERS": '{invalid json}',
+                "YAI_EXTRA_BODY": '{also invalid}'
+            }
+            return env_vars.get(key, default)
+
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            patch("builtins.open", mock_open()),
+            patch("pathlib.Path.mkdir"),
+            patch("yaicli.config.getenv", side_effect=mock_getenv),
+        ):
+            config = Config(mock_console)
+
+            # Should fall back to defaults when JSON parsing fails
+            assert config["EXTRA_HEADERS"] == TYPED_DEFAULTS["EXTRA_HEADERS"]
+            assert config["EXTRA_BODY"] == TYPED_DEFAULTS["EXTRA_BODY"]
+
+            # Check that warnings were printed
+            assert mock_console.print.call_count >= 2
 
     def test_reload(self, mock_console):
         """Test that reload updates configuration from all sources"""
