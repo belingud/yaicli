@@ -164,6 +164,9 @@ SHOW_FUNCTION_OUTPUT=true
 | `OS_NAME`              | Operating system                            | `auto`                      | `YAI_OS_NAME`              |
 | `STREAM`               | Enable streaming                            | `true`                      | `YAI_STREAM`               |
 | `TIMEOUT`              | API timeout (seconds)                       | `60`                        | `YAI_TIMEOUT`              |
+| `EXTRA_HEADERS`        | Extra headers                               | -                           | `YAI_EXTRA_HEADERS`        |
+| `EXTRA_BODY`           | Extra body                                  | -                           | `YAI_EXTRA_BODY`           |
+| `REASONING_EFFORT`     | Reasoning effort                            | -                           | `YAI_REASONING_EFFORT`     |
 | `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                        | `YAI_INTERACTIVE_ROUND`    |
 | `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                   | `YAI_CODE_THEME`           |
 | `TEMPERATURE`          | Response randomness                         | `0.7`                       | `YAI_TEMPERATURE`          |
@@ -220,6 +223,28 @@ CODE_THEME = monokai
 Browse available themes at: https://pygments.org/styles/
 
 ![monokia theme example](artwork/monokia.png)
+
+### Extra Headers and Body
+
+You can add extra headers and body to the API request by setting `EXTRA_HEADERS` and `EXTRA_BODY` in the config file.
+The value should be valid json string.
+
+```ini
+EXTRA_HEADERS={"X-Extra-Header": "value"}
+EXTRA_BODY={"extra_key": "extra_value"}
+```
+
+Example: If you want to disable Qwen3's thinking behavior, you can add the following to the config file.
+
+```ini
+EXTRA_BODY={"enable_thinking": false}
+```
+
+Or just limit thinking tokens:
+
+```ini
+EXTRA_BODY={"thinking_budget": 4096}
+```
 
 ## 🚀 Usage
 
@@ -676,6 +701,8 @@ YAICLI is designed with a modular architecture that separates concerns and makes
 | [Typer](https://typer.tiangolo.com/)                            | Command-line interface with type hints             |
 | [Rich](https://rich.readthedocs.io/)                            | Terminal formatting and beautiful display          |
 | [prompt_toolkit](https://python-prompt-toolkit.readthedocs.io/) | Interactive input with history and auto-completion |
+| [litellm](https://litellm.ai/)                                  | LLM provider compatibility                         |
+| [json-repair](https://github.com/mangiucugna/json_repair)       | Repair llm function call arguments                 |
 
 ## 👨‍💻 Contributing
 
