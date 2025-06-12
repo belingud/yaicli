@@ -30,7 +30,7 @@ keywords = [
     "interact with llms",
 ]
 dependencies = [
-    "click<8.2.0",
+    "click>=8.1.8",
     "distro>=1.9.0",
     "httpx>=0.28.1",
     "instructor>=1.7.9",
@@ -40,7 +40,7 @@ dependencies = [
     "prompt-toolkit>=3.0.50",
     "rich>=13.9.4",
     "socksio>=1.0.0",
-    "typer>=0.15.2",
+    "typer>=0.16.0",
 ]
 [project.urls]
 Homepage = "https://github.com/belingud/yaicli"

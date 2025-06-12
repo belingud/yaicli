@@ -1767,7 +1767,7 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.15.3"
+version = "0.16.0"
 source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple/" }
 dependencies = [
     { name = "click" },
@@ -1775,9 +1775,9 @@ dependencies = [
     { name = "shellingham" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/98/1a/5f36851f439884bcfe8539f6a20ff7516e7b60f319bbaf69a90dc35cc2eb/typer-0.15.3.tar.gz", hash = "sha256:818873625d0569653438316567861899f7e9972f2e6e0c16dab608345ced713c" }
+sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/c5/8c/7d682431efca5fd290017663ea4588bf6f2c6aad085c7f108c5dbc316e70/typer-0.16.0.tar.gz", hash = "sha256:af377ffaee1dbe37ae9440cb4e8f11686ea5ce4e9bae01b84ae7c63b87f1dd3b" }
 wheels = [
-    { url = "https://repo.huaweicloud.com/repository/pypi/packages/48/20/9d953de6f4367163d23ec823200eb3ecb0050a2609691e512c8b95827a9b/typer-0.15.3-py3-none-any.whl", hash = "sha256:c86a65ad77ca531f03de08d1b9cb67cd09ad02ddddf4b34745b5008f43b239bd" },
+    { url = "https://repo.huaweicloud.com/repository/pypi/packages/76/42/3efaf858001d2c2913de7f354563e3a3a2f0decae3efe98427125a8f441e/typer-0.16.0-py3-none-any.whl", hash = "sha256:1f79bed11d4d02d4310e3c1b7ba594183bcedb0ac73b27a9e5f28f6fb5b98855" },
 ]
 
 [[package]]
@@ -1847,7 +1847,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "click", specifier = "<8.2.0" },
+    { name = "click", specifier = ">=8.1.8" },
     { name = "distro", specifier = ">=1.9.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "instructor", specifier = ">=1.7.9" },
@@ -1857,7 +1857,7 @@ requires-dist = [
     { name = "prompt-toolkit", specifier = ">=3.0.50" },
     { name = "rich", specifier = ">=13.9.4" },
     { name = "socksio", specifier = ">=1.0.0" },
-    { name = "typer", specifier = ">=0.15.2" },
+    { name = "typer", specifier = ">=0.16.0" },
 ]
 
 [package.metadata.requires-dev]
