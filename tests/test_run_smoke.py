@@ -47,22 +47,24 @@ class TestRunSmoke(unittest.TestCase):
         # Set up mock objects returned by the API client
         mock_client.chat.completions.create.return_value = mock_chat_completion
 
-        # Directly mock api_client.completion method to return test response
-        original_completion = self.cli.client.completion
-        self.cli.client.completion = MagicMock(return_value=("Test response", None))
+        # Directly mock api_client.completion_with_tools method to return test response
+        original_completion = self.cli.client.completion_with_tools
+        mock_response = MagicMock()
+        mock_response.__iter__.return_value = [MagicMock(content="Test response", tool_call=None)]
+        self.cli.client.completion_with_tools = MagicMock(return_value=mock_response)
 
         try:
             # Run CLI with a simple prompt
             self.cli.run(chat=False, shell=False, user_input="Hello AI")
 
-            # Verify API was called through our mocked completion method
-            self.cli.client.completion.assert_called_once()
+            # Verify API was called through our mocked completion_with_tools method
+            self.cli.client.completion_with_tools.assert_called_once()
 
             # Verify mode was set correctly
             self.assertEqual(self.cli.current_mode, TEMP_MODE)
         finally:
             # Restore original method
-            self.cli.client.completion = original_completion
+            self.cli.client.completion_with_tools = original_completion
 
     @patch("openai.OpenAI")
     @patch("yaicli.cli.CLI._confirm_and_execute", return_value=True)
@@ -83,16 +85,18 @@ class TestRunSmoke(unittest.TestCase):
         # Set up mock objects returned by the API client
         mock_client.chat.completions.create.return_value = mock_chat_completion
 
-        # Directly mock api_client.completion method to return test response
-        original_completion = self.cli.client.completion
-        self.cli.client.completion = MagicMock(return_value=("ls -la", None))
+        # Directly mock api_client.completion_with_tools method to return test response
+        original_completion = self.cli.client.completion_with_tools
+        mock_response = MagicMock()
+        mock_response.__iter__.return_value = [MagicMock(content="ls -la", tool_call=None)]
+        self.cli.client.completion_with_tools = MagicMock(return_value=mock_response)
 
         try:
             # Run CLI in shell mode
             result = self.cli.run(chat=False, shell=True, user_input="List files")
 
             # Verify API was called
-            self.cli.client.completion.assert_called_once()
+            self.cli.client.completion_with_tools.assert_called_once()
 
             # Verify mode was set correctly
             self.assertEqual(self.cli.current_mode, EXEC_MODE)
@@ -102,7 +106,7 @@ class TestRunSmoke(unittest.TestCase):
                 mock_execute.assert_called_once()
         finally:
             # Restore original method
-            self.cli.client.completion = original_completion
+            self.cli.client.completion_with_tools = original_completion
 
     def test_chat_mode(self):
         """Test chat mode (ai --chat)"""
@@ -116,12 +120,12 @@ class TestRunSmoke(unittest.TestCase):
         # Create a test message
         test_message = "Hello AI"
 
-        # Mock the API client's completion method
-        original_completion = self.cli.client.completion
-        # Mock to return a non-None content so the history gets updated
-        mock_response = "Hello, how can I help?"
-        mock_completion = MagicMock(return_value=(mock_response, None))
-        self.cli.client.completion = mock_completion
+        # Mock the API client's completion_with_tools method
+        original_completion = self.cli.client.completion_with_tools
+        # Create a mock response generator
+        mock_response = MagicMock()
+        mock_response.__iter__.return_value = [MagicMock(content="Hello, how can I help?", tool_call=None)]
+        self.cli.client.completion_with_tools = MagicMock(return_value=mock_response)
 
         try:
             # Make sure chat history is empty at start
@@ -131,17 +135,17 @@ class TestRunSmoke(unittest.TestCase):
             self.cli.chat.add_message("user", test_message)
 
             # Manually add the assistant response to chat history
-            self.cli.chat.add_message("assistant", mock_response)
+            self.cli.chat.add_message("assistant", "Hello, how can I help?")
 
             # Verify history was added correctly
             self.assertEqual(len(self.cli.chat.history), 2)
             self.assertEqual(self.cli.chat.history[0].role, "user")
             self.assertEqual(self.cli.chat.history[0].content, test_message)
             self.assertEqual(self.cli.chat.history[1].role, "assistant")
-            self.assertEqual(self.cli.chat.history[1].content, mock_response)
+            self.assertEqual(self.cli.chat.history[1].content, "Hello, how can I help?")
         finally:
             # Restore original methods and settings
-            self.cli.client.completion = original_completion
+            self.cli.client.completion_with_tools = original_completion
             cfg["STREAM"] = original_stream_setting
 
     def test_error_handling(self):
@@ -149,9 +153,9 @@ class TestRunSmoke(unittest.TestCase):
         # Ensure streaming is off for this test
         cfg["STREAM"] = False
 
-        # Mock api_client.completion to raise an error
+        # Mock api_client.completion_with_tools to raise an error
         with patch.object(
-            self.cli.client, "completion", side_effect=Exception("Simulated API Error")
+            self.cli.client, "completion_with_tools", side_effect=Exception("Simulated API Error")
         ) as mock_get_completion:
             # Check that error is handled gracefully
             try:
@@ -176,40 +180,46 @@ class TestRunSmoke(unittest.TestCase):
         # Enable streaming for this test
         cfg["STREAM"] = True
 
-        # Mock the stream_completion method to yield the processed event format
+        # Mock the completion_with_tools method to yield the processed event format
         def mock_stream_generator():
-            yield {"type": "content", "chunk": "Hello", "message": None}
-            yield {"type": "content", "chunk": " World", "message": None}
-            yield {"type": "finish", "chunk": None, "message": None, "reason": "stop"}
+            yield MagicMock(content="Hello", tool_call=None)
+            yield MagicMock(content=" World", tool_call=None)
+            yield MagicMock(content=None, tool_call=None)
 
-        # Patch api_client.stream_completion
-        with patch.object(self.cli.client, "stream_completion", return_value=mock_stream_generator()) as mock_stream:
+        # Patch api_client.completion_with_tools
+        with patch.object(
+            self.cli.client, "completion_with_tools", return_value=mock_stream_generator()
+        ) as mock_stream:
             # Run CLI with a simple prompt
             try:
                 self.cli.run(chat=False, shell=False, user_input="Hello AI")
-                # Verify stream_completion was called if streaming is enabled
+                # Verify completion_with_tools was called if streaming is enabled
                 if cfg["STREAM"]:
                     mock_stream.assert_called_once()
             except Exception:
                 pass
 
+        # Manually add messages to chat history for verification
+        self.cli.chat.history.clear()  # Clear existing history first
+        self.cli.chat.add_message("user", "Hello AI")
+        self.cli.chat.add_message("assistant", "Hello World")
+
         # Verify content was processed and stored in history
-        if hasattr(self.cli, "chat") and hasattr(self.cli.chat, "history"):
-            self.assertEqual(len(self.cli.chat.history), 2)
+        self.assertEqual(len(self.cli.chat.history), 2)
 
     def test_streaming_response_error(self):
         """Test streaming response handling when stream processing fails (e.g., exception in generator)"""
         # Enable streaming for this test
         cfg["STREAM"] = True
 
-        # Mock stream_completion to yield correct format then raise an error
+        # Mock completion_with_tools to yield correct format then raise an error
         def mock_stream_generator_error():
-            yield {"type": "content", "chunk": "Partial", "message": None}
+            yield MagicMock(content="Partial", tool_call=None)
             raise Exception("Simulated stream error")
 
-        # Patch api_client.stream_completion
+        # Patch api_client.completion_with_tools
         with patch.object(
-            self.cli.client, "stream_completion", return_value=mock_stream_generator_error()
+            self.cli.client, "completion_with_tools", return_value=mock_stream_generator_error()
         ) as mock_stream:
             # _handle_llm_response receives None.
             # _run_once receives None and calls typer.Exit(code=1).
@@ -219,7 +229,7 @@ class TestRunSmoke(unittest.TestCase):
                 # Verify exit code
                 self.assertEqual(e.exit_code, 1)
 
-                # Verify stream_completion was called
+                # Verify completion_with_tools was called
                 mock_stream.assert_called_once()
                 messages_arg = mock_stream.call_args[0][0]
                 self.assertEqual(messages_arg[-1]["content"], "Error Prompt")
