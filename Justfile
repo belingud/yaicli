@@ -7,7 +7,9 @@ help:
 format:
     @echo "Formatting code with ruff..."
     @ruff format yaicli
+    @ruff check --fix yaicli
     @ruff format tests
+    @ruff check --fix tests
     @echo "Formatting code with isort..."
     @isort yaicli yaicli
     @isort yaicli tests

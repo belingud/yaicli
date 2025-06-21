@@ -65,6 +65,7 @@ ai = "yaicli.entry:app"
 yaicli = "yaicli.entry:app"
 
 [project.optional-dependencies]
+all = ["doubao", "ollama", "cohere"]
 doubao = ["volcengine-python-sdk>=3.0.15"]
 ollama = ["ollama>=0.5.1"]
 cohere = ["cohere>=5.15.0"]
@@ -98,6 +99,10 @@ profile = "black"
 [tool.ruff]
 line-length = 120
 fix = true
+
+[tool.ruff.lint]
+select = ["F"]
+fixable = ["F401"]
 
 [build-system]
 requires = ["hatchling>=1.18.0"]
