@@ -8,6 +8,7 @@ class GroqProvider(OpenAIProvider):
 
     def __init__(self, config: dict = ..., **kwargs):
         super().__init__(config, **kwargs)
-        if "N" in self.completion_params["EXTRA_BODY"] and self.completion_params["EXTRA_BODY"]["N"] != 1:
-            self.console.print("Groq does not support N parameter, setting N to 1", style="yellow")
-            self.completion_params["EXTRA_BODY"]["N"] = 1
+        if self.config.get("EXTRA_BODY") and "N" in self.config["EXTRA_BODY"] and self.config["EXTRA_BODY"]["N"] != 1:
+            self.console.print("Groq does not support N parameter, setting N to 1 as Groq default", style="yellow")
+            if "extra_body" in self.completion_params:
+                self.completion_params["extra_body"]["N"] = 1

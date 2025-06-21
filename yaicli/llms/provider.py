@@ -45,7 +45,7 @@ class ProviderFactory:
         "openrouter": (".providers.openrouter_provider", "OpenRouterProvider"),
         "siliconflow": (".providers.siliconflow_provider", "SiliconFlowProvider"),
         "chutes": (".providers.chutes_provider", "ChutesProvider"),
-        "infini-ai": (".providers.infini-ai_provider", "InfiniAIProvider"),
+        "infini-ai": (".providers.infiniai_provider", "InfiniAIProvider"),
         "yi": (".providers.yi_provider", "YiProvider"),
         "deepseek": (".providers.deepseek_provider", "DeepSeekProvider"),
         "doubao": (".providers.doubao_provider", "DoubaoProvider"),
@@ -53,7 +53,7 @@ class ProviderFactory:
         "ai21": (".providers.ai21_provider", "AI21Provider"),
         "ollama": (".providers.ollama_provider", "OllamaProvider"),
         "cohere": (".providers.cohere_provider", "CohereProvider"),
-        "sambanova": (".providers.sambanova_provider", "SambanovaProvider")
+        "sambanova": (".providers.sambanova_provider", "SambanovaProvider"),
     }
 
     @classmethod

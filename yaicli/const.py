@@ -9,7 +9,7 @@ except ImportError:
 
 from pathlib import Path
 from tempfile import gettempdir
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from rich.console import JustifyMethod
 

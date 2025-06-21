@@ -22,4 +22,7 @@ class SambanovaProvider(OpenAIProvider):
             self.console.print("Sambanova temperature must be between 0 and 1, setting to 0.4", style="yellow")
             self.completion_params["temperature"] = DEFAULT_TEMPERATURE
         if self.enable_function and self.config["MODEL"] not in self.SUPPORT_FUNCTION_CALL_MOELS:
-            self.console.print(f"Sambanova supports function call models: {', '.join(self.SUPPORT_FUNCTION_CALL_MOELS)}", style="yellow")
+            self.console.print(
+                f"Sambanova supports function call models: {', '.join(self.SUPPORT_FUNCTION_CALL_MOELS)}",
+                style="yellow",
+            )
