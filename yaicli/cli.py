@@ -17,7 +17,6 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .chat import Chat, FileChatManager, chat_mgr
-from .client import ChatMessage, LitellmClient
 from .config import cfg
 from .console import get_console
 from .const import (
@@ -41,8 +40,10 @@ from .const import (
 )
 from .exceptions import ChatSaveError
 from .history import LimitedFileHistory
+from .llms import LLMClient
 from .printer import Printer
 from .role import Role, RoleManager, role_mgr
+from .schemas import ChatMessage
 from .utils import detect_os, detect_shell, filter_command
 
 
@@ -66,7 +67,7 @@ class CLI:
         self.role_manager = role_manager or role_mgr
         self.role: Role = self.role_manager.get_role(self.role_name)
         self.printer = Printer()
-        self.client = client or LitellmClient(verbose=self.verbose)
+        self.client = client or self._create_client()
 
         self.bindings = KeyBindings()
 
@@ -338,7 +339,7 @@ class CLI:
         messages.append(ChatMessage(role="user", content=user_input))
         return messages
 
-    def _handle_llm_response(self, user_input: str) -> Optional[str]:
+    def _handle_llm_response(self, user_input: str) -> tuple[Optional[str], list[ChatMessage]]:
         """Get response from API (streaming or normal) and print it.
         Returns the full content string or None if an error occurred.
 
@@ -347,44 +348,50 @@ class CLI:
 
         Returns:
             Optional[str]: The assistant's response content or None if an error occurred.
+            list[ChatMessage]: The updated message history.
         """
         messages = self._build_messages(user_input)
-        if self.verbose:
-            self.console.print(messages)
-        if self.role != DefaultRoleNames.CODER:
+        if self.role.name != DefaultRoleNames.CODER:
             self.console.print("Assistant:", style="bold green")
         try:
-            response = self.client.completion(messages, stream=cfg["STREAM"])
-            if cfg["STREAM"]:
-                content, _ = self.printer.display_stream(response, messages)
-            else:
-                content, _ = self.printer.display_normal(response, messages)
+            response_iterator = self.client.completion_with_tools(messages, stream=cfg["STREAM"])
 
-            # Just return the content, message addition is handled in _process_user_input
-            return content if content is not None else None
+            content, _ = self.printer.display_stream(response_iterator)
+
+            # The 'messages' list is modified by the client in-place
+            return content, messages
         except Exception as e:
             self.console.print(f"Error processing LLM response: {e}", style="red")
             if self.verbose:
                 traceback.print_exc()
-            return None
+            return None, messages
 
     def _process_user_input(self, user_input: str) -> bool:
         """Process user input: get response, print, update history, maybe execute.
         Returns True to continue REPL, False to exit on critical error.
         """
-        content = self._handle_llm_response(user_input)
+        content, updated_messages = self._handle_llm_response(user_input)
 
-        if content is None:
+        if content is None and not any(msg.tool_calls for msg in updated_messages):
             return True
 
-        # Update chat history using Chat's add_message method
-        self.chat.add_message("user", user_input)
-        self.chat.add_message("assistant", content)
+        # The client modifies the message list in place, so the updated_messages
+        # contains the full history of the turn (system, history, user, assistant, tools).
+        # We replace the old history with the new one, removing the system prompt.
+        if updated_messages:
+            self.chat.history = updated_messages[1:]
 
         self._check_history_len()
 
         if self.current_mode == EXEC_MODE:
-            self._confirm_and_execute(content)
+            # We need to extract the executable command from the last assistant message
+            # in case of tool use.
+            final_content = ""
+            if self.chat.history:
+                last_message = self.chat.history[-1]
+                if last_message.role == "assistant":
+                    final_content = last_message.content or ""
+            self._confirm_and_execute(final_content)
         return True
 
     def _confirm_and_execute(self, raw_content: str) -> None:
@@ -555,3 +562,7 @@ class CLI:
         else:
             # Run in single-use mode
             self._run_once(user_input or "", shell=shell, code=code)
+
+    def _create_client(self):
+        """Create an LLM client instance based on configuration"""
+        return LLMClient(provider_name=cfg["PROVIDER"].lower(), verbose=self.verbose, config=cfg)

@@ -1,13 +1,19 @@
 import importlib.util
 import sys
-from typing import Any, Dict, List, NewType, Optional
+from typing import Any, Dict, List, NewType, Optional, Tuple, cast
 
 from instructor import OpenAISchema
+from json_repair import repair_json
+from rich.panel import Panel
 
+from .config import cfg
 from .console import get_console
 from .const import FUNCTIONS_DIR
+from .schemas import ToolCall
 
 console = get_console()
+
+FunctionName = NewType("FunctionName", str)
 
 
 class Function:
@@ -19,8 +25,6 @@ class Function:
         self.parameters = function.openai_schema.get("parameters", {})
         self.execute = function.execute  # type: ignore
 
-
-FunctionName = NewType("FunctionName", str)
 
 _func_name_map: Optional[dict[FunctionName, Function]] = None
 
@@ -101,3 +105,55 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
         }
         transformed_schemas.append(schema)
     return transformed_schemas
+
+
+def execute_tool_call(tool_call: ToolCall) -> Tuple[str, bool]:
+    """Execute a tool call and return the result
+
+    Args:
+        tool_call: The tool call to execute
+
+    Returns:
+        Tuple[str, bool]: (result text, success flag)
+    """
+    console.print(f"@Function call: {tool_call.name}({tool_call.arguments})", style="blue")
+
+    # 1. Get the function
+    try:
+        function = get_function(FunctionName(tool_call.name))
+    except ValueError as e:
+        error_msg = f"Function '{tool_call.name!r}' not exists: {e}"
+        console.print(error_msg, style="red")
+        return error_msg, False
+
+    # 2. Parse function arguments
+    try:
+        arguments = repair_json(tool_call.arguments, return_objects=True)
+        if not isinstance(arguments, dict):
+            error_msg = f"Invalid arguments type: {arguments!r}, should be JSON object"
+            console.print(error_msg, style="red")
+            return error_msg, False
+        arguments = cast(dict, arguments)
+    except Exception as e:
+        error_msg = f"Invalid arguments from llm: {e}\nRaw arguments: {tool_call.arguments!r}"
+        console.print(error_msg, style="red")
+        return error_msg, False
+
+    # 3. Execute the function
+    try:
+        function_result = function.execute(**arguments)
+        if cfg["SHOW_FUNCTION_OUTPUT"]:
+            panel = Panel(
+                function_result,
+                title="Function output",
+                title_align="left",
+                expand=False,
+                border_style="blue",
+                style="dim",
+            )
+            console.print(panel)
+        return function_result, True
+    except Exception as e:
+        error_msg = f"Call function error: {e}\nFunction name: {tool_call.name!r}\nArguments: {arguments!r}"
+        console.print(error_msg, style="red")
+        return error_msg, False

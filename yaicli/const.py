@@ -6,9 +6,10 @@ except ImportError:
     class StrEnum(str, Enum):
         """Compatible with python below 3.11"""
 
+
 from pathlib import Path
 from tempfile import gettempdir
-from typing import Any, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from rich.console import JustifyMethod
 
@@ -99,9 +100,9 @@ class DefaultRoleNames(StrEnum):
 
 
 DEFAULT_ROLES: dict[str, dict[str, Any]] = {
-    DefaultRoleNames.SHELL: {"name": DefaultRoleNames.SHELL, "prompt": SHELL_PROMPT},
-    DefaultRoleNames.DEFAULT: {"name": DefaultRoleNames.DEFAULT, "prompt": DEFAULT_PROMPT},
-    DefaultRoleNames.CODER: {"name": DefaultRoleNames.CODER, "prompt": CODER_PROMPT},
+    DefaultRoleNames.SHELL.value: {"name": DefaultRoleNames.SHELL.value, "prompt": SHELL_PROMPT},
+    DefaultRoleNames.DEFAULT.value: {"name": DefaultRoleNames.DEFAULT.value, "prompt": DEFAULT_PROMPT},
+    DefaultRoleNames.CODER.value: {"name": DefaultRoleNames.CODER.value, "prompt": CODER_PROMPT},
 }
 
 # DEFAULT_CONFIG_MAP is a dictionary of the configuration options.
@@ -112,7 +113,7 @@ DEFAULT_ROLES: dict[str, dict[str, Any]] = {
 # - type: the type of the configuration option
 DEFAULT_CONFIG_MAP = {
     # Core API settings
-    "BASE_URL": {"value": DEFAULT_BASE_URL, "env_key": "YAI_BASE_URL", "type": str},
+    "BASE_URL": {"value": "", "env_key": "YAI_BASE_URL", "type": str},
     "API_KEY": {"value": "", "env_key": "YAI_API_KEY", "type": str},
     "MODEL": {"value": DEFAULT_MODEL, "env_key": "YAI_MODEL", "type": str},
     # System detection hints

@@ -82,7 +82,7 @@ def main(
     ),
     # ------------------- Role Options -------------------
     role: str = typer.Option(
-        DefaultRoleNames.DEFAULT,
+        DefaultRoleNames.DEFAULT.value,
         "--role",
         "-r",
         help="Specify the assistant role to use.",
