@@ -80,6 +80,38 @@ pipx install yaicli
 uv tool install yaicli
 ```
 
+Yaicli has several optional dependencies group, you can copy below commands to install specific dependencies.
+
+```shell
+# install all denpendencies
+pip install 'yaicli[all]'
+
+# install with ollama support
+pip instsall 'yaicli[ollama]'
+
+# install with cohere support
+pip install 'yaicli[cohere]'
+
+# install with doubao support
+pip install 'yaicli[doubao]'
+```
+
+Install by `uv`.
+
+```shell
+# install all denpendencies
+uv tool install 'yaicli[all]'
+
+# install with ollama support
+uv tool instsall 'yaicli[ollama]'
+
+# install with cohere support
+uv tool install 'yaicli[cohere]'
+
+# install with doubao support
+uv tool install 'yaicli[doubao]'
+```
+
 ### Install from Source
 
 ```bash
@@ -154,38 +186,40 @@ SHOW_FUNCTION_OUTPUT=true
 
 ### Configuration Options Reference
 
-| Option                 | Description                                 | Default                     | Env Variable               |
-| ---------------------- | ------------------------------------------- | --------------------------- | -------------------------- |
-| `PROVIDER`             | LLM provider (openai, claude, cohere, etc.) | `openai`                    | `YAI_PROVIDER`             |
-| `BASE_URL`             | API endpoint URL                            | `https://api.openai.com/v1` | `YAI_BASE_URL`             |
-| `API_KEY`              | Your API key                                | -                           | `YAI_API_KEY`              |
-| `MODEL`                | LLM model to use                            | `gpt-4o`                    | `YAI_MODEL`                |
-| `SHELL_NAME`           | Shell type                                  | `auto`                      | `YAI_SHELL_NAME`           |
-| `OS_NAME`              | Operating system                            | `auto`                      | `YAI_OS_NAME`              |
-| `STREAM`               | Enable streaming                            | `true`                      | `YAI_STREAM`               |
-| `TIMEOUT`              | API timeout (seconds)                       | `60`                        | `YAI_TIMEOUT`              |
-| `EXTRA_HEADERS`        | Extra headers                               | -                           | `YAI_EXTRA_HEADERS`        |
-| `EXTRA_BODY`           | Extra body                                  | -                           | `YAI_EXTRA_BODY`           |
-| `REASONING_EFFORT`     | Reasoning effort                            | -                           | `YAI_REASONING_EFFORT`     |
-| `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                        | `YAI_INTERACTIVE_ROUND`    |
-| `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                   | `YAI_CODE_THEME`           |
-| `TEMPERATURE`          | Response randomness                         | `0.7`                       | `YAI_TEMPERATURE`          |
-| `TOP_P`                | Top-p sampling                              | `1.0`                       | `YAI_TOP_P`                |
-| `MAX_TOKENS`           | Max response tokens                         | `1024`                      | `YAI_MAX_TOKENS`           |
-| `MAX_HISTORY`          | Max history entries                         | `500`                       | `YAI_MAX_HISTORY`          |
-| `AUTO_SUGGEST`         | Enable history suggestions                  | `true`                      | `YAI_AUTO_SUGGEST`         |
-| `SHOW_REASONING`       | Enable reasoning display                    | `true`                      | `YAI_SHOW_REASONING`       |
-| `JUSTIFY`              | Text alignment                              | `default`                   | `YAI_JUSTIFY`              |
-| `CHAT_HISTORY_DIR`     | Chat history directory                      | `<tempdir>/yaicli/chats`    | `YAI_CHAT_HISTORY_DIR`     |
-| `MAX_SAVED_CHATS`      | Max saved chats                             | `20`                        | `YAI_MAX_SAVED_CHATS`      |
-| `ROLE_MODIFY_WARNING`  | Warn user when modifying role               | `true`                      | `YAI_ROLE_MODIFY_WARNING`  |
-| `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                      | `YAI_ENABLE_FUNCTIONS`     |
-| `SHOW_FUNCTION_OUTPUT` | Show function output in response            | `true`                      | `YAI_SHOW_FUNCTION_OUTPUT` |
+| Option                 | Description                                 | Default                  | Env Variable               |
+| ---------------------- | ------------------------------------------- | ------------------------ | -------------------------- |
+| `PROVIDER`             | LLM provider (openai, claude, cohere, etc.) | `openai`                 | `YAI_PROVIDER`             |
+| `BASE_URL`             | API endpoint URL                            | -                        | `YAI_BASE_URL`             |
+| `API_KEY`              | Your API key                                | -                        | `YAI_API_KEY`              |
+| `MODEL`                | LLM model to use                            | `gpt-4o`                 | `YAI_MODEL`                |
+| `SHELL_NAME`           | Shell type                                  | `auto`                   | `YAI_SHELL_NAME`           |
+| `OS_NAME`              | Operating system                            | `auto`                   | `YAI_OS_NAME`              |
+| `STREAM`               | Enable streaming                            | `true`                   | `YAI_STREAM`               |
+| `TIMEOUT`              | API timeout (seconds)                       | `60`                     | `YAI_TIMEOUT`              |
+| `EXTRA_HEADERS`        | Extra headers                               | -                        | `YAI_EXTRA_HEADERS`        |
+| `EXTRA_BODY`           | Extra body                                  | -                        | `YAI_EXTRA_BODY`           |
+| `REASONING_EFFORT`     | Reasoning effort                            | -                        | `YAI_REASONING_EFFORT`     |
+| `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                     | `YAI_INTERACTIVE_ROUND`    |
+| `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                | `YAI_CODE_THEME`           |
+| `TEMPERATURE`          | Response randomness                         | `0.7`                    | `YAI_TEMPERATURE`          |
+| `TOP_P`                | Top-p sampling                              | `1.0`                    | `YAI_TOP_P`                |
+| `MAX_TOKENS`           | Max response tokens                         | `1024`                   | `YAI_MAX_TOKENS`           |
+| `MAX_HISTORY`          | Max history entries                         | `500`                    | `YAI_MAX_HISTORY`          |
+| `AUTO_SUGGEST`         | Enable history suggestions                  | `true`                   | `YAI_AUTO_SUGGEST`         |
+| `SHOW_REASONING`       | Enable reasoning display                    | `true`                   | `YAI_SHOW_REASONING`       |
+| `JUSTIFY`              | Text alignment                              | `default`                | `YAI_JUSTIFY`              |
+| `CHAT_HISTORY_DIR`     | Chat history directory                      | `<tempdir>/yaicli/chats` | `YAI_CHAT_HISTORY_DIR`     |
+| `MAX_SAVED_CHATS`      | Max saved chats                             | `20`                     | `YAI_MAX_SAVED_CHATS`      |
+| `ROLE_MODIFY_WARNING`  | Warn user when modifying role               | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
+| `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
+| `SHOW_FUNCTION_OUTPUT` | Show function output in response            | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
 
 ### LLM Provider Configuration
 
 YAICLI works with all major LLM providers. The default configuration is set up for OpenAI, but you can easily switch to
 other providers.
+
+Note: blank `BASE_URL` (or no `BASE_URL`) means use provider default url.
 
 #### Pre-configured Provider Settings
 
@@ -202,7 +236,7 @@ other providers.
 > - Google Gemini: https://ai.google.dev/gemini-api/docs/openai
 > - Claude: https://docs.anthropic.com/en/api/openai-sdk
 
-If you not sure about base_url or just use the default provider base_url, just leave it blank.
+If you not sure about base_url or just use the default provider base_url, just leave it blank or delete `BASE_URL`.
 
 ```ini
 [core]
@@ -211,6 +245,169 @@ BASE_URL=
 API_KEY=xxx
 MODEL=command-r-plus
 ```
+
+#### Openai
+
+Yaicli use `openai` as provider as default provider, `gpt-4o` as default model, you can add your api key to use as it is.
+
+```ini
+PROVIDER=openai
+BASE_URL=
+API_KEY=
+MODEL=gpt-4o
+```
+
+#### Deepseek
+
+```ini
+PROVIDER=deepseek
+API_KEY=
+MODEL=deepseek-chat
+```
+
+#### OpenRouter
+
+```ini
+PROVIDER=openrouter
+API_KEY=
+MODEL=deepseek/deepseek-chat-v3-0324
+```
+
+#### Groq
+
+```ini
+PROVIDER=groq
+API_KEY=
+MODEL=llama-3.3-70b-versatile
+```
+
+#### Chatglm
+
+```ini
+PROVIDER=chatglm
+API_KEY=
+MODEL=glm-4-plus
+```
+
+#### Chutes
+
+```ini
+PROVIDER=chutes
+API_KEY=
+MODEL=deepseek-ai/DeepSeek-V3-0324
+```
+
+#### AI21
+
+```ini
+PROVIDER=ai21
+API_KEY=
+MODEL=jamba-large-1.6
+```
+
+#### Sambanova
+
+```ini
+PROVIDER=sambanova
+API_KEY=
+MODEL=DeepSeek-V3-0324
+```
+
+#### ModelScope
+
+```ini
+PROVIDER=modelscope
+API_KEY=
+MODEL=deepseek-ai/DeepSeek-V3-0324
+```
+
+#### Inifiniai
+
+```ini
+PROVIDER=infiniai
+; BASE_URL=https://cloud.infini-ai.com/maas/v1
+API_KEY=
+MODEL=deepseek-v3
+```
+
+#### Siliconflow
+
+```ini
+PROVIDER=siliconflow
+API_KEY=
+MODEL=Qwen/Qwen3-32B
+```
+
+#### Yi
+
+```ini
+PROVIDER=yi
+API_KEY=
+MODEL=yi-lightning
+```
+
+#### Cohere
+
+You have to install cohere dependencies, `pip install 'yaicli[cohere]'`
+
+```ini
+PROVIDER=cohere
+API_KEY=
+MODEL=command-a-03-2025
+```
+
+#### Doubao
+
+You have to install doubao dependencies, `pip install 'yaicli[doubao]'`
+
+Use doubao OpenAI compatible api, you can just set `API_KEY`.
+
+```ini
+PROVIDER=doubao
+API_KEY=
+MODEL=doubao-1-5-lite-32k-250115
+```
+
+If you are using access key, you have to set `AK` and `SK`.
+
+```ini
+PROVIDER=doubao
+MODEL=doubao-1-5-lite-32k-250115
+AK=XXX
+SK=XXX
+```
+
+#### Ollama
+
+You have to install ollama dependencies, `pip install 'yaicli[ollama]'`
+
+```ini
+PROVIDER=ollama
+; BASE_URL=http://localhost:11434
+MODEL=qwen3:32b
+```
+
+Support options:
+
+```ini
+TEMPERATURE=
+TOP_P=
+SEED=
+NUM_PREDICT=
+NUM_CTX=
+NUM_BATCH=
+NUM_GPU=
+MAIN_GPU=
+LOW_VRAM=
+F16_KV=
+LOGITS_ALL=
+VOCAB_ONLY=
+USE_MMAP=
+USE_MLOCK=
+NUM_THREAD=
+```
+
+NOTE: Ollama provider not support extra body
 
 ### Syntax Highlighting Themes
 
