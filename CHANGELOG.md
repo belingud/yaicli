@@ -1,5 +1,33 @@
 
 ---
+## [0.6.0](https://github.com/belingud/yaicli/compare/v0.5.9..v0.6.0) - 2025-06-22
+
+### ⛰️  Features
+
+- refactor OllamaProvider and update default temperature - ([cf2dbe9](https://github.com/belingud/yaicli/commit/cf2dbe9d105f2731b1e08915027c12f3917d123e)) - Belingud
+
+### 🚜 Refactor
+
+- Update provider naming and Groq N param handling - ([309f70e](https://github.com/belingud/yaicli/commit/309f70e1794dc2f39bf9cd511c26ec0c22db1340)) - Belingud
+- revamp LLM client and provider architecture - ([90f7d46](https://github.com/belingud/yaicli/commit/90f7d46ceb79b2ac8b35ce03a5da33ce533aa1bd)) - Belingud
+
+### 📚 Documentation
+
+- update README with installation options and provider configs - ([c7c088f](https://github.com/belingud/yaicli/commit/c7c088fe8b7bcb2e1f9b756913c8166824656484)) - Belingud
+- update CHANGELOG.md for v0.5.9 release - ([ba73961](https://github.com/belingud/yaicli/commit/ba7396141440cdc175002356a52954af33e0aaf8)) - Belingud
+
+### 🧪 Testing
+
+- add llms package tests - ([9c3e5c2](https://github.com/belingud/yaicli/commit/9c3e5c2da6c74f274e860cc6c17350a93a9463ba)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- Update optional dependencies in pyproject.toml - ([cc8f865](https://github.com/belingud/yaicli/commit/cc8f8657166223fc3589f2cde68f5406a90068e3)) - Belingud
+- Configure ruff linting and add 'all' optional deps - ([3d660e3](https://github.com/belingud/yaicli/commit/3d660e3a428b4ac2fdbda9bb600ea58247892d98)) - Belingud
+- Update project keywords for broader AI model support - ([5e09e7b](https://github.com/belingud/yaicli/commit/5e09e7b9fc2243fd15e129a5928516850e29b98e)) - Belingud
+
+
+---
 ## [0.5.9](https://github.com/belingud/yaicli/compare/v0.5.8..v0.5.9) - 2025-06-12
 
 ### 📚 Documentation
