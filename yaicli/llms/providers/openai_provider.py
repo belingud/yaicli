@@ -18,9 +18,21 @@ class OpenAIProvider(Provider):
 
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
     CLIENT_CLS = openai.OpenAI
+    # Base mapping between config keys and API parameter names
+    _BASE_COMPLETION_PARAMS_KEYS = {
+        "model": "MODEL",
+        "temperature": "TEMPERATURE",
+        "top_p": "TOP_P",
+        "max_completion_tokens": "MAX_TOKENS",
+        "timeout": "TIMEOUT",
+        "extra_body": "EXTRA_BODY",
+        "reasoning_effort": "REASONING_EFFORT",
+    }
 
     def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):
         self.config = config
+        if not self.config.get("API_KEY"):
+            raise ValueError("API_KEY is required")
         self.enable_function = self.config["ENABLE_FUNCTIONS"]
         self.verbose = verbose
 
@@ -45,22 +57,32 @@ class OpenAIProvider(Provider):
             client_params["default_headers"] = {
                 **self.config["EXTRA_HEADERS"],
                 "X-Title": self.APP_NAME,
-                "HTTP-Referer": self.APPA_REFERER,
+                "HTTP-Referer": self.APP_REFERER,
             }
         return client_params
 
+    def get_completion_params_keys(self) -> Dict[str, str]:
+        """
+        Get the mapping between completion parameter keys and config keys.
+        Subclasses can override this method to customize parameter mapping.
+
+        Returns:
+            Dict[str, str]: Mapping from API parameter names to config keys
+        """
+        return self._BASE_COMPLETION_PARAMS_KEYS.copy()
+
     def get_completion_params(self) -> Dict[str, Any]:
-        """Get the completion parameters"""
-        completion_params = {
-            "model": self.config["MODEL"],
-            "temperature": self.config["TEMPERATURE"],
-            "top_p": self.config["TOP_P"],
-            "max_completion_tokens": self.config["MAX_TOKENS"],
-            "timeout": self.config["TIMEOUT"],
-        }
-        # Add extra body params if set
-        if self.config["EXTRA_BODY"]:
-            completion_params["extra_body"] = self.config["EXTRA_BODY"]
+        """
+        Get the completion parameters based on config and parameter mapping.
+
+        Returns:
+            Dict[str, Any]: Parameters for completion API call
+        """
+        completion_params = {}
+        params_keys = self.get_completion_params_keys()
+        for api_key, config_key in params_keys.items():
+            if self.config.get(config_key, None) is not None:
+                completion_params[api_key] = self.config[config_key]
         return completion_params
 
     def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
@@ -90,7 +112,20 @@ class OpenAIProvider(Provider):
         messages: List[ChatMessage],
         stream: bool = False,
     ) -> Generator[LLMResponse, None, None]:
-        """Send completion request to OpenAI and return responses"""
+        """
+            Send completion request to OpenAI and return responses.
+
+        Args:
+            messages: List of chat messages to send
+            stream: Whether to stream the response
+
+        Yields:
+            LLMResponse: Response objects containing content, tool calls, etc.
+
+        Raises:
+            ValueError: If messages is empty or invalid
+            openai.APIError: If API request fails
+        """
         openai_messages = self._convert_messages(messages)
         if self.verbose:
             self.console.print("Messages:")
@@ -154,9 +189,8 @@ class OpenAIProvider(Provider):
             if not chunk.choices:
                 continue
             started = True
-            choice = chunk.choices[0]
-            delta = choice.delta
-            finish_reason = choice.finish_reason
+            delta = chunk.choices[0].delta
+            finish_reason = chunk.choices[0].finish_reason
 
             # Extract content from current chunk
             content = delta.content or ""

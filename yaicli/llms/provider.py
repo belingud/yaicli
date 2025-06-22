@@ -9,7 +9,7 @@ class Provider(ABC):
     """Base abstract class for LLM providers"""
 
     APP_NAME = "yaicli"
-    APPA_REFERER = "https://github.com/halfrost/yaicli"
+    APP_REFERER = "https://github.com/halfrost/yaicli"
 
     @abstractmethod
     def completion(
