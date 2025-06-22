@@ -72,7 +72,7 @@ class TestOpenAIProvider:
             assert provider.client_params["default_headers"] == {
                 **extra_headers,
                 "X-Title": provider.APP_NAME,
-                "HTTP-Referer": provider.APPA_REFERER,
+                "HTTP-Referer": provider.APP_REFERER,
             }
 
     def test_init_with_extra_body(self, mock_config):
