@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, Generator, List, Optional
 
 import openai
@@ -113,6 +114,11 @@ class OpenAIProvider(Provider):
 
     def _handle_normal_response(self, response: ChatCompletion) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response"""
+        if not response.choices:
+            yield LLMResponse(
+                content=json.dumps(getattr(response, "base_resp", None) or response.to_dict()), finish_reason="stop"
+            )
+            return
         choice = response.choices[0]
         content = choice.message.content or ""  # type: ignore
         reasoning = choice.message.reasoning_content  # type: ignore
@@ -134,12 +140,20 @@ class OpenAIProvider(Provider):
         """Handle streaming response from OpenAI API"""
         # Initialize tool call object to accumulate tool call data across chunks
         tool_call: Optional[ToolCall] = None
-
+        started = False
         # Process each chunk in the response stream
         for chunk in response:
-            if not chunk.choices:
+            if not chunk.choices and not started:
+                # Some api could return error message in the first chunk, no choices to handle, return raw response to show the message
+                yield LLMResponse(
+                    content=json.dumps(getattr(chunk, "base_resp", None) or chunk.to_dict()), finish_reason="stop"
+                )
+                started = True
                 continue
 
+            if not chunk.choices:
+                continue
+            started = True
             choice = chunk.choices[0]
             delta = choice.delta
             finish_reason = choice.finish_reason
