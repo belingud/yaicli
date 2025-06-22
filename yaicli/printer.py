@@ -1,18 +1,14 @@
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterator, List, Tuple, Union
+from typing import Iterator, List, Tuple, Union
 
 from rich.console import Group, RenderableType
 from rich.live import Live
 
-from .client import RefreshLive
 from .config import Config, get_config
 from .console import YaiConsole, get_console
 from .render import Markdown, plain_formatter
-from .schemas import ChatMessage
-
-if TYPE_CHECKING:
-    from .schemas import LLMResponse
+from .schemas import LLMResponse, RefreshLive
 
 
 @dataclass
@@ -147,9 +143,7 @@ class Printer:
         # Use Rich Group to combine multiple renderables
         return Group(*display_elements)
 
-    def display_normal(
-        self, content_iterator: Iterator[Union["LLMResponse", RefreshLive]], messages: list["ChatMessage"]
-    ) -> tuple[str, str]:
+    def display_normal(self, content_iterator: Iterator[Union["LLMResponse", RefreshLive]]) -> tuple[str, str]:
         """Process and display non-stream LLMContent, including reasoning and content parts."""
         self._reset_state()
         full_content = full_reasoning = ""
@@ -174,13 +168,9 @@ class Printer:
                 self.console.print()
                 self.console.print(self.content_formatter(full_content))
 
-            messages.append(ChatMessage(role="assistant", content=full_content))
-
         return full_content, full_reasoning
 
-    def display_stream(
-        self, stream_iterator: Iterator[Union["LLMResponse", RefreshLive]], messages: list["ChatMessage"]
-    ) -> tuple[str, str]:
+    def display_stream(self, stream_iterator: Iterator[Union["LLMResponse", RefreshLive]]) -> tuple[str, str]:
         """Process and display LLMContent stream, including reasoning and content parts."""
         self._reset_state()
         full_content = full_reasoning = ""
@@ -191,7 +181,6 @@ class Printer:
             if isinstance(chunk, RefreshLive):
                 # Refresh live display when in next completion
                 live.stop()
-                messages.append(ChatMessage(role="assistant", content=full_content))
                 live = Live(console=self.console)
                 live.start()
                 # Initialize full_content and full_reasoning for the next completion
@@ -210,5 +199,4 @@ class Printer:
             time.sleep(self._UPDATE_INTERVAL)
 
         live.stop()
-        messages.append(ChatMessage(role="assistant", content=full_content))
         return full_content, full_reasoning

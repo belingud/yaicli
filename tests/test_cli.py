@@ -25,14 +25,13 @@ from yaicli.const import (
 def mock_api_client():
     """Mock API client for testing."""
     client = MagicMock()
-    client.completion.return_value = ("Test response", None)
-    client.stream_completion.return_value = iter(
-        [
-            {"type": "content", "content": "Test"},
-            {"type": "content", "content": " response"},
-            {"type": "finish", "content": ""},
-        ]
-    )
+
+    # Mock the iterator for completion_with_tools
+    mock_response = MagicMock()
+    mock_response_items = [MagicMock(content="Test response", tool_call=None)]
+    mock_response.__iter__.return_value = mock_response_items
+
+    client.completion_with_tools.return_value = mock_response
     return client
 
 
@@ -110,7 +109,7 @@ class TestCLIInitialization:
         with (
             patch("yaicli.cli.get_console"),
             patch("yaicli.config.cfg", new=MagicMock()),
-            patch("yaicli.client.LitellmClient"),
+            patch("yaicli.llms.client.LLMClient"),
             patch("yaicli.cli.Printer"),
             patch("yaicli.cli.FileChatManager"),
             patch("pathlib.Path.mkdir"),
@@ -127,7 +126,7 @@ class TestCLIInitialization:
         with (
             patch("yaicli.cli.get_console") as mock_console_func,
             patch("yaicli.config.cfg", new=MagicMock()),
-            patch("yaicli.client.LitellmClient"),
+            patch("yaicli.llms.client.LLMClient"),
             patch("yaicli.cli.Printer"),
             patch("yaicli.cli.FileChatManager"),
             patch("pathlib.Path.mkdir"),
@@ -483,14 +482,18 @@ class TestAPIInteraction:
         # Setup the mocks to return expected values
         mock_messages = []
         cli._build_messages = MagicMock(return_value=mock_messages)
-        cli.client.completion = MagicMock(return_value=("Test response", None))
+
+        # Create a mock response generator
+        mock_response = MagicMock()
+        mock_response_items = [MagicMock(content="Test response", tool_call=None)]
+        mock_response.__iter__.return_value = mock_response_items
+        cli.client.completion_with_tools = MagicMock(return_value=mock_response)
 
         cli._handle_llm_response("test question")
 
-        # In the actual implementation, it might use completion even when STREAM is True
         # Just verify that the client method was called
         assert cli._build_messages.called
-        assert cli.client.completion.called
+        assert cli.client.completion_with_tools.called
 
     def test_handle_llm_response_non_streaming(self, cli_with_mocks):
         """Test handling non-streaming LLM response."""
@@ -501,32 +504,36 @@ class TestAPIInteraction:
         # Setup the mocks to return expected values
         mock_messages = []
         cli._build_messages = MagicMock(return_value=mock_messages)
-        original_completion = cli.client.completion
-        completion_result = ("Test response", None)
-        cli.client.completion = MagicMock(return_value=completion_result)
+
+        # Save original method
+        original_completion_with_tools = cli.client.completion_with_tools
+
+        # Create a mock response generator
+        mock_response = MagicMock()
+        mock_response_items = [MagicMock(content="Test response", tool_call=None)]
+        mock_response.__iter__.return_value = mock_response_items
+        cli.client.completion_with_tools = MagicMock(return_value=mock_response)
 
         try:
             # Just verify the method was called with correct parameters
             cli._handle_llm_response("test question")
             assert cli._build_messages.called
-            cli.client.completion.assert_called_once_with(mock_messages, stream=False)
+            cli.client.completion_with_tools.assert_called_once_with(mock_messages, stream=False)
         finally:
             # Restore original method
-            cli.client.completion = original_completion
+            cli.client.completion_with_tools = original_completion_with_tools
 
     def test_handle_llm_response_error(self, cli_with_mocks):
         """Test handling error in LLM response."""
         cli = cli_with_mocks
         # Override the default mock behavior to throw an exception
-        cli.client.stream_completion.side_effect = Exception("API Error")
-        # Also reset the non-streaming mock
-        cli.client.completion.return_value = (None, None)
+        cli.client.completion_with_tools = MagicMock(side_effect=Exception("API Error"))
 
         # Capture the history length before the call
         initial_history_len = len(cli.chat.history)
 
         # Call the method
-        content = cli._handle_llm_response("test question")
+        content, _ = cli._handle_llm_response("test question")
 
         # Should return None on error
         assert content is None
@@ -666,18 +673,18 @@ class TestRunFunctionality:
             # Restore original get method
             cfg.get = original_get
 
-    @patch("yaicli.cli.CLI._handle_llm_response")
-    @patch("yaicli.cli.CLI._confirm_and_execute")
-    def test_run_once_shell_mode(self, mock_execute, mock_handle_response, cli_with_mocks):
+    @patch("yaicli.cli.CLI._process_user_input")
+    def test_run_once_shell_mode(self, mock_process_input, cli_with_mocks):
         """Test running once in shell mode."""
         cli = cli_with_mocks
-        mock_handle_response.return_value = "ls -la"
+        mock_process_input.return_value = True
 
-        cli._run_once("List files", True)
+        # Run the test with shell mode enabled
+        cli._run_once("List files", shell=True)
 
+        # Verify mode was set correctly before processing
         assert cli.current_mode == EXEC_MODE
-        mock_handle_response.assert_called_once_with("List files")
-        mock_execute.assert_called_once_with("ls -la")
+        mock_process_input.assert_called_once_with("List files")
 
     @patch("yaicli.cli.CLI._process_user_input")
     def test_run_repl(self, mock_process_input, cli_with_mocks):
