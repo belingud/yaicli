@@ -1,5 +1,26 @@
 
 ---
+## [0.6.1](https://github.com/belingud/yaicli/compare/v0.6.0..v0.6.1) - 2025-06-22
+
+### ⛰️  Features
+
+- add error handling for empty choices in OpenAIProvider for better error message - ([9cd2a28](https://github.com/belingud/yaicli/commit/9cd2a285a52c0b1c5a646aadfbcc97eb71c44394)) - Belingud
+- add minimax and targon providers - ([e8df86f](https://github.com/belingud/yaicli/commit/e8df86fdb7757e454162661051883a621066fc58)) - Belingud
+
+### 🚜 Refactor
+
+- Unify completion params handling in LLM providers - ([9132020](https://github.com/belingud/yaicli/commit/913202089e7763808ee45186563b332155dca98f)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG.md for v0.6.0 release - ([f9b9085](https://github.com/belingud/yaicli/commit/f9b908507c82b2ac0b03e51e7cbd5a833c6468a4)) - Belingud
+
+### 🧪 Testing
+
+- update mocking strategy for provider tests - ([4b9c410](https://github.com/belingud/yaicli/commit/4b9c41018504ffa4632b4d7af393979543532360)) - Belingud
+
+
+---
 ## [0.6.0](https://github.com/belingud/yaicli/compare/v0.5.9..v0.6.0) - 2025-06-22
 
 ### ⛰️  Features
