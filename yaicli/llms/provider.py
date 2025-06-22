@@ -54,6 +54,8 @@ class ProviderFactory:
         "ollama": (".providers.ollama_provider", "OllamaProvider"),
         "cohere": (".providers.cohere_provider", "CohereProvider"),
         "sambanova": (".providers.sambanova_provider", "SambanovaProvider"),
+        "minimax": (".providers.minimax_provider", "MinimaxProvider"),
+        "targon": (".providers.targon_provider", "TargonProvider"),
     }
 
     @classmethod
