@@ -1651,6 +1651,11 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "cohere" },
+    { name = "ollama" },
+    { name = "volcengine-python-sdk" },
+]
 cohere = [
     { name = "cohere" },
 ]
@@ -1672,20 +1677,23 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.8" },
+    { name = "cohere", marker = "extra == 'all'", specifier = ">=5.15.0" },
     { name = "cohere", marker = "extra == 'cohere'", specifier = ">=5.15.0" },
     { name = "distro", specifier = ">=1.9.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "instructor", specifier = ">=1.7.9" },
     { name = "json-repair", specifier = ">=0.44.1" },
+    { name = "ollama", marker = "extra == 'all'", specifier = ">=0.5.1" },
     { name = "ollama", marker = "extra == 'ollama'", specifier = ">=0.5.1" },
     { name = "openai", specifier = ">=1.76.0" },
     { name = "prompt-toolkit", specifier = ">=3.0.50" },
     { name = "rich", specifier = ">=13.9.4" },
     { name = "socksio", specifier = ">=1.0.0" },
     { name = "typer", specifier = ">=0.16.0" },
+    { name = "volcengine-python-sdk", marker = "extra == 'all'", specifier = ">=3.0.15" },
     { name = "volcengine-python-sdk", marker = "extra == 'doubao'", specifier = ">=3.0.15" },
 ]
-provides-extras = ["doubao", "ollama", "cohere"]
+provides-extras = ["doubao", "ollama", "cohere", "all"]
 
 [package.metadata.requires-dev]
 dev = [

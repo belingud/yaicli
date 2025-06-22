@@ -65,10 +65,10 @@ ai = "yaicli.entry:app"
 yaicli = "yaicli.entry:app"
 
 [project.optional-dependencies]
-all = ["doubao", "ollama", "cohere"]
 doubao = ["volcengine-python-sdk>=3.0.15"]
 ollama = ["ollama>=0.5.1"]
 cohere = ["cohere>=5.15.0"]
+all = ["volcengine-python-sdk>=3.0.15", "ollama>=0.5.1", "cohere>=5.15.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
