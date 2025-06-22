@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from .openai_provider import OpenAIProvider
 
 
@@ -6,6 +8,7 @@ class DeepSeekProvider(OpenAIProvider):
 
     DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
 
-    def __init__(self, config: dict = ..., **kwargs):
-        super().__init__(config, **kwargs)
-        self.completion_params["max_tokens"] = self.completion_params.pop("max_completion_tokens")
+    def get_completion_params(self) -> Dict[str, Any]:
+        params = super().get_completion_params()
+        params["max_tokens"] = params.pop("max_completion_tokens")
+        return params

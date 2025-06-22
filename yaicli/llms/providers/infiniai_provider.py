@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from .openai_provider import OpenAIProvider
 
 
@@ -11,4 +13,8 @@ class InfiniAIProvider(OpenAIProvider):
         if self.enable_function:
             self.console.print("InfiniAI does not support functions, disabled", style="yellow")
         self.enable_function = False
-        self.completion_params["max_tokens"] = self.completion_params.pop("max_completion_tokens")
+
+    def get_completion_params(self) -> Dict[str, Any]:
+        params = super().get_completion_params()
+        params["max_tokens"] = params.pop("max_completion_tokens")
+        return params

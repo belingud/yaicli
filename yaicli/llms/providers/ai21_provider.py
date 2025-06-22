@@ -1,4 +1,4 @@
-from typing import Generator, Optional
+from typing import Any, Dict, Generator, Optional
 
 from openai._streaming import Stream
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
@@ -12,9 +12,10 @@ class AI21Provider(OpenAIProvider):
 
     DEFAULT_BASE_URL = "https://api.ai21.com/studio/v1"
 
-    def __init__(self, config: dict = ..., **kwargs):
-        super().__init__(config, **kwargs)
-        self.completion_params["max_tokens"] = self.completion_params.pop("max_completion_tokens")
+    def get_completion_params(self) -> Dict[str, Any]:
+        params = super().get_completion_params()
+        params["max_tokens"] = params.pop("max_completion_tokens")
+        return params
 
     def _handle_stream_response(self, response: Stream[ChatCompletionChunk]) -> Generator[LLMResponse, None, None]:
         """Handle streaming response from AI21 models

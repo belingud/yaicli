@@ -16,41 +16,51 @@ class OpenAIProvider(Provider):
     """OpenAI provider implementation based on openai library"""
 
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
+    CLIENT_CLS = openai.OpenAI
 
     def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):
         self.config = config
         self.enable_function = self.config["ENABLE_FUNCTIONS"]
         self.verbose = verbose
+
+        # Initialize client
+        self.client_params = self.get_client_params()
+        self.client = self.CLIENT_CLS(**self.client_params)
+        self.console = get_console()
+
+        # Store completion params
+        self.completion_params = self.get_completion_params()
+
+    def get_client_params(self) -> Dict[str, Any]:
+        """Get the client parameters"""
         # Initialize client params
-        self.client_params = {
+        client_params = {
             "api_key": self.config["API_KEY"],
             "base_url": self.config["BASE_URL"] or self.DEFAULT_BASE_URL,
         }
 
         # Add extra headers if set
         if self.config["EXTRA_HEADERS"]:
-            self.client_params["default_headers"] = {
+            client_params["default_headers"] = {
                 **self.config["EXTRA_HEADERS"],
                 "X-Title": self.APP_NAME,
                 "HTTP-Referer": self.APPA_REFERER,
             }
+        return client_params
 
-        # Initialize client
-        self.client = openai.OpenAI(**self.client_params)
-        self.console = get_console()
-
-        # Store completion params
-        self.completion_params = {
+    def get_completion_params(self) -> Dict[str, Any]:
+        """Get the completion parameters"""
+        completion_params = {
             "model": self.config["MODEL"],
             "temperature": self.config["TEMPERATURE"],
             "top_p": self.config["TOP_P"],
             "max_completion_tokens": self.config["MAX_TOKENS"],
             "timeout": self.config["TIMEOUT"],
         }
-
         # Add extra body params if set
         if self.config["EXTRA_BODY"]:
-            self.completion_params["extra_body"] = self.config["EXTRA_BODY"]
+            completion_params["extra_body"] = self.config["EXTRA_BODY"]
+        return completion_params
 
     def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """Convert a list of ChatMessage objects to a list of OpenAI message dicts."""
