@@ -77,6 +77,8 @@ class TestStreamingResponses:
 
         # Create provider and call completion
         provider = OpenAIProvider(config=mock_config)
+        # Manually set the provider's client to our mock to prevent real API calls
+        provider.client = mock_client
         messages = [ChatMessage(role="user", content="Say hello")]
 
         # Collect responses
@@ -148,6 +150,8 @@ class TestStreamingResponses:
 
         # Create provider and call completion
         provider = OpenAIProvider(config=mock_config)
+        # Manually set the provider's client to our mock to prevent real API calls
+        provider.client = mock_client
         messages = [ChatMessage(role="user", content="What is 2+2?")]
 
         # Collect responses
@@ -229,6 +233,8 @@ class TestStreamingResponses:
 
         # Create provider and call completion
         provider = OpenAIProvider(config=mock_config)
+        # Manually set the provider's client to our mock to prevent real API calls
+        provider.client = mock_client
         messages = [ChatMessage(role="user", content="What's the weather in New York?")]
 
         # Collect responses

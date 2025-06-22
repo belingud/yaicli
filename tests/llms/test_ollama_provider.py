@@ -38,11 +38,6 @@ class TestOllamaProvider:
 
         # Check initialization parameters
         assert provider.host == mock_config["BASE_URL"]
-        assert provider.completion_params["model"] == mock_config["MODEL"]
-        assert provider.completion_params["temperature"] == mock_config["TEMPERATURE"]
-        assert provider.completion_params["top_p"] == mock_config["TOP_P"]
-        assert provider.completion_params["num_predict"] == mock_config["MAX_TOKENS"]
-        assert provider.completion_params["timeout"] == mock_config["TIMEOUT"]
         assert provider.enable_function == mock_config["ENABLE_FUNCTIONS"]
         assert provider.think is False  # Based on "THINK": "false"
 

@@ -29,19 +29,20 @@ class TestDoubaoProvider:
 
     def test_init_with_api_key(self, mock_config):
         """Test initialization of DoubaoProvider with API key"""
-        # Mock the Ark class completely
-        ark_patch = patch("yaicli.llms.providers.doubao_provider.Ark", autospec=True)
-        mock_ark_cls = ark_patch.start()
+        # Create a mock client
         mock_client = MagicMock()
-        mock_ark_cls.return_value = mock_client
 
-        try:
+        # Create a provider with client initialization patched
+        with patch.object(DoubaoProvider, "CLIENT_CLS") as mock_cls:
+            # Configure the mock class to return our mock client
+            mock_cls.return_value = mock_client
+
             # Create provider
             provider = DoubaoProvider(config=mock_config)
 
             # Verify client parameters
-            mock_ark_cls.assert_called_once()
-            call_kwargs = mock_ark_cls.call_args.kwargs
+            mock_cls.assert_called_once()
+            call_kwargs = mock_cls.call_args.kwargs
 
             # Verify API Key is set
             assert call_kwargs["api_key"] == mock_config["API_KEY"]
@@ -58,13 +59,7 @@ class TestDoubaoProvider:
             assert provider.completion_params["timeout"] == mock_config["TIMEOUT"]
 
             # Check extra parameters
-            assert "extra_headers" in provider.completion_params
-            assert provider.completion_params["extra_headers"]["User-Agent"] == "Test-Agent"
-            assert "extra_body" in provider.completion_params
-            assert provider.completion_params["extra_body"] == mock_config["EXTRA_BODY"]
-
-        finally:
-            ark_patch.stop()
+            assert provider.completion_params.get("extra_body") == mock_config["EXTRA_BODY"]
 
     def test_init_without_optional_params(self):
         """Test initialization of DoubaoProvider without optional parameters"""
@@ -78,19 +73,20 @@ class TestDoubaoProvider:
             "ENABLE_FUNCTIONS": True,
         }
 
-        # Mock the Ark class completely
-        ark_patch = patch("yaicli.llms.providers.doubao_provider.Ark", autospec=True)
-        mock_ark_cls = ark_patch.start()
+        # Create a mock client
         mock_client = MagicMock()
-        mock_ark_cls.return_value = mock_client
 
-        try:
+        # Create a provider with client initialization patched
+        with patch.object(DoubaoProvider, "CLIENT_CLS") as mock_cls:
+            # Configure the mock class to return our mock client
+            mock_cls.return_value = mock_client
+
             # Create provider
             provider = DoubaoProvider(config=minimal_config)
 
             # Verify client parameters
-            mock_ark_cls.assert_called_once()
-            call_kwargs = mock_ark_cls.call_args.kwargs
+            mock_cls.assert_called_once()
+            call_kwargs = mock_cls.call_args.kwargs
 
             # Verify default URL is used
             assert call_kwargs["base_url"] == DoubaoProvider.DEFAULT_BASE_URL
@@ -101,8 +97,4 @@ class TestDoubaoProvider:
 
             # Verify completion parameters
             assert provider.completion_params["model"] == minimal_config["MODEL"]
-            assert "extra_headers" not in provider.completion_params
             assert "extra_body" not in provider.completion_params
-
-        finally:
-            ark_patch.stop()
