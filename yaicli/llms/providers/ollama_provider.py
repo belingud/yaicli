@@ -16,6 +16,21 @@ class OllamaProvider(Provider):
     """Ollama provider implementation based on ollama Python library"""
 
     DEFAULT_BASE_URL = "http://localhost:11434"
+    OPTION_KEYS = (
+        ("SEED", "seed"),
+        ("NUM_PREDICT", "num_predict"),
+        ("NUM_CTX", "num_ctx"),
+        ("NUM_BATCH", "num_batch"),
+        ("NUM_GPU", "num_gpu"),
+        ("MAIN_GPU", "main_gpu"),
+        ("LOW_VRAM", "low_vram"),
+        ("F16_KV", "f16_kv"),
+        ("LOGITS_ALL", "logits_all"),
+        ("VOCAB_ONLY", "vocab_only"),
+        ("USE_MMAP", "use_mmap"),
+        ("USE_MLOCK", "use_mlock"),
+        ("NUM_THREAD", "num_thread"),
+    )
 
     def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):
         self.config = config
@@ -29,18 +44,7 @@ class OllamaProvider(Provider):
         # Initialize console
         self.console = get_console()
 
-        # Store completion params
-        self.completion_params = {
-            "model": self.config.get("MODEL", "llama3"),
-            "temperature": self.config.get("TEMPERATURE", 0.7),
-            "top_p": self.config.get("TOP_P", 1.0),
-            "num_predict": self.config.get("MAX_TOKENS", 1024),
-            "timeout": self.config.get("TIMEOUT", 10),
-        }
-
-        # Add extra body params if set
-        if self.config.get("EXTRA_BODY"):
-            self.completion_params.update(self.config["EXTRA_BODY"])
+        self.client = ollama.Client(host=self.host, timeout=self.config["TIMEOUT"])
 
     def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """Convert a list of ChatMessage objects to a list of Ollama message dicts."""
@@ -81,35 +85,33 @@ class OllamaProvider(Provider):
         if self.verbose:
             self.console.print("Messages:")
             self.console.print(ollama_messages)
+        options = {"temperature": self.config["TEMPERATURE"], "top_p": self.config["TOP_P"]}
+        for k, v in self.OPTION_KEYS:
+            if self.config.get(k, None) is not None:
+                options[v] = self.config[k]
 
         # Prepare parameters
         params = {
-            "model": self.completion_params["model"],
+            "model": self.config.get("MODEL", "llama3"),
             "messages": ollama_messages,
             "stream": stream,
             "think": self.think,
-            "options": {
-                "temperature": self.completion_params["temperature"],
-                "top_p": self.completion_params["top_p"],
-                "num_predict": self.completion_params["num_predict"],
-                "timeout": self.completion_params["timeout"],
-            },
+            "options": options,
         }
 
         # Add tools if enabled
         if self.enable_function:
             params["tools"] = get_openai_schemas()
 
-        client = ollama.Client(host=self.host)
         if self.verbose:
             self.console.print("Ollama API params:")
             self.console.print(params)
         try:
             if stream:
-                response_generator = client.chat(**params)
+                response_generator = self.client.chat(**params)
                 yield from self._handle_stream_response(response_generator)
             else:
-                response = client.chat(**params)
+                response = self.client.chat(**params)
                 yield from self._handle_normal_response(response)
 
         except Exception as e:
