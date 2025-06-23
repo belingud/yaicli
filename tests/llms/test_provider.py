@@ -59,6 +59,9 @@ class TestProviderFactory:
             "ollama",
             "cohere",
             "sambanova",
+            "minimax",
+            "targon",
+            "xai",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers

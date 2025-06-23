@@ -3,14 +3,14 @@ from typing import Dict
 from .openai_provider import OpenAIProvider
 
 
-class YiProvider(OpenAIProvider):
-    """Lingyiwanwu provider implementation based on openai-compatible API"""
+class TargonProvider(OpenAIProvider):
+    """Targon provider implementation based on openai-compatible API"""
 
-    DEFAULT_BASE_URL = "https://api.lingyiwanwu.com/v1"
+    DEFAULT_BASE_URL = "https://api.targon.com/v1"
 
     def get_completion_params_keys(self) -> Dict[str, str]:
         """
-        Customize completion parameter keys for Yi API.
+        Customize completion parameter keys for Targon API.
         Maps 'max_completion_tokens' to 'max_tokens' for compatibility.
 
         Returns:
