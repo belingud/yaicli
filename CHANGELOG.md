@@ -1,5 +1,35 @@
 
 ---
+## [0.6.3](https://github.com/belingud/yaicli/compare/v0.6.2..v0.6.3) - 2025-06-23
+
+### ⛰️  Features
+
+- add error handling for better error show - ([ced63b8](https://github.com/belingud/yaicli/commit/ced63b81cc9339f4bd5569b5bd61d0455c4b2ab5)) - Belingud
+- add gemini and vertexai providers - ([1cb56ad](https://github.com/belingud/yaicli/commit/1cb56ada4dde53146ff5a0ad3e2c932577b244d7)) - Belingud
+
+### 🐛 Bug Fixes
+
+- use display_stream return content for command execute - ([5443822](https://github.com/belingud/yaicli/commit/54438224cd6278b6281abe2c282ec79ad3dec276)) - Belingud
+- ensure non-empty config values are used in completion params - ([c319ade](https://github.com/belingud/yaicli/commit/c319ade3d041243b445321c450a2efa7966ec2db)) - Belingud
+
+### 🚜 Refactor
+
+- remove unused BaseProvider class - ([1166114](https://github.com/belingud/yaicli/commit/116611461d621f68c85e7bc96d0faa8f30dd08eb)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG.md for v0.6.2 release - ([b9e6354](https://github.com/belingud/yaicli/commit/b9e63547d65eb0a0e875e7acb42917ad309ced14)) - Belingud
+
+### 🧪 Testing
+
+- add tests for gemini and vertexai providers - ([7a9f755](https://github.com/belingud/yaicli/commit/7a9f755a8a4de584db47e3408f9028eb0e71d982)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update default reasoning effort to empty string - ([e7f59c3](https://github.com/belingud/yaicli/commit/e7f59c3390f0e3aed443436d335b4ee1f114dec0)) - Belingud
+
+
+---
 ## [0.6.2](https://github.com/belingud/yaicli/compare/v0.6.1..v0.6.2) - 2025-06-23
 
 ### ⛰️  Features
