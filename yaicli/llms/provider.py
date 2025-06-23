@@ -45,6 +45,7 @@ class ProviderFactory:
         "cohere": (".providers.cohere_provider", "CohereProvider"),
         "deepseek": (".providers.deepseek_provider", "DeepSeekProvider"),
         "doubao": (".providers.doubao_provider", "DoubaoProvider"),
+        "gemini": (".providers.gemini_provider", "GeminiProvider"),
         "groq": (".providers.groq_provider", "GroqProvider"),
         "infini-ai": (".providers.infiniai_provider", "InfiniAIProvider"),
         "minimax": (".providers.minimax_provider", "MinimaxProvider"),
@@ -55,6 +56,7 @@ class ProviderFactory:
         "sambanova": (".providers.sambanova_provider", "SambanovaProvider"),
         "siliconflow": (".providers.siliconflow_provider", "SiliconFlowProvider"),
         "targon": (".providers.targon_provider", "TargonProvider"),
+        "vertexai": (".providers.vertexai_provider", "VertexAIProvider"),
         "xai": (".providers.xai_provider", "XaiProvider"),
         "yi": (".providers.yi_provider", "YiProvider"),
     }
