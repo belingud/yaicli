@@ -81,7 +81,7 @@ class OpenAIProvider(Provider):
         completion_params = {}
         params_keys = self.get_completion_params_keys()
         for api_key, config_key in params_keys.items():
-            if self.config.get(config_key, None) is not None:
+            if self.config.get(config_key, None) is not None and self.config[config_key] != "":
                 completion_params[api_key] = self.config[config_key]
         return completion_params
 
