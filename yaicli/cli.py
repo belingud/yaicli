@@ -384,14 +384,7 @@ class CLI:
         self._check_history_len()
 
         if self.current_mode == EXEC_MODE:
-            # We need to extract the executable command from the last assistant message
-            # in case of tool use.
-            final_content = ""
-            if self.chat.history:
-                last_message = self.chat.history[-1]
-                if last_message.role == "assistant":
-                    final_content = last_message.content or ""
-            self._confirm_and_execute(final_content)
+            self._confirm_and_execute(content)
         return True
 
     def _confirm_and_execute(self, raw_content: str) -> None:
