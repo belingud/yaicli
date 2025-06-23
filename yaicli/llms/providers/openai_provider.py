@@ -140,12 +140,19 @@ class OpenAIProvider(Provider):
             if tools:
                 params["tools"] = tools
 
-        if stream:
-            response = self.client.chat.completions.create(**params)
-            yield from self._handle_stream_response(response)
-        else:
-            response = self.client.chat.completions.create(**params)
-            yield from self._handle_normal_response(response)
+        try:
+            if stream:
+                response = self.client.chat.completions.create(**params)
+                yield from self._handle_stream_response(response)
+            else:
+                response = self.client.chat.completions.create(**params)
+                yield from self._handle_normal_response(response)
+        except (openai.APIStatusError, openai.APIResponseValidationError) as e:
+            try:
+                body = e.response.json()
+            except Exception:
+                body = e.response.text
+            self.console.print(f"Error Response: {body}")
 
     def _handle_normal_response(self, response: ChatCompletion) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response"""
