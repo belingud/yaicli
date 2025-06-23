@@ -1,5 +1,29 @@
 
 ---
+## [0.6.2](https://github.com/belingud/yaicli/compare/v0.6.1..v0.6.2) - 2025-06-23
+
+### ⛰️  Features
+
+- update provider mappings in ProviderFactory - ([3dce344](https://github.com/belingud/yaicli/commit/3dce344a7b30de315fd69d7af692a0e160d7b58d)) - Belingud
+- add XaiProvider class based on OpenAIProvider - ([f177da8](https://github.com/belingud/yaicli/commit/f177da88c35d5934bf14c111d7bf61e4e8a6cf73)) - Belingud
+
+### 🚜 Refactor
+
+- standardize completion parameter handling across providers - ([25be368](https://github.com/belingud/yaicli/commit/25be368ca67ac57c9beecb0c35223f9fe28c5244)) - Belingud
+
+### 📚 Documentation
+
+- update default settings and add XAI provider - ([1cef2f8](https://github.com/belingud/yaicli/commit/1cef2f8e558162536db8eb22cf58922db0f63b87)) - Belingud
+- update CHANGELOG.md for v0.6.1 release - ([0c5ece3](https://github.com/belingud/yaicli/commit/0c5ece3c6da82267b280b96dbea8c52c86d1ca32)) - Belingud
+
+### 🧪 Testing
+
+- add xai to provider factory test - ([f89068f](https://github.com/belingud/yaicli/commit/f89068f401955de4f1f9fdcd862d3a4885d324bb)) - Belingud
+- add tests for XaiProvider and new Role class - ([c77d070](https://github.com/belingud/yaicli/commit/c77d0708c395ab1a7dd78e44ed86f87d39ebdf66)) - Belingud
+- update provider referer and add new providers - ([423cbbd](https://github.com/belingud/yaicli/commit/423cbbdb1e5bc6296f0262bee62337bd6e343cf6)) - Belingud
+
+
+---
 ## [0.6.1](https://github.com/belingud/yaicli/compare/v0.6.0..v0.6.1) - 2025-06-22
 
 ### ⛰️  Features
