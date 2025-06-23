@@ -138,7 +138,7 @@ settings, just as below:
 ```ini
 [core]
 PROVIDER=openai
-BASE_URL=https://api.openai.com/v1
+BASE_URL=
 API_KEY=
 MODEL=gpt-4o
 
@@ -150,7 +150,7 @@ OS_NAME=auto
 STREAM=true
 
 # LLM parameters
-TEMPERATURE=0.5
+TEMPERATURE=0.3
 TOP_P=1.0
 MAX_TOKENS=1024
 TIMEOUT=60
@@ -279,6 +279,14 @@ MODEL=deepseek/deepseek-chat-v3-0324
 PROVIDER=groq
 API_KEY=
 MODEL=llama-3.3-70b-versatile
+```
+
+#### XAI
+
+```ini
+PROVIDER=xai
+API_KEY=
+MODEL=grok-3
 ```
 
 #### Chatglm
