@@ -39,23 +39,24 @@ class ProviderFactory:
     """Factory to create LLM provider instances"""
 
     providers_map = {
-        "openai": (".providers.openai_provider", "OpenAIProvider"),
-        "modelscope": (".providers.modelscope_provider", "ModelScopeProvider"),
+        "ai21": (".providers.ai21_provider", "AI21Provider"),
         "chatglm": (".providers.chatglm_provider", "ChatglmProvider"),
-        "openrouter": (".providers.openrouter_provider", "OpenRouterProvider"),
-        "siliconflow": (".providers.siliconflow_provider", "SiliconFlowProvider"),
         "chutes": (".providers.chutes_provider", "ChutesProvider"),
-        "infini-ai": (".providers.infiniai_provider", "InfiniAIProvider"),
-        "yi": (".providers.yi_provider", "YiProvider"),
+        "cohere": (".providers.cohere_provider", "CohereProvider"),
         "deepseek": (".providers.deepseek_provider", "DeepSeekProvider"),
         "doubao": (".providers.doubao_provider", "DoubaoProvider"),
         "groq": (".providers.groq_provider", "GroqProvider"),
-        "ai21": (".providers.ai21_provider", "AI21Provider"),
-        "ollama": (".providers.ollama_provider", "OllamaProvider"),
-        "cohere": (".providers.cohere_provider", "CohereProvider"),
-        "sambanova": (".providers.sambanova_provider", "SambanovaProvider"),
+        "infini-ai": (".providers.infiniai_provider", "InfiniAIProvider"),
         "minimax": (".providers.minimax_provider", "MinimaxProvider"),
+        "modelscope": (".providers.modelscope_provider", "ModelScopeProvider"),
+        "ollama": (".providers.ollama_provider", "OllamaProvider"),
+        "openai": (".providers.openai_provider", "OpenAIProvider"),
+        "openrouter": (".providers.openrouter_provider", "OpenRouterProvider"),
+        "sambanova": (".providers.sambanova_provider", "SambanovaProvider"),
+        "siliconflow": (".providers.siliconflow_provider", "SiliconFlowProvider"),
         "targon": (".providers.targon_provider", "TargonProvider"),
+        "xai": (".providers.xai_provider", "XaiProvider"),
+        "yi": (".providers.yi_provider", "YiProvider"),
     }
 
     @classmethod
