@@ -68,7 +68,7 @@ DEFAULT_JUSTIFY: JustifyMethod = "default"
 DEFAULT_ROLE_MODIFY_WARNING: BOOL_STR = "true"
 DEFAULT_ENABLE_FUNCTIONS: BOOL_STR = "true"
 DEFAULT_SHOW_FUNCTION_OUTPUT: BOOL_STR = "true"
-DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium"]] = None
+DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium"]] = ""
 
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.

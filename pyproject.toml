@@ -1,10 +1,10 @@
 [project]
 name = "yaicli"
-version = "0.6.2"
+version = "0.6.3"
 description = "A simple CLI tool to interact with LLM"
 authors = [{ name = "belingud", email = "im.victor@qq.com" }]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -65,10 +65,16 @@ ai = "yaicli.entry:app"
 yaicli = "yaicli.entry:app"
 
 [project.optional-dependencies]
+all = [
+    "volcengine-python-sdk>=3.0.15",
+    "ollama>=0.5.1",
+    "cohere>=5.15.0",
+    "google-genai>=1.20.0",
+]
 doubao = ["volcengine-python-sdk>=3.0.15"]
 ollama = ["ollama>=0.5.1"]
 cohere = ["cohere>=5.15.0"]
-all = ["volcengine-python-sdk>=3.0.15", "ollama>=0.5.1", "cohere>=5.15.0"]
+gemini = ["google-genai>=1.20.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -91,6 +97,7 @@ dev = [
     "pytest>=8.3.5",
     "pytest-cov>=6.1.1",
     "ruff>=0.11.2",
+    "tox>=4.27.0",
 ]
 
 [tool.isort]

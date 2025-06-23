@@ -62,6 +62,8 @@ class TestProviderFactory:
             "minimax",
             "targon",
             "xai",
+            "gemini",
+            "vertexai",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers
