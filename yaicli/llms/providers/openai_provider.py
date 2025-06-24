@@ -19,7 +19,7 @@ class OpenAIProvider(Provider):
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
     CLIENT_CLS = openai.OpenAI
     # Base mapping between config keys and API parameter names
-    _BASE_COMPLETION_PARAMS_KEYS = {
+    COMPLETION_PARAMS_KEYS = {
         "model": "MODEL",
         "temperature": "TEMPERATURE",
         "top_p": "TOP_P",
@@ -69,7 +69,7 @@ class OpenAIProvider(Provider):
         Returns:
             Dict[str, str]: Mapping from API parameter names to config keys
         """
-        return self._BASE_COMPLETION_PARAMS_KEYS.copy()
+        return self.COMPLETION_PARAMS_KEYS.copy()
 
     def get_completion_params(self) -> Dict[str, Any]:
         """
@@ -89,7 +89,7 @@ class OpenAIProvider(Provider):
         """Convert a list of ChatMessage objects to a list of OpenAI message dicts."""
         converted_messages = []
         for msg in messages:
-            message = {"role": msg.role, "content": msg.content or ""}
+            message: Dict[str, Any] = {"role": msg.role, "content": msg.content or ""}
 
             if msg.name:
                 message["name"] = msg.name

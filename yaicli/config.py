@@ -142,7 +142,7 @@ class Config(dict):
                 if target_type is bool:
                     converted_value = str2bool(raw_value)
                 elif target_type in (int, float, str):
-                    converted_value = target_type(raw_value)
+                    converted_value = target_type(raw_value) if raw_value else raw_value
                 elif target_type is dict and raw_value:
                     converted_value = json.loads(raw_value)
             except (ValueError, TypeError, json.JSONDecodeError) as e:

@@ -262,7 +262,7 @@ class TestGeminiProvider:
 
             # Verify response
             assert len(responses) == 1
-            assert responses[0].content is None
+            assert responses[0].content == ""
             assert responses[0].reasoning == "Let me think about this"
             assert responses[0].finish_reason == "stop"
 
