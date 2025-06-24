@@ -88,7 +88,9 @@ class GeminiProvider(Provider):
             content = types.Content(role=self._map_role(msg.role), parts=[types.Part(text=msg.content)])
             if msg.role == "tool":
                 content.role = "user"
-                content.parts = [types.Part.from_function_response(name=msg.name, response={"result": msg.content})]
+                content.parts = [
+                    types.Part.from_function_response(name=msg.name or "", response={"result": msg.content})
+                ]
             converted_messages.append(content)
         return converted_messages
 
@@ -137,14 +139,14 @@ class GeminiProvider(Provider):
             self.console.print(gemini_messages)
         chat_config = self.get_chat_config()
         chat_config.system_instruction = messages[0].content
-        chat = self.client.chats.create(model=self.config["MODEL"], history=gemini_messages, config=chat_config)
+        chat = self.client.chats.create(model=self.config["MODEL"], history=gemini_messages, config=chat_config)  # type: ignore
         message = messages[-1].content
 
         if stream:
-            response = chat.send_message_stream(message=message)
+            response = chat.send_message_stream(message=message)  # type: ignore
             yield from self._handle_stream_response(response)
         else:
-            response = chat.send_message(message=message)
+            response = chat.send_message(message=message)  # type: ignore
             yield from self._handle_normal_response(response)
 
     def _handle_normal_response(self, response) -> Generator[LLMResponse, None, None]:
@@ -158,7 +160,7 @@ class GeminiProvider(Provider):
             return
         for part in response.candidates[0].content.parts:
             if part.thought:
-                yield LLMResponse(reasoning=part.text, content=None, finish_reason="stop")
+                yield LLMResponse(reasoning=part.text, finish_reason="stop")
             else:
                 yield LLMResponse(reasoning=None, content=part.text, finish_reason="stop")
 
@@ -181,7 +183,7 @@ class GeminiProvider(Provider):
                     reasoning = None
                 yield LLMResponse(
                     reasoning=reasoning,
-                    content=content,
+                    content=content or "",
                     tool_call=tool_call if finish_reason == "tool_calls" else None,
                     finish_reason=finish_reason or None,
                 )

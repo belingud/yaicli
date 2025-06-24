@@ -43,6 +43,8 @@ class ProviderFactory:
         "chatglm": (".providers.chatglm_provider", "ChatglmProvider"),
         "chutes": (".providers.chutes_provider", "ChutesProvider"),
         "cohere": (".providers.cohere_provider", "CohereProvider"),
+        "cohere-bedrock": (".providers.cohere_provider", "CohereBadrockProvider"),
+        "cohere-sagemaker": (".providers.cohere_provider", "CohereSagemakerProvider"),
         "deepseek": (".providers.deepseek_provider", "DeepSeekProvider"),
         "doubao": (".providers.doubao_provider", "DoubaoProvider"),
         "gemini": (".providers.gemini_provider", "GeminiProvider"),

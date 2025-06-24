@@ -10,7 +10,8 @@ This module implements Cohere provider classes for different deployment options:
 from typing import Any, Dict, Generator, List, Optional
 
 from cohere import BedrockClientV2, ClientV2, SagemakerClientV2
-from cohere.types.tool_call_v2 import ToolCallV2, ToolCallV2Function
+from cohere.types.tool_call_v2 import ToolCallV2
+from cohere.types.tool_call_v2function import ToolCallV2Function
 
 from ...config import cfg
 from ...console import get_console
@@ -179,7 +180,9 @@ class CohereProvider(Provider):
                 continue
             elif chunk.type == "tool-call-delta":
                 # Tool call arguments being generated: cohere.types.chat_tool_call_delta_event_delta_message.ChatToolCallDeltaEventDeltaMessage
-                tool_call.arguments += chunk.delta.message.tool_calls.function.arguments
+                if not tool_call:
+                    continue
+                tool_call.arguments += chunk.delta.message.tool_calls.function.arguments or ""
                 # Waiting for tool-call-end event
                 continue
 
@@ -292,7 +295,7 @@ class CohereBadrockProvider(CohereProvider):
         return self.CLIENT_CLS(**self.client_params)
 
 
-class CohereSagemaker(CohereBadrockProvider):
+class CohereSagemakerProvider(CohereBadrockProvider):
     """Cohere provider for AWS Sagemaker integration"""
 
     CLIENT_CLS = SagemakerClientV2

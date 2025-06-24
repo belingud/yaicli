@@ -10,5 +10,6 @@ class SiliconFlowProvider(OpenAIProvider):
 
     def get_completion_params(self) -> Dict[str, Any]:
         params = super().get_completion_params()
-        params["max_tokens"] = params.pop("max_completion_tokens")
+        if "max_completion_tokens" in params:
+            params["max_tokens"] = params.pop("max_completion_tokens")
         return params
