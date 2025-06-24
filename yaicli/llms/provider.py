@@ -47,6 +47,7 @@ class ProviderFactory:
         "doubao": (".providers.doubao_provider", "DoubaoProvider"),
         "gemini": (".providers.gemini_provider", "GeminiProvider"),
         "groq": (".providers.groq_provider", "GroqProvider"),
+        "huggingface": (".providers.huggingface_provider", "HuggingFaceProvider"),
         "infini-ai": (".providers.infiniai_provider", "InfiniAIProvider"),
         "minimax": (".providers.minimax_provider", "MinimaxProvider"),
         "modelscope": (".providers.modelscope_provider", "ModelScopeProvider"),
