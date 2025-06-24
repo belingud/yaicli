@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, Generator, Optional
+from typing import Generator, Optional
 
 from openai._streaming import Stream
 from openai.types.chat.chat_completion import ChatCompletion, Choice
@@ -14,10 +14,14 @@ class ChatglmProvider(OpenAIProvider):
 
     DEFAULT_BASE_URL = "https://open.bigmodel.cn/api/paas/v4/"
 
-    def get_completion_params(self) -> Dict[str, Any]:
-        params = super().get_completion_params()
-        params["max_tokens"] = params.pop("max_completion_tokens")
-        return params
+    COMPLETION_PARAMS_KEYS = {
+        "model": "MODEL",
+        "temperature": "TEMPERATURE",
+        "top_p": "TOP_P",
+        "max_tokens": "MAX_TOKENS",
+        "do_sample": "DO_SAMPLE",
+        "extra_body": "EXTRA_BODY",
+    }
 
     def _handle_normal_response(self, response: ChatCompletion) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response
