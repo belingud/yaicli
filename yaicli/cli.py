@@ -267,7 +267,7 @@ class CLI:
                     assistant_msg = self.chat.history[i + 1] if (i + 1) < len(self.chat.history) else None
                     self.console.print(f"[dim]{i // 2 + 1}[/dim] [bold blue]User:[/bold blue] {user_msg.content}")
                     if assistant_msg:
-                        md = Markdown(assistant_msg.content, code_theme=cfg["CODE_THEME"])
+                        md = Markdown(assistant_msg.content or "", code_theme=cfg["CODE_THEME"])
                         padded_md = Padding(md, (0, 0, 0, 4))
                         self.console.print("    Assistant:", style="bold green")
                         self.console.print(padded_md)
@@ -384,7 +384,7 @@ class CLI:
         self._check_history_len()
 
         if self.current_mode == EXEC_MODE:
-            self._confirm_and_execute(content)
+            self._confirm_and_execute(content or "")
         return True
 
     def _confirm_and_execute(self, raw_content: str) -> None:
