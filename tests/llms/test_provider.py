@@ -65,6 +65,8 @@ class TestProviderFactory:
             "gemini",
             "vertexai",
             "huggingface",
+            "cohere-bedrock",
+            "cohere-sagemaker",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers

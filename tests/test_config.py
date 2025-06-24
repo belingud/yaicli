@@ -33,7 +33,7 @@ def get_typed_defaults():
                 defaults[key] = {}  # Empty dict for empty strings or None
         else:
             try:
-                defaults[key] = type_(val)
+                defaults[key] = type_(val) if val else val
             except (ValueError, TypeError):  # Should not happen with defaults
                 defaults[key] = val  # Fallback
     return defaults

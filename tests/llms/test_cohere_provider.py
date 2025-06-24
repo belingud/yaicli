@@ -5,7 +5,7 @@ import pytest
 from yaicli.llms.providers.cohere_provider import (
     CohereBadrockProvider,
     CohereProvider,
-    CohereSagemaker,
+    CohereSagemakerProvider,
 )
 from yaicli.schemas import ChatMessage, LLMResponse, ToolCall
 
@@ -332,8 +332,8 @@ class TestCohereSagemakerProvider:
         mock_sagemaker_client.return_value = mock_client
 
         # Create a special patched version of create_client that skips the actual API call
-        with patch.object(CohereSagemaker, "create_client", return_value=mock_client):
-            provider = CohereSagemaker(config=mock_config)
+        with patch.object(CohereSagemakerProvider, "create_client", return_value=mock_client):
+            provider = CohereSagemakerProvider(config=mock_config)
 
             # Just verify the provider was initialized without errors
             assert provider is not None
