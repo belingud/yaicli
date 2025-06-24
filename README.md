@@ -86,14 +86,8 @@ Yaicli has several optional dependencies group, you can copy below commands to i
 # install all denpendencies
 pip install 'yaicli[all]'
 
-# install with ollama support
-pip instsall 'yaicli[ollama]'
-
-# install with cohere support
-pip install 'yaicli[cohere]'
-
-# install with doubao support
-pip install 'yaicli[doubao]'
+# install with specific provider support
+pip instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini]'
 ```
 
 Install by `uv`.
@@ -102,14 +96,8 @@ Install by `uv`.
 # install all denpendencies
 uv tool install 'yaicli[all]'
 
-# install with ollama support
-uv tool instsall 'yaicli[ollama]'
-
-# install with cohere support
-uv tool install 'yaicli[cohere]'
-
-# install with doubao support
-uv tool install 'yaicli[doubao]'
+# install with specific provider support
+uv tool instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini]'
 ```
 
 ### Install from Source
@@ -119,6 +107,31 @@ git clone https://github.com/belingud/yaicli.git
 cd yaicli
 pip install .
 ```
+
+## Buildin Supported Providers
+
+- AI21
+- Chatglm
+- Chuts
+- Cohere
+- Cohere Badrock
+- Cohere Sagemaker
+- Deepseek
+- Doubao
+- Gemini
+- Vertex AI
+- Groq
+- Huggingface
+- Minimax
+- ModelScope
+- Ollama
+- Openai
+- Sambanova
+- Siliconflow
+- Targon
+- X AI
+- Yi
+- Unlimited OpenAI-compatible providers
 
 ## ⚙️ Configuration
 
