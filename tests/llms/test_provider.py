@@ -64,6 +64,7 @@ class TestProviderFactory:
             "xai",
             "gemini",
             "vertexai",
+            "huggingface",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers
