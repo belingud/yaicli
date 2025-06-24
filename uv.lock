@@ -1715,6 +1715,7 @@ dependencies = [
 all = [
     { name = "cohere" },
     { name = "google-genai" },
+    { name = "huggingface-hub" },
     { name = "ollama" },
     { name = "volcengine-python-sdk" },
 ]
@@ -1726,6 +1727,9 @@ doubao = [
 ]
 gemini = [
     { name = "google-genai" },
+]
+huggingface = [
+    { name = "huggingface-hub" },
 ]
 ollama = [
     { name = "ollama" },
@@ -1749,6 +1753,8 @@ requires-dist = [
     { name = "google-genai", marker = "extra == 'all'", specifier = ">=1.20.0" },
     { name = "google-genai", marker = "extra == 'gemini'", specifier = ">=1.20.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "huggingface-hub", marker = "extra == 'all'", specifier = ">=0.33.0" },
+    { name = "huggingface-hub", marker = "extra == 'huggingface'", specifier = ">=0.33.0" },
     { name = "instructor", specifier = ">=1.7.9" },
     { name = "json-repair", specifier = ">=0.44.1" },
     { name = "ollama", marker = "extra == 'all'", specifier = ">=0.5.1" },
@@ -1761,7 +1767,7 @@ requires-dist = [
     { name = "volcengine-python-sdk", marker = "extra == 'all'", specifier = ">=3.0.15" },
     { name = "volcengine-python-sdk", marker = "extra == 'doubao'", specifier = ">=3.0.15" },
 ]
-provides-extras = ["all", "doubao", "ollama", "cohere", "gemini"]
+provides-extras = ["all", "doubao", "ollama", "cohere", "gemini", "huggingface"]
 
 [package.metadata.requires-dev]
 dev = [
