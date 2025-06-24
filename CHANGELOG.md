@@ -1,5 +1,37 @@
 
 ---
+## [0.6.4](https://github.com/belingud/yaicli/compare/v0.6.3..v0.6.4) - 2025-06-24
+
+### ⛰️  Features
+
+- add new Cohere providers and improve type handling - ([5d5f53c](https://github.com/belingud/yaicli/commit/5d5f53cda18eea77f1e83e8ec24f519c6cd6a01f)) - Belingud
+- add HuggingFace provider to ProviderFactory - ([a08cd70](https://github.com/belingud/yaicli/commit/a08cd7094ed3af11d754bd788730f6a130bcfade)) - Belingud
+- add HuggingFaceProvider class - ([d81b42c](https://github.com/belingud/yaicli/commit/d81b42c9ad884489b50aae17696910a02666c22e)) - Belingud
+
+### 🐛 Bug Fixes
+
+- handle empty content in CLI methods - ([26ed101](https://github.com/belingud/yaicli/commit/26ed101e899e1b9de3d6af36dabcfbd3e190c8f3)) - Belingud
+
+### 🚜 Refactor
+
+- standardize completion params keys in providers - ([6802dfd](https://github.com/belingud/yaicli/commit/6802dfd61760ea66e494f776a5e85ecea1de2b91)) - Belingud
+
+### 📚 Documentation
+
+- update installation commands and supported providers - ([9034c98](https://github.com/belingud/yaicli/commit/9034c9876f5268a3073c2cad0db503324207e819)) - Belingud
+- add new models and configurations - ([f2b02b8](https://github.com/belingud/yaicli/commit/f2b02b83e604e82ed9a913b1da54c99b9cfbae02)) - Belingud
+- update CHANGELOG.md for v0.6.3 release - ([8370366](https://github.com/belingud/yaicli/commit/8370366f1bb0bf48cb12488f9e222e0526aff305)) - Belingud
+
+### 🧪 Testing
+
+- add tests for HuggingFaceProvider and update provider factory - ([88f4a0b](https://github.com/belingud/yaicli/commit/88f4a0b8b62e8028f3b4bcb7fbb47512fc631614)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add new dependencies and keywords - ([f82a5b7](https://github.com/belingud/yaicli/commit/f82a5b7ea217e888cb621b19d34f11a6c5389d8a)) - Belingud
+
+
+---
 ## [0.6.3](https://github.com/belingud/yaicli/compare/v0.6.2..v0.6.3) - 2025-06-23
 
 ### ⛰️  Features
