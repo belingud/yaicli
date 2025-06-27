@@ -90,25 +90,17 @@ class AI21Provider(OpenAIProvider):
         """
         # Get the first (and only) tool call from the chunk
         call = tool_calls[0]
-        
+
         if existing_tool_call is None:
             # First chunk - create new tool call with function name
-            return ToolCall(
-                id=call.id,
-                name=call.function.name,
-                arguments="{}"
-            )
+            return ToolCall(id=call.id, name=call.function.name, arguments="{}")
         else:
             # Update existing tool call with new arguments data
             # Keep existing data and update with new information
             existing_arguments = existing_tool_call.arguments
             new_arguments = call.function.arguments if hasattr(call.function, "arguments") else "{}"
-            
+
             # Combine arguments (new arguments should override if available)
             combined_arguments = new_arguments if new_arguments else existing_arguments
-            
-            return ToolCall(
-                id=existing_tool_call.id,
-                name=existing_tool_call.name,
-                arguments=combined_arguments
-            )
+
+            return ToolCall(id=existing_tool_call.id, name=existing_tool_call.name, arguments=combined_arguments)

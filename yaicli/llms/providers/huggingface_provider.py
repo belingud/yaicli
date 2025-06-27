@@ -11,7 +11,7 @@ class HuggingFaceProvider(ChatglmProvider):
     """
 
     CLIENT_CLS = InferenceClient
-    DEFAULT_PROVIDER = "hf-inference"
+    DEFAULT_PROVIDER = "auto"
 
     COMPLETION_PARAMS_KEYS = {
         "model": "MODEL",

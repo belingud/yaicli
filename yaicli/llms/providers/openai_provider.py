@@ -57,7 +57,7 @@ class OpenAIProvider(Provider):
 
         # Add extra headers if set
         if self.config["EXTRA_HEADERS"]:
-            client_params["default_headers"] = {**self.config["EXTRA_HEADERS"], **self.client_params["default_headers"]}
+            client_params["default_headers"] = {**self.config["EXTRA_HEADERS"], **client_params["default_headers"]}
         return client_params
 
     def get_completion_params_keys(self) -> Dict[str, str]:
