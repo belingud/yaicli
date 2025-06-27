@@ -1,5 +1,40 @@
 
 ---
+## [0.7.0](https://github.com/belingud/yaicli/compare/v0.6.4..v0.7.0) - 2025-06-27
+
+### ⛰️  Features
+
+- add MCP support in functions module - ([224c408](https://github.com/belingud/yaicli/commit/224c4084fe4990bc5cc640e94886630d79f38ec8)) - Belingud
+- add --list-mcp option to main function - ([4a536d4](https://github.com/belingud/yaicli/commit/4a536d43a04cb7bbc135f84e0fe22ee52c6c9da3)) - Belingud
+- add MCP options to CLI entry point - ([d7f3978](https://github.com/belingud/yaicli/commit/d7f397850a49af17cd03c32e27a434427ad6fee5)) - Belingud
+- add MCP support to LLMClient and providers - ([58a4609](https://github.com/belingud/yaicli/commit/58a4609521ee5bcc97c285b0d28055b740b247a7)) - Belingud
+- add asyncio utilities and function wrapper - ([fb9e02b](https://github.com/belingud/yaicli/commit/fb9e02bc4d345bb0b7feb9ba5407de2083d63503)) - Belingud
+
+### 🐛 Bug Fixes
+
+- Add tool call chunk processing in AI21Provider - ([df78c4f](https://github.com/belingud/yaicli/commit/df78c4ff733a5483cf60cf207e09677674c140a7)) - Belingud
+
+### 🚜 Refactor
+
+- simplify tool call creation and update default provider - ([225e066](https://github.com/belingud/yaicli/commit/225e0666666908b4e2fbbbbfb4fd1bc5ae97ab36)) - Belingud
+- remove unused imports and simplify DoubaoProvider constructor - ([5effa9d](https://github.com/belingud/yaicli/commit/5effa9d2559257578932b9c82f8f95d06764864f)) - Belingud
+- update parse_choice_from_content to support ChoiceChunk - ([7f2194f](https://github.com/belingud/yaicli/commit/7f2194f60ab592608c9ea4012e442dc9737e4a02)) - Belingud
+- refactor tools module for MCP integration - ([62ab778](https://github.com/belingud/yaicli/commit/62ab77895b4f7f4cd9246226af3c03b096a86186)) - Belingud
+
+### 📚 Documentation
+
+- add default HF_PROVIDER to README - ([98e0066](https://github.com/belingud/yaicli/commit/98e0066efe7fb9c7f05beab41a2420db4bae2301)) - Belingud
+- add MCP support and documentation - ([adfdd62](https://github.com/belingud/yaicli/commit/adfdd62637fc17b83b431581580d123589420d56)) - Belingud
+- update CHANGELOG.md for v0.6.4 release - ([d16a66b](https://github.com/belingud/yaicli/commit/d16a66b30150440a009c4d1febf72d1806b4cf5e)) - Belingud
+
+### 🧪 Testing
+
+- update test case for new config key - ([f38024c](https://github.com/belingud/yaicli/commit/f38024cbcf1b6b9ce085bce62c1f1f967d2a5f86)) - Belingud
+- add tests for get_or_create_event_loop - ([594b671](https://github.com/belingud/yaicli/commit/594b6717f83ce0feea2571008337e24afc701694)) - Belingud
+- update provider names and default value handling - ([013a989](https://github.com/belingud/yaicli/commit/013a98988a041c8e61b9793fb8b174f0cf444af2)) - Belingud
+
+
+---
 ## [0.6.4](https://github.com/belingud/yaicli/compare/v0.6.3..v0.6.4) - 2025-06-24
 
 ### ⛰️  Features
