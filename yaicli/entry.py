@@ -209,6 +209,22 @@ def main(
         show_default=False,
         callback=override_config,
     ),
+    # ------------------- MCP Options -------------------
+    enable_mcp: bool = typer.Option(  # noqa: F841
+        cfg["ENABLE_MCP"],
+        "--enable-mcp/--disable-mcp",
+        help=f"Enable/disable MCP in API requests [dim](default: {'enabled' if cfg['ENABLE_MCP'] else 'disabled'})[/dim]",
+        rich_help_panel="MCP Options",
+        callback=override_config,
+    ),
+    show_mcp_output: bool = typer.Option(  # noqa: F841
+        cfg["SHOW_MCP_OUTPUT"],
+        "--show-mcp-output/--hide-mcp-output",
+        help=f"Show the output of MCP [dim](default: {'show' if cfg['SHOW_MCP_OUTPUT'] else 'hide'})[/dim]",
+        rich_help_panel="MCP Options",
+        show_default=False,
+        callback=override_config,
+    ),
 ):
     """YAICLI: Your AI assistant in the command line.
 
