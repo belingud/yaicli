@@ -4,6 +4,7 @@ from ..config import cfg
 from ..console import get_console
 from ..schemas import ChatMessage, LLMResponse, RefreshLive, ToolCall
 from ..tools import execute_tool_call
+from ..tools.mcp import MCP_TOOL_NAME_PREFIX
 from .provider import Provider, ProviderFactory
 
 
@@ -37,6 +38,8 @@ class LLMClient:
         self.config = config
         self.verbose = verbose
         self.console = get_console()
+        self.enable_function = self.config["ENABLE_FUNCTIONS"]
+        self.enable_mcp = self.config["ENABLE_MCP"]
 
         # Use provided provider or create one
         if provider:
@@ -73,48 +76,78 @@ class LLMClient:
             )
             return
 
-        # Get completion from provider
-        llm_response_generator = self.provider.completion(messages, stream=stream)
-
-        # To hold the full response
+        # Get completion from provider and collect response data
         assistant_response_content = ""
-        tool_calls: List[ToolCall] = []
+        # Providers may return identical tool calls with the same ID in a single response during streaming
+        tool_calls: dict[str, ToolCall] = {}
 
-        # Process all responses from the provider
-        for llm_response in llm_response_generator:
-            # Forward the response to the caller
-            yield llm_response
+        # Stream responses and collect data
+        for llm_response in self.provider.completion(messages, stream=stream):
+            yield llm_response  # Forward response to caller
 
-            # Collect content and tool calls
+            # Collect content and tool calls for potential tool execution
             if llm_response.content:
                 assistant_response_content += llm_response.content
-            if llm_response.tool_call and llm_response.tool_call not in tool_calls:
-                tool_calls.append(llm_response.tool_call)
+            if llm_response.tool_call and llm_response.tool_call.id not in tool_calls:
+                tool_calls[llm_response.tool_call.id] = llm_response.tool_call
 
-        # If we have tool calls, execute them and make recursive call
-        if tool_calls and self.config["ENABLE_FUNCTIONS"]:
-            # Yield a refresh signal to indicate new content is coming
-            yield RefreshLive()
+        # Check if we need to execute tools
+        if not tool_calls or not (self.enable_function or self.enable_mcp):
+            return
 
-            # Append the assistant message with tool calls to history
-            messages.append(ChatMessage(role="assistant", content=assistant_response_content, tool_calls=tool_calls))
+        # Filter valid tool calls based on enabled features
+        valid_tool_calls = self._get_valid_tool_calls(tool_calls)
+        if not valid_tool_calls:
+            return
 
-            # Execute each tool call and append the results
-            for tool_call in tool_calls:
-                function_result, _ = execute_tool_call(tool_call)
+        # Execute tools and continue conversation
+        yield from self._execute_tools_and_continue(
+            messages, assistant_response_content, valid_tool_calls, stream, recursion_depth
+        )
 
-                # Use provider's tool role detection
-                tool_role = self.provider.detect_tool_role()
+    def _get_valid_tool_calls(self, tool_calls: dict[str, ToolCall]) -> List[ToolCall]:
+        """Filter tool calls based on enabled features"""
+        valid_tool_calls = []
 
-                # Append the tool result to history
-                messages.append(
-                    ChatMessage(
-                        role=tool_role,
-                        content=function_result,
-                        name=tool_call.name,
-                        tool_call_id=tool_call.id,
-                    )
+        for tool_call in tool_calls.values():
+            is_mcp = tool_call.name.startswith(MCP_TOOL_NAME_PREFIX)
+
+            if is_mcp and self.enable_mcp:
+                valid_tool_calls.append(tool_call)
+            elif not is_mcp and self.enable_function:
+                valid_tool_calls.append(tool_call)
+
+        return valid_tool_calls
+
+    def _execute_tools_and_continue(
+        self,
+        messages: List[ChatMessage],
+        assistant_response_content: str,
+        tool_calls: List[ToolCall],
+        stream: bool,
+        recursion_depth: int,
+    ) -> Generator[Union[LLMResponse, RefreshLive], None, None]:
+        """Execute tool calls and continue the conversation"""
+        # Signal that new content is coming
+        yield RefreshLive()
+
+        # Add assistant message with tool calls to history (only once)
+        messages.append(ChatMessage(role="assistant", content=assistant_response_content, tool_calls=tool_calls))
+
+        # Execute each tool call and add results to messages
+        tool_role = self.provider.detect_tool_role()
+
+        for tool_call in tool_calls:
+            function_result, _ = execute_tool_call(tool_call)
+
+            messages.append(
+                ChatMessage(
+                    role=tool_role,
+                    content=function_result,
+                    name=tool_call.name,
+                    tool_call_id=tool_call.id,
                 )
+            )
 
-            # Make a recursive call with the updated history
-            yield from self.completion_with_tools(messages, stream=stream, recursion_depth=recursion_depth + 1)
+        # Continue the conversation with updated history
+        yield from self.completion_with_tools(messages, stream=stream, recursion_depth=recursion_depth + 1)

@@ -1,23 +1,16 @@
 import json
-from functools import wraps
 from typing import Any, Callable, Dict, Generator, List
 
 import google.genai as genai
 from google.genai import types
 
+from yaicli.tools.mcp import get_mcp_manager
+
 from ...config import cfg
 from ...console import get_console
 from ...schemas import ChatMessage, LLMResponse
-from ...tools import get_func_name_map
+from ...tools.function import get_functions_gemini_format
 from ..provider import Provider
-
-
-def wrap_function(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-
-    return wrapper
 
 
 class GeminiProvider(Provider):
@@ -28,6 +21,7 @@ class GeminiProvider(Provider):
     def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):
         self.config = config
         self.enable_function = self.config["ENABLE_FUNCTIONS"]
+        self.enable_mcp = self.config["ENABLE_MCP"]
         self.verbose = verbose
 
         # Initialize client
@@ -67,16 +61,17 @@ class GeminiProvider(Provider):
             config_map["frequency_penalty"] = self.config["FREQUENCY_PENALTY"]
         if self.config.get("SEED"):
             config_map["seed"] = self.config["SEED"]
-        # Indicates whether to include thoughts in the response. If true, thoughts are returned only if the model supports thought and thoughts are available.
+        # Indicates whether to include thoughts in the response.
+        # If true, thoughts are returned only if the model supports thought and thoughts are available.
         thinking_config_map = {"include_thoughts": self.config.get("INCLUDE_THOUGHTS", True)}
         if self.config.get("THINKING_BUDGET"):
             thinking_config_map["thinking_budget"] = int(self.config["THINKING_BUDGET"])
         config_map["thinking_config"] = types.ThinkingConfig(**thinking_config_map)
-        config = types.GenerateContentConfig(**config_map)
-        if self.enable_function:
+        if self.enable_function or self.enable_mcp:
             # TODO: support disable automatic function calling
             # config.automatic_function_calling = types.AutomaticFunctionCallingConfig(disable=False)
-            config.tools = self.gen_gemini_functions()
+            config_map["tools"] = self.gen_gemini_functions()
+        config = types.GenerateContentConfig(**config_map)
         return config
 
     def _convert_messages(self, messages: List[ChatMessage]) -> List[types.Content]:
@@ -103,15 +98,19 @@ class GeminiProvider(Provider):
 
     def gen_gemini_functions(self) -> List[Callable[..., Any]]:
         """Wrap Gemini functions from OpenAI functions for automatic function calling"""
-        func_name_map = get_func_name_map()
-        if not func_name_map:
-            return []
         funcs = []
-        for func_name, func in func_name_map.items():
-            wrapped_func = wrap_function(func.execute)
-            wrapped_func.__name__ = func_name
-            wrapped_func.__doc__ = func.__doc__
-            funcs.append(wrapped_func)
+
+        # Add regular functions
+        if self.enable_function:
+            funcs.extend(get_functions_gemini_format())
+
+        # Add MCP functions if enabled
+        if self.enable_mcp:
+            try:
+                mcp_tools = get_mcp_manager().to_gemini_tools()
+                funcs.extend(mcp_tools)
+            except (ImportError, Exception) as e:
+                self.console.print(f"Failed to load MCP tools for Gemini: {e}", style="red")
         return funcs
 
     def completion(
