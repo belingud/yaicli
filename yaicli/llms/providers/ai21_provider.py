@@ -63,7 +63,7 @@ class AI21Provider(OpenAIProvider):
             if finish_reason == "tool_calls" and not content:
                 # tool call assistant message, content can't be empty
                 # Error code: 422 - {'detail': {'error': ['Value error, message content must not be an empty string']}}
-                content = tool_call.id
+                content = tool_call.id if tool_call else ""
 
             # Generate response object
             yield LLMResponse(
@@ -71,4 +71,44 @@ class AI21Provider(OpenAIProvider):
                 content=content,
                 tool_call=tool_call if finish_reason == "tool_calls" else None,
                 finish_reason=finish_reason,
+            )
+
+    def _process_tool_call_chunk(self, tool_calls, existing_tool_call=None):
+        """Process a tool call chunk from AI21 API response
+
+        Tool calls from AI21 are delivered across multiple chunks:
+        - First chunk contains function name
+        - Subsequent chunks contain arguments data
+        - Final chunk (with finish_reason='tool_calls') contains complete arguments
+
+        Args:
+            tool_calls: Tool call data from current chunk
+            existing_tool_call: Previously accumulated tool call object
+
+        Returns:
+            ToolCall: Updated tool call object with accumulated data
+        """
+        # Get the first (and only) tool call from the chunk
+        call = tool_calls[0]
+        
+        if existing_tool_call is None:
+            # First chunk - create new tool call with function name
+            return ToolCall(
+                id=call.id,
+                name=call.function.name,
+                arguments="{}"
+            )
+        else:
+            # Update existing tool call with new arguments data
+            # Keep existing data and update with new information
+            existing_arguments = existing_tool_call.arguments
+            new_arguments = call.function.arguments if hasattr(call.function, "arguments") else "{}"
+            
+            # Combine arguments (new arguments should override if available)
+            combined_arguments = new_arguments if new_arguments else existing_arguments
+            
+            return ToolCall(
+                id=existing_tool_call.id,
+                name=existing_tool_call.name,
+                arguments=combined_arguments
             )
