@@ -1,6 +1,6 @@
 [project]
 name = "yaicli"
-version = "0.7.0"
+version = "0.7.1"
 description = "A simple CLI tool to interact with LLM"
 authors = [{ name = "belingud", email = "im.victor@qq.com" }]
 readme = "README.md"
@@ -88,6 +88,9 @@ cohere = ["cohere>=5.15.0"]
 gemini = ["google-genai>=1.20.0"]
 huggingface = [
     "huggingface-hub>=0.33.0",
+]
+mistral = [
+    "mistralai>=1.8.2",
 ]
 
 [tool.pytest.ini_options]
