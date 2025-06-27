@@ -336,8 +336,10 @@ LOCATION=
 
 #### Huggingface
 
+Default `HF_PROVIDER` is `auto`.
+
 ```ini
-HF_PROVIDER=sambanova
+HF_PROVIDER=auto
 PROVIDER=huggingface
 API_KEY=
 MODEL=deepseek-ai/DeepSeek-R1-0528
