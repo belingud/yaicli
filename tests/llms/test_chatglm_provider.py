@@ -26,6 +26,7 @@ class TestChatglmProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     @pytest.fixture

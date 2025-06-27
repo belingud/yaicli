@@ -21,6 +21,7 @@ class TestOllamaProvider:
             "TIMEOUT": 10,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
             "THINK": "false",
         }
 

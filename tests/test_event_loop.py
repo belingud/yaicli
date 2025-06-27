@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 from yaicli.utils import get_or_create_event_loop
 

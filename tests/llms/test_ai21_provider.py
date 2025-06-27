@@ -24,6 +24,7 @@ class TestAI21Provider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):

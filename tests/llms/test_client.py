@@ -46,6 +46,7 @@ class TestLLMClient:
             "TIMEOUT": 60,
             "PROVIDER": "openai",
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
             "MAX_RECURSION_DEPTH": 5,
         }
 

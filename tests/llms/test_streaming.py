@@ -23,6 +23,7 @@ class TestStreamingResponses:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     @patch("yaicli.tools.get_openai_schemas")

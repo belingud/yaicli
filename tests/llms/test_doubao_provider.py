@@ -22,6 +22,7 @@ class TestDoubaoProvider:
             "EXTRA_HEADERS": {"User-Agent": "Test-Agent"},
             "EXTRA_BODY": {"custom_param": "test_value"},
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
             "AK": "test_access_key",
             "SK": "test_secret_key",
             "REGION": "cn-beijing",
@@ -71,6 +72,7 @@ class TestDoubaoProvider:
             "MAX_TOKENS": 1024,
             "TIMEOUT": 10,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
         # Create a mock client

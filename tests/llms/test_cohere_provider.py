@@ -25,6 +25,7 @@ class TestCohereProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     @pytest.fixture
@@ -280,6 +281,7 @@ class TestCohereBadrockProvider:
             "TEMPERATURE": 0.7,
             "TIMEOUT": 60,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
             # Add required AWS credentials
             "AWS_REGION": "us-east-1",
             "AWS_ACCESS_KEY_ID": "fake-access-key",
@@ -318,6 +320,7 @@ class TestCohereSagemakerProvider:
             "TEMPERATURE": 0.7,
             "TIMEOUT": 60,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
             # Add required AWS credentials
             "AWS_REGION": "us-east-1",
             "AWS_ACCESS_KEY_ID": "fake-access-key",
