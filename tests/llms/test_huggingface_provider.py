@@ -22,6 +22,7 @@ class TestHuggingFaceProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
             "HF_PROVIDER": "hf-inference",
             "BILL_TO": "organization-123",
         }

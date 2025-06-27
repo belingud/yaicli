@@ -2,8 +2,6 @@ from typing import Any, Dict
 
 from volcenginesdkarkruntime import Ark
 
-from ...config import cfg
-from ...console import get_console
 from .openai_provider import OpenAIProvider
 
 
@@ -12,18 +10,6 @@ class DoubaoProvider(OpenAIProvider):
 
     DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
     CLIENT_CLS = Ark
-
-    def __init__(self, config: dict = cfg, **kwargs):
-        self.config = config
-        self.enable_function = self.config["ENABLE_FUNCTIONS"]
-        self.client_params = self.get_client_params()
-
-        # Initialize client
-        self.client = self.CLIENT_CLS(**self.client_params)
-        self.console = get_console()
-
-        # Store completion params
-        self.completion_params = self.get_completion_params()
 
     def get_client_params(self) -> Dict[str, Any]:
         # Initialize client params

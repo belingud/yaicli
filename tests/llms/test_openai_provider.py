@@ -23,6 +23,7 @@ class TestOpenAIProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     @pytest.fixture
@@ -49,6 +50,10 @@ class TestOpenAIProvider:
             assert provider.client_params == {
                 "api_key": mock_config["API_KEY"],
                 "base_url": mock_config["BASE_URL"],
+                "default_headers": {
+                    "X-Title": provider.APP_NAME,
+                    "HTTP_Referer": provider.APP_REFERER,
+                }
             }
 
             # Check initialization of completion params
@@ -72,7 +77,7 @@ class TestOpenAIProvider:
             assert provider.client_params["default_headers"] == {
                 **extra_headers,
                 "X-Title": provider.APP_NAME,
-                "HTTP-Referer": provider.APP_REFERER,
+                "HTTP_Referer": provider.APP_REFERER,
             }
 
     def test_init_with_extra_body(self, mock_config):

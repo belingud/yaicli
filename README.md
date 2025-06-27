@@ -22,6 +22,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 > [!NOTE]
 > YAICLI is actively developed. While core functionality is stable, some features may evolve in future releases.
 
+> We support MCP since v0.7.0!
 > We support Function Call since v0.5.0!
 
 ## ✨ Key Features
@@ -119,7 +120,6 @@ pip install .
 - Deepseek
 - Doubao
 - Gemini
-- Vertex AI
 - Groq
 - Huggingface
 - Minimax
@@ -129,6 +129,7 @@ pip install .
 - Sambanova
 - Siliconflow
 - Targon
+- Vertex ai
 - X AI
 - Yi
 - Unlimited OpenAI-compatible providers
@@ -195,6 +196,10 @@ ROLE_MODIFY_WARNING=true
 ENABLE_FUNCTIONS=true
 # Set to false to disable showing function output in the response
 SHOW_FUNCTION_OUTPUT=true
+
+# MCP settings
+ENABLE_MCP=false
+SHOW_MCP_OUTPUT=false
 ```
 
 ### Configuration Options Reference
@@ -225,7 +230,10 @@ SHOW_FUNCTION_OUTPUT=true
 | `MAX_SAVED_CHATS`      | Max saved chats                             | `20`                     | `YAI_MAX_SAVED_CHATS`      |
 | `ROLE_MODIFY_WARNING`  | Warn user when modifying role               | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
 | `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
-| `SHOW_FUNCTION_OUTPUT` | Show function output in response            | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
+| `SHOW_FUNCTION_OUTPUT` | Show function output when calling function  | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
+| `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
+| `SHOW_MCP_OUTPUT`      | Show MCP output when calling mcp            | `true`                   | `YAI_SHOW_MCP_OUTPUT`      |
+
 
 ### LLM Provider Configuration
 
@@ -328,8 +336,10 @@ LOCATION=
 
 #### Huggingface
 
+Default `HF_PROVIDER` is `auto`.
+
 ```ini
-HF_PROVIDER=sambanova
+HF_PROVIDER=auto
 PROVIDER=huggingface
 API_KEY=
 MODEL=deepseek-ai/DeepSeek-R1-0528
@@ -1008,6 +1018,83 @@ Thinking:
 
 Current directory size: 156M (using du -sh .).
 ```
+
+### MCP
+
+Add your MCP config in `~/.config/yaicli/mcp.json` (`C:\Users\<user>\.config\yaicli\mcp.json` on Windows.).
+
+`--enable-mcp` option is corresponds to the configuration key `ENABLE_MCP`.
+
+Example:
+
+```shell
+ai 'What is the latest exchange rate between the BTC and the US dollar?' --enable-mcp --show-mcp-output
+
+Assistant:
+
+@Mcp call: bing_search({"query": "latest exchange rate between BTC and US dollar"})
+╭─ Mcp output ──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ [                                                                                                                         │
+│   {                                                                                                                       │
+│     "id": "result_1751024997243_0",                                                                                       │
+│     "title": "BTC to USD - Bitcoin to US Dollar Conversion - Exchange Rates",                                             │
+│     "link": "https://www.exchange-rates.org/converter/btc-usd",                                                           │
+│     "snippet": "11 小时之前 · 1 Bitcoin = 107,304 US Dollars as of June 27, 2025 03:00 AM UTC. You can get live exchange  │
+│ rates between Bitcoin and US Dollars using exchange-rates.org, which aggregates …"                                        │
+│   },                                                                                                                      │
+│   {                                                                                                                       │
+│     "id": "result_1751024997245_1",                                                                                       │
+│     "title": "Live Bitcoin to US Dollars Exchange Rate - ₿ 1 …",                                                          │
+│     "link": "https://btc.currencyrate.today/usd",                                                                         │
+│     "snippet": ".b_imgcap_altitle p strong,.b_imgcap_altitle .b_factrow strong{color:#767676}#b_results                   │
+│ .b_imgcap_altitle{line-height:22px}.b_hList img{display:block}..."                                                        │
+│   },                                                                                                                      │
+│   {                                                                                                                       │
+│     "id": "result_1751024997246_2",                                                                                       │
+│     "title": "1 BTC to USD - Bitcoins to US Dollars Exchange Rate - Xe",                                                  │
+│     "link": "https://www.xe.com/currencyconverter/convert/?From=BTC&To=USD",                                              │
+│     "snippet": "2025年6月15日 · Get the latest 1 Bitcoin to US Dollar rate for FREE with the original Universal Currency  │
+│ Converter. Set rate alerts for to and learn more about Bitcoins and US Dollars from …"                                    │
+│   },                                                                                                                      │
+│   {                                                                                                                       │
+│     "id": "result_1751024997246_3",                                                                                       │
+│     "title": "BTC to USD Exchange Rates | Best Exchange Rates",                                                           │
+│     "link": "https://bestexchangerates.com/rates/btc-to-usd",                                                             │
+│     "snippet": "Bitcoin (BTC) to US dollar (USD) market data - latest interbank exchange rate, trend, chart & historic    │
+│ rates. Sell BTC → Buy USD"                                                                                                │
+│   },                                                                                                                      │
+│   {                                                                                                                       │
+│     "id": "result_1751024997247_4",                                                                                       │
+│     "title": "BTC to USD | Bitcoin to US Dollar - Investing.com",                                                         │
+│     "link": "https://www.investing.com/crypto/bitcoin/btc-usd",                                                           │
+│     "snippet": "Bitcoin Eyes 120k as Fed Rate Cuts Hopes Rise, US Dollar Falls to Multi-Year Lows BTC hovers around       │
+│ 107.5k after attempts at 108k Fed rate cut optimism rises USD falls to its lowest level …"                                │
+│   }                                                                                                                       │
+│ ]                                                                                                                         │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Here are some current exchange rates for Bitcoin (BTC) to US Dollar (USD):                                                   
+
+ 1 Exchange-Rates.org:                                                                                                       
+   ₿1 Bitcoin = 💵107,304 US Dollars (as of June 27, 2025, 03:00 AM UTC).                                                    
+   Link                                                                                                                      
+ 2 BTC.CurrencyRate.Today:                                                                                                   
+   Live Bitcoin to US Dollars exchange rate.                                                                                 
+   Link                                                                                                                      
+ 3 Xe.com:                                                                                                                   
+   Latest conversion rate and information about Bitcoin to US Dollars.                                                       
+   Link                                                                                                                      
+ 4 BestExchangeRates.com:                                                                                                    
+   Current BTC to USD market data, including charts and historic rates.                                                      
+   Link                                                                                                                      
+ 5 Investing.com:                                                                                                            
+   Bitcoin price analysis and live BTC to USD updates.                                                                       
+   Link                                                                                                                      
+
+For the most accurate and up-to-date rate, I recommend checking one of these sources directly.                               
+```
+
+![mcp](artwork/mcp_example.png)
+
 
 ## 💻 Technical Details
 

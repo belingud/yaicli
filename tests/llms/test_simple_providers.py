@@ -30,6 +30,7 @@ class TestYiProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -60,6 +61,7 @@ class TestChutesProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -90,6 +92,7 @@ class TestDeepSeekProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -124,6 +127,7 @@ class TestGroqProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": {"N": 2},  # Add EXTRA_BODY with N parameter
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -166,6 +170,7 @@ class TestInfiniAIProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -211,6 +216,7 @@ class TestModelScopeProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -240,6 +246,7 @@ class TestOpenRouterProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -269,6 +276,7 @@ class TestSiliconFlowProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -298,6 +306,7 @@ class TestXaiProvider:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -328,6 +337,7 @@ class TestCustomBaseURL:
             "EXTRA_HEADERS": None,
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_custom_base_url(self, mock_config):

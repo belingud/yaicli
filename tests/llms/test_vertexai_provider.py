@@ -21,6 +21,7 @@ class TestVertexAIProvider:
             "TIMEOUT": 10,
             "EXTRA_HEADERS": {"X-Custom": "test"},
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
     def test_init(self, mock_config):
@@ -58,6 +59,7 @@ class TestVertexAIProvider:
             "TIMEOUT": 10,
             "EXTRA_HEADERS": {},
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
         with pytest.raises(ValueError, match="PROJECT and LOCATION are required"), patch("google.genai.Client"):
@@ -73,6 +75,7 @@ class TestVertexAIProvider:
             "TIMEOUT": 10,
             "EXTRA_HEADERS": {},
             "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
         with pytest.raises(ValueError, match="PROJECT and LOCATION are required"), patch("google.genai.Client"):

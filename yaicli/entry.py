@@ -6,7 +6,7 @@ import typer
 from .chat import FileChatManager
 from .config import cfg
 from .const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
-from .functions import install_functions, print_functions
+from .functions import install_functions, print_functions, print_mcp
 from .role import RoleManager
 
 app = typer.Typer(
@@ -208,6 +208,29 @@ def main(
         rich_help_panel="Function Options",
         show_default=False,
         callback=override_config,
+    ),
+    # ------------------- MCP Options -------------------
+    enable_mcp: bool = typer.Option(  # noqa: F841
+        cfg["ENABLE_MCP"],
+        "--enable-mcp/--disable-mcp",
+        help=f"Enable/disable MCP in API requests [dim](default: {'enabled' if cfg['ENABLE_MCP'] else 'disabled'})[/dim]",
+        rich_help_panel="MCP Options",
+        callback=override_config,
+    ),
+    show_mcp_output: bool = typer.Option(  # noqa: F841
+        cfg["SHOW_MCP_OUTPUT"],
+        "--show-mcp-output/--hide-mcp-output",
+        help=f"Show the output of MCP [dim](default: {'show' if cfg['SHOW_MCP_OUTPUT'] else 'hide'})[/dim]",
+        rich_help_panel="MCP Options",
+        show_default=False,
+        callback=override_config,
+    ),
+    list_mcp: bool = typer.Option(  # noqa: F841
+        False,
+        "--list-mcp",
+        help="List all available mcp.",
+        rich_help_panel="MCP Options",
+        callback=print_mcp,
     ),
 ):
     """YAICLI: Your AI assistant in the command line.

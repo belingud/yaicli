@@ -1,9 +1,10 @@
 import json
-from typing import Generator, Optional
+from typing import Generator, Optional, Union, overload
 
 from openai._streaming import Stream
 from openai.types.chat.chat_completion import ChatCompletion, Choice
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
+from openai.types.chat.chat_completion_chunk import Choice as ChoiceChunk
 
 from ...schemas import LLMResponse, ToolCall
 from .openai_provider import OpenAIProvider
@@ -61,7 +62,7 @@ class ChatglmProvider(OpenAIProvider):
                     tmp_content = content[tool_index:]
                     # Tool call data may in content after the <think> block
                     try:
-                        choice = self.parse_choice_from_content(tmp_content)
+                        choice = self.parse_choice_from_content(tmp_content, Choice)
                     except ValueError:
                         pass
             if hasattr(choice, "message") and hasattr(choice.message, "tool_calls") and choice.message.tool_calls:  # type: ignore
@@ -101,8 +102,6 @@ class ChatglmProvider(OpenAIProvider):
             reasoning = self._get_reasoning_content(delta)
             full_reasoning += reasoning or ""
 
-            if finish_reason:
-                pass
             if finish_reason == "tool_calls" or ('{"index":' in content or '"tool_calls":' in content):
                 # Tool call data may in content after the <think> block
                 # >/n{"index": 0, "tool_call_id": "call_1", "function": {"name": "name", "arguments": "{}"}, "output": null}
@@ -110,7 +109,7 @@ class ChatglmProvider(OpenAIProvider):
                 if tool_index != -1:
                     tmp_content = full_content[tool_index:]
                     try:
-                        choice = self.parse_choice_from_content(tmp_content)
+                        choice = self.parse_choice_from_content(tmp_content, ChoiceChunk)
                     except ValueError:
                         pass
             if hasattr(choice.delta, "tool_calls") and choice.delta.tool_calls:  # type: ignore
@@ -124,7 +123,31 @@ class ChatglmProvider(OpenAIProvider):
                 tool_call = ToolCall(tool_id, tool_call_name, arguments)
             yield LLMResponse(reasoning=reasoning, content=content, tool_call=tool_call, finish_reason=finish_reason)
 
-    def parse_choice_from_content(self, content: str) -> "Choice":
+    @overload
+    def parse_choice_from_content(self, content: str, choice_class: type[ChoiceChunk] = ChoiceChunk) -> "ChoiceChunk":
+        """
+        Parse the choice from the content after <think>...</think> block.
+        Args:
+            content: The content from the LLM response
+        Returns:
+            The choice object
+        Raises ValueError if the content is not valid JSON
+        """
+
+    @overload
+    def parse_choice_from_content(self, content: str, choice_class: type[Choice] = Choice) -> "Choice":
+        """
+        Parse the choice from the content after <think>...</think> block.
+        Args:
+            content: The content from the LLM response
+        Returns:
+            The choice object
+        Raises ValueError if the content is not valid JSON
+        """
+
+    def parse_choice_from_content(
+        self, content: str, choice_class: type[Union[Choice, ChoiceChunk]] = Choice
+    ) -> Union[Choice, ChoiceChunk]:
         """
         Parse the choice from the content after <think>...</think> block.
         Args:
@@ -138,6 +161,6 @@ class ChatglmProvider(OpenAIProvider):
         except json.JSONDecodeError:
             raise ValueError(f"Invalid message from LLM: {content}")
         try:
-            return Choice.model_validate(content_dict)
+            return choice_class.model_validate(content_dict)
         except Exception as e:
             raise ValueError(f"Invalid message from LLM: {content}") from e

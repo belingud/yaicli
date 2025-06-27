@@ -1,4 +1,6 @@
+import asyncio
 import platform
+from functools import wraps
 from os import getenv
 from os.path import basename, pathsep
 from typing import Any, Callable, Optional, TypeVar
@@ -132,3 +134,35 @@ def str2bool(value: Any) -> bool:
 
     # Handle empty strings and other invalid values
     raise ValueError(f"Invalid boolean value: {value}")
+
+
+def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
+    """
+    Get the current event loop or create a new one if it doesn't exist.
+    Compatible with Python 3.10+.
+
+    Returns:
+        asyncio.AbstractEventLoop: The current event loop or a new one if it doesn't exist.
+    """
+    try:
+        # Try to get the current running event loop
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        # No running event loop, get or create event loop
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            # Create a new event loop and set it as the current thread's event loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop
+
+
+def wrap_function(func: Callable) -> Callable:
+    """Wrap a function to add a name and docstring"""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return wrapper

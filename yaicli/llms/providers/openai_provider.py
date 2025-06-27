@@ -10,6 +10,7 @@ from ...config import cfg
 from ...console import get_console
 from ...schemas import ChatMessage, LLMResponse, ToolCall
 from ...tools import get_openai_schemas
+from ...tools.mcp import get_mcp_manager
 from ..provider import Provider
 
 
@@ -34,6 +35,7 @@ class OpenAIProvider(Provider):
         if not self.config.get("API_KEY"):
             raise ValueError("API_KEY is required")
         self.enable_function = self.config["ENABLE_FUNCTIONS"]
+        self.enable_mcp = self.config["ENABLE_MCP"]
         self.verbose = verbose
 
         # Initialize client
@@ -50,15 +52,12 @@ class OpenAIProvider(Provider):
         client_params = {
             "api_key": self.config["API_KEY"],
             "base_url": self.config["BASE_URL"] or self.DEFAULT_BASE_URL,
+            "default_headers": {"X-Title": self.APP_NAME, "HTTP_Referer": self.APP_REFERER},
         }
 
         # Add extra headers if set
         if self.config["EXTRA_HEADERS"]:
-            client_params["default_headers"] = {
-                **self.config["EXTRA_HEADERS"],
-                "X-Title": self.APP_NAME,
-                "HTTP-Referer": self.APP_REFERER,
-            }
+            client_params["default_headers"] = {**self.config["EXTRA_HEADERS"], **client_params["default_headers"]}
         return client_params
 
     def get_completion_params_keys(self) -> Dict[str, str]:
@@ -134,11 +133,21 @@ class OpenAIProvider(Provider):
         params = self.completion_params.copy()
         params["messages"] = openai_messages
         params["stream"] = stream
+        tools = []
 
         if self.enable_function:
-            tools = get_openai_schemas()
-            if tools:
-                params["tools"] = tools
+            tools.extend(get_openai_schemas())
+
+        # Add MCP tools if enabled
+        if self.enable_mcp:
+            try:
+                mcp_tools = get_mcp_manager().to_openai_tools()
+            except (ValueError, FileNotFoundError) as e:
+                self.console.print(f"Failed to load MCP tools: {e}", style="red")
+                mcp_tools = []
+            tools.extend(mcp_tools)
+        if tools:
+            params["tools"] = tools
 
         try:
             if stream:

@@ -16,7 +16,7 @@ from rich.console import JustifyMethod
 BOOL_STR = Literal["true", "false", "yes", "no", "y", "n", "1", "0", "on", "off"]
 
 
-class JustifyEnum(StrEnum):
+class JustifyEnum(StrEnum):  # type: ignore
     DEFAULT = "default"
     LEFT = "left"
     CENTER = "center"
@@ -43,6 +43,7 @@ HISTORY_FILE = Path("~/.yaicli_history").expanduser()
 CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 ROLES_DIR = CONFIG_PATH.parent / "roles"
 FUNCTIONS_DIR = CONFIG_PATH.parent / "functions"
+MCP_JSON_PATH = CONFIG_PATH.parent / "mcp.json"
 
 # Default configuration values
 DEFAULT_CODE_THEME = "monokai"
@@ -69,6 +70,8 @@ DEFAULT_ROLE_MODIFY_WARNING: BOOL_STR = "true"
 DEFAULT_ENABLE_FUNCTIONS: BOOL_STR = "true"
 DEFAULT_SHOW_FUNCTION_OUTPUT: BOOL_STR = "true"
 DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium"]] = None
+DEFAULT_ENABLE_MCP: BOOL_STR = "false"
+DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
 
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.
@@ -93,16 +96,16 @@ CODER_PROMPT = (
 )
 
 
-class DefaultRoleNames(StrEnum):
+class DefaultRoleNames(StrEnum):  # type: ignore
     SHELL = "Shell Command Generator"
     DEFAULT = "DEFAULT"
     CODER = "Code Assistant"
 
 
 DEFAULT_ROLES: dict[str, dict[str, Any]] = {
-    DefaultRoleNames.SHELL.value: {"name": DefaultRoleNames.SHELL.value, "prompt": SHELL_PROMPT},
-    DefaultRoleNames.DEFAULT.value: {"name": DefaultRoleNames.DEFAULT.value, "prompt": DEFAULT_PROMPT},
-    DefaultRoleNames.CODER.value: {"name": DefaultRoleNames.CODER.value, "prompt": CODER_PROMPT},
+    DefaultRoleNames.SHELL.value: {"name": DefaultRoleNames.SHELL.value, "prompt": SHELL_PROMPT},  # type: ignore
+    DefaultRoleNames.DEFAULT.value: {"name": DefaultRoleNames.DEFAULT.value, "prompt": DEFAULT_PROMPT},  # type: ignore
+    DefaultRoleNames.CODER.value: {"name": DefaultRoleNames.CODER.value, "prompt": CODER_PROMPT},  # type: ignore
 }
 
 # DEFAULT_CONFIG_MAP is a dictionary of the configuration options.
@@ -151,6 +154,8 @@ DEFAULT_CONFIG_MAP = {
         "env_key": "YAI_SHOW_FUNCTION_OUTPUT",
         "type": bool,
     },
+    "ENABLE_MCP": {"value": DEFAULT_ENABLE_MCP, "env_key": "YAI_ENABLE_MCP", "type": bool},
+    "SHOW_MCP_OUTPUT": {"value": DEFAULT_SHOW_MCP_OUTPUT, "env_key": "YAI_SHOW_MCP_OUTPUT", "type": bool},
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
@@ -201,6 +206,12 @@ ROLE_MODIFY_WARNING={DEFAULT_CONFIG_MAP["ROLE_MODIFY_WARNING"]["value"]}
 # Function settings
 # Set to false to disable sending functions in API requests
 ENABLE_FUNCTIONS={DEFAULT_CONFIG_MAP["ENABLE_FUNCTIONS"]["value"]}
-# Set to false to disable showing function output in the response
+# Set to false to disable showing function output when calling functions
 SHOW_FUNCTION_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_FUNCTION_OUTPUT"]["value"]}
+
+# MCP settings
+# Set to false to disable MCP in API requests
+ENABLE_MCP={DEFAULT_CONFIG_MAP["ENABLE_MCP"]["value"]}
+# Set to false to disable showing MCP output when calling MCP tools
+SHOW_MCP_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_MCP_OUTPUT"]["value"]}
 """
