@@ -206,10 +206,12 @@ ROLE_MODIFY_WARNING={DEFAULT_CONFIG_MAP["ROLE_MODIFY_WARNING"]["value"]}
 # Function settings
 # Set to false to disable sending functions in API requests
 ENABLE_FUNCTIONS={DEFAULT_CONFIG_MAP["ENABLE_FUNCTIONS"]["value"]}
-# Set to false to disable showing function output in the response
+# Set to false to disable showing function output when calling functions
 SHOW_FUNCTION_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_FUNCTION_OUTPUT"]["value"]}
 
 # MCP settings
+# Set to false to disable MCP in API requests
 ENABLE_MCP={DEFAULT_CONFIG_MAP["ENABLE_MCP"]["value"]}
+# Set to false to disable showing MCP output when calling MCP tools
 SHOW_MCP_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_MCP_OUTPUT"]["value"]}
 """

@@ -1,9 +1,10 @@
+import json
 import shutil
 from pathlib import Path
 from typing import Any
 
 from ..console import get_console
-from ..const import FUNCTIONS_DIR
+from ..const import FUNCTIONS_DIR, MCP_JSON_PATH
 from ..utils import option_callback
 
 console = get_console()
@@ -37,3 +38,14 @@ def print_functions(cls, _: Any) -> None:
         if file.name.startswith("_"):
             continue
         console.print(file)
+
+
+@option_callback
+def print_mcp(cls, _: Any) -> None:
+    """List all available mcp"""
+    if not MCP_JSON_PATH.exists():
+        console.print("No mcp config found, please add your mcp config in ~/.config/yaicli/mcp.json")
+        return
+    with open(MCP_JSON_PATH, "r") as f:
+        mcp_config = json.load(f)
+    console.print_json(data=mcp_config)
