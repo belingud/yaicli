@@ -53,7 +53,7 @@ class TestOpenAIProvider:
                 "default_headers": {
                     "X-Title": provider.APP_NAME,
                     "HTTP_Referer": provider.APP_REFERER,
-                }
+                },
             }
 
             # Check initialization of completion params

@@ -1,6 +1,6 @@
 import importlib
 from abc import ABC, abstractmethod
-from typing import Generator, List
+from typing import Any, Dict, Generator, List
 
 from ..schemas import ChatMessage, LLMResponse
 
@@ -34,6 +34,35 @@ class Provider(ABC):
         """Return the role that should be used for tool responses"""
         pass
 
+    def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
+        """Convert a list of ChatMessage objects to a list of OpenAI message format.
+
+        Args:
+            messages: List of ChatMessage
+
+        Returns:
+            List of OpenAI message format
+        """
+        converted_messages = []
+        for msg in messages:
+            message: Dict[str, Any] = {"role": msg.role, "content": msg.content or ""}
+
+            if msg.name:
+                message["name"] = msg.name
+
+            if msg.role == "assistant" and msg.tool_calls:
+                message["tool_calls"] = [
+                    {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": tc.arguments}}
+                    for tc in msg.tool_calls
+                ]
+
+            if msg.role == "tool" and msg.tool_call_id:
+                message["tool_call_id"] = msg.tool_call_id
+
+            converted_messages.append(message)
+
+        return converted_messages
+
 
 class ProviderFactory:
     """Factory to create LLM provider instances"""
@@ -52,6 +81,7 @@ class ProviderFactory:
         "huggingface": (".providers.huggingface_provider", "HuggingFaceProvider"),
         "infini-ai": (".providers.infiniai_provider", "InfiniAIProvider"),
         "minimax": (".providers.minimax_provider", "MinimaxProvider"),
+        "mistral": (".providers.mistral_provider", "MistralProvider"),
         "modelscope": (".providers.modelscope_provider", "ModelScopeProvider"),
         "ollama": (".providers.ollama_provider", "OllamaProvider"),
         "openai": (".providers.openai_provider", "OpenAIProvider"),

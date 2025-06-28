@@ -1,5 +1,6 @@
 import asyncio
 import platform
+import uuid
 from functools import wraps
 from os import getenv
 from os.path import basename, pathsep
@@ -166,3 +167,8 @@ def wrap_function(func: Callable) -> Callable:
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def gen_tool_call_id() -> str:
+    """Generate a unique tool call id"""
+    return f"yaicli_{uuid.uuid4()}"

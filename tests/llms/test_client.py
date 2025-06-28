@@ -1,10 +1,11 @@
+# type: ignore
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from yaicli.llms.client import LLMClient
 from yaicli.llms.provider import Provider
-from yaicli.schemas import ChatMessage, LLMResponse, ToolCall
+from yaicli.schemas import ChatMessage, LLMResponse, RefreshLive, ToolCall
 
 
 class MockProvider(Provider):
@@ -67,19 +68,21 @@ class TestLLMClient:
         mock_provider = MagicMock()
         mock_factory.return_value = mock_provider
 
-        client = LLMClient(config=mock_config)
+        client = LLMClient(provider_name="openai", config=mock_config)
 
         mock_factory.assert_called_once_with("openai", config=mock_config, verbose=False)
         assert client.provider == mock_provider
 
-    def test_completion_without_tools(self, mock_config):
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_completion_without_tools(self, mock_factory, mock_config):
         """Test completion without tool calls"""
         # Create a mock provider with simple responses
         responses = [LLMResponse(content="Hello"), LLMResponse(content=" world!")]
         provider = MockProvider(responses=responses)
+        mock_factory.return_value = provider
 
         # Create client with our mock provider
-        client = LLMClient(provider=provider, config=mock_config)
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
 
         # Call completion
         messages = [ChatMessage(role="user", content="Say hello")]
@@ -95,7 +98,8 @@ class TestLLMClient:
         assert responses[1].content == " world!"
 
     @patch("yaicli.llms.client.execute_tool_call")
-    def test_completion_with_tool_call(self, mock_execute_tool, mock_config):
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_completion_with_tool_call(self, mock_factory, mock_execute_tool, mock_config):
         """Test completion with a tool call that gets executed"""
         # Setup tool call
         tool_call = ToolCall(id="call_123", name="get_weather", arguments='{"location": "New York"}')
@@ -105,6 +109,7 @@ class TestLLMClient:
 
         # Create client with a custom mock provider that we'll control manually
         mock_provider = MagicMock(spec=Provider)
+        mock_factory.return_value = mock_provider
 
         # Set the return value for detect_tool_role
         mock_provider.detect_tool_role.return_value = "tool"
@@ -124,7 +129,7 @@ class TestLLMClient:
         ]
 
         # Create client using our mock provider
-        client = LLMClient(provider=mock_provider, config=mock_config)
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
 
         # Initial messages
         messages = [ChatMessage(role="user", content="What's the weather in New York?")]
@@ -143,11 +148,15 @@ class TestLLMClient:
 
         # Check responses - original response + RefreshLive + recursive response
         assert len(responses) == 3
+        assert isinstance(responses[0], LLMResponse)
         assert responses[0].content == "Let me check the weather"
+        assert isinstance(responses[1], RefreshLive)
+        assert isinstance(responses[2], LLMResponse)
         assert responses[2].content == "It's sunny in New York"
 
     @patch("yaicli.tools.execute_tool_call")
-    def test_recursion_depth_limit(self, mock_execute_tool, mock_config):
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_recursion_depth_limit(self, mock_factory, mock_execute_tool, mock_config):
         """Test that recursion depth is limited"""
         # Set a low recursion limit
         mock_config["MAX_RECURSION_DEPTH"] = 2
@@ -157,6 +166,7 @@ class TestLLMClient:
 
         # Use MagicMock instead of MockProvider
         mock_provider = MagicMock(spec=Provider)
+        mock_factory.return_value = mock_provider
 
         # Set return value for detect_tool_role
         mock_provider.detect_tool_role.return_value = "tool"
@@ -170,7 +180,7 @@ class TestLLMClient:
         mock_execute_tool.return_value = ("Function called", True)
 
         # Create client
-        client = LLMClient(provider=mock_provider, config=mock_config)
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
 
         # Initial messages
         messages = [ChatMessage(role="user", content="Start recursion")]
@@ -185,7 +195,8 @@ class TestLLMClient:
         assert mock_provider.completion.called
 
     @patch("yaicli.tools.execute_tool_call")
-    def test_functions_disabled(self, mock_execute_tool, mock_config):
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_functions_disabled(self, mock_factory, mock_execute_tool, mock_config):
         """Test that tool calls are not executed when functions are disabled"""
         # Disable functions
         mock_config["ENABLE_FUNCTIONS"] = False
@@ -198,9 +209,10 @@ class TestLLMClient:
 
         # Set up mock provider
         provider = MockProvider(responses=responses)
+        mock_factory.return_value = provider
 
         # Create client
-        client = LLMClient(provider=provider, config=mock_config)
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
 
         # Initial messages
         messages = [ChatMessage(role="user", content="What's the weather in New York?")]
@@ -213,4 +225,5 @@ class TestLLMClient:
 
         # Should only include the initial response
         assert len(responses) == 1
+        assert isinstance(responses[0], LLMResponse)
         assert responses[0].content == "Let me check the weather"

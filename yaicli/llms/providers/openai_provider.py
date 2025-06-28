@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from typing import Any, Dict, Generator, List, Optional
 
 import openai
@@ -8,9 +9,9 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from ...config import cfg
 from ...console import get_console
+from ...exceptions import MCPToolsError
 from ...schemas import ChatMessage, LLMResponse, ToolCall
-from ...tools import get_openai_schemas
-from ...tools.mcp import get_mcp_manager
+from ...tools import get_openai_mcp_tools, get_openai_schemas
 from ..provider import Provider
 
 
@@ -44,7 +45,13 @@ class OpenAIProvider(Provider):
         self.console = get_console()
 
         # Store completion params
-        self.completion_params = self.get_completion_params()
+        self._completion_params = None
+
+    @property
+    def completion_params(self) -> Dict[str, Any]:
+        if self._completion_params is None:
+            self._completion_params = self.get_completion_params()
+        return deepcopy(self._completion_params)
 
     def get_client_params(self) -> Dict[str, Any]:
         """Get the client parameters"""
@@ -84,28 +91,6 @@ class OpenAIProvider(Provider):
                 completion_params[api_key] = self.config[config_key]
         return completion_params
 
-    def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
-        """Convert a list of ChatMessage objects to a list of OpenAI message dicts."""
-        converted_messages = []
-        for msg in messages:
-            message: Dict[str, Any] = {"role": msg.role, "content": msg.content or ""}
-
-            if msg.name:
-                message["name"] = msg.name
-
-            if msg.role == "assistant" and msg.tool_calls:
-                message["tool_calls"] = [
-                    {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": tc.arguments}}
-                    for tc in msg.tool_calls
-                ]
-
-            if msg.role == "tool" and msg.tool_call_id:
-                message["tool_call_id"] = msg.tool_call_id
-
-            converted_messages.append(message)
-
-        return converted_messages
-
     def completion(
         self,
         messages: List[ChatMessage],
@@ -141,8 +126,8 @@ class OpenAIProvider(Provider):
         # Add MCP tools if enabled
         if self.enable_mcp:
             try:
-                mcp_tools = get_mcp_manager().to_openai_tools()
-            except (ValueError, FileNotFoundError) as e:
+                mcp_tools = get_openai_mcp_tools()
+            except (ValueError, FileNotFoundError, MCPToolsError) as e:
                 self.console.print(f"Failed to load MCP tools: {e}", style="red")
                 mcp_tools = []
             tools.extend(mcp_tools)
