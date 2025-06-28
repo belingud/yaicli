@@ -69,7 +69,8 @@ DEFAULT_JUSTIFY: JustifyMethod = "default"
 DEFAULT_ROLE_MODIFY_WARNING: BOOL_STR = "true"
 DEFAULT_ENABLE_FUNCTIONS: BOOL_STR = "true"
 DEFAULT_SHOW_FUNCTION_OUTPUT: BOOL_STR = "true"
-DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium"]] = None
+# low/high/medium for openai, default/null for groq
+DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium", "default", "null"]] = None
 DEFAULT_ENABLE_MCP: BOOL_STR = "false"
 DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
 

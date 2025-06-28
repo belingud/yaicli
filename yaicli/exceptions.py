@@ -16,3 +16,7 @@ class ChatLoadError(YaicliError):
 
 class ChatDeleteError(YaicliError):
     """Error deleting chat"""
+
+
+class MCPToolsError(YaicliError):
+    """Error getting MCP tools"""
