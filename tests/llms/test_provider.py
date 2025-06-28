@@ -1,3 +1,4 @@
+# type: ignore
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -67,6 +68,7 @@ class TestProviderFactory:
             "huggingface",
             "cohere-bedrock",
             "cohere-sagemaker",
+            "mistral",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers

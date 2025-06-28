@@ -219,11 +219,11 @@ class TestMCPClient:
         ]
         mock_loop.run_until_complete.return_value = mock_tools
         mock_get_loop.return_value = mock_loop
-        
+
         # Mock the async methods to return regular Mock objects instead of coroutines
         mock_client_instance = Mock()
         mock_client_class.return_value = mock_client_instance
-        
+
         # Create client and call list_tools
         client = MCPClient()
         # Replace the _list_tools_async method with a mock that doesn't return a coroutine
