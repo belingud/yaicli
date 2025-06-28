@@ -200,6 +200,10 @@ class MCPClient:
         This property will be lazy loaded.
         Returns:
             List[Tool]: Tool object list from fastmcp.types.Tool
+        Raises:
+            ValueError: If error getting MCP tools
+            FileNotFoundError: If MCP config file not found
+            RuntimeError: If called while the client is not connected.
         """
         if self._tools is None:
             self._tools = self.list_tools()
@@ -213,6 +217,10 @@ class MCPClient:
         This property will be lazy loaded.
         Returns:
             Dict[str, MCP]: MCP tool object mapping
+        Raises:
+            ValueError: If error getting MCP tools
+            FileNotFoundError: If MCP config file not found
+            RuntimeError: If called while the client is not connected.
         """
         if self._tools_map is None:
             self._tools_map = {}

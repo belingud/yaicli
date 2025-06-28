@@ -1,11 +1,11 @@
 from typing import Any, Dict, List, Tuple, cast
 
 from json_repair import repair_json
-from mcp import types
 from rich.panel import Panel
 
 from ..config import cfg
 from ..console import get_console
+from ..exceptions import MCPToolsError
 from ..schemas import ToolCall
 from .function import get_function, list_functions
 from .mcp import MCP_TOOL_NAME_PREFIX, get_mcp, get_mcp_manager, parse_mcp_tool_name
@@ -38,31 +38,15 @@ def get_openai_mcp_tools() -> list[dict[str, Any]]:
 
     Returns:
         List of function schemas in OpenAI format
+    Raises:
+        MCPToolsError: If error getting MCP tools
+        ValueError: If error getting MCP tools
+        FileNotFoundError: If MCP config file not found
     """
-    return get_mcp_manager().to_openai_tools()
-
-
-def execute_mcp_tool(tool_name: str, tool_kwargs: dict) -> str:
-    """Execute an MCP tool
-
-    Args:
-        tool_name: The name of the tool to execute
-        tool_kwargs: The arguments to pass to the tool
-    """
-    manager = get_mcp_manager()
-    tool = manager.get_tool(tool_name)
     try:
-        result = tool.execute(**tool_kwargs)
-        if isinstance(result, list) and len(result) > 0:
-            result = result[0]
-        if isinstance(result, types.TextContent):
-            return result.text
-        else:
-            return str(result)
+        return get_mcp_manager().to_openai_tools()
     except Exception as e:
-        error_msg = f"Call MCP tool error:\nTool name: {tool_name!r}\nArguments: {tool_kwargs!r}\nError: {e}"
-        console.print(error_msg, style="red")
-        return error_msg
+        raise MCPToolsError(f"Error getting MCP tools: {e}") from e
 
 
 def execute_tool_call(tool_call: ToolCall) -> Tuple[str, bool]:
