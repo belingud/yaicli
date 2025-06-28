@@ -123,6 +123,7 @@ pip install .
 - Groq
 - Huggingface
 - Minimax
+- Mistral
 - ModelScope
 - Ollama
 - Openai
@@ -301,6 +302,14 @@ MODEL=deepseek-chat
 PROVIDER=openrouter
 API_KEY=
 MODEL=deepseek/deepseek-chat-v3-0324
+```
+
+#### Mistral
+
+```ini
+PROVIDER=mistral
+API_KEY=
+MODEL=codestral-latest
 ```
 
 #### Gemini
