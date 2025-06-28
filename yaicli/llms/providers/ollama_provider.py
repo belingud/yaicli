@@ -3,6 +3,7 @@ import time
 from typing import Any, Dict, Generator, List
 
 import ollama
+from ollama import ChatResponse
 
 from ...config import cfg
 from ...console import get_console
@@ -50,7 +51,7 @@ class OllamaProvider(Provider):
         """Convert a list of ChatMessage objects to a list of Ollama message dicts."""
         converted_messages = []
         for msg in messages:
-            message = {"role": msg.role, "content": msg.content or ""}
+            message: dict[str, Any] = {"role": msg.role, "content": msg.content or ""}
 
             if msg.name:
                 message["name"] = msg.name
@@ -118,7 +119,7 @@ class OllamaProvider(Provider):
             self.console.print(f"Ollama API error: {e}", style="red")
             yield LLMResponse(content=f"Error calling Ollama API: {str(e)}")
 
-    def _handle_normal_response(self, response: Dict[str, Any]) -> Generator[LLMResponse, None, None]:
+    def _handle_normal_response(self, response: ChatResponse) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response"""
         content = response.message.content or ""
         reasoning = response.message.thinking or ""

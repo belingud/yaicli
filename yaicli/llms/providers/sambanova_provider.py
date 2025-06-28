@@ -16,23 +16,14 @@ class SambanovaProvider(OpenAIProvider):
         "DeepSeek-V3-0324",
     )
 
-    def get_completion_params_keys(self) -> Dict[str, str]:
-        """
-        Customize completion parameter keys for Sambanova API.
-        Maps 'max_completion_tokens' to 'max_tokens' for compatibility
-        and removes parameters not supported by Sambanova.
-
-        Returns:
-            Dict[str, str]: Modified parameter mapping dictionary
-        """
-        keys = super().get_completion_params_keys()
-        # Replace max_completion_tokens with max_tokens
-        if "max_completion_tokens" in keys:
-            keys["max_tokens"] = keys.pop("max_completion_tokens")
-        # Remove unsupported parameters
-        keys.pop("presence_penalty", None)
-        keys.pop("frequency_penalty", None)
-        return keys
+    COMPLETION_PARAMS_KEYS = {
+        "model": "MODEL",
+        "temperature": "TEMPERATURE",
+        "top_p": "TOP_P",
+        "max_tokens": "MAX_TOKENS",
+        "timeout": "TIMEOUT",
+        "extra_body": "EXTRA_BODY",
+    }
 
     def get_completion_params(self) -> Dict[str, Any]:
         """

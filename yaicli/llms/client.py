@@ -1,11 +1,11 @@
-from typing import Generator, List, Optional, Union
+from typing import Generator, List, Union
 
 from ..config import cfg
 from ..console import get_console
 from ..schemas import ChatMessage, LLMResponse, RefreshLive, ToolCall
 from ..tools import execute_tool_call
 from ..tools.mcp import MCP_TOOL_NAME_PREFIX
-from .provider import Provider, ProviderFactory
+from .provider import ProviderFactory
 
 
 class LLMClient:
@@ -20,8 +20,7 @@ class LLMClient:
 
     def __init__(
         self,
-        provider: Optional[Provider] = None,
-        provider_name: str = "",
+        provider_name: str,
         config: dict = cfg,
         verbose: bool = False,
         **kwargs,
@@ -30,8 +29,7 @@ class LLMClient:
         Initialize LLM client
 
         Args:
-            provider: Optional pre-initialized Provider instance
-            provider_name: Name of the provider to use if provider not provided
+            provider_name: Name of the provider to use, default to openai if not known
             config: Configuration dictionary
             verbose: Whether to enable verbose logging
         """
@@ -42,13 +40,10 @@ class LLMClient:
         self.enable_mcp = self.config["ENABLE_MCP"]
 
         # Use provided provider or create one
-        if provider:
-            self.provider = provider
-        elif provider_name:
-            self.provider = ProviderFactory.create_provider(provider_name, config=config, verbose=verbose, **kwargs)
-        else:
-            provider_name = config.get("PROVIDER", "openai").lower()
-            self.provider = ProviderFactory.create_provider(provider_name, config=config, verbose=verbose, **kwargs)
+        if provider_name not in ProviderFactory.providers_map:
+            self.console.print(f"Provider {provider_name} not found, using openai as default", style="red")
+            provider_name = "openai"
+        self.provider = ProviderFactory.create_provider(provider_name, config=config, verbose=verbose, **kwargs)
 
         self.max_recursion_depth = config.get("MAX_RECURSION_DEPTH", 5)
 
