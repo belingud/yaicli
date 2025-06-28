@@ -1,5 +1,34 @@
 
 ---
+## [0.7.2](https://github.com/belingud/yaicli/compare/v0.7.1..v0.7.2) - 2025-06-28
+
+### ⛰️  Features
+
+- add MCP tools error handling and reasoning effort options - ([68b9258](https://github.com/belingud/yaicli/commit/68b9258cdf5820ee45373fa616d169122f9bd7cf)) - Belingud
+
+### 🐛 Bug Fixes
+
+- handle errors in get_openai_mcp_tools and MCPClient methods - ([251961f](https://github.com/belingud/yaicli/commit/251961f509d25b17171b66f1d3e3df920dac0730)) - Belingud
+
+### 🚜 Refactor
+
+- standardize completion parameter keys across providers - ([f294f75](https://github.com/belingud/yaicli/commit/f294f758f484b33a7dd825e325bd3bc0543094e3)) - Belingud
+
+### 📚 Documentation
+
+- add Mistral to README - ([0d72f37](https://github.com/belingud/yaicli/commit/0d72f37969c54b9dc24204f7ee7753a97af59ee5)) - Belingud
+- update CHANGELOG.md for v0.7.1 release - ([72a2107](https://github.com/belingud/yaicli/commit/72a21073f094491ff5670e48f6f1b65b1d1027ed)) - Belingud
+
+### 🧪 Testing
+
+- add tests for MistralProvider and update imports - ([c297bef](https://github.com/belingud/yaicli/commit/c297bef27342fcc5e8e294c92d886e0f1ca551b5)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add mistralai and tox-uv dependencies - ([d753356](https://github.com/belingud/yaicli/commit/d753356c4ac14458bea60269bc0e2532d5e30f63)) - Belingud
+
+
+---
 ## [0.7.1](https://github.com/belingud/yaicli/compare/v0.7.0..v0.7.1) - 2025-06-27
 
 ### 📚 Documentation
