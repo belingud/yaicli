@@ -1,5 +1,23 @@
 
 ---
+## [0.7.3](https://github.com/belingud/yaicli/compare/v0.7.2..v0.7.3) - 2025-06-29
+
+### ⛰️  Features
+
+- add bailian, bailian-intl, spark and nvida providers - ([106214b](https://github.com/belingud/yaicli/commit/106214b581c9eeda34494b8bb06f906ab59995e7)) - Belingud
+
+### 📚 Documentation
+
+- add documentation for new providers - ([5fd9662](https://github.com/belingud/yaicli/commit/5fd9662f7ebe1676865d61075dd5dc32f88a033c)) - Belingud
+- update CHANGELOG.md for v0.7.2 release - ([44b8702](https://github.com/belingud/yaicli/commit/44b8702e092c7c8c4bec169048438807cc96963e)) - Belingud
+
+### 🧪 Testing
+
+- add new provider types to TestProviderFactory - ([dbf4572](https://github.com/belingud/yaicli/commit/dbf457245cec79347c8d5ef267749c44efe59941)) - Belingud
+- add tests for Bailian, Mistral, Nvidia, and Spark providers - ([f75a7f6](https://github.com/belingud/yaicli/commit/f75a7f61a5b2ce0cc068ec37060ca7f125b241ce)) - Belingud
+
+
+---
 ## [0.7.2](https://github.com/belingud/yaicli/compare/v0.7.1..v0.7.2) - 2025-06-28
 
 ### ⛰️  Features
