@@ -558,6 +558,37 @@ NUM_THREAD=
 
 NOTE: Ollama provider not support extra body
 
+#### Bailian
+
+> Only support model API call, not support application API call.
+
+```ini
+PROVIDER=bailian
+API_KEY=
+MODEL=qwen-plus
+```
+
+#### Bailian Intl
+
+Bailian international platform.
+
+```ini
+PROVIDER=bailian-intl
+API_KEY=
+MODEL=qwen-plus
+```
+
+#### Nvida nim
+
+```ini
+PROVIDER=nvida
+API_KEY=
+MODEL=qwen/qwen3-235b-a22b
+EXTRA_BODY={"chat_template_kwargs": {"thinking": false}}
+```
+
+> `chat_template_kwargs` is for Qwen3 and ibm/granite models, you disable thinking as above config.
+
 ### Syntax Highlighting Themes
 
 YAICLI supports all Pygments syntax highlighting themes. You can set your preferred theme in the config file:
