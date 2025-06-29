@@ -233,7 +233,7 @@ class OpenAIProvider(Provider):
         if not isinstance(delta, dict):
             delta = dict(delta)
         # Reasoning content keys from API:
-        # reasoning_content: deepseek/infi-ai
+        # reasoning_content: deepseek/infi-ai/nvida
         # reasoning: openrouter
         # <think> block implementation not in here
         for key in ("reasoning_content", "reasoning"):

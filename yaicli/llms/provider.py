@@ -69,6 +69,8 @@ class ProviderFactory:
 
     providers_map = {
         "ai21": (".providers.ai21_provider", "AI21Provider"),
+        "bailian": (".providers.bailian_provider", "BailianProvider"),
+        "bailian-intl": (".providers.bailian_provider", "BailianIntlProvider"),
         "chatglm": (".providers.chatglm_provider", "ChatglmProvider"),
         "chutes": (".providers.chutes_provider", "ChutesProvider"),
         "cohere": (".providers.cohere_provider", "CohereProvider"),
@@ -83,11 +85,13 @@ class ProviderFactory:
         "minimax": (".providers.minimax_provider", "MinimaxProvider"),
         "mistral": (".providers.mistral_provider", "MistralProvider"),
         "modelscope": (".providers.modelscope_provider", "ModelScopeProvider"),
+        "nvida": (".providers.nvida_provider", "NvidiaProvider"),
         "ollama": (".providers.ollama_provider", "OllamaProvider"),
         "openai": (".providers.openai_provider", "OpenAIProvider"),
         "openrouter": (".providers.openrouter_provider", "OpenRouterProvider"),
         "sambanova": (".providers.sambanova_provider", "SambanovaProvider"),
         "siliconflow": (".providers.siliconflow_provider", "SiliconFlowProvider"),
+        "spark": (".providers.spark_provider", "SparkProvider"),
         "targon": (".providers.targon_provider", "TargonProvider"),
         "vertexai": (".providers.vertexai_provider", "VertexAIProvider"),
         "xai": (".providers.xai_provider", "XaiProvider"),
