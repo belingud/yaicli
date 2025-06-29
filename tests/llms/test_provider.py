@@ -69,6 +69,10 @@ class TestProviderFactory:
             "cohere-bedrock",
             "cohere-sagemaker",
             "mistral",
+            "nvida",
+            "bailian",
+            "bailian-intl",
+            "spark",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers
