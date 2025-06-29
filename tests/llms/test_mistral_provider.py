@@ -132,7 +132,7 @@ class TestMistralProvider:
     def test_get_completion_params_with_mcp(self, mock_get_mcp_tools, mock_get_schemas, mock_config):
         """Test get_completion_params with MCP tools enabled"""
         mock_config["ENABLE_MCP"] = True
-        
+
         mock_get_schemas.return_value = [{"type": "function", "function": {"name": "test_func"}}]
         mock_get_mcp_tools.return_value = [{"type": "function", "function": {"name": "mcp_func"}}]
 
@@ -198,7 +198,7 @@ class TestMistralProvider:
                 mock_choice = MagicMock()
                 mock_message = MagicMock()
                 mock_message.content = "Let me check something"
-                
+
                 # Create a mock tool call
                 mock_tool_call = MagicMock()
                 mock_tool_call.id = "call_123"
@@ -207,7 +207,7 @@ class TestMistralProvider:
                 mock_function.arguments = '{"param": "value"}'
                 mock_tool_call.function = mock_function
                 mock_message.tool_calls = [mock_tool_call]
-                
+
                 mock_choice.message = mock_message
                 mock_choice.finish_reason = "tool_calls"
                 mock_response.choices = [mock_choice]
@@ -239,7 +239,7 @@ class TestMistralProvider:
 
                 # Process first chunk
                 result = provider._process_tool_call_chunk([mock_tool_call])
-                
+
                 assert result.id == "call_123"
                 assert result.name == "weather_function"
                 assert result.arguments == '{"location"'
@@ -252,7 +252,7 @@ class TestMistralProvider:
 
                 # Continue processing with existing tool call
                 result = provider._process_tool_call_chunk([mock_tool_call2], result)
-                
+
                 assert result.arguments == '{"location": "New York"}'
 
     def test_get_content_from_delta_content_string(self, mock_config):
@@ -260,7 +260,7 @@ class TestMistralProvider:
         with patch("mistralai.Mistral"):
             with patch("warnings.filterwarnings"):
                 provider = MistralProvider(config=mock_config)
-                
+
                 content = provider.get_content_from_delta_content("Hello world")
                 assert content == "Hello world"
 
@@ -270,16 +270,16 @@ class TestMistralProvider:
         with patch("mistralai.Mistral"):
             with patch("warnings.filterwarnings"):
                 provider = MistralProvider(config=mock_config)
-                
+
                 # Mock the extract_contents_list method return value
                 mock_extract_contents.return_value = "Processed content"
-                
+
                 # Create a list that would be passed as ContentChunk list
                 chunks = []
-                
+
                 # Call the method with our list
                 content = provider.get_content_from_delta_content(chunks)
-                
+
                 # Check if extract_contents_list was called with our list
                 mock_extract_contents.assert_called_once_with(chunks)
                 assert content == "Processed content"
@@ -289,34 +289,34 @@ class TestMistralProvider:
         with patch("mistralai.Mistral"):
             with patch("warnings.filterwarnings"):
                 provider = MistralProvider(config=mock_config)
-                
+
                 # Create mocks for different content chunk types
                 text_chunk = MagicMock()
                 text_chunk.type = "text"
                 text_chunk.text = "Hello "
-                
+
                 image_chunk = MagicMock()
                 image_chunk.type = "image_url"
                 image_chunk.image_url = "http://example.com/image.png"
-                
+
                 image_chunk_obj = MagicMock()
                 image_chunk_obj.type = "image_url"
                 image_chunk_obj.image_url = MagicMock()
                 image_chunk_obj.image_url.url = "http://example.com/image2.png"
-                
+
                 document_chunk = MagicMock()
                 document_chunk.type = "document_url"
                 document_chunk.document_url = "http://example.com/doc.pdf"
                 document_chunk.document_name = "Document"
-                
+
                 reference_chunk = MagicMock()
                 reference_chunk.type = "reference"
                 reference_chunk.reference_ids = ["ref1", "ref2"]
-                
+
                 # Call the method with our mocked chunks
                 chunks = [text_chunk, image_chunk, image_chunk_obj, document_chunk, reference_chunk]
                 content = provider.extract_contents_list(chunks)
-                
+
                 # Verify output contains expected content from each chunk type
                 assert "Hello " in content
                 assert "http://example.com/image.png" in content
@@ -332,17 +332,17 @@ class TestMistralProvider:
             with patch("warnings.filterwarnings"):
                 provider = MistralProvider(config=mock_config)
                 assert provider.detect_tool_role() == "tool"
-    
+
     def test_completion_non_streaming(self, mock_config):
         """Test completion method with non-streaming response"""
         with patch("mistralai.Mistral"):
             with patch("warnings.filterwarnings"):
                 # Set up mocks
                 provider = MistralProvider(config=mock_config)
-                
+
                 # Mock _convert_messages method
                 provider._convert_messages = MagicMock(return_value=[{"role": "user", "content": "Hello"}])
-                
+
                 # Mock client.chat.complete method
                 mock_response = MagicMock(spec=ChatCompletionResponse)
                 mock_choice = MagicMock()
@@ -351,39 +351,39 @@ class TestMistralProvider:
                 mock_choice.message = mock_message
                 mock_choice.finish_reason = "stop"
                 mock_response.choices = [mock_choice]
-                
+
                 provider.client.chat.complete = MagicMock(return_value=mock_response)
-                
+
                 # Create test messages
                 messages = [ChatMessage(role="user", content="Hello")]
-                
+
                 # Call the completion method with streaming=False
                 responses = list(provider.completion(messages, stream=False))
-                
+
                 # Verify _convert_messages was called
                 provider._convert_messages.assert_called_once_with(messages)
-                
+
                 # Verify complete method was called with correct parameters
                 provider.client.chat.complete.assert_called_once()
-                
+
                 # Verify response
                 assert len(responses) == 1
                 assert responses[0].content == "Test response"
                 assert responses[0].finish_reason == "stop"
-    
+
     def test_completion_streaming(self, mock_config):
         """Test completion method with streaming response"""
         with patch("mistralai.Mistral"):
             with patch("warnings.filterwarnings"):
                 # Set up mocks
                 provider = MistralProvider(config=mock_config)
-                
+
                 # Mock _convert_messages method
                 provider._convert_messages = MagicMock(return_value=[{"role": "user", "content": "Hello"}])
-                
+
                 # Create mock for stream response
                 mock_event_stream = MagicMock(spec=EventStream)
-                
+
                 # Create mock for stream chunks
                 mock_chunk1 = MagicMock()
                 mock_choice1 = MagicMock()
@@ -392,7 +392,7 @@ class TestMistralProvider:
                 mock_choice1.delta = mock_delta1
                 mock_choice1.finish_reason = None
                 mock_chunk1.data.choices = [mock_choice1]
-                
+
                 mock_chunk2 = MagicMock()
                 mock_choice2 = MagicMock()
                 mock_delta2 = MagicMock()
@@ -400,47 +400,47 @@ class TestMistralProvider:
                 mock_choice2.delta = mock_delta2
                 mock_choice2.finish_reason = "stop"
                 mock_chunk2.data.choices = [mock_choice2]
-                
+
                 # Set up the mock event stream to yield our chunks
                 mock_event_stream.__iter__ = MagicMock(return_value=iter([mock_chunk1, mock_chunk2]))
-                
+
                 # Mock client.chat.stream method
                 provider.client.chat.stream = MagicMock(return_value=mock_event_stream)
-                
+
                 # Create test messages
                 messages = [ChatMessage(role="user", content="Hello")]
-                
+
                 # Call the completion method with streaming=True
                 responses = list(provider.completion(messages, stream=True))
-                
+
                 # Verify _convert_messages was called
                 provider._convert_messages.assert_called_once_with(messages)
-                
+
                 # Verify stream method was called with correct parameters
                 provider.client.chat.stream.assert_called_once()
-                
+
                 # Verify responses
                 assert len(responses) == 2
                 assert responses[0].content == "Hello"
                 assert responses[0].finish_reason is None
                 assert responses[1].content == " world"
                 assert responses[1].finish_reason == "stop"
-    
+
     def test_handle_stream_response_with_tool_calls(self, mock_config):
         """Test _handle_stream_response with tool calls"""
         with patch("mistralai.Mistral"):
             with patch("warnings.filterwarnings"):
                 provider = MistralProvider(config=mock_config)
-                
+
                 # Create mock for stream response
                 mock_event_stream = MagicMock(spec=EventStream)
-                
+
                 # Create first chunk with tool call start
                 mock_chunk1 = MagicMock()
                 mock_choice1 = MagicMock()
                 mock_delta1 = MagicMock()
                 mock_delta1.content = "Let me check"
-                
+
                 # Create mock tool call for first chunk
                 mock_tool_call1 = MagicMock()
                 mock_function1 = MagicMock()
@@ -449,44 +449,44 @@ class TestMistralProvider:
                 mock_tool_call1.function = mock_function1
                 mock_tool_call1.id = "call_abc123"
                 mock_delta1.tool_calls = [mock_tool_call1]
-                
+
                 mock_choice1.delta = mock_delta1
                 mock_choice1.finish_reason = None
                 mock_chunk1.data.choices = [mock_choice1]
-                
+
                 # Create second chunk with tool call completion
                 mock_chunk2 = MagicMock()
                 mock_choice2 = MagicMock()
                 mock_delta2 = MagicMock()
                 mock_delta2.content = ""
-                
+
                 # Create mock tool call for second chunk
                 mock_tool_call2 = MagicMock()
                 mock_function2 = MagicMock()
                 mock_function2.arguments = ': "New York"}'
                 mock_tool_call2.function = mock_function2
                 mock_delta2.tool_calls = [mock_tool_call2]
-                
+
                 mock_choice2.delta = mock_delta2
                 mock_choice2.finish_reason = "tool_calls"
                 mock_chunk2.data.choices = [mock_choice2]
-                
+
                 # Set up the mock event stream to yield our chunks
                 mock_event_stream.__iter__ = MagicMock(return_value=iter([mock_chunk1, mock_chunk2]))
-                
+
                 # Process the stream
                 responses = list(provider._handle_stream_response(mock_event_stream))
-                
+
                 # Verify responses
                 assert len(responses) == 2
                 assert responses[0].content == "Let me check"
                 assert responses[0].tool_call is None
-                
+
                 assert responses[1].content == ""
                 assert responses[1].finish_reason == "tool_calls"
                 assert responses[1].tool_call is not None
                 assert responses[1].tool_call.arguments == '{"location": "New York"}'
-    
+
     def test_handle_normal_response_edge_case(self, mock_config):
         """Test _handle_normal_response method with empty or invalid response"""
         with patch("mistralai.Mistral"):
@@ -512,13 +512,13 @@ class TestMistralProvider:
             with patch("warnings.filterwarnings"):
                 # Enable verbose mode
                 provider = MistralProvider(config=mock_config, verbose=True)
-                
+
                 # Mock console
                 provider.console = MagicMock()
-                
+
                 # Mock _convert_messages method
                 provider._convert_messages = MagicMock(return_value=[{"role": "user", "content": "Hello"}])
-                
+
                 # Mock client.chat.complete method
                 mock_response = MagicMock(spec=ChatCompletionResponse)
                 mock_choice = MagicMock()
@@ -527,19 +527,19 @@ class TestMistralProvider:
                 mock_choice.message = mock_message
                 mock_choice.finish_reason = "stop"
                 mock_response.choices = [mock_choice]
-                
+
                 provider.client.chat.complete = MagicMock(return_value=mock_response)
-                
+
                 # Create test messages
                 messages = [ChatMessage(role="user", content="Hello")]
-                
+
                 # Call the completion method with streaming=False
                 list(provider.completion(messages, stream=False))
-                
+
                 # Verify console.print was called for verbose output
                 provider.console.print.assert_any_call("Messages:")
                 provider.console.print.assert_any_call([{"role": "user", "content": "Hello"}])
-    
+
     def test_process_tool_call_chunk_with_dict_arguments(self, mock_config):
         """Test _process_tool_call_chunk with dictionary arguments instead of string"""
         with patch("mistralai.Mistral"):
@@ -557,7 +557,7 @@ class TestMistralProvider:
 
                 # Process the tool call
                 result = provider._process_tool_call_chunk([mock_tool_call])
-                
+
                 # Verify arguments were converted to JSON string
                 assert result.id == "call_123"
                 assert result.name == "weather_function"
@@ -573,7 +573,7 @@ class TestMistralProvider:
                 mock_tool_call = MagicMock()
                 mock_tool_call.id = "call_456"
                 mock_tool_call.function = None
-                
+
                 # Create a valid tool call
                 mock_tool_call2 = MagicMock()
                 mock_function = MagicMock()
@@ -585,7 +585,7 @@ class TestMistralProvider:
                 # Process both tool calls
                 existing_tool_call = ToolCall("call_123", "valid_function", "")
                 result = provider._process_tool_call_chunk([mock_tool_call, mock_tool_call2], existing_tool_call)
-                
+
                 # Verify valid function was processed and invalid one was skipped
                 assert result.id == "call_123"
                 assert result.name == "valid_function"
