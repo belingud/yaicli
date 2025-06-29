@@ -60,6 +60,11 @@ generate and execute shell commands, or get quick answers without leaving your w
 - **Function Calling**: Enable function calling in API requests
 - **Function Output**: Show the output of functions
 
+### MCP Calling
+
+- **MCP Calling**: Call LLM with MCP tools
+- **MCP Output**: Show the output of MCP tools
+
 ![What is life](artwork/reasoning_example.png)
 
 ## 📦 Installation
@@ -698,6 +703,11 @@ ai --verbose "Explain quantum computing"
 │ --list-functions                                      List all available functions.                                              │
 │ --enable-functions        --disable-functions         Enable/disable function calling in API requests (default: disabled)        │
 │ --show-function-output    --hide-function-output      Show the output of functions (default: show)                               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ MCP Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --enable-mcp         --disable-mcp          Enable/disable MCP in API requests (default: disabled) [default: disable-mcp]        │
+│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: show)                                               │
+│ --list-mcp                                  List all available mcp.                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
