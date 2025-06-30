@@ -1,5 +1,22 @@
 
 ---
+## [0.7.4](https://github.com/belingud/yaicli/compare/v0.7.3..v0.7.4) - 2025-06-30
+
+### 🐛 Bug Fixes
+
+- handle LLM client creation errors gracefully - ([6c8cbed](https://github.com/belingud/yaicli/commit/6c8cbed702a93df53afdad04892c51b3c4873730)) - Belingud
+
+### 📚 Documentation
+
+- add MCP Calling documentation to README - ([70b5a86](https://github.com/belingud/yaicli/commit/70b5a8646fcc6002d9e0c72ec578c05c1d462291)) - Belingud
+- update CHANGELOG.md for v0.7.3 release - ([ddae983](https://github.com/belingud/yaicli/commit/ddae983f072dafbd065e33085841f05d1cd7ace8)) - Belingud
+
+### 🧪 Testing
+
+- add Together provider tests and improve line formatting - ([560330e](https://github.com/belingud/yaicli/commit/560330e64083c50ac07e52b1c7e6d3dc9935fb94)) - Belingud
+
+
+---
 ## [0.7.3](https://github.com/belingud/yaicli/compare/v0.7.2..v0.7.3) - 2025-06-29
 
 ### ⛰️  Features
