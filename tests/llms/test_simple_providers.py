@@ -9,6 +9,7 @@ from yaicli.llms.providers.infiniai_provider import InfiniAIProvider
 from yaicli.llms.providers.modelscope_provider import ModelScopeProvider
 from yaicli.llms.providers.openrouter_provider import OpenRouterProvider
 from yaicli.llms.providers.siliconflow_provider import SiliconFlowProvider
+from yaicli.llms.providers.together_provider import TogetherProvider
 from yaicli.llms.providers.xai_provider import XaiProvider
 from yaicli.llms.providers.yi_provider import YiProvider
 
@@ -354,3 +355,37 @@ class TestCustomBaseURL:
             # Test with Xai provider
             provider = XaiProvider(config=mock_config)
             assert provider.client_params["base_url"] == mock_config["BASE_URL"]
+
+            # Test with Together provider
+            provider = TogetherProvider(config=mock_config)
+            assert provider.client_params["base_url"] == mock_config["BASE_URL"]
+
+
+class TestTogetherProvider:
+    """Tests for Together provider implementation"""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Fixture to create a mock configuration"""
+        return {
+            "API_KEY": "fake_api_key",
+            "BASE_URL": None,  # Will use DEFAULT_BASE_URL
+            "MODEL": "together/llama-3-70b-instruct",
+            "TEMPERATURE": 0.7,
+            "TOP_P": 0.9,
+            "MAX_TOKENS": 1024,
+            "TIMEOUT": 10,
+            "EXTRA_HEADERS": None,
+            "EXTRA_BODY": None,
+            "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
+        }
+
+    def test_init(self, mock_config):
+        """Test initialization of TogetherProvider"""
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = TogetherProvider(config=mock_config)
+
+            assert provider.client_params["base_url"] == TogetherProvider.DEFAULT_BASE_URL
+            assert provider.client_params["base_url"] == "https://api.together.xyz/v1"
+            assert provider.client_params["api_key"] == mock_config["API_KEY"]

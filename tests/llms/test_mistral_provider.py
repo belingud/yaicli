@@ -163,10 +163,10 @@ class TestMistralProvider:
         mock_choice = MagicMock()
         mock_message = MagicMock()
         mock_message.content = content
-        
+
         if tool_calls:
             mock_message.tool_calls = tool_calls
-            
+
         mock_choice.message = mock_message
         mock_choice.finish_reason = finish_reason
         mock_response.choices = [mock_choice]
@@ -198,9 +198,7 @@ class TestMistralProvider:
 
         # Create a mock response with tool call using helper method
         mock_response = self._create_mock_normal_response(
-            content="Let me check something", 
-            finish_reason="tool_calls",
-            tool_calls=[mock_tool_call]
+            content="Let me check something", finish_reason="tool_calls", tool_calls=[mock_tool_call]
         )
 
         # Process the response
