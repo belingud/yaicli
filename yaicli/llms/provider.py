@@ -93,6 +93,7 @@ class ProviderFactory:
         "siliconflow": (".providers.siliconflow_provider", "SiliconFlowProvider"),
         "spark": (".providers.spark_provider", "SparkProvider"),
         "targon": (".providers.targon_provider", "TargonProvider"),
+        "together": (".providers.together_provider", "TogetherProvider"),
         "vertexai": (".providers.vertexai_provider", "VertexAIProvider"),
         "xai": (".providers.xai_provider", "XaiProvider"),
         "yi": (".providers.yi_provider", "YiProvider"),

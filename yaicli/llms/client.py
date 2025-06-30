@@ -41,7 +41,7 @@ class LLMClient:
 
         # Use provided provider or create one
         if provider_name not in ProviderFactory.providers_map:
-            self.console.print(f"Provider {provider_name} not found, using openai as default", style="red")
+            self.console.print(f"Provider {provider_name} not found, using openai as default", style="yellow")
             provider_name = "openai"
         self.provider = ProviderFactory.create_provider(provider_name, config=config, verbose=verbose, **kwargs)
 
