@@ -1,8 +1,11 @@
 import importlib
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generator, List
 
 from ..schemas import ChatMessage, LLMResponse
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 class Provider(ABC):
