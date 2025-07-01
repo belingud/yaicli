@@ -5,7 +5,6 @@ from mistralai import Mistral
 from mistralai.models import ChatCompletionResponse, CompletionEvent, ContentChunk
 from mistralai.models import ToolCall as MistralToolCall
 from mistralai.utils.eventstreaming import EventStream
-from pydantic import PydanticDeprecationWarning
 
 from ...config import cfg
 from ...console import get_console
@@ -36,10 +35,6 @@ class MistralProvider(Provider):
         self.client = Mistral(**self.get_client_params())
         self.console = get_console()
 
-        # Disable pydantic deprecated warnings
-        import warnings
-
-        warnings.filterwarnings("ignore", category=PydanticDeprecationWarning)
 
     def get_client_params(self) -> Dict[str, Any]:
         """Get client parameters for Mistral
