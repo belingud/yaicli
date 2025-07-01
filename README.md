@@ -48,7 +48,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 ### 💻 Enhanced Terminal Experience
 
 - **Real-time Streaming**: See responses as they're generated with cursor animation
-- **Rich History Management**: LRU-based history with 500 entries by default
+- **Rich History Management**: Manage histories with 500 entries by default
 - **Syntax Highlighting**: Beautiful code formatting with customizable themes
 
 ### 🛠️ Developer-Friendly
@@ -165,6 +165,7 @@ BASE_URL=
 API_KEY=
 MODEL=gpt-4o
 
+DEFAULT_ROLE=DEFAULT
 # auto detect shell and os (or specify manually, e.g., bash, zsh, powershell.exe)
 SHELL_NAME=auto
 OS_NAME=auto
@@ -219,6 +220,7 @@ SHOW_MCP_OUTPUT=false
 | `BASE_URL`             | API endpoint URL                            | -                        | `YAI_BASE_URL`             |
 | `API_KEY`              | Your API key                                | -                        | `YAI_API_KEY`              |
 | `MODEL`                | LLM model to use                            | `gpt-4o`                 | `YAI_MODEL`                |
+| `DEFAULT_ROLE`         | Default role                                | `DEFAULT`                | `YAI_DEFAULT_ROLE`         |
 | `SHELL_NAME`           | Shell type                                  | `auto`                   | `YAI_SHELL_NAME`           |
 | `OS_NAME`              | Operating system                            | `auto`                   | `YAI_OS_NAME`              |
 | `STREAM`               | Enable streaming                            | `true`                   | `YAI_STREAM`               |
