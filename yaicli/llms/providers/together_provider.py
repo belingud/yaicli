@@ -2,7 +2,6 @@ from .openai_provider import OpenAIProvider
 
 
 class TogetherProvider(OpenAIProvider):
-
     DEFAULT_BASE_URL = "https://api.together.xyz/v1"
     COMPLETION_PARAMS_KEYS = {
         "model": "MODEL",
