@@ -1,5 +1,17 @@
 
 ---
+## [0.7.7](https://github.com/belingud/yaicli/compare/v0.7.6..v0.7.7) - 2025-07-01
+
+### ⛰️  Features
+
+- add fetch_webpage buildin function - ([09ec366](https://github.com/belingud/yaicli/commit/09ec36645da0cd8fcfe59ab27c7646012f0aace9)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes and documentation updates - ([2ff0056](https://github.com/belingud/yaicli/commit/2ff00568febcb4dcc149d280027e870693b803eb)) - Belingud
+
+
+---
 ## [0.7.6](https://github.com/belingud/yaicli/compare/v0.7.5..v0.7.6) - 2025-07-01
 
 ### ⛰️  Features
