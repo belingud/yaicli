@@ -134,7 +134,9 @@ pip install .
 - Openai
 - Sambanova
 - Siliconflow
+- Spark
 - Targon
+- Together
 - Vertex ai
 - X AI
 - Yi
@@ -590,6 +592,33 @@ PROVIDER=nvida
 API_KEY=
 MODEL=qwen/qwen3-235b-a22b
 EXTRA_BODY={"chat_template_kwargs": {"thinking": false}}
+```
+
+#### Together
+
+Using together openai-compatible capabilities
+
+```ini
+PROVIDER=together
+API_KEY=
+MODEL=Qwen/Qwen3-235B-A22B-fp8-tput
+```
+
+#### Spark
+
+```ini
+PROVIDER=spark
+API_KEY=
+MODEL=4.0Ultra
+```
+
+Or you can use your `APP_ID` and `API_SECRET`.
+
+```ini
+PROVIDER=spark
+APP_ID=
+APP_SECRET=
+MODEL=4.0Ultra
 ```
 
 > `chat_template_kwargs` is for Qwen3 and ibm/granite models, you disable thinking as above config.

@@ -558,4 +558,8 @@ class CLI:
 
     def _create_client(self):
         """Create an LLM client instance based on configuration"""
-        return LLMClient(provider_name=cfg["PROVIDER"].lower(), verbose=self.verbose, config=cfg)
+        try:
+            return LLMClient(provider_name=cfg["PROVIDER"].lower(), verbose=self.verbose, config=cfg)
+        except Exception as e:
+            self.console.print(f"Error creating client: {e}", style="red")
+            raise typer.Abort()

@@ -1,5 +1,40 @@
 
 ---
+## [0.7.5](https://github.com/belingud/yaicli/compare/v0.7.4..v0.7.5) - 2025-07-01
+
+### ⛰️  Features
+
+- add get_weather buildin function - ([876efb7](https://github.com/belingud/yaicli/commit/876efb79856be4328c2fe8119ce696d9a17ccbc0)) - Belingud
+
+### 📚 Documentation
+
+- add Spark and Together to README - ([e26ea59](https://github.com/belingud/yaicli/commit/e26ea59f15abd20c5a190dd67e4b5d1f1a5b2d19)) - Belingud
+- update CHANGELOG with v0.7.4 release notes - ([966e443](https://github.com/belingud/yaicli/commit/966e443465ea74dcc44626f88b2302c63e1e6582)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- remove pydantic deprecation warnings - ([ce2c18c](https://github.com/belingud/yaicli/commit/ce2c18cb583816558df9b7e12e55c53c8f8412d3)) - Belingud
+- add warnings import and filter deprecation warnings - ([7003144](https://github.com/belingud/yaicli/commit/700314496bd26c4927a86285cb12f3ce1ef58595)) - Belingud
+
+
+---
+## [0.7.4](https://github.com/belingud/yaicli/compare/v0.7.3..v0.7.4) - 2025-06-30
+
+### 🐛 Bug Fixes
+
+- handle LLM client creation errors gracefully - ([6c8cbed](https://github.com/belingud/yaicli/commit/6c8cbed702a93df53afdad04892c51b3c4873730)) - Belingud
+
+### 📚 Documentation
+
+- add MCP Calling documentation to README - ([70b5a86](https://github.com/belingud/yaicli/commit/70b5a8646fcc6002d9e0c72ec578c05c1d462291)) - Belingud
+- update CHANGELOG.md for v0.7.3 release - ([ddae983](https://github.com/belingud/yaicli/commit/ddae983f072dafbd065e33085841f05d1cd7ace8)) - Belingud
+
+### 🧪 Testing
+
+- add Together provider tests and improve line formatting - ([560330e](https://github.com/belingud/yaicli/commit/560330e64083c50ac07e52b1c7e6d3dc9935fb94)) - Belingud
+
+
+---
 ## [0.7.3](https://github.com/belingud/yaicli/compare/v0.7.2..v0.7.3) - 2025-06-29
 
 ### ⛰️  Features

@@ -1,8 +1,11 @@
 import importlib
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generator, List
 
 from ..schemas import ChatMessage, LLMResponse
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 class Provider(ABC):
@@ -93,6 +96,7 @@ class ProviderFactory:
         "siliconflow": (".providers.siliconflow_provider", "SiliconFlowProvider"),
         "spark": (".providers.spark_provider", "SparkProvider"),
         "targon": (".providers.targon_provider", "TargonProvider"),
+        "together": (".providers.together_provider", "TogetherProvider"),
         "vertexai": (".providers.vertexai_provider", "VertexAIProvider"),
         "xai": (".providers.xai_provider", "XaiProvider"),
         "yi": (".providers.yi_provider", "YiProvider"),

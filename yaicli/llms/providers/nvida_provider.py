@@ -1,9 +1,6 @@
 from copy import deepcopy
 from typing import Any, Dict
 
-from pydantic import PydanticDeprecationWarning
-
-from ...config import cfg
 from .openai_provider import OpenAIProvider
 
 
@@ -17,13 +14,6 @@ class NvidiaProvider(OpenAIProvider):
         "timeout": "TIMEOUT",
         "extra_body": "EXTRA_BODY",
     }
-
-    def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):
-        super().__init__(config, verbose, **kwargs)
-
-        import warnings
-
-        warnings.filterwarnings("ignore", category=PydanticDeprecationWarning)
 
     def get_completion_params(self) -> Dict[str, Any]:
         completion_params = super().get_completion_params()

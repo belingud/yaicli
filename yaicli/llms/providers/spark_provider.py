@@ -1,6 +1,5 @@
+from copy import deepcopy
 from typing import Any, Dict
-
-from pydantic import PydanticDeprecationWarning
 
 from ...config import cfg
 from .openai_provider import OpenAIProvider
@@ -20,12 +19,6 @@ class SparkProvider(OpenAIProvider):
     FUNCTION_CALL_MODEL_IDENTIFIERS = ("Ultra", "generalv3")
 
     def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):
-        # Suppress specific warnings before initialization
-        # TODO: Remove this after openai upgraded
-        import warnings
-
-        warnings.filterwarnings("ignore", category=PydanticDeprecationWarning)
-
         api_key = config.get("API_KEY")
         api_secret = config.get("API_SECRET")
         app_id = config.get("APP_ID")
@@ -34,7 +27,7 @@ class SparkProvider(OpenAIProvider):
             raise ValueError("API_KEY and API_SECRET are required for Spark provider")
 
         # Create a mutable copy of the config to avoid modifying the original
-        config_copy = config.copy()
+        config_copy = deepcopy(config)
         config_copy["API_KEY"] = f"{api_key}:{api_secret}"
 
         # Add uid to extra_body

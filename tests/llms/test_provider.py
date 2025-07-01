@@ -73,6 +73,7 @@ class TestProviderFactory:
             "bailian",
             "bailian-intl",
             "spark",
+            "together",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers
