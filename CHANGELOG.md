@@ -1,5 +1,23 @@
 
 ---
+## [0.7.5](https://github.com/belingud/yaicli/compare/v0.7.4..v0.7.5) - 2025-07-01
+
+### ⛰️  Features
+
+- add get_weather buildin function - ([876efb7](https://github.com/belingud/yaicli/commit/876efb79856be4328c2fe8119ce696d9a17ccbc0)) - Belingud
+
+### 📚 Documentation
+
+- add Spark and Together to README - ([e26ea59](https://github.com/belingud/yaicli/commit/e26ea59f15abd20c5a190dd67e4b5d1f1a5b2d19)) - Belingud
+- update CHANGELOG with v0.7.4 release notes - ([966e443](https://github.com/belingud/yaicli/commit/966e443465ea74dcc44626f88b2302c63e1e6582)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- remove pydantic deprecation warnings - ([ce2c18c](https://github.com/belingud/yaicli/commit/ce2c18cb583816558df9b7e12e55c53c8f8412d3)) - Belingud
+- add warnings import and filter deprecation warnings - ([7003144](https://github.com/belingud/yaicli/commit/700314496bd26c4927a86285cb12f3ce1ef58595)) - Belingud
+
+
+---
 ## [0.7.4](https://github.com/belingud/yaicli/compare/v0.7.3..v0.7.4) - 2025-06-30
 
 ### 🐛 Bug Fixes
