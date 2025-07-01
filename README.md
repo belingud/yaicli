@@ -37,13 +37,13 @@ generate and execute shell commands, or get quick answers without leaving your w
 ### 🧠 Smart Environment Awareness
 
 - **Auto-detection**: Identifies your shell (bash/zsh/PowerShell/CMD) and OS
-- **Safe Command Execution**: 3-step verification before running any command
+- **Safe Command Execution**: Verification before running any command
 - **Flexible Input**: Pipe content directly (`cat log.txt | ai "analyze this"`)
 
 ### 🔌 Universal LLM Compatibility
 
 - **OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
-- **Multi-Provider Support**: Using litellm to support all major LLM providers
+- **Multi-Provider Support**: Support multiple providers
 
 ### 💻 Enhanced Terminal Experience
 
@@ -72,7 +72,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.10 or higher
 
 ### Quick Install
 
@@ -1195,7 +1195,6 @@ YAICLI is designed with a modular architecture that separates concerns and makes
 | [Typer](https://typer.tiangolo.com/)                            | Command-line interface with type hints             |
 | [Rich](https://rich.readthedocs.io/)                            | Terminal formatting and beautiful display          |
 | [prompt_toolkit](https://python-prompt-toolkit.readthedocs.io/) | Interactive input with history and auto-completion |
-| [litellm](https://litellm.ai/)                                  | LLM provider compatibility                         |
 | [json-repair](https://github.com/mangiucugna/json_repair)       | Repair llm function call arguments                 |
 
 ## 👨‍💻 Contributing
