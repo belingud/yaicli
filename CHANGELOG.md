@@ -1,5 +1,24 @@
 
 ---
+## [0.7.6](https://github.com/belingud/yaicli/compare/v0.7.5..v0.7.6) - 2025-07-01
+
+### ⛰️  Features
+
+- add default role configuration - ([91c72f0](https://github.com/belingud/yaicli/commit/91c72f0835bc3d68c14c5c3d45724536ffcc4905)) - Belingud
+
+### 🚜 Refactor
+
+- remove unused imports and trailing whitespace - ([cad95fe](https://github.com/belingud/yaicli/commit/cad95fed1a72d687a65e655b99dcbaaf8ccd77ac)) - Belingud
+
+### 📚 Documentation
+
+- add DEFAULT_ROLE to README.md - ([6308eea](https://github.com/belingud/yaicli/commit/6308eea1b7ced3aed51df5419c6fab838286ebfb)) - Belingud
+- update README.md with improved descriptions and requirements - ([25e32bc](https://github.com/belingud/yaicli/commit/25e32bcbb2c98091c329792dd6a24b3e8bd776dd)) - Belingud
+- update README with new provider and formatting - ([da056ca](https://github.com/belingud/yaicli/commit/da056ca8bf88a1e77ad9cd7b786ad7697d3e315b)) - Belingud
+- update CHANGELOG with v0.7.5 release notes - ([566a85c](https://github.com/belingud/yaicli/commit/566a85c9c8b6791754a961bee1a335a2e3fd405f)) - Belingud
+
+
+---
 ## [0.7.5](https://github.com/belingud/yaicli/compare/v0.7.4..v0.7.5) - 2025-07-01
 
 ### ⛰️  Features
@@ -95,6 +114,9 @@
 
 ---
 ## [0.7.0](https://github.com/belingud/yaicli/compare/v0.6.4..v0.7.0) - 2025-06-27
+
+[!IMPORTANT]
+- Add MCP support.
 
 ### ⛰️  Features
 

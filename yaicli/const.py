@@ -51,6 +51,7 @@ DEFAULT_PROVIDER = "openai"
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_MODEL = "gpt-4o"
 DEFAULT_SHELL_NAME = "auto"
+DEFAULT_ROLE = "DEFAULT"
 DEFAULT_OS_NAME = "auto"
 DEFAULT_STREAM: BOOL_STR = "true"
 DEFAULT_TEMPERATURE: float = 0.3
@@ -123,6 +124,7 @@ DEFAULT_CONFIG_MAP = {
     # System detection hints
     "SHELL_NAME": {"value": DEFAULT_SHELL_NAME, "env_key": "YAI_SHELL_NAME", "type": str},
     "OS_NAME": {"value": DEFAULT_OS_NAME, "env_key": "YAI_OS_NAME", "type": str},
+    "DEFAULT_ROLE": {"value": DEFAULT_ROLE, "env_key": "YAI_DEFAULT_ROLE", "type": str},
     # API call parameters
     "STREAM": {"value": DEFAULT_STREAM, "env_key": "YAI_STREAM", "type": bool},
     "TEMPERATURE": {"value": DEFAULT_TEMPERATURE, "env_key": "YAI_TEMPERATURE", "type": float},
@@ -169,6 +171,7 @@ MODEL={DEFAULT_CONFIG_MAP["MODEL"]["value"]}
 SHELL_NAME={DEFAULT_CONFIG_MAP["SHELL_NAME"]["value"]}
 OS_NAME={DEFAULT_CONFIG_MAP["OS_NAME"]["value"]}
 
+DEFAULT_ROLE={DEFAULT_CONFIG_MAP["DEFAULT_ROLE"]["value"]}
 # true: streaming response, false: non-streaming
 STREAM={DEFAULT_CONFIG_MAP["STREAM"]["value"]}
 

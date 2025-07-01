@@ -35,7 +35,6 @@ class MistralProvider(Provider):
         self.client = Mistral(**self.get_client_params())
         self.console = get_console()
 
-
     def get_client_params(self) -> Dict[str, Any]:
         """Get client parameters for Mistral
 
