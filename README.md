@@ -23,6 +23,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 > YAICLI is actively developed. While core functionality is stable, some features may evolve in future releases.
 
 > We support MCP since v0.7.0!
+> 
 > We support Function Call since v0.5.0!
 
 ## ✨ Key Features
@@ -60,7 +61,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 - **Function Calling**: Enable function calling in API requests
 - **Function Output**: Show the output of functions
 
-### MCP Calling
+### 📚 MCP Calling
 
 - **MCP Calling**: Call LLM with MCP tools
 - **MCP Output**: Show the output of MCP tools
@@ -93,7 +94,7 @@ Yaicli has several optional dependencies group, you can copy below commands to i
 pip install 'yaicli[all]'
 
 # install with specific provider support
-pip instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini]'
+pip instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral]'
 ```
 
 Install by `uv`.
@@ -103,7 +104,7 @@ Install by `uv`.
 uv tool install 'yaicli[all]'
 
 # install with specific provider support
-uv tool instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini]'
+uv tool instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral]'
 ```
 
 ### Install from Source
