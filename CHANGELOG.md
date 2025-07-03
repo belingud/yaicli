@@ -1,5 +1,17 @@
 
 ---
+## [0.7.8](https://github.com/belingud/yaicli/compare/v0.7.7..v0.7.8) - 2025-07-03
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([78761d4](https://github.com/belingud/yaicli/commit/78761d48bd2ff612c32e92852d6d83c36cafcc97)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update fastmcp dependency to 2.10.1 - ([9fb6818](https://github.com/belingud/yaicli/commit/9fb681885abe52b8b0ead8fa621fefb31482162d)) - Belingud
+
+
+---
 ## [0.7.7](https://github.com/belingud/yaicli/compare/v0.7.6..v0.7.7) - 2025-07-01
 
 ### ⛰️  Features
