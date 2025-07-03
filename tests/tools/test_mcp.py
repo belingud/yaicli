@@ -1,8 +1,8 @@
 from pathlib import Path
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-from fastmcp.utilities.types import MCPContent
+from fastmcp.client.client import CallToolResult
 from mcp.types import TextContent, Tool
 
 from yaicli.const import MCP_JSON_PATH
@@ -89,7 +89,7 @@ class TestMCP:
         mock_client = Mock()
         mock_text_content = Mock(spec=TextContent)
         mock_text_content.text = "Test result"
-        mock_client.call_tool.return_value = [mock_text_content]
+        mock_client.call_tool.return_value = CallToolResult(content=[mock_text_content], structured_content=None)
         mock_manager = Mock()
         mock_manager.client = mock_client
         mock_get_manager.return_value = mock_manager
@@ -129,7 +129,7 @@ class TestMCP:
         mock_text_content.text = "Test result"
 
         # Test with TextContent
-        result = tool._format_result([mock_text_content])
+        result = tool._format_result(CallToolResult(content=[mock_text_content], structured_content=None))
         assert result == "Test result"
 
     def test_format_result_other_content(self):
@@ -138,11 +138,11 @@ class TestMCP:
         tool = MCP("test_tool", "Test description", {})
 
         # Create a mock content object
-        mock_content = Mock(spec=MCPContent)
+        mock_content = Mock()
         mock_content.__str__ = Mock(return_value="Mock content")
 
         # Test with non-TextContent
-        result = tool._format_result([mock_content])
+        result = tool._format_result(CallToolResult(content=[mock_content], structured_content=None))
         assert result == "Mock content"
 
     def test_format_result_empty(self):
@@ -151,7 +151,7 @@ class TestMCP:
         tool = MCP("test_tool", "Test description", {})
 
         # Test with empty list
-        result = tool._format_result([])
+        result = tool._format_result(CallToolResult(content=[], structured_content=None))
         assert result == ""
 
     def test_repr(self):
@@ -327,16 +327,16 @@ class TestMCPClient:
         # Create client
         client = MCPClient()
 
-        # Mock tools_map property using PropertyMock
+        # Mock tools_map property
         mock_tool = Mock()
-        type(client).tools_map = PropertyMock(return_value={"_mcp__tool1": mock_tool})
+        client._tools_map = {"_mcp__tool1": mock_tool}
 
         # Test get_tool
         result = client.get_tool("tool1")
         assert result == mock_tool
 
         # Test with nonexistent tool
-        type(client).tools_map = PropertyMock(return_value={"_mcp__tool1": mock_tool})
+        client._tools_map = {"_mcp__tool1": mock_tool}
         with pytest.raises(ValueError):
             client.get_tool("nonexistent")
 

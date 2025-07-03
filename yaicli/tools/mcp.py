@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from fastmcp.client import Client
-from fastmcp.utilities.types import MCPContent
+from fastmcp.client.client import CallToolResult
 from mcp.types import TextContent, Tool
 
 from ..const import MCP_JSON_PATH
@@ -100,21 +100,21 @@ class MCP:
         except Exception as e:
             return f"Tool '{self.name}' execution failed: {e}"
 
-    def _format_result(self, result: List[MCPContent]) -> str:
+    def _format_result(self, result: CallToolResult) -> str:
         """Format result to string
         This function is used to format the result to string.
         It will return the text of the first result if the result is a TextContent.
         It will return the string representation of the first result if the result is not a TextContent.
 
         Args:
-            result: List[MCPContent]
+            result: CallToolResult
         Returns:
             str
         """
-        if not result:
+        if not result or not result.content:
             return ""
 
-        first_result = result[0]
+        first_result = result.content[0]
         if isinstance(first_result, TextContent):
             return first_result.text
         return str(first_result)
@@ -183,13 +183,13 @@ class MCPClient:
         async with self._client:
             return await self._client.list_tools()
 
-    def call_tool(self, tool_name: str, **kwargs) -> List[MCPContent]:
+    def call_tool(self, tool_name: str, **kwargs) -> CallToolResult:
         """Call tool"""
         tool_name = parse_mcp_tool_name(tool_name)
         loop = get_or_create_event_loop()
         return loop.run_until_complete(self._call_tool_async(tool_name, **kwargs))
 
-    async def _call_tool_async(self, tool_name: str, **kwargs) -> List[MCPContent]:
+    async def _call_tool_async(self, tool_name: str, **kwargs) -> CallToolResult:
         """Async call tool"""
         async with self._client:
             return await self._client.call_tool(tool_name, kwargs)
