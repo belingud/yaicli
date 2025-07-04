@@ -2531,6 +2531,10 @@ dev = [
     { name = "tox" },
     { name = "tox-uv" },
 ]
+docs = [
+    { name = "mkdocs" },
+    { name = "mkdocs-material" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -2568,6 +2572,10 @@ dev = [
     { name = "ruff", specifier = ">=0.11.2" },
     { name = "tox", specifier = ">=4.27.0" },
     { name = "tox-uv", specifier = ">=1.26.1" },
+]
+docs = [
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-material", specifier = ">=9.6.15" },
 ]
 
 [[package]]

@@ -236,6 +236,13 @@ def main(
     """YAICLI: Your AI assistant in the command line.
 
     Call with a PROMPT to get a direct answer, use --shell to execute as command, or use --chat for an interactive session.
+
+    Example:
+        ai "What is the capital of France?"
+        ai --code "Write a fibonacci generator in Python"
+        ai --chat "What's the meaning of life"  # Start a chat session with a title
+        ai --chat  # Start a temporary chat session
+        ai --shell "Start docker image python:3.13.5-alpine3.22 with ports 8080 and map current dir to /app in container"
     """
     if template:
         print(DEFAULT_CONFIG_INI)

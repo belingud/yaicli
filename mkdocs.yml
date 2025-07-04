@@ -1,0 +1,53 @@
+site_name: YAICLI
+site_description: An advanced CLI tool for interacting with AI models
+site_url: https://github.com/belingud/yaicli
+repo_url: https://github.com/belingud/yaicli
+repo_name: belingud/yaicli
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.expand
+    - navigation.indexes
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage: 
+    - Basic Usage: usage/basic.md
+    - Interactive Mode: usage/interactive.md
+    - Advanced Features: usage/advanced.md
+  - API Reference:
+    - Overview: api/overview.md
+    - LLM Providers: api/providers.md
+    - Tool Integration: api/tools.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md

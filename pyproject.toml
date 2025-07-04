@@ -118,6 +118,10 @@ dev = [
     "tox>=4.27.0",
     "tox-uv>=1.26.1",
 ]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.15",
+]
 
 [tool.isort]
 profile = "black"
