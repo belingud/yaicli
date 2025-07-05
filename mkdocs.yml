@@ -26,28 +26,63 @@ theme:
     - navigation.indexes
     - content.code.copy
     - content.code.annotate
-
-markdown_extensions:
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.superfences
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.tabbed:
-      alternate_style: true
-  - admonition
-  - pymdownx.details
+  logo: assets/artwork/logo.png
+  favicon: assets/artwork/logo.png
 
 nav:
   - Home: index.md
-  - Installation: installation.md
-  - Usage: 
-    - Basic Usage: usage/basic.md
-    - Interactive Mode: usage/interactive.md
-    - Advanced Features: usage/advanced.md
-  - API Reference:
-    - Overview: api/overview.md
-    - LLM Providers: api/providers.md
-    - Tool Integration: api/tools.md
-  - Contributing: contributing.md
+  - Getting Started: getting-started.md
+  - Installation: install.md
+  - Usage:
+      - Command Overview: usage/commands.md
+      - Configuration Guide: usage/configuration.md
+      - Mode Switching (Chat / Execute): usage/modes.md
+      - CLI Shortcuts & Hotkeys: usage/cli.md
+      - Basic Usage: usage/basic.md
+      - Interactive Mode: usage/interactive.md
+      - Advanced Usage: usage/advanced.md
+  - Providers:
+      - Overview & Feature Matrix: providers/overview.md
+      - OpenAI: providers/openai.md
+      - Gemini: providers/gemini.md
+      - Azure OpenAI: providers/azure.md
+      - Moonshot: providers/moonshot.md
+      - DashScope: providers/dashscope.md
+      - Zhipu: providers/zhipu.md
+      - Qwen: providers/qwen.md
+      - Baichuan: providers/baichuan.md
+      - Minimax: providers/minimax.md
+  - Advanced:
+      - Prompt Template System: advanced/prompts.md
+      - Conversation & History: advanced/history.md
+      - Debugging & Logs: advanced/debugging.md
+  - Developer Guide:
+      - Architecture Overview: dev/architecture.md
+      - Add a New Provider: dev/add-provider.md
+      - CLI Debugging: dev/debug-cli.md
+  - FAQ & Troubleshooting: faq.md
   - Changelog: changelog.md
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.details
+  - pymdownx.emoji
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+  - mkdocstrings
+  # - git-revision-date-localized:
+  #     fallback_to_build_date: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/belingud/yaicli

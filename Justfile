@@ -3,6 +3,10 @@
 help:
     @just -l
 
+sync:
+    @echo "Syncing dependencies..."
+    @uv sync --all-groups --all-extras
+
 # Format code with ruff and isort
 format:
     @echo "Formatting code with ruff..."
