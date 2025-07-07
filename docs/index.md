@@ -1,7 +1,7 @@
 # YAICLI: Your AI Assistant in Command Line
 
 <p align="center">
-  <img src="./asserts/artwork/logo.png" width="150" alt="YAICLI Logo" />
+  <img src="./assets/artwork/logo.png" width="150" alt="YAICLI Logo" />
 </p>
 
 YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (LLMs) like GPT-4o directly to your terminal. Interact with AI through multiple modes: have natural conversations, generate and execute shell commands, or get quick answers without leaving your workflow.
