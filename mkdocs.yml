@@ -45,13 +45,12 @@ nav:
       - Overview & Feature Matrix: providers/overview.md
       - OpenAI: providers/openai.md
       - Gemini: providers/gemini.md
-      - Azure OpenAI: providers/azure.md
       - Moonshot: providers/moonshot.md
-      - DashScope: providers/dashscope.md
-      - Zhipu: providers/zhipu.md
-      - Qwen: providers/qwen.md
-      - Baichuan: providers/baichuan.md
+      - ModScope: providers/modscope.md
+      - ChatGLM: providers/chatglm.md
+      - Bailian: providers/bailian.md
       - Minimax: providers/minimax.md
+      - Anthropic: providers/anthropic.md
   - Advanced:
       - Prompt Template System: advanced/prompts.md
       - Conversation & History: advanced/history.md
