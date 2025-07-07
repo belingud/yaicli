@@ -6,6 +6,14 @@ class YaicliError(Exception):
         super().__init__(self.message)
 
 
+class ConfigError(YaicliError):
+    """Error in configuration"""
+
+
+class ConfigMissingError(ConfigError):
+    """Missing required key in config"""
+
+
 class ChatSaveError(YaicliError):
     """Error saving chat"""
 

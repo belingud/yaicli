@@ -72,6 +72,9 @@ class ProviderFactory:
 
     providers_map = {
         "ai21": (".providers.ai21_provider", "AI21Provider"),
+        "anthropic": (".providers.anthropic_provider", "AnthropicProvider"),
+        "anthropic-bedrock": (".providers.anthropic_provider", "AnthropicBedrockProvider"),
+        "anthropic-vertex": (".providers.anthropic_provider", "AnthropicVertexProvider"),
         "bailian": (".providers.bailian_provider", "BailianProvider"),
         "bailian-intl": (".providers.bailian_provider", "BailianIntlProvider"),
         "chatglm": (".providers.chatglm_provider", "ChatglmProvider"),

@@ -118,6 +118,7 @@ pip install .
 ## Buildin Supported Providers
 
 - AI21
+- Anthropic/Claude
 - Chatglm
 - Chuts
 - Cohere
@@ -297,6 +298,38 @@ REASONING_EFFORT=
 ```
 
 See official for more details: https://platform.openai.com/docs/guides/reasoning?api-mode=chat
+
+#### Anghropic/Claude
+
+```ini
+PROVIDER=anthropic
+API_KEY=
+MODEL=claude-sonnet-4-20250514
+```
+
+If you want to access **Anthropic bedrock**, you need to set `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SESSION_TOKEN` and `AWS_REGION` 
+in config or environment variables.
+
+```ini
+PROVIDER=anthropic-bedrock
+AWS_SECRET_ACCESS_KEY=
+AWS_ACCESS_KEY_ID=
+AWS_SESSION_TOKEN=
+AWS_REGION=
+MODEL=anthropic.claude-opus-4-20250514-v1:0
+```
+
+Support `ANTHROPIC_BEDROCK_BASE_URL` env or `BASE_URL` in config file, with same effect.
+
+Also support **Anthropic vertex** with key `PROJECT_ID` and `CLOUD_ML_REGION` in config or environment variables.
+
+```ini
+PROVIDER=anthropic-vertex
+PROJECT_ID=
+CLOUD_ML_REGION=
+```
+
+You can set anthropic base url by `ANTHROPIC_VERTEX_BASE_URL` env, or set `BASE_URL` in config file, same effect.
 
 #### Deepseek
 

@@ -276,6 +276,20 @@ class MCPToolConverter:
 
         return openai_tools
 
+    def to_anthropic_format(self) -> List[Dict[str, Any]]:
+        """Convert to Anthropic function call format"""
+        anthropic_tools = []
+
+        for tool in self.client.tools:
+            anthropic_tool = {
+                "name": gen_mcp_tool_name(tool.name),
+                "description": tool.description or "",
+                "parameters": tool.inputSchema,
+            }
+            anthropic_tools.append(anthropic_tool)
+
+        return anthropic_tools
+
     def _create_parameter_from_schema(
         self, name: str, prop_info: Dict[str, Any], required: List[str]
     ) -> inspect.Parameter:
@@ -440,6 +454,10 @@ class MCPManager:
     def to_gemini_tools(self) -> List[Callable]:
         """Convert to Gemini tool format"""
         return self.converter.to_gemini_format()
+
+    def to_anthropic_tools(self) -> List[Dict[str, Any]]:
+        """Convert to Anthropic tool format"""
+        return self.converter.to_anthropic_format()
 
 
 # Global instance
