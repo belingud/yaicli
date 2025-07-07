@@ -35,7 +35,9 @@ jobs:
           pip install mkdocs mkdocs-material mkdocstrings
 
       - name: Build docs
-        run: mkdocs build
+        run: |
+          mkdocs build
+          ls -al ./site
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -49,6 +51,13 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      - name: Debug: List contents of site/
+        run: |
+          echo "=== site/ directory contents ==="
+          ls -lahR ./site
+          echo "=== Disk usage of site/ ==="
+          du -sh ./site
+
       - name: Deploy to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v3
