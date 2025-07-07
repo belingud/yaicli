@@ -6,6 +6,7 @@ import typer
 from .chat import FileChatManager
 from .config import cfg
 from .const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
+from .exceptions import YaicliError
 from .functions import install_functions, print_functions, print_mcp
 from .role import RoleManager
 
@@ -269,16 +270,22 @@ def main(
 
     role = CLI.evaluate_role_name(code, shell, role)
 
-    # Instantiate the main CLI class with the specified role
-    cli = CLI(verbose=verbose, role=role)
-
-    # Run the appropriate mode
-    cli.run(
-        chat=chat,
-        shell=shell,
-        code=code,
-        user_input=final_prompt,
-    )
+    try:
+        # Instantiate the main CLI class with the specified role
+        cli = CLI(verbose=verbose, role=role)
+        # Run the appropriate mode
+        cli.run(
+            chat=chat,
+            shell=shell,
+            code=code,
+            user_input=final_prompt,
+        )
+    except YaicliError as e:
+        typer.echo(f"YAICLI Error: {e}")
+    except (typer.Abort, typer.Exit):
+        pass
+    except Exception as e:
+        typer.echo(f"Unknown error: {e}")
 
 
 if __name__ == "__main__":
