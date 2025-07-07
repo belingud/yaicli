@@ -56,17 +56,14 @@ generate and execute shell commands, or get quick answers without leaving your w
 - **Layered Configuration**: Environment variables > Config file > Sensible defaults
 - **Debugging Tools**: Verbose mode with detailed API tracing
 
-### 📚 Function Calling
+### 📚 Function Calling & MCP
 
-- **Function Calling**: Enable function calling in API requests
-- **Function Output**: Show the output of functions
-
-### 📚 MCP Calling
-
-- **MCP Calling**: Call LLM with MCP tools
-- **MCP Output**: Show the output of MCP tools
+- **Function Calling**: Enable function/MCP calling in API requests
+- **Function Output**: Show the output of functions/MCP
 
 ![What is life](artwork/reasoning_example.png)
+
+Full document: https://belingud.github.io/yaicli/
 
 ## 📦 Installation
 
@@ -94,7 +91,7 @@ Yaicli has several optional dependencies group, you can copy below commands to i
 pip install 'yaicli[all]'
 
 # install with specific provider support
-pip instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral]'
+pip instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,anthropic]'
 ```
 
 Install by `uv`.
@@ -104,7 +101,7 @@ Install by `uv`.
 uv tool install 'yaicli[all]'
 
 # install with specific provider support
-uv tool instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral]'
+uv tool instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,anthropic]'
 ```
 
 ### Install from Source
@@ -119,6 +116,8 @@ pip install .
 
 - AI21
 - Anthropic/Claude
+- Anthropic Bedrock
+- Anthropic Vertex
 - Chatglm
 - Chuts
 - Cohere
@@ -157,61 +156,6 @@ YAICLI uses a simple configuration file to store your preferences and API keys.
 ### Configuration File Structure
 
 The default configuration file is located at `~/.config/yaicli/config.ini`. You can use `ai --template` to see default
-settings, just as below:
-
-```ini
-[core]
-PROVIDER=openai
-BASE_URL=
-API_KEY=
-MODEL=gpt-4o
-
-DEFAULT_ROLE=DEFAULT
-# auto detect shell and os (or specify manually, e.g., bash, zsh, powershell.exe)
-SHELL_NAME=auto
-OS_NAME=auto
-
-# true: streaming response, false: non-streaming
-STREAM=true
-
-# LLM parameters
-TEMPERATURE=0.3
-TOP_P=1.0
-MAX_TOKENS=1024
-TIMEOUT=60
-REASONING_EFFORT=
-
-# Interactive mode parameters
-INTERACTIVE_ROUND=25
-
-# UI/UX
-CODE_THEME=monokai
-# Max entries kept in history file
-MAX_HISTORY=500
-AUTO_SUGGEST=true
-# Print reasoning content or not
-SHOW_REASONING=true
-# Text alignment (default, left, center, right, full)
-JUSTIFY=default
-
-# Chat history settings
-CHAT_HISTORY_DIR=<tmpdir>/yaicli/chats
-MAX_SAVED_CHATS=20
-
-# Role settings
-# Set to false to disable warnings about modified built-in roles
-ROLE_MODIFY_WARNING=true
-
-# Function settings
-# Set to false to disable sending functions in API requests
-ENABLE_FUNCTIONS=true
-# Set to false to disable showing function output in the response
-SHOW_FUNCTION_OUTPUT=true
-
-# MCP settings
-ENABLE_MCP=false
-SHOW_MCP_OUTPUT=false
-```
 
 ### Configuration Options Reference
 
@@ -249,7 +193,7 @@ SHOW_MCP_OUTPUT=false
 
 ### LLM Provider Configuration
 
-YAICLI works with all major LLM providers. The default configuration is set up for OpenAI, but you can easily switch to
+YAICLI works with major LLM providers. The default configuration is set up for OpenAI, but you can easily switch to
 other providers.
 
 Note: blank `BASE_URL` (or no `BASE_URL`) means use provider default url.
@@ -630,6 +574,8 @@ MODEL=qwen/qwen3-235b-a22b
 EXTRA_BODY={"chat_template_kwargs": {"thinking": false}}
 ```
 
+> `chat_template_kwargs` is for Qwen3 and ibm/granite models, you disable thinking as above config.
+
 #### Together
 
 Using together openai-compatible capabilities
@@ -657,41 +603,6 @@ APP_SECRET=
 MODEL=4.0Ultra
 ```
 
-> `chat_template_kwargs` is for Qwen3 and ibm/granite models, you disable thinking as above config.
-
-### Syntax Highlighting Themes
-
-YAICLI supports all Pygments syntax highlighting themes. You can set your preferred theme in the config file:
-
-```ini
-CODE_THEME = monokai
-```
-
-Browse available themes at: https://pygments.org/styles/
-
-![monokia theme example](artwork/monokia.png)
-
-### Extra Headers and Body
-
-You can add extra headers and body to the API request by setting `EXTRA_HEADERS` and `EXTRA_BODY` in the config file.
-The value should be valid json string.
-
-```ini
-EXTRA_HEADERS={"X-Extra-Header": "value"}
-EXTRA_BODY={"extra_key": "extra_value"}
-```
-
-Example: If you want to disable Qwen3's thinking behavior, you can add the following to the config file.
-
-```ini
-EXTRA_BODY={"enable_thinking": false}
-```
-
-Or just limit thinking tokens:
-
-```ini
-EXTRA_BODY={"thinking_budget": 4096}
-```
 
 ## 🚀 Usage
 
@@ -715,65 +626,6 @@ cat app.py | ai "Explain what this code does"
 
 # Debug with verbose mode
 ai --verbose "Explain quantum computing"
-```
-
-### Command Line Reference
-
-```
- Usage: ai [OPTIONS] [PROMPT]
-
- YAICLI: Your AI assistant in the command line.
- Call with a PROMPT to get a direct answer, use --shell to execute as command, or use --chat for an interactive session.
-
-╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available. [default: None]                            │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --install-completion            Install completion for the current shell.                                                        │
-│ --show-completion               Show completion for the current shell, to copy it or customize the installation.                 │
-│ --help                -h        Show this message and exit.                                                                      │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --model        -M                 TEXT                       Specify the model to use.                                           │
-│ --temperature  -T                 FLOAT RANGE [0.0<=x<=2.0]  Specify the temperature to use. [default: 0.5]                      │
-│ --top-p        -P                 FLOAT RANGE [0.0<=x<=1.0]  Specify the top-p to use. [default: 1.0]                            │
-│ --max-tokens                      INTEGER RANGE [x>=1]       Specify the max tokens to use. [default: 1024]                      │
-│ --stream           --no-stream                               Specify whether to stream the response. (default: stream)           │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Role Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --role         -r      TEXT  Specify the assistant role to use. [default: DEFAULT]                                               │
-│ --create-role          TEXT  Create a new role with the specified name.                                                          │
-│ --delete-role          TEXT  Delete a role with the specified name.                                                              │
-│ --list-roles                 List all available roles.                                                                           │
-│ --show-role            TEXT  Show the role with the specified name.                                                              │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Chat Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --chat        -c        Start in interactive chat mode.                                                                          │
-│ --list-chats            List saved chat sessions.                                                                                │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Shell Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --shell  -s        Generate and optionally execute a shell command (non-interactive).                                            │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Code Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --code          Generate code in plaintext (non-interactive).                                                                    │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Other Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --verbose         -V                                                        Show verbose output (e.g., loaded config).           │
-│ --template                                                                  Show the default config file template and exit.      │
-│ --show-reasoning      --hide-reasoning                                      Show reasoning content from the LLM. (default: show) │
-│ --justify         -j                      [default|left|center|right|full]  Specify the justify to use. [default: default]       │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Function Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --install-functions                                   Install default functions.                                                 │
-│ --list-functions                                      List all available functions.                                              │
-│ --enable-functions        --disable-functions         Enable/disable function calling in API requests (default: disabled)        │
-│ --show-function-output    --hide-function-output      Show the output of functions (default: show)                               │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ MCP Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --enable-mcp         --disable-mcp          Enable/disable MCP in API requests (default: disabled) [default: disable-mcp]        │
-│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: show)                                               │
-│ --list-mcp                                  List all available mcp.                                                              │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### Interactive Mode Features
@@ -849,23 +701,6 @@ $ ai --chat "meaning of life"
 $ ai --chat
 ```
 
-**Save a temporary chat session**
-
-```bash
-$ ai --chat
-Starting a temporary chat session (will not be saved automatically)
-...
- 💬 > hi
-Assistant:
-Hello! How can I assist you today?
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 💬 > /save "hello"
-Chat saved as: hello
-Session is now marked as persistent and will be auto-saved on exit.
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 💬 >
-```
-
 **Start a persistent chat session**
 
 ```bash
@@ -930,40 +765,6 @@ cat demo.py | ai "Explain this code"
 ```bash
 cat error.log | ai "Why am I getting these errors in my Python app?"
 ```
-
-### Role Management
-
-```bash
-# Create a new role, you need to input the role description
-ai --create-role "Philosopher Master"
-
-# List all roles
-ai --list-roles
-
-# Show a role
-ai --show-role "Philosopher Master"
-
-# Delete a role
-ai --delete-role "Philosopher Master"
-```
-
-Once you create a role, you can use it in the `--role` option.
-
-```bash
-# Use a specific role
-ai --role "Philosopher Master" "What is the meaning of life?"
-
-# Use a role in chat
-ai --chat --role "Philosopher Master"
-```
-
-### History Management
-
-YAICLI maintains a history of your interactions (default: 500 entries) stored in `~/.yaicli_history`. You can:
-
-- Configure history size with `MAX_HISTORY` in config
-- Search history with `Ctrl+R` in interactive mode
-- View recent commands with `/his` command
 
 ## 📱 Examples
 
@@ -1157,35 +958,6 @@ Assistant:
 │     "snippet": "11 小时之前 · 1 Bitcoin = 107,304 US Dollars as of June 27, 2025 03:00 AM UTC. You can get live exchange  │
 │ rates between Bitcoin and US Dollars using exchange-rates.org, which aggregates …"                                        │
 │   },                                                                                                                      │
-│   {                                                                                                                       │
-│     "id": "result_1751024997245_1",                                                                                       │
-│     "title": "Live Bitcoin to US Dollars Exchange Rate - ₿ 1 …",                                                          │
-│     "link": "https://btc.currencyrate.today/usd",                                                                         │
-│     "snippet": ".b_imgcap_altitle p strong,.b_imgcap_altitle .b_factrow strong{color:#767676}#b_results                   │
-│ .b_imgcap_altitle{line-height:22px}.b_hList img{display:block}..."                                                        │
-│   },                                                                                                                      │
-│   {                                                                                                                       │
-│     "id": "result_1751024997246_2",                                                                                       │
-│     "title": "1 BTC to USD - Bitcoins to US Dollars Exchange Rate - Xe",                                                  │
-│     "link": "https://www.xe.com/currencyconverter/convert/?From=BTC&To=USD",                                              │
-│     "snippet": "2025年6月15日 · Get the latest 1 Bitcoin to US Dollar rate for FREE with the original Universal Currency  │
-│ Converter. Set rate alerts for to and learn more about Bitcoins and US Dollars from …"                                    │
-│   },                                                                                                                      │
-│   {                                                                                                                       │
-│     "id": "result_1751024997246_3",                                                                                       │
-│     "title": "BTC to USD Exchange Rates | Best Exchange Rates",                                                           │
-│     "link": "https://bestexchangerates.com/rates/btc-to-usd",                                                             │
-│     "snippet": "Bitcoin (BTC) to US dollar (USD) market data - latest interbank exchange rate, trend, chart & historic    │
-│ rates. Sell BTC → Buy USD"                                                                                                │
-│   },                                                                                                                      │
-│   {                                                                                                                       │
-│     "id": "result_1751024997247_4",                                                                                       │
-│     "title": "BTC to USD | Bitcoin to US Dollar - Investing.com",                                                         │
-│     "link": "https://www.investing.com/crypto/bitcoin/btc-usd",                                                           │
-│     "snippet": "Bitcoin Eyes 120k as Fed Rate Cuts Hopes Rise, US Dollar Falls to Multi-Year Lows BTC hovers around       │
-│ 107.5k after attempts at 108k Fed rate cut optimism rises USD falls to its lowest level …"                                │
-│   }                                                                                                                       │
-│ ]                                                                                                                         │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 Here are some current exchange rates for Bitcoin (BTC) to US Dollar (USD):                                                   
 
