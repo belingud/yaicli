@@ -60,6 +60,7 @@ nav:
       - Architecture Overview: dev/architecture.md
       - Add a New Provider: dev/add-provider.md
       - CLI Debugging: dev/debug-cli.md
+      - Contributing: dev/contributing.md
   - FAQ & Troubleshooting: faq.md
   - Changelog: changelog.md
 

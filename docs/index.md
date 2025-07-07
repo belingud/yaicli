@@ -53,6 +53,5 @@ YAICLI is a powerful yet lightweight command-line AI assistant that brings the c
 - [Installation](installation.md)
 - [Basic Usage](usage/basic.md)
 - [Advanced Features](usage/advanced.md)
-- [API Reference](api/overview.md)
 - [Contributing](contributing.md)
 - [GitHub Repository](https://github.com/vic4code/yaicli)

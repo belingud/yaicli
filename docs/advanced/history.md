@@ -218,6 +218,5 @@ MAX_HISTORY=0
 
 ## Next Steps
 
-- Learn about [streaming output features](sse.md)
 - Explore [debugging and logging](debugging.md)
 - Check out [prompt templates](prompts.md)
