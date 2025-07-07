@@ -1,0 +1,6301 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="An advanced CLI tool for interacting with AI models">
+      
+      
+      
+        <link rel="canonical" href="https://github.com/belingud/yaicli/changelog/">
+      
+      
+        <link rel="prev" href="../faq/">
+      
+      
+      
+      <link rel="icon" href="../assets/artwork/logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+    
+    
+      
+        <title>Changelog - YAICLI</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#078-2025-07-03" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="YAICLI" class="md-header__button md-logo" aria-label="YAICLI" data-md-component="logo">
+      
+  <img src="../assets/artwork/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            YAICLI
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Changelog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/belingud/yaicli" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    belingud/yaicli
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="YAICLI" class="md-nav__button md-logo" aria-label="YAICLI" data-md-component="logo">
+      
+  <img src="../assets/artwork/logo.png" alt="logo">
+
+    </a>
+    YAICLI
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/belingud/yaicli" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    belingud/yaicli
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Usage
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Usage
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Command Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Mode Switching (Chat / Execute)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Shortcuts & Hotkeys
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/basic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Basic Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/interactive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Advanced Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Providers
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Providers
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview & Feature Matrix
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/openai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    OpenAI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/gemini/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Gemini
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/azure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Azure OpenAI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/moonshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Moonshot
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/dashscope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DashScope
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/zhipu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Zhipu
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/qwen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Qwen
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/baichuan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Baichuan
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/minimax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Minimax
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Advanced
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prompt Template System
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Debugging & Logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/add-provider/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Add a New Provider
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/debug-cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Debugging
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ & Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Changelog
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Changelog
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#078-2025-07-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.8 - 2025-07-03
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.8 - 2025-07-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#077-2025-07-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.7 - 2025-07-01
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.7 - 2025-07-01">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#076-2025-07-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.6 - 2025-07-01
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.6 - 2025-07-01">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#075-2025-07-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.5 - 2025-07-01
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.5 - 2025-07-01">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#074-2025-06-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.4 - 2025-06-30
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.4 - 2025-06-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#073-2025-06-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.3 - 2025-06-29
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.3 - 2025-06-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#072-2025-06-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.2 - 2025-06-28
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.2 - 2025-06-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#071-2025-06-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.1 - 2025-06-27
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.1 - 2025-06-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#070-2025-06-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.0 - 2025-06-27
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.0 - 2025-06-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#064-2025-06-24" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.4 - 2025-06-24
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.4 - 2025-06-24">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#063-2025-06-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.3 - 2025-06-23
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.3 - 2025-06-23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#062-2025-06-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.2 - 2025-06-23
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.2 - 2025-06-23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#061-2025-06-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.1 - 2025-06-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.1 - 2025-06-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#060-2025-06-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.0 - 2025-06-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.0 - 2025-06-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#059-2025-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.9 - 2025-06-12
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.9 - 2025-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#058-2025-05-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.8 - 2025-05-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.8 - 2025-05-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#057-2025-05-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.7 - 2025-05-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.7 - 2025-05-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#056-2025-05-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.6 - 2025-05-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.6 - 2025-05-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#055-2025-05-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.5 - 2025-05-21
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.5 - 2025-05-21">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#054-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.4 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.4 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#053-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.3 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.3 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#052-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.2 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.2 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#051-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.1 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.1 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#050-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.0 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.0 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#040-2025-05-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.4.0 - 2025-05-01
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.4.0 - 2025-05-01">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#033-2025-04-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.3 - 2025-04-29
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.3 - 2025-04-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#032-2025-04-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.2 - 2025-04-29
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.2 - 2025-04-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#031-2025-04-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.1 - 2025-04-29
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.1 - 2025-04-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_27" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030-2025-04-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.0 - 2025-04-28
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.0 - 2025-04-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_28" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020-2025-04-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.2.0 - 2025-04-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.2.0 - 2025-04-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_29" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chroe" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chroe
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010-2025-04-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.1.0 - 2025-04-20
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.1.0 - 2025-04-20">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_30" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0019-2025-04-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.19 - 2025-04-16
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.19 - 2025-04-16">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_31" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0018-2025-04-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.18 - 2025-04-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.18 - 2025-04-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_32" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0017-2025-04-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.17 - 2025-04-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.17 - 2025-04-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0016-2025-04-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.16 - 2025-04-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.16 - 2025-04-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_33" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0015-2025-04-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.15 - 2025-04-11
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.15 - 2025-04-11">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_34" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#styling" class="md-nav__link">
+    <span class="md-ellipsis">
+      🎨 Styling
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0014-2025-04-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.14 - 2025-04-10
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.14 - 2025-04-10">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_35" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0013-2025-04-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.13 - 2025-04-09
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.13 - 2025-04-09">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_36" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0012-2025-04-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.12 - 2025-04-08
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.12 - 2025-04-08">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_37" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0011-2025-04-07" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.11 - 2025-04-07
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.11 - 2025-04-07">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_38" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0010-2025-04-05" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.10 - 2025-04-05
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.10 - 2025-04-05">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_39" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#009-2025-04-05" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.9 - 2025-04-05
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.9 - 2025-04-05">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_40" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#008-2025-04-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.8 - 2025-04-04
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.8 - 2025-04-04">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#007-2025-04-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.7 - 2025-04-04
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.7 - 2025-04-04">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#006-2025-04-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.6 - 2025-04-03
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.6 - 2025-04-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#005-2025-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.5 - 2025-04-02
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.5 - 2025-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_41" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#004-2025-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.4 - 2025-04-02
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.4 - 2025-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#003-2025-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.3 - 2025-04-02
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.3 - 2025-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#002-2025-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      [0.0.2] - 2025-04-02
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.0.2] - 2025-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_27" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#078-2025-07-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.8 - 2025-07-03
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.8 - 2025-07-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#077-2025-07-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.7 - 2025-07-01
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.7 - 2025-07-01">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#076-2025-07-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.6 - 2025-07-01
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.6 - 2025-07-01">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#075-2025-07-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.5 - 2025-07-01
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.5 - 2025-07-01">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#074-2025-06-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.4 - 2025-06-30
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.4 - 2025-06-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#073-2025-06-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.3 - 2025-06-29
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.3 - 2025-06-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#072-2025-06-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.2 - 2025-06-28
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.2 - 2025-06-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#071-2025-06-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.1 - 2025-06-27
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.1 - 2025-06-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#070-2025-06-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.7.0 - 2025-06-27
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.0 - 2025-06-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#064-2025-06-24" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.4 - 2025-06-24
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.4 - 2025-06-24">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#063-2025-06-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.3 - 2025-06-23
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.3 - 2025-06-23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#062-2025-06-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.2 - 2025-06-23
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.2 - 2025-06-23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#061-2025-06-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.1 - 2025-06-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.1 - 2025-06-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#060-2025-06-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.6.0 - 2025-06-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.0 - 2025-06-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#059-2025-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.9 - 2025-06-12
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.9 - 2025-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#058-2025-05-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.8 - 2025-05-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.8 - 2025-05-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#057-2025-05-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.7 - 2025-05-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.7 - 2025-05-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#056-2025-05-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.6 - 2025-05-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.6 - 2025-05-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#055-2025-05-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.5 - 2025-05-21
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.5 - 2025-05-21">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#054-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.4 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.4 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#053-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.3 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.3 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#052-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.2 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.2 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#051-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.1 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.1 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#050-2025-05-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.5.0 - 2025-05-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.0 - 2025-05-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#040-2025-05-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.4.0 - 2025-05-01
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.4.0 - 2025-05-01">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#033-2025-04-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.3 - 2025-04-29
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.3 - 2025-04-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#032-2025-04-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.2 - 2025-04-29
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.2 - 2025-04-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#031-2025-04-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.1 - 2025-04-29
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.1 - 2025-04-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_27" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030-2025-04-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3.0 - 2025-04-28
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.0 - 2025-04-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_28" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020-2025-04-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.2.0 - 2025-04-22
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.2.0 - 2025-04-22">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_29" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chroe" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chroe
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010-2025-04-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.1.0 - 2025-04-20
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.1.0 - 2025-04-20">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_30" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0019-2025-04-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.19 - 2025-04-16
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.19 - 2025-04-16">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_31" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0018-2025-04-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.18 - 2025-04-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.18 - 2025-04-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_32" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0017-2025-04-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.17 - 2025-04-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.17 - 2025-04-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0016-2025-04-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.16 - 2025-04-14
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.16 - 2025-04-14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_33" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0015-2025-04-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.15 - 2025-04-11
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.15 - 2025-04-11">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bug-fixes_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐛 Bug Fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_34" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#styling" class="md-nav__link">
+    <span class="md-ellipsis">
+      🎨 Styling
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0014-2025-04-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.14 - 2025-04-10
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.14 - 2025-04-10">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_35" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0013-2025-04-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.13 - 2025-04-09
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.13 - 2025-04-09">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_36" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0012-2025-04-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.12 - 2025-04-08
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.12 - 2025-04-08">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_37" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0011-2025-04-07" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.11 - 2025-04-07
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.11 - 2025-04-07">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_38" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0010-2025-04-05" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.10 - 2025-04-05
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.10 - 2025-04-05">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#documentation_39" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#009-2025-04-05" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.9 - 2025-04-05
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.9 - 2025-04-05">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_40" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#008-2025-04-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.8 - 2025-04-04
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.8 - 2025-04-04">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#007-2025-04-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.7 - 2025-04-04
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.7 - 2025-04-04">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#006-2025-04-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.6 - 2025-04-03
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.6 - 2025-04-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#005-2025-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.5 - 2025-04-02
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.5 - 2025-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_41" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#004-2025-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.4 - 2025-04-02
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.4 - 2025-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous-tasks_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Miscellaneous Tasks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#003-2025-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.0.3 - 2025-04-02
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.3 - 2025-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#refactor_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#002-2025-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      [0.0.2] - 2025-04-02
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.0.2] - 2025-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#features_27" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⛰️ Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refactor_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚜 Refactor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Changelog</h1>
+
+<hr />
+<h2 id="078-2025-07-03"><a href="https://github.com/belingud/yaicli/compare/v0.7.7..v0.7.8">0.7.8</a> - 2025-07-03<a class="headerlink" href="#078-2025-07-03" title="Permanent link">&para;</a></h2>
+<h3 id="documentation">📚 Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG with new release notes - (<a href="https://github.com/belingud/yaicli/commit/78761d48bd2ff612c32e92852d6d83c36cafcc97">78761d4</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update fastmcp dependency to 2.10.1 - (<a href="https://github.com/belingud/yaicli/commit/9fb681885abe52b8b0ead8fa621fefb31482162d">9fb6818</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="077-2025-07-01"><a href="https://github.com/belingud/yaicli/compare/v0.7.6..v0.7.7">0.7.7</a> - 2025-07-01<a class="headerlink" href="#077-2025-07-01" title="Permanent link">&para;</a></h2>
+<h3 id="features">⛰️  Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add fetch_webpage buildin function - (<a href="https://github.com/belingud/yaicli/commit/09ec36645da0cd8fcfe59ab27c7646012f0aace9">09ec366</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_1">📚 Documentation<a class="headerlink" href="#documentation_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG with new release notes and documentation updates - (<a href="https://github.com/belingud/yaicli/commit/2ff00568febcb4dcc149d280027e870693b803eb">2ff0056</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="076-2025-07-01"><a href="https://github.com/belingud/yaicli/compare/v0.7.5..v0.7.6">0.7.6</a> - 2025-07-01<a class="headerlink" href="#076-2025-07-01" title="Permanent link">&para;</a></h2>
+<h3 id="features_1">⛰️  Features<a class="headerlink" href="#features_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add default role configuration - (<a href="https://github.com/belingud/yaicli/commit/91c72f0835bc3d68c14c5c3d45724536ffcc4905">91c72f0</a>) - Belingud</li>
+</ul>
+<h3 id="refactor">🚜 Refactor<a class="headerlink" href="#refactor" title="Permanent link">&para;</a></h3>
+<ul>
+<li>remove unused imports and trailing whitespace - (<a href="https://github.com/belingud/yaicli/commit/cad95fed1a72d687a65e655b99dcbaaf8ccd77ac">cad95fe</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_2">📚 Documentation<a class="headerlink" href="#documentation_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add DEFAULT_ROLE to README.md - (<a href="https://github.com/belingud/yaicli/commit/6308eea1b7ced3aed51df5419c6fab838286ebfb">6308eea</a>) - Belingud</li>
+<li>update README.md with improved descriptions and requirements - (<a href="https://github.com/belingud/yaicli/commit/25e32bcbb2c98091c329792dd6a24b3e8bd776dd">25e32bc</a>) - Belingud</li>
+<li>update README with new provider and formatting - (<a href="https://github.com/belingud/yaicli/commit/da056ca8bf88a1e77ad9cd7b786ad7697d3e315b">da056ca</a>) - Belingud</li>
+<li>update CHANGELOG with v0.7.5 release notes - (<a href="https://github.com/belingud/yaicli/commit/566a85c9c8b6791754a961bee1a335a2e3fd405f">566a85c</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="075-2025-07-01"><a href="https://github.com/belingud/yaicli/compare/v0.7.4..v0.7.5">0.7.5</a> - 2025-07-01<a class="headerlink" href="#075-2025-07-01" title="Permanent link">&para;</a></h2>
+<h3 id="features_2">⛰️  Features<a class="headerlink" href="#features_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add get_weather buildin function - (<a href="https://github.com/belingud/yaicli/commit/876efb79856be4328c2fe8119ce696d9a17ccbc0">876efb7</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_3">📚 Documentation<a class="headerlink" href="#documentation_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add Spark and Together to README - (<a href="https://github.com/belingud/yaicli/commit/e26ea59f15abd20c5a190dd67e4b5d1f1a5b2d19">e26ea59</a>) - Belingud</li>
+<li>update CHANGELOG with v0.7.4 release notes - (<a href="https://github.com/belingud/yaicli/commit/966e443465ea74dcc44626f88b2302c63e1e6582">966e443</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_1">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>remove pydantic deprecation warnings - (<a href="https://github.com/belingud/yaicli/commit/ce2c18cb583816558df9b7e12e55c53c8f8412d3">ce2c18c</a>) - Belingud</li>
+<li>add warnings import and filter deprecation warnings - (<a href="https://github.com/belingud/yaicli/commit/700314496bd26c4927a86285cb12f3ce1ef58595">7003144</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="074-2025-06-30"><a href="https://github.com/belingud/yaicli/compare/v0.7.3..v0.7.4">0.7.4</a> - 2025-06-30<a class="headerlink" href="#074-2025-06-30" title="Permanent link">&para;</a></h2>
+<h3 id="bug-fixes">🐛 Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permanent link">&para;</a></h3>
+<ul>
+<li>handle LLM client creation errors gracefully - (<a href="https://github.com/belingud/yaicli/commit/6c8cbed702a93df53afdad04892c51b3c4873730">6c8cbed</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_4">📚 Documentation<a class="headerlink" href="#documentation_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add MCP Calling documentation to README - (<a href="https://github.com/belingud/yaicli/commit/70b5a8646fcc6002d9e0c72ec578c05c1d462291">70b5a86</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.7.3 release - (<a href="https://github.com/belingud/yaicli/commit/ddae983f072dafbd065e33085841f05d1cd7ace8">ddae983</a>) - Belingud</li>
+</ul>
+<h3 id="testing">🧪 Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add Together provider tests and improve line formatting - (<a href="https://github.com/belingud/yaicli/commit/560330e64083c50ac07e52b1c7e6d3dc9935fb94">560330e</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="073-2025-06-29"><a href="https://github.com/belingud/yaicli/compare/v0.7.2..v0.7.3">0.7.3</a> - 2025-06-29<a class="headerlink" href="#073-2025-06-29" title="Permanent link">&para;</a></h2>
+<h3 id="features_3">⛰️  Features<a class="headerlink" href="#features_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add bailian, bailian-intl, spark and nvida providers - (<a href="https://github.com/belingud/yaicli/commit/106214b581c9eeda34494b8bb06f906ab59995e7">106214b</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_5">📚 Documentation<a class="headerlink" href="#documentation_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add documentation for new providers - (<a href="https://github.com/belingud/yaicli/commit/5fd9662f7ebe1676865d61075dd5dc32f88a033c">5fd9662</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.7.2 release - (<a href="https://github.com/belingud/yaicli/commit/44b8702e092c7c8c4bec169048438807cc96963e">44b8702</a>) - Belingud</li>
+</ul>
+<h3 id="testing_1">🧪 Testing<a class="headerlink" href="#testing_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add new provider types to TestProviderFactory - (<a href="https://github.com/belingud/yaicli/commit/dbf457245cec79347c8d5ef267749c44efe59941">dbf4572</a>) - Belingud</li>
+<li>add tests for Bailian, Mistral, Nvidia, and Spark providers - (<a href="https://github.com/belingud/yaicli/commit/f75a7f61a5b2ce0cc068ec37060ca7f125b241ce">f75a7f6</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="072-2025-06-28"><a href="https://github.com/belingud/yaicli/compare/v0.7.1..v0.7.2">0.7.2</a> - 2025-06-28<a class="headerlink" href="#072-2025-06-28" title="Permanent link">&para;</a></h2>
+<h3 id="features_4">⛰️  Features<a class="headerlink" href="#features_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add MCP tools error handling and reasoning effort options - (<a href="https://github.com/belingud/yaicli/commit/68b9258cdf5820ee45373fa616d169122f9bd7cf">68b9258</a>) - Belingud</li>
+</ul>
+<h3 id="bug-fixes_1">🐛 Bug Fixes<a class="headerlink" href="#bug-fixes_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>handle errors in get_openai_mcp_tools and MCPClient methods - (<a href="https://github.com/belingud/yaicli/commit/251961f509d25b17171b66f1d3e3df920dac0730">251961f</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_1">🚜 Refactor<a class="headerlink" href="#refactor_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>standardize completion parameter keys across providers - (<a href="https://github.com/belingud/yaicli/commit/f294f758f484b33a7dd825e325bd3bc0543094e3">f294f75</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_6">📚 Documentation<a class="headerlink" href="#documentation_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add Mistral to README - (<a href="https://github.com/belingud/yaicli/commit/0d72f37969c54b9dc24204f7ee7753a97af59ee5">0d72f37</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.7.1 release - (<a href="https://github.com/belingud/yaicli/commit/72a21073f094491ff5670e48f6f1b65b1d1027ed">72a2107</a>) - Belingud</li>
+</ul>
+<h3 id="testing_2">🧪 Testing<a class="headerlink" href="#testing_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add tests for MistralProvider and update imports - (<a href="https://github.com/belingud/yaicli/commit/c297bef27342fcc5e8e294c92d886e0f1ca551b5">c297bef</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_2">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add mistralai and tox-uv dependencies - (<a href="https://github.com/belingud/yaicli/commit/d753356c4ac14458bea60269bc0e2532d5e30f63">d753356</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="071-2025-06-27"><a href="https://github.com/belingud/yaicli/compare/v0.7.0..v0.7.1">0.7.1</a> - 2025-06-27<a class="headerlink" href="#071-2025-06-27" title="Permanent link">&para;</a></h2>
+<h3 id="documentation_7">📚 Documentation<a class="headerlink" href="#documentation_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG.md for v0.7.0 release - (<a href="https://github.com/belingud/yaicli/commit/782e0de7f45821ffc37ba648b845916b21f05f8e">782e0de</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_3">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add fastmcp dependency - (<a href="https://github.com/belingud/yaicli/commit/e1dfcbbc47a64c756a9070b2bfecf67e61955ddd">e1dfcbb</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="070-2025-06-27"><a href="https://github.com/belingud/yaicli/compare/v0.6.4..v0.7.0">0.7.0</a> - 2025-06-27<a class="headerlink" href="#070-2025-06-27" title="Permanent link">&para;</a></h2>
+<p>[!IMPORTANT]
+- Add MCP support.</p>
+<h3 id="features_5">⛰️  Features<a class="headerlink" href="#features_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add MCP support in functions module - (<a href="https://github.com/belingud/yaicli/commit/224c4084fe4990bc5cc640e94886630d79f38ec8">224c408</a>) - Belingud</li>
+<li>add --list-mcp option to main function - (<a href="https://github.com/belingud/yaicli/commit/4a536d43a04cb7bbc135f84e0fe22ee52c6c9da3">4a536d4</a>) - Belingud</li>
+<li>add MCP options to CLI entry point - (<a href="https://github.com/belingud/yaicli/commit/d7f397850a49af17cd03c32e27a434427ad6fee5">d7f3978</a>) - Belingud</li>
+<li>add MCP support to LLMClient and providers - (<a href="https://github.com/belingud/yaicli/commit/58a4609521ee5bcc97c285b0d28055b740b247a7">58a4609</a>) - Belingud</li>
+<li>add asyncio utilities and function wrapper - (<a href="https://github.com/belingud/yaicli/commit/fb9e02bc4d345bb0b7feb9ba5407de2083d63503">fb9e02b</a>) - Belingud</li>
+</ul>
+<h3 id="bug-fixes_2">🐛 Bug Fixes<a class="headerlink" href="#bug-fixes_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Add tool call chunk processing in AI21Provider - (<a href="https://github.com/belingud/yaicli/commit/df78c4ff733a5483cf60cf207e09677674c140a7">df78c4f</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_2">🚜 Refactor<a class="headerlink" href="#refactor_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>simplify tool call creation and update default provider - (<a href="https://github.com/belingud/yaicli/commit/225e0666666908b4e2fbbbbfb4fd1bc5ae97ab36">225e066</a>) - Belingud</li>
+<li>remove unused imports and simplify DoubaoProvider constructor - (<a href="https://github.com/belingud/yaicli/commit/5effa9d2559257578932b9c82f8f95d06764864f">5effa9d</a>) - Belingud</li>
+<li>update parse_choice_from_content to support ChoiceChunk - (<a href="https://github.com/belingud/yaicli/commit/7f2194f60ab592608c9ea4012e442dc9737e4a02">7f2194f</a>) - Belingud</li>
+<li>refactor tools module for MCP integration - (<a href="https://github.com/belingud/yaicli/commit/62ab77895b4f7f4cd9246226af3c03b096a86186">62ab778</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_8">📚 Documentation<a class="headerlink" href="#documentation_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add default HF_PROVIDER to README - (<a href="https://github.com/belingud/yaicli/commit/98e0066efe7fb9c7f05beab41a2420db4bae2301">98e0066</a>) - Belingud</li>
+<li>add MCP support and documentation - (<a href="https://github.com/belingud/yaicli/commit/adfdd62637fc17b83b431581580d123589420d56">adfdd62</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.6.4 release - (<a href="https://github.com/belingud/yaicli/commit/d16a66b30150440a009c4d1febf72d1806b4cf5e">d16a66b</a>) - Belingud</li>
+</ul>
+<h3 id="testing_3">🧪 Testing<a class="headerlink" href="#testing_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update test case for new config key - (<a href="https://github.com/belingud/yaicli/commit/f38024cbcf1b6b9ce085bce62c1f1f967d2a5f86">f38024c</a>) - Belingud</li>
+<li>add tests for get_or_create_event_loop - (<a href="https://github.com/belingud/yaicli/commit/594b6717f83ce0feea2571008337e24afc701694">594b671</a>) - Belingud</li>
+<li>update provider names and default value handling - (<a href="https://github.com/belingud/yaicli/commit/013a98988a041c8e61b9793fb8b174f0cf444af2">013a989</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="064-2025-06-24"><a href="https://github.com/belingud/yaicli/compare/v0.6.3..v0.6.4">0.6.4</a> - 2025-06-24<a class="headerlink" href="#064-2025-06-24" title="Permanent link">&para;</a></h2>
+<h3 id="features_6">⛰️  Features<a class="headerlink" href="#features_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add new Cohere providers and improve type handling - (<a href="https://github.com/belingud/yaicli/commit/5d5f53cda18eea77f1e83e8ec24f519c6cd6a01f">5d5f53c</a>) - Belingud</li>
+<li>add HuggingFace provider to ProviderFactory - (<a href="https://github.com/belingud/yaicli/commit/a08cd7094ed3af11d754bd788730f6a130bcfade">a08cd70</a>) - Belingud</li>
+<li>add HuggingFaceProvider class - (<a href="https://github.com/belingud/yaicli/commit/d81b42c9ad884489b50aae17696910a02666c22e">d81b42c</a>) - Belingud</li>
+</ul>
+<h3 id="bug-fixes_3">🐛 Bug Fixes<a class="headerlink" href="#bug-fixes_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>handle empty content in CLI methods - (<a href="https://github.com/belingud/yaicli/commit/26ed101e899e1b9de3d6af36dabcfbd3e190c8f3">26ed101</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_3">🚜 Refactor<a class="headerlink" href="#refactor_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>standardize completion params keys in providers - (<a href="https://github.com/belingud/yaicli/commit/6802dfd61760ea66e494f776a5e85ecea1de2b91">6802dfd</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_9">📚 Documentation<a class="headerlink" href="#documentation_9" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update installation commands and supported providers - (<a href="https://github.com/belingud/yaicli/commit/9034c9876f5268a3073c2cad0db503324207e819">9034c98</a>) - Belingud</li>
+<li>add new models and configurations - (<a href="https://github.com/belingud/yaicli/commit/f2b02b83e604e82ed9a913b1da54c99b9cfbae02">f2b02b8</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.6.3 release - (<a href="https://github.com/belingud/yaicli/commit/8370366f1bb0bf48cb12488f9e222e0526aff305">8370366</a>) - Belingud</li>
+</ul>
+<h3 id="testing_4">🧪 Testing<a class="headerlink" href="#testing_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add tests for HuggingFaceProvider and update provider factory - (<a href="https://github.com/belingud/yaicli/commit/88f4a0b8b62e8028f3b4bcb7fbb47512fc631614">88f4a0b</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_4">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add new dependencies and keywords - (<a href="https://github.com/belingud/yaicli/commit/f82a5b7ea217e888cb621b19d34f11a6c5389d8a">f82a5b7</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="063-2025-06-23"><a href="https://github.com/belingud/yaicli/compare/v0.6.2..v0.6.3">0.6.3</a> - 2025-06-23<a class="headerlink" href="#063-2025-06-23" title="Permanent link">&para;</a></h2>
+<h3 id="features_7">⛰️  Features<a class="headerlink" href="#features_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add error handling for better error show - (<a href="https://github.com/belingud/yaicli/commit/ced63b81cc9339f4bd5569b5bd61d0455c4b2ab5">ced63b8</a>) - Belingud</li>
+<li>add gemini and vertexai providers - (<a href="https://github.com/belingud/yaicli/commit/1cb56ada4dde53146ff5a0ad3e2c932577b244d7">1cb56ad</a>) - Belingud</li>
+</ul>
+<h3 id="bug-fixes_4">🐛 Bug Fixes<a class="headerlink" href="#bug-fixes_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>use display_stream return content for command execute - (<a href="https://github.com/belingud/yaicli/commit/54438224cd6278b6281abe2c282ec79ad3dec276">5443822</a>) - Belingud</li>
+<li>ensure non-empty config values are used in completion params - (<a href="https://github.com/belingud/yaicli/commit/c319ade3d041243b445321c450a2efa7966ec2db">c319ade</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_4">🚜 Refactor<a class="headerlink" href="#refactor_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>remove unused BaseProvider class - (<a href="https://github.com/belingud/yaicli/commit/116611461d621f68c85e7bc96d0faa8f30dd08eb">1166114</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_10">📚 Documentation<a class="headerlink" href="#documentation_10" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG.md for v0.6.2 release - (<a href="https://github.com/belingud/yaicli/commit/b9e63547d65eb0a0e875e7acb42917ad309ced14">b9e6354</a>) - Belingud</li>
+</ul>
+<h3 id="testing_5">🧪 Testing<a class="headerlink" href="#testing_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add tests for gemini and vertexai providers - (<a href="https://github.com/belingud/yaicli/commit/7a9f755a8a4de584db47e3408f9028eb0e71d982">7a9f755</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_5">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update default reasoning effort to empty string - (<a href="https://github.com/belingud/yaicli/commit/e7f59c3390f0e3aed443436d335b4ee1f114dec0">e7f59c3</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="062-2025-06-23"><a href="https://github.com/belingud/yaicli/compare/v0.6.1..v0.6.2">0.6.2</a> - 2025-06-23<a class="headerlink" href="#062-2025-06-23" title="Permanent link">&para;</a></h2>
+<h3 id="features_8">⛰️  Features<a class="headerlink" href="#features_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update provider mappings in ProviderFactory - (<a href="https://github.com/belingud/yaicli/commit/3dce344a7b30de315fd69d7af692a0e160d7b58d">3dce344</a>) - Belingud</li>
+<li>add XaiProvider class based on OpenAIProvider - (<a href="https://github.com/belingud/yaicli/commit/f177da88c35d5934bf14c111d7bf61e4e8a6cf73">f177da8</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_5">🚜 Refactor<a class="headerlink" href="#refactor_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>standardize completion parameter handling across providers - (<a href="https://github.com/belingud/yaicli/commit/25be368ca67ac57c9beecb0c35223f9fe28c5244">25be368</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_11">📚 Documentation<a class="headerlink" href="#documentation_11" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update default settings and add XAI provider - (<a href="https://github.com/belingud/yaicli/commit/1cef2f8e558162536db8eb22cf58922db0f63b87">1cef2f8</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.6.1 release - (<a href="https://github.com/belingud/yaicli/commit/0c5ece3c6da82267b280b96dbea8c52c86d1ca32">0c5ece3</a>) - Belingud</li>
+</ul>
+<h3 id="testing_6">🧪 Testing<a class="headerlink" href="#testing_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add xai to provider factory test - (<a href="https://github.com/belingud/yaicli/commit/f89068f401955de4f1f9fdcd862d3a4885d324bb">f89068f</a>) - Belingud</li>
+<li>add tests for XaiProvider and new Role class - (<a href="https://github.com/belingud/yaicli/commit/c77d0708c395ab1a7dd78e44ed86f87d39ebdf66">c77d070</a>) - Belingud</li>
+<li>update provider referer and add new providers - (<a href="https://github.com/belingud/yaicli/commit/423cbbdb1e5bc6296f0262bee62337bd6e343cf6">423cbbd</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="061-2025-06-22"><a href="https://github.com/belingud/yaicli/compare/v0.6.0..v0.6.1">0.6.1</a> - 2025-06-22<a class="headerlink" href="#061-2025-06-22" title="Permanent link">&para;</a></h2>
+<h3 id="features_9">⛰️  Features<a class="headerlink" href="#features_9" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add error handling for empty choices in OpenAIProvider for better error message - (<a href="https://github.com/belingud/yaicli/commit/9cd2a285a52c0b1c5a646aadfbcc97eb71c44394">9cd2a28</a>) - Belingud</li>
+<li>add minimax and targon providers - (<a href="https://github.com/belingud/yaicli/commit/e8df86fdb7757e454162661051883a621066fc58">e8df86f</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_6">🚜 Refactor<a class="headerlink" href="#refactor_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Unify completion params handling in LLM providers - (<a href="https://github.com/belingud/yaicli/commit/913202089e7763808ee45186563b332155dca98f">9132020</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_12">📚 Documentation<a class="headerlink" href="#documentation_12" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG.md for v0.6.0 release - (<a href="https://github.com/belingud/yaicli/commit/f9b908507c82b2ac0b03e51e7cbd5a833c6468a4">f9b9085</a>) - Belingud</li>
+</ul>
+<h3 id="testing_7">🧪 Testing<a class="headerlink" href="#testing_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update mocking strategy for provider tests - (<a href="https://github.com/belingud/yaicli/commit/4b9c41018504ffa4632b4d7af393979543532360">4b9c410</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="060-2025-06-22"><a href="https://github.com/belingud/yaicli/compare/v0.5.9..v0.6.0">0.6.0</a> - 2025-06-22<a class="headerlink" href="#060-2025-06-22" title="Permanent link">&para;</a></h2>
+<h3 id="features_10">⛰️  Features<a class="headerlink" href="#features_10" title="Permanent link">&para;</a></h3>
+<ul>
+<li>refactor OllamaProvider and update default temperature - (<a href="https://github.com/belingud/yaicli/commit/cf2dbe9d105f2731b1e08915027c12f3917d123e">cf2dbe9</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_7">🚜 Refactor<a class="headerlink" href="#refactor_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Update provider naming and Groq N param handling - (<a href="https://github.com/belingud/yaicli/commit/309f70e1794dc2f39bf9cd511c26ec0c22db1340">309f70e</a>) - Belingud</li>
+<li>revamp LLM client and provider architecture - (<a href="https://github.com/belingud/yaicli/commit/90f7d46ceb79b2ac8b35ce03a5da33ce533aa1bd">90f7d46</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_13">📚 Documentation<a class="headerlink" href="#documentation_13" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update README with installation options and provider configs - (<a href="https://github.com/belingud/yaicli/commit/c7c088fe8b7bcb2e1f9b756913c8166824656484">c7c088f</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.5.9 release - (<a href="https://github.com/belingud/yaicli/commit/ba7396141440cdc175002356a52954af33e0aaf8">ba73961</a>) - Belingud</li>
+</ul>
+<h3 id="testing_8">🧪 Testing<a class="headerlink" href="#testing_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add llms package tests - (<a href="https://github.com/belingud/yaicli/commit/9c3e5c2da6c74f274e860cc6c17350a93a9463ba">9c3e5c2</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_6">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Update optional dependencies in pyproject.toml - (<a href="https://github.com/belingud/yaicli/commit/cc8f8657166223fc3589f2cde68f5406a90068e3">cc8f865</a>) - Belingud</li>
+<li>Configure ruff linting and add 'all' optional deps - (<a href="https://github.com/belingud/yaicli/commit/3d660e3a428b4ac2fdbda9bb600ea58247892d98">3d660e3</a>) - Belingud</li>
+<li>Update project keywords for broader AI model support - (<a href="https://github.com/belingud/yaicli/commit/5e09e7b9fc2243fd15e129a5928516850e29b98e">5e09e7b</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="059-2025-06-12"><a href="https://github.com/belingud/yaicli/compare/v0.5.8..v0.5.9">0.5.9</a> - 2025-06-12<a class="headerlink" href="#059-2025-06-12" title="Permanent link">&para;</a></h2>
+<h3 id="documentation_14">📚 Documentation<a class="headerlink" href="#documentation_14" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG.md for v0.5.8 release - (<a href="https://github.com/belingud/yaicli/commit/18a47d2a95c0d87b842c6c83884165dcd5fa89f0">18a47d2</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_7">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update click and typer dependencies - (<a href="https://github.com/belingud/yaicli/commit/1f992982905e280ecd676b315f73b184c83cc3c3">1f99298</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="058-2025-05-22"><a href="https://github.com/belingud/yaicli/compare/v0.5.7..v0.5.8">0.5.8</a> - 2025-05-22<a class="headerlink" href="#058-2025-05-22" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_8">🚜 Refactor<a class="headerlink" href="#refactor_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li>move schemas imports and update StrEnum compatibility - (<a href="https://github.com/belingud/yaicli/commit/a8a5b3b8e5dd2d817e71aa4e4d6585d33724062c">a8a5b3b</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_15">📚 Documentation<a class="headerlink" href="#documentation_15" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG.md for v0.5.7 release - (<a href="https://github.com/belingud/yaicli/commit/a0a641a032eac9737d7c1f99544651f9f958e322">a0a641a</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="057-2025-05-22"><a href="https://github.com/belingud/yaicli/compare/v0.5.6..v0.5.7">0.5.7</a> - 2025-05-22<a class="headerlink" href="#057-2025-05-22" title="Permanent link">&para;</a></h2>
+<h3 id="features_11">⛰️  Features<a class="headerlink" href="#features_11" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add support for EXTRA_HEADERS and EXTRA_BODY configuration - (<a href="https://github.com/belingud/yaicli/commit/7f8622fec170c31e9cb0116eb2f7f300ca1a62df">7f8622f</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_16">📚 Documentation<a class="headerlink" href="#documentation_16" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update README with new config options and dependencies - (<a href="https://github.com/belingud/yaicli/commit/ebe202385bad3ae085f9a7e90f235fcbc1acfad0">ebe2023</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.5.6 release - (<a href="https://github.com/belingud/yaicli/commit/2cf8e823d42dfd0d45d6f1a219fda27db39854e4">2cf8e82</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="056-2025-05-22"><a href="https://github.com/belingud/yaicli/compare/v0.5.5..v0.5.6">0.5.6</a> - 2025-05-22<a class="headerlink" href="#056-2025-05-22" title="Permanent link">&para;</a></h2>
+<h3 id="bug-fixes_5">🐛 Bug Fixes<a class="headerlink" href="#bug-fixes_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update project config and simplify printer logic - (<a href="https://github.com/belingud/yaicli/commit/029b7e26c0502e4ae7f32931cdaa2dd2f1d167a8">029b7e2</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_17">📚 Documentation<a class="headerlink" href="#documentation_17" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Fix formatting in README - (<a href="https://github.com/belingud/yaicli/commit/7e440da0fe9492736bf1ad160095447d5fce010b">7e440da</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.5.5 release - (<a href="https://github.com/belingud/yaicli/commit/5d12c692d5f692f8d5ede2e57f0a2a81a16e75a8">5d12c69</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_8">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add 'ai' as alternative command in pyproject.toml - (<a href="https://github.com/belingud/yaicli/commit/d1852f175ec3a821498640df8755f6e165d71fff">d1852f1</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="055-2025-05-21"><a href="https://github.com/belingud/yaicli/compare/v0.5.4..v0.5.5">0.5.5</a> - 2025-05-21<a class="headerlink" href="#055-2025-05-21" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_9">🚜 Refactor<a class="headerlink" href="#refactor_9" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Improve case-insensitive command handling in CLI - (<a href="https://github.com/belingud/yaicli/commit/a9f13829a66c7e9c3a7726222964f99aece1555b">a9f1382</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_18">📚 Documentation<a class="headerlink" href="#documentation_18" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add producthunt badge to README - (<a href="https://github.com/belingud/yaicli/commit/3b2d98b586b0d25917aba8c25d12c7f548b489f0">3b2d98b</a>) - Belingud</li>
+<li>add example image for reasoning shell - (<a href="https://github.com/belingud/yaicli/commit/99ff1171e1ffef550d1ee3ba01137664428384b8">99ff117</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.5.4 release - (<a href="https://github.com/belingud/yaicli/commit/fb5d95a145f23760b2b0d72c078014e5874a16c4">fb5d95a</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="054-2025-05-14"><a href="https://github.com/belingud/yaicli/compare/v0.5.3..v0.5.4">0.5.4</a> - 2025-05-14<a class="headerlink" href="#054-2025-05-14" title="Permanent link">&para;</a></h2>
+<h3 id="documentation_19">📚 Documentation<a class="headerlink" href="#documentation_19" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Update CHANGELOG.md for v0.5.3 release - (<a href="https://github.com/belingud/yaicli/commit/a0bf1286fce96ff4074c2b2284186e9261c8ca64">a0bf128</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_9">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_9" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Update dependencies - (<a href="https://github.com/belingud/yaicli/commit/698a054224e49194b59cd6e096a91804a0b859d5">698a054</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="053-2025-05-14"><a href="https://github.com/belingud/yaicli/compare/v0.5.2..v0.5.3">0.5.3</a> - 2025-05-14<a class="headerlink" href="#053-2025-05-14" title="Permanent link">&para;</a></h2>
+<h3 id="documentation_20">📚 Documentation<a class="headerlink" href="#documentation_20" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG.md for v0.5.2 release - (<a href="https://github.com/belingud/yaicli/commit/4393332566110fa2c0ceac8b223923039987c579">4393332</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="052-2025-05-14"><a href="https://github.com/belingud/yaicli/compare/v0.5.1..v0.5.2">0.5.2</a> - 2025-05-14<a class="headerlink" href="#052-2025-05-14" title="Permanent link">&para;</a></h2>
+<h3 id="documentation_21">📚 Documentation<a class="headerlink" href="#documentation_21" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Update sologan and logo - (<a href="https://github.com/belingud/yaicli/commit/1ccd4b56fcbd0fcc6f028c48e9b2b19a0f1972f5">1ccd4b5</a>) - Belingud</li>
+<li>Update CHANGELOG.md for v0.5.1 release - (<a href="https://github.com/belingud/yaicli/commit/d7023dcb82b17e37c8e493c6209c04d3a7d893d1">d7023dc</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="051-2025-05-14"><a href="https://github.com/belingud/yaicli/compare/v0.5.0..v0.5.1">0.5.1</a> - 2025-05-14<a class="headerlink" href="#051-2025-05-14" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_10">🚜 Refactor<a class="headerlink" href="#refactor_10" title="Permanent link">&para;</a></h3>
+<ul>
+<li>remove unused command line argument - (<a href="https://github.com/belingud/yaicli/commit/2daf0e04c2ee2e9b1cbac030f19ea6a5653f03d7">2daf0e0</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_22">📚 Documentation<a class="headerlink" href="#documentation_22" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add function call support to README - (<a href="https://github.com/belingud/yaicli/commit/191b5aed9ea4d4b42747a258bf2fb8b8c41ebc83">191b5ae</a>) - Belingud</li>
+<li>Update CHANGELOG.md for v0.5.0 release - (<a href="https://github.com/belingud/yaicli/commit/db7a328746b45e2b99c176842fc157e0fc063cf3">db7a328</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="050-2025-05-14"><a href="https://github.com/belingud/yaicli/compare/v0.4.0..v0.5.0">0.5.0</a> - 2025-05-14<a class="headerlink" href="#050-2025-05-14" title="Permanent link">&para;</a></h2>
+<h3 id="features_12">⛰️  Features<a class="headerlink" href="#features_12" title="Permanent link">&para;</a></h3>
+<p>[!IMPORTANT]
+- Add Function Call support.</p>
+<ul>
+<li>Add reasoning effort configuration and function output panel - (<a href="https://github.com/belingud/yaicli/commit/f21d29bcd1b9ebf411a6329dd98b659ded5ec1fa">f21d29b</a>) - Belingud</li>
+<li>refactor client and printer logic, add function call support - (<a href="https://github.com/belingud/yaicli/commit/9f008bed2f1ef42665da0c453474044bb809c9ce">9f008be</a>) - Belingud</li>
+<li>add non-stream completion function call - (<a href="https://github.com/belingud/yaicli/commit/572e2e212c1911155467bcc85274e6f536526899">572e2e2</a>) - Belingud</li>
+<li>add non-stream completion function call - (<a href="https://github.com/belingud/yaicli/commit/13d6154ff95a1622365efb49b2b48931c4fcc070">13d6154</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_23">📚 Documentation<a class="headerlink" href="#documentation_23" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Enhance README with function calling and provider info - (<a href="https://github.com/belingud/yaicli/commit/ab69e5ca1befe0d14b974451ec96262a6db7a3c0">ab69e5c</a>) - Belingud</li>
+<li>update changelog for v0.4.0 release - (<a href="https://github.com/belingud/yaicli/commit/66db3eed4fd9866b1711477753092de6ab171d57">66db3ee</a>) - Belingud</li>
+</ul>
+<h3 id="testing_9">🧪 Testing<a class="headerlink" href="#testing_9" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update test case for refactored project - (<a href="https://github.com/belingud/yaicli/commit/26e0faf8ebf7ce9ebebcc096371f000183c00b4a">26e0faf</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_10">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_10" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update dependencies and script name - (<a href="https://github.com/belingud/yaicli/commit/562d930fcddf5b874f1eefb9db08a1966490ef37">562d930</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="040-2025-05-01"><a href="https://github.com/belingud/yaicli/compare/v0.3.3..v0.4.0">0.4.0</a> - 2025-05-01<a class="headerlink" href="#040-2025-05-01" title="Permanent link">&para;</a></h2>
+<p><strong>From this version, yaicli will use provider sdk instead of httpx raw request</strong></p>
+<p>Providers:
+- OpenAI
+- Cohere</p>
+<h3 id="features_13">⛰️  Features<a class="headerlink" href="#features_13" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add provider-based API client architecture with OpenAI and Cohere support - (<a href="https://github.com/belingud/yaicli/commit/9f68de1a545dc297abb2f5479820121cfd753099">9f68de1</a>) - Belingud</li>
+<li>add role modify warning config and optimize lru_cache - (<a href="https://github.com/belingud/yaicli/commit/9c25162f26f6767d90ce24cb8d64780ad45c0219">9c25162</a>) - Belingud</li>
+<li>add role modification warnings and singleton pattern for RoleManager - (<a href="https://github.com/belingud/yaicli/commit/e2f959665488b856acec863f121a1126f9529c7c">e2f9596</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_11">🚜 Refactor<a class="headerlink" href="#refactor_11" title="Permanent link">&para;</a></h3>
+<ul>
+<li>reorganize imports and improve code formatting - (<a href="https://github.com/belingud/yaicli/commit/c1ee13399d5cdd503821fadfe2dc8c4f56656854">c1ee133</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_24">📚 Documentation<a class="headerlink" href="#documentation_24" title="Permanent link">&para;</a></h3>
+<ul>
+<li>refine README with updated configurations and provider info - (<a href="https://github.com/belingud/yaicli/commit/90b8170e1adefb21ab2fca88c15ca38aaa54ea91">90b8170</a>) - Belingud</li>
+<li>update changelog for v0.3.3 release - (<a href="https://github.com/belingud/yaicli/commit/3c73873afad339f5d247299b6ffeb3526e1827b3">3c73873</a>) - Belingud</li>
+</ul>
+<h3 id="testing_10">🧪 Testing<a class="headerlink" href="#testing_10" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add provider tests for base, cohere, openai, and factory - (<a href="https://github.com/belingud/yaicli/commit/26e6ef2ec80763910fe4114a0a1f2f1f8c50e9f9">26e6ef2</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_11">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_11" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add chat demo cast and use asciinema for example - (<a href="https://github.com/belingud/yaicli/commit/36f3dea8fecfdc05601c86311a8069b60640c893">36f3dea</a>) - Belingud</li>
+<li>add yaicli to isort formatting in Justfile - (<a href="https://github.com/belingud/yaicli/commit/d47def9e4b021ba4eb7c63715cad2edb787195dd">d47def9</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="033-2025-04-29"><a href="https://github.com/belingud/yaicli/compare/v0.3.2..v0.3.3">0.3.3</a> - 2025-04-29<a class="headerlink" href="#033-2025-04-29" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_12">🚜 Refactor<a class="headerlink" href="#refactor_12" title="Permanent link">&para;</a></h3>
+<ul>
+<li>remove redundant console print in CLI prompt logic - (<a href="https://github.com/belingud/yaicli/commit/1cf824164db92cb7d91ab49ab44fd1e65ab35533">1cf8241</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_25">📚 Documentation<a class="headerlink" href="#documentation_25" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update changelog for v0.3.2 release - (<a href="https://github.com/belingud/yaicli/commit/328f51b79c7d1a982a942c833417841476ec70aa">328f51b</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="032-2025-04-29"><a href="https://github.com/belingud/yaicli/compare/v0.3.1..v0.3.2">0.3.2</a> - 2025-04-29<a class="headerlink" href="#032-2025-04-29" title="Permanent link">&para;</a></h2>
+<h3 id="bug-fixes_6">🐛 Bug Fixes<a class="headerlink" href="#bug-fixes_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li>mode change in repl should also change role - (<a href="https://github.com/belingud/yaicli/commit/9dea5552da2026c5de90a8a9ae8bb77708539100">9dea555</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_26">📚 Documentation<a class="headerlink" href="#documentation_26" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Update CHANGELOG.md for release 0.3.1 - (<a href="https://github.com/belingud/yaicli/commit/4511255df1a0c9f3be43a7ecdbc67f6272eb20dc">4511255</a>) - Belingud</li>
+</ul>
+<h3 id="testing_11">🧪 Testing<a class="headerlink" href="#testing_11" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add X-Title header to API client test - (<a href="https://github.com/belingud/yaicli/commit/f786c48cc08aa824126e877c35a4e29e94612eea">f786c48</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_12">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_12" title="Permanent link">&para;</a></h3>
+<ul>
+<li>configure GitHub Actions for PyPI publishing - (<a href="https://github.com/belingud/yaicli/commit/b2d0cd46e77f3994ed0be49ab6a9ae0d943c7124">b2d0cd4</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="031-2025-04-29"><a href="https://github.com/belingud/yaicli/compare/v0.3.0..v0.3.1">0.3.1</a> - 2025-04-29<a class="headerlink" href="#031-2025-04-29" title="Permanent link">&para;</a></h2>
+<h3 id="features_14">⛰️  Features<a class="headerlink" href="#features_14" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Add X-Title header to API requests - (<a href="https://github.com/belingud/yaicli/commit/e30060b64eafa2ad361c28ef6471e9eebe5e955d">e30060b</a>) - Belingud</li>
+<li>clarify --code option help message - (<a href="https://github.com/belingud/yaicli/commit/74349c9b38cd7773c53c211da955003294dcf04e">74349c9</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_13">🚜 Refactor<a class="headerlink" href="#refactor_13" title="Permanent link">&para;</a></h3>
+<ul>
+<li>simplify chat manager test setup - (<a href="https://github.com/belingud/yaicli/commit/8650b05df1e6228597be741a2d95c805cf6db0b9">8650b05</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_27">📚 Documentation<a class="headerlink" href="#documentation_27" title="Permanent link">&para;</a></h3>
+<ul>
+<li>refine CLI documentation and add code example - (<a href="https://github.com/belingud/yaicli/commit/658ecf9444601277a5c63f57fe28ca6936365fba">658ecf9</a>) - Belingud</li>
+<li>Update README with new features and usage examples - (<a href="https://github.com/belingud/yaicli/commit/756942b9a80b13dfc49e0e773b1ff98b086c9c3e">756942b</a>) - Belingud</li>
+<li>Update 0.3.0 feat changelog - (<a href="https://github.com/belingud/yaicli/commit/34ad75ab026e44bd2749e9c99f97d187e4e50ca5">34ad75a</a>) - Belingud</li>
+<li>update CHANGELOG for v0.3.0 - (<a href="https://github.com/belingud/yaicli/commit/ce27418275697b8a6919285a153c89326477913a">ce27418</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_13">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_13" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update Justfile commands and descriptions - (<a href="https://github.com/belingud/yaicli/commit/0c5b841201060eb3dc87ff68c0f6edecce3bb182">0c5b841</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="030-2025-04-28"><a href="https://github.com/belingud/yaicli/compare/v0.2.0..v0.3.0">0.3.0</a> - 2025-04-28<a class="headerlink" href="#030-2025-04-28" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Add roles create/delete/list/show commands</li>
+<li>Add role management functionality</li>
+<li>Improve configuration management</li>
+<li>Add reasoning show config, justify config</li>
+</ol>
+<h3 id="features_15">⛰️  Features<a class="headerlink" href="#features_15" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add roles and improve configuration management - (<a href="https://github.com/belingud/yaicli/commit/fa883e9a39a9d72a60d1832b71c67a1bf6492b3c">fa883e9</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_14">🚜 Refactor<a class="headerlink" href="#refactor_14" title="Permanent link">&para;</a></h3>
+<ul>
+<li>reorder imports and remove unused imports - (<a href="https://github.com/belingud/yaicli/commit/28699dde7df4c06ba252c5fa98923e373a28cfcd">28699dd</a>) - Belingud</li>
+<li>Improve typing and streamline code for maintainability, add role funtion - (<a href="https://github.com/belingud/yaicli/commit/7f7230b6cf5ef07f7bc857f5ba9f710565886107">7f7230b</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_28">📚 Documentation<a class="headerlink" href="#documentation_28" title="Permanent link">&para;</a></h3>
+<ul>
+<li>improve documentation and configuration details - (<a href="https://github.com/belingud/yaicli/commit/28287d0a622e1934a7fcb7da0158d65bf3b70be9">28287d0</a>) - Belingud</li>
+<li>Add reasoning example and update README - (<a href="https://github.com/belingud/yaicli/commit/c80da0fdd957a13c91a6a55b4ee54dc10c5576ed">c80da0f</a>) - Belingud</li>
+<li>Update README.md - (<a href="https://github.com/belingud/yaicli/commit/1c169e5895ca0533ab1cfbca948872af30cdb4af">1c169e5</a>) - belingud</li>
+<li>update CHANGELOG.md for v0.2.0 release - (<a href="https://github.com/belingud/yaicli/commit/9cda1eaa73c5e81e127eaac3ade8265a2a7ffb61">9cda1ea</a>) - Belingud</li>
+</ul>
+<h3 id="testing_12">🧪 Testing<a class="headerlink" href="#testing_12" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CLI input handling and improve test cases for chat mode - (<a href="https://github.com/belingud/yaicli/commit/7a12f716653db7e5215bfa421206951977d5a713">7a12f71</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="020-2025-04-22"><a href="https://github.com/belingud/yaicli/compare/v0.1.0..v0.2.0">0.2.0</a> - 2025-04-22<a class="headerlink" href="#020-2025-04-22" title="Permanent link">&para;</a></h2>
+<h3 id="features_16">⛰️  Features<a class="headerlink" href="#features_16" title="Permanent link">&para;</a></h3>
+<ul>
+<li>enhance chat management and command-line interface - (<a href="https://github.com/belingud/yaicli/commit/68982737221b18416ba1eb8201c328203ada2b72">6898273</a>) - Belingud</li>
+<li>add chat persistent - (<a href="https://github.com/belingud/yaicli/commit/291d7b7a9c2595dcc2794e3b36617cb186a6dc56">291d7b7</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_29">📚 Documentation<a class="headerlink" href="#documentation_29" title="Permanent link">&para;</a></h3>
+<ul>
+<li>improve documentation and add chat history features - (<a href="https://github.com/belingud/yaicli/commit/c0f15453862bb23fca29c8f283dcd4c82181d1c5">c0f1545</a>) - Belingud</li>
+<li>Update README to clarify project description - (<a href="https://github.com/belingud/yaicli/commit/21d6389ea70a8770ff798c9b4d4ba22d7d075533">21d6389</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.1.0 release - (<a href="https://github.com/belingud/yaicli/commit/474aaa4a120366a607edc584a8d4b698a16390ca">474aaa4</a>) - Belingud</li>
+</ul>
+<h3 id="testing_13">🧪 Testing<a class="headerlink" href="#testing_13" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Update chat management and CLI tests - (<a href="https://github.com/belingud/yaicli/commit/1b3ccb027066ec3cd80e8a0d2f9fb0cc65908f50">1b3ccb0</a>) - Belingud</li>
+<li>update test case for chat persistent - (<a href="https://github.com/belingud/yaicli/commit/af4f7e76c2129373b5c3f9ec5971bda14bd961ea">af4f7e7</a>) - Belingud</li>
+</ul>
+<h3 id="chroe">Chroe<a class="headerlink" href="#chroe" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Add format command to Justfile - (<a href="https://github.com/belingud/yaicli/commit/676ba1b1759c5439593f57e26d67b7c47b9b26bd">676ba1b</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="010-2025-04-20"><a href="https://github.com/belingud/yaicli/compare/v0.0.19..v0.1.0">0.1.0</a> - 2025-04-20<a class="headerlink" href="#010-2025-04-20" title="Permanent link">&para;</a></h2>
+<h3 id="features_17">⛰️  Features<a class="headerlink" href="#features_17" title="Permanent link">&para;</a></h3>
+<ul>
+<li>split content and reasoning content for better display - (<a href="https://github.com/belingud/yaicli/commit/83c7cffb6a278320ef6d3884ac6ff9a8a7c4910f">83c7cff</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_15">🚜 Refactor<a class="headerlink" href="#refactor_15" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Replace "reasoning" with "thinking" in tests, fix CLI exit - (<a href="https://github.com/belingud/yaicli/commit/519d21024993db434671375310ce0417610d30ee">519d210</a>) - Belingud</li>
+<li>Rename INTERACTIVE_MAX_HISTORY to INTERACTIVE_ROUND - (<a href="https://github.com/belingud/yaicli/commit/ac17cadad1015cf4650a84f1ca566da4afc08e54">ac17cad</a>) - Belingud</li>
+<li>refactor yaicli, imporve logic - (<a href="https://github.com/belingud/yaicli/commit/71d19d6f0acc4ea1f139392473ddc7a968b78896">71d19d6</a>) - Belingud</li>
+<li>extract completion response processing logic - (<a href="https://github.com/belingud/yaicli/commit/d9f8d085198bc1374f021f24204d81f23a923949">d9f8d08</a>) - Belingud</li>
+<li>refactor yaicli structure - (<a href="https://github.com/belingud/yaicli/commit/e2ad1bec6426120bf2ff162a248a7cf6b82e21c7">e2ad1be</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_30">📚 Documentation<a class="headerlink" href="#documentation_30" title="Permanent link">&para;</a></h3>
+<ul>
+<li>improve README with detailed features and usage - (<a href="https://github.com/belingud/yaicli/commit/555f2b7832649b6de035298454f3332f2d1917a2">555f2b7</a>) - Belingud</li>
+<li>add example artwork - (<a href="https://github.com/belingud/yaicli/commit/8b40706e644c9c7a1c31c19286accd23d055f578">8b40706</a>) - Belingud</li>
+<li>update README with timeout option and improved help text - (<a href="https://github.com/belingud/yaicli/commit/cd0f031148bc1dfe19602ea23ff0a98c75464ad0">cd0f031</a>) - Belingud</li>
+<li>update CHANGELOG for v0.0.19 release - (<a href="https://github.com/belingud/yaicli/commit/4ff2781334957dd6b13dd694ac6f52f045094a95">4ff2781</a>) - Belingud</li>
+</ul>
+<h3 id="testing_14">🧪 Testing<a class="headerlink" href="#testing_14" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add new options to mock CLI config - (<a href="https://github.com/belingud/yaicli/commit/0279155bbb53db57c128834d35d17193970d2bbe">0279155</a>) - Belingud</li>
+<li>update test case for refactor - (<a href="https://github.com/belingud/yaicli/commit/d6072b39bc4e798030fe28ed09fede9150cd933e">d6072b3</a>) - Belingud</li>
+<li>update tests for refactor - (<a href="https://github.com/belingud/yaicli/commit/024edb7f22fd479ecf2f225d5d8f7d59af4777e0">024edb7</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0019-2025-04-16"><a href="https://github.com/belingud/yaicli/compare/v0.0.18..v0.0.19">0.0.19</a> - 2025-04-16<a class="headerlink" href="#0019-2025-04-16" title="Permanent link">&para;</a></h2>
+<h3 id="features_18">⛰️  Features<a class="headerlink" href="#features_18" title="Permanent link">&para;</a></h3>
+<ul>
+<li>enhance configuration handling with type support and improve default config initialization - (<a href="https://github.com/belingud/yaicli/commit/34bc896df1ae97f5a111cc95a4ebd58caafc6d07">34bc896</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_31">📚 Documentation<a class="headerlink" href="#documentation_31" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG.md for v0.0.18 release - (<a href="https://github.com/belingud/yaicli/commit/bc190086d5b1bcc9b083b057f891d3cdaff6ef0d">bc19008</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0018-2025-04-14"><a href="https://github.com/belingud/yaicli/compare/v0.0.17..v0.0.18">0.0.18</a> - 2025-04-14<a class="headerlink" href="#0018-2025-04-14" title="Permanent link">&para;</a></h2>
+<h3 id="features_19">⛰️  Features<a class="headerlink" href="#features_19" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add auto-suggest from history and improve config handling - (<a href="https://github.com/belingud/yaicli/commit/22b31ded71b4ecb87e1829076416b615affa38b4">22b31de</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_32">📚 Documentation<a class="headerlink" href="#documentation_32" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG.md for v0.0.17 release - (<a href="https://github.com/belingud/yaicli/commit/af27d29351d5c37c7473bb4021eaf31f2d7a2cfb">af27d29</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0017-2025-04-14"><a href="https://github.com/belingud/yaicli/compare/v0.0.16..v0.0.17">0.0.17</a> - 2025-04-14<a class="headerlink" href="#0017-2025-04-14" title="Permanent link">&para;</a></h2>
+<h3 id="bug-fixes_7">🐛 Bug Fixes<a class="headerlink" href="#bug-fixes_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Correct stdin TTY check and remove completer - (<a href="https://github.com/belingud/yaicli/commit/e2ee7039c2f9fc707fe9a4eec57d2226a0e25254">e2ee703</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_16">🚜 Refactor<a class="headerlink" href="#refactor_16" title="Permanent link">&para;</a></h3>
+<ul>
+<li>remove unused WordCompleter import - (<a href="https://github.com/belingud/yaicli/commit/968e6f194aee2c1467b1e9b68bb118af614bd5ec">968e6f1</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_14">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_14" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.16 in uv.lock and CHANGELOG.md - (<a href="https://github.com/belingud/yaicli/commit/f9376c4fa7e6641ebed20bb071fac997c4467243">f9376c4</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0016-2025-04-14"><a href="https://github.com/belingud/yaicli/compare/v0.0.15..v0.0.16">0.0.16</a> - 2025-04-14<a class="headerlink" href="#0016-2025-04-14" title="Permanent link">&para;</a></h2>
+<h3 id="features_20">⛰️  Features<a class="headerlink" href="#features_20" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>(cli)</strong> add max history limit and stdin support - (<a href="https://github.com/belingud/yaicli/commit/1b685df079a0cb3010c73c543bdf8c4fbb72195d">1b685df</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_17">🚜 Refactor<a class="headerlink" href="#refactor_17" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Remove unused io import - (<a href="https://github.com/belingud/yaicli/commit/1e72f6c3a1dfaff6326ad171aee360c57592be24">1e72f6c</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_33">📚 Documentation<a class="headerlink" href="#documentation_33" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update README with new shortcuts and max history size - (<a href="https://github.com/belingud/yaicli/commit/af700006e2a5f6b1b4ec1ec90396e00c45b4509f">af70000</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_15">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_15" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.15 in uv.lock and CHANGELOG.md - (<a href="https://github.com/belingud/yaicli/commit/15faced8e89e5eebc7ed6984be6b0e1a7743ff8c">15faced</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0015-2025-04-11"><a href="https://github.com/belingud/yaicli/compare/v0.0.14..v0.0.15">0.0.15</a> - 2025-04-11<a class="headerlink" href="#0015-2025-04-11" title="Permanent link">&para;</a></h2>
+<h3 id="features_21">⛰️  Features<a class="headerlink" href="#features_21" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add CODE_THEME configuration for code block styling - (<a href="https://github.com/belingud/yaicli/commit/ed0e8f62f73128ef2c57a472560ae438c8738103">ed0e8f6</a>) - Belingud</li>
+</ul>
+<h3 id="bug-fixes_8">🐛 Bug Fixes<a class="headerlink" href="#bug-fixes_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li>handle None value in SHELL environment variable - (<a href="https://github.com/belingud/yaicli/commit/a4e29f5876f042c71d9a9d36f6577ce751a26eba">a4e29f5</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_34">📚 Documentation<a class="headerlink" href="#documentation_34" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG.md with env key prefix change - (<a href="https://github.com/belingud/yaicli/commit/48b33da0d290ac9707e0e441318e50760c7de251">48b33da</a>) - Belingud</li>
+<li>update README.md with improved command execution format - (<a href="https://github.com/belingud/yaicli/commit/03b2417abc0e3127facb7638b31f07e1e35d8da1">03b2417</a>) - Belingud</li>
+<li>update command execution UI in README.md - (<a href="https://github.com/belingud/yaicli/commit/a4aadc8c47b01117edfadb49db058e5e44847061">a4aadc8</a>) - Belingud</li>
+</ul>
+<h3 id="styling">🎨 Styling<a class="headerlink" href="#styling" title="Permanent link">&para;</a></h3>
+<ul>
+<li>fix spacing around 'or' operator in shell detection - (<a href="https://github.com/belingud/yaicli/commit/44cedc993fda3b64df16adfc5a1381c31c04b045">44cedc9</a>) - Belingud</li>
+</ul>
+<h3 id="testing_15">🧪 Testing<a class="headerlink" href="#testing_15" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add smoke tests for CLI and fix shell detection tests - (<a href="https://github.com/belingud/yaicli/commit/baa1beb0238eb0c228d0c56310839d53b09c8484">baa1beb</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_16">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_16" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.14 in uv.lock and CHANGELOG.md - (<a href="https://github.com/belingud/yaicli/commit/9d21edf9c046fe4c976750b27a0554d4605ccc5a">9d21edf</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0014-2025-04-10"><a href="https://github.com/belingud/yaicli/compare/v0.0.13..v0.0.14">0.0.14</a> - 2025-04-10<a class="headerlink" href="#0014-2025-04-10" title="Permanent link">&para;</a></h2>
+<h3 id="features_22">⛰️  Features<a class="headerlink" href="#features_22" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>(cli)</strong> enhance command execution and output display - (<a href="https://github.com/belingud/yaicli/commit/d101841b17ee57e421574408fdc643a4f5b1eea7">d101841</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_18">🚜 Refactor<a class="headerlink" href="#refactor_18" title="Permanent link">&para;</a></h3>
+<ul>
+<li>clean up unused imports in yaicli.py - (<a href="https://github.com/belingud/yaicli/commit/71c64af167b0b0d2b8f771302b86035da0c8f18f">71c64af</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_35">📚 Documentation<a class="headerlink" href="#documentation_35" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>(Justfile)</strong> update changelog command message - (<a href="https://github.com/belingud/yaicli/commit/b060812488d8c64bb0bded6433fb93a66946c8aa">b060812</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_17">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_17" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.13 in uv.lock and CHANGELOG.md - (<a href="https://github.com/belingud/yaicli/commit/3806f707e320ec7616264e62c28d3e345fb6a79d">3806f70</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0013-2025-04-09"><a href="https://github.com/belingud/yaicli/compare/v0.0.12..v0.0.13">0.0.13</a> - 2025-04-09<a class="headerlink" href="#0013-2025-04-09" title="Permanent link">&para;</a></h2>
+<p>[!IMPORTANT]
+- Change env key prefix from AI_ to YAI_</p>
+<h3 id="features_23">⛰️  Features<a class="headerlink" href="#features_23" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>(cli)</strong> add command edit option and improve console output styling - (<a href="https://github.com/belingud/yaicli/commit/48c14ccff33af8ebeaeb100e002cf15c01d3756e">48c14cc</a>) - Belingud</li>
+<li>refactor CLI and add new configuration options - (<a href="https://github.com/belingud/yaicli/commit/ad093015cd2d54fbd17e6a07dd56af9459b2070f">ad09301</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_36">📚 Documentation<a class="headerlink" href="#documentation_36" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update README with new ASCII art and command examples - (<a href="https://github.com/belingud/yaicli/commit/cdcb9af6ece0cfa770390aa5900db5822c80d115">cdcb9af</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.0.12 release - (<a href="https://github.com/belingud/yaicli/commit/456c454f995fa2e6bf77fba9ca5d7b904e674f4e">456c454</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_18">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_18" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add ruff cache cleanup and uv lock to changelog - (<a href="https://github.com/belingud/yaicli/commit/218b3103644b8aac6397acc2a765244c3bfae622">218b310</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0012-2025-04-08"><a href="https://github.com/belingud/yaicli/compare/v0.0.11..v0.0.12">0.0.12</a> - 2025-04-08<a class="headerlink" href="#0012-2025-04-08" title="Permanent link">&para;</a></h2>
+<h3 id="features_24">⛰️  Features<a class="headerlink" href="#features_24" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add chat history and improve CLI UX with completions - (<a href="https://github.com/belingud/yaicli/commit/7749883f886c23fc5226965795ae46128caacd13">7749883</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_37">📚 Documentation<a class="headerlink" href="#documentation_37" title="Permanent link">&para;</a></h3>
+<ul>
+<li>restructure CLI options documentation in README - (<a href="https://github.com/belingud/yaicli/commit/142ac781f677b4285409414402f1493562bd6a90">142ac78</a>) - Belingud</li>
+<li>update CHANGELOG.md for v0.0.11 release - (<a href="https://github.com/belingud/yaicli/commit/6a6b3ae47d0ee2e3ae41160715f3416c3c1ce3bc">6a6b3ae</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0011-2025-04-07"><a href="https://github.com/belingud/yaicli/compare/v0.0.10..v0.0.11">0.0.11</a> - 2025-04-07<a class="headerlink" href="#0011-2025-04-07" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_19">🚜 Refactor<a class="headerlink" href="#refactor_19" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>(yaicli)</strong> improve stream response parsing and add plaintext test - (<a href="https://github.com/belingud/yaicli/commit/92383aea242bebdf6e5149fde44d077d0757fc59">92383ae</a>) - Belingud</li>
+<li>replace requests with httpx for HTTP client and update dependencies - (<a href="https://github.com/belingud/yaicli/commit/cfc38232952b1eba8907067a14628fa24a81bfb6">cfc3823</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_38">📚 Documentation<a class="headerlink" href="#documentation_38" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update project title in README - (<a href="https://github.com/belingud/yaicli/commit/cf8aaa7ea30c4ff845d27a5fd120b4157f28dc0c">cf8aaa7</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_19">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_19" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add publish command to Justfile - (<a href="https://github.com/belingud/yaicli/commit/a2a76e544332cc703a0956426c38dd5bd9301e12">a2a76e5</a>) - Belingud</li>
+<li>update yaicli version to 0.0.10 and CHANGELOG - (<a href="https://github.com/belingud/yaicli/commit/aab8fb2340950028851577331f87fbbffb75e242">aab8fb2</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="0010-2025-04-05"><a href="https://github.com/belingud/yaicli/compare/v0.0.9..v0.0.10">0.0.10</a> - 2025-04-05<a class="headerlink" href="#0010-2025-04-05" title="Permanent link">&para;</a></h2>
+<h3 id="documentation_39">📚 Documentation<a class="headerlink" href="#documentation_39" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update assistant name in default prompt - (<a href="https://github.com/belingud/yaicli/commit/e92313ecbd95191443b26320ae4cc26bf1983718">e92313e</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_20">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_20" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.9 and CHANGELOG - (<a href="https://github.com/belingud/yaicli/commit/2a47a8b318771139ae5f0515d7c04ccf7fef92eb">2a47a8b</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="009-2025-04-05"><a href="https://github.com/belingud/yaicli/compare/v0.0.8..v0.0.9">0.0.9</a> - 2025-04-05<a class="headerlink" href="#009-2025-04-05" title="Permanent link">&para;</a></h2>
+<h3 id="features_25">⛰️  Features<a class="headerlink" href="#features_25" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add reasoning model support - (<a href="https://github.com/belingud/yaicli/commit/8a3d21bc1aea147652b345d0015c2468724ee37d">8a3d21b</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_40">📚 Documentation<a class="headerlink" href="#documentation_40" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add configuration guide for non-OpenAI LLM providers - (<a href="https://github.com/belingud/yaicli/commit/20f590d374a3e6fa4b6c7a21529abec7dbb7d3b6">20f590d</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_21">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_21" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.8 and improve README - (<a href="https://github.com/belingud/yaicli/commit/282d3b5c987a333294ed09bfaca74f2ed0e7db12">282d3b5</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="008-2025-04-04"><a href="https://github.com/belingud/yaicli/compare/v0.0.7..v0.0.8">0.0.8</a> - 2025-04-04<a class="headerlink" href="#008-2025-04-04" title="Permanent link">&para;</a></h2>
+<h3 id="features_26">⛰️  Features<a class="headerlink" href="#features_26" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add command filtering and improve history management - (<a href="https://github.com/belingud/yaicli/commit/e743b1381e07c55e8adb49a4618359c91b1b932d">e743b13</a>) - Belingud</li>
+</ul>
+<h3 id="testing_16">🧪 Testing<a class="headerlink" href="#testing_16" title="Permanent link">&para;</a></h3>
+<ul>
+<li>restructure and add new test files for CLI functionality - (<a href="https://github.com/belingud/yaicli/commit/09c81eb9002ed8735b2cbc41dfd739448960dfce">09c81eb</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_22">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_22" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.7 and improve README - (<a href="https://github.com/belingud/yaicli/commit/71a8eff5e77e5aed35a7dc2825be8dbb0a73cebe">71a8eff</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="007-2025-04-04"><a href="https://github.com/belingud/yaicli/compare/v0.0.6..v0.0.7">0.0.7</a> - 2025-04-04<a class="headerlink" href="#007-2025-04-04" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_20">🚜 Refactor<a class="headerlink" href="#refactor_20" title="Permanent link">&para;</a></h3>
+<ul>
+<li>simplify CLI structure and improve code maintainability - (<a href="https://github.com/belingud/yaicli/commit/4eed7d85abf3a75766e015533682beb2998f8c3e">4eed7d8</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_23">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_23" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.6 and CHANGELOG - (<a href="https://github.com/belingud/yaicli/commit/563a4681c1a2e96a0609f2bd9822410567c4d0d0">563a468</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="006-2025-04-03"><a href="https://github.com/belingud/yaicli/compare/v0.0.5..v0.0.6">0.0.6</a> - 2025-04-03<a class="headerlink" href="#006-2025-04-03" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_21">🚜 Refactor<a class="headerlink" href="#refactor_21" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update environment variable names and remove max_tokens - (<a href="https://github.com/belingud/yaicli/commit/3abba5fe189b3de0d005907e159a46291a69636f">3abba5f</a>) - Belingud</li>
+<li>simplify config handling and remove DEFAULT_MODE - (<a href="https://github.com/belingud/yaicli/commit/3439eda71fdb24816de9c61c7ccee389e32c53b2">3439eda</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_24">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_24" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update CHANGELOG and uv.lock for version 0.0.5 - (<a href="https://github.com/belingud/yaicli/commit/d5abef4b602355fe472abaecd07f2701e8a38e4b">d5abef4</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="005-2025-04-02"><a href="https://github.com/belingud/yaicli/compare/v0.0.4..v0.0.5">0.0.5</a> - 2025-04-02<a class="headerlink" href="#005-2025-04-02" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_22">🚜 Refactor<a class="headerlink" href="#refactor_22" title="Permanent link">&para;</a></h3>
+<ul>
+<li>rename ShellAI to YAICLI and update related tests - (<a href="https://github.com/belingud/yaicli/commit/2284297d018851abcb74f01064554b00df821301">2284297</a>) - Belingud</li>
+</ul>
+<h3 id="documentation_41">📚 Documentation<a class="headerlink" href="#documentation_41" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update README with detailed project information and usage instructions - (<a href="https://github.com/belingud/yaicli/commit/c71d50c9d232c47a3cdbe035d03c1f4a0dbbe7d2">c71d50c</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_25">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_25" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.4 - (<a href="https://github.com/belingud/yaicli/commit/03cdedb38465adcf4fc10d4379b2d939daf22d9d">03cdedb</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="004-2025-04-02"><a href="https://github.com/belingud/yaicli/compare/v0.0.3..v0.0.4">0.0.4</a> - 2025-04-02<a class="headerlink" href="#004-2025-04-02" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_23">🚜 Refactor<a class="headerlink" href="#refactor_23" title="Permanent link">&para;</a></h3>
+<ul>
+<li>simplify multi-line statements for better readability - (<a href="https://github.com/belingud/yaicli/commit/4870bb7460682791ca79bbe2bcc0cef94bf51c26">4870bb7</a>) - Belingud</li>
+<li>rename ShellAI to yaicli and improve CLI help handling - (<a href="https://github.com/belingud/yaicli/commit/dad090540a7c1f8c8b30e3c688643a76e504b0c0">dad0905</a>) - Belingud</li>
+</ul>
+<h3 id="miscellaneous-tasks_26">⚙️ Miscellaneous Tasks<a class="headerlink" href="#miscellaneous-tasks_26" title="Permanent link">&para;</a></h3>
+<ul>
+<li>update yaicli version to 0.0.3 - (<a href="https://github.com/belingud/yaicli/commit/a689a02b1c5e0cb278484267ef71f5f3acec8203">a689a02</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="003-2025-04-02"><a href="https://github.com/belingud/yaicli/compare/v0.0.2..v0.0.3">0.0.3</a> - 2025-04-02<a class="headerlink" href="#003-2025-04-02" title="Permanent link">&para;</a></h2>
+<h3 id="refactor_24">🚜 Refactor<a class="headerlink" href="#refactor_24" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>(changelog)</strong> switch from git log to git cliff for changelog generation - (<a href="https://github.com/belingud/yaicli/commit/242a51d93a25675041a7fe19c4a0db1c7c12a663">242a51d</a>) - Belingud</li>
+<li>update CLI assistant description and error handling - (<a href="https://github.com/belingud/yaicli/commit/1a8bcdc86c72a75259d266291bc9e5350fc81f61">1a8bcdc</a>) - Belingud</li>
+<li>fix spacing in clean target and simplify build target - (<a href="https://github.com/belingud/yaicli/commit/2a1050e7a9eea8753c164553b13796e5510b7965">2a1050e</a>) - Belingud</li>
+</ul>
+<hr />
+<h2 id="002-2025-04-02">[0.0.2] - 2025-04-02<a class="headerlink" href="#002-2025-04-02" title="Permanent link">&para;</a></h2>
+<h3 id="features_27">⛰️  Features<a class="headerlink" href="#features_27" title="Permanent link">&para;</a></h3>
+<ul>
+<li>enhance OS detection and LLM API request handling - (<a href="https://github.com/belingud/yaicli/commit/8c00de099e1c75fedcdd33e9d7e0443818538059">8c00de0</a>) - Belingud</li>
+<li>add new dependencies and configurable API paths - (<a href="https://github.com/belingud/yaicli/commit/3be3f67b3bd9645a9a8c9909be0e5542612c1c71">3be3f67</a>) - Belingud</li>
+</ul>
+<h3 id="refactor_25">🚜 Refactor<a class="headerlink" href="#refactor_25" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>(config)</strong> migrate config from JSON to INI format and enhance error handling - (<a href="https://github.com/belingud/yaicli/commit/f556872fdb521adf8e20da6498fdaac26998a5b7">f556872</a>) - Belingud</li>
+<li>update config path to reflect project name change - (<a href="https://github.com/belingud/yaicli/commit/e6bf761aa0fae20b643848c586c6dc55d6f324fb">e6bf761</a>) - Belingud</li>
+<li>rename project from llmcli to yaicli and update related files - (<a href="https://github.com/belingud/yaicli/commit/cdb5a97d06c9f042c1c8731c8f11a4a7284783f0">cdb5a97</a>) - Belingud</li>
+<li>rename project from shellai to llmcli and update related files - (<a href="https://github.com/belingud/yaicli/commit/db4ecb85236b72fd7536c99b21d210037c09889e">db4ecb8</a>) - Belingud</li>
+<li>reorganize imports and improve code readability - (<a href="https://github.com/belingud/yaicli/commit/0f52c05918d177d4623ff2f07aff2fc2e3aa9e91">0f52c05</a>) - Belingud</li>
+<li>migrate llmcli to class-based ShellAI implementation - (<a href="https://github.com/belingud/yaicli/commit/2509cba5cad7c8626f794d88d971fff7eea9a404">2509cba</a>) - Belingud</li>
+</ul>
+<h3 id="build">Build<a class="headerlink" href="#build" title="Permanent link">&para;</a></h3>
+<ul>
+<li>add bump2version for version management - (<a href="https://github.com/belingud/yaicli/commit/de287f1262eae64ae5fd0cb634dea93762a17282">de287f1</a>) - Belingud</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/belingud/yaicli" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.expand", "navigation.indexes", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      
+    
+  </body>
+</html>
