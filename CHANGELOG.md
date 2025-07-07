@@ -1,5 +1,22 @@
 
 ---
+## [0.7.9](https://github.com/belingud/yaicli/compare/v0.7.8..v0.7.9) - 2025-07-07
+
+### ⛰️  Features
+
+- add support for Anthropic, Anthropic Vertex and Anthropic Bedrock providers - ([88c879e](https://github.com/belingud/yaicli/commit/88c879e37fc3fcbe82a91349a9d0be7674f8bc13)) - Belingud
+
+### 📚 Documentation
+
+- add Anthropic/Claude provider details - ([3f95754](https://github.com/belingud/yaicli/commit/3f95754510add560e64f19236497470dc6b9a85b)) - Belingud
+- update CHANGELOG with new release notes - ([f24a550](https://github.com/belingud/yaicli/commit/f24a550add43d2340172f1fd01dad69e1c2636e1)) - Belingud
+
+### 🧪 Testing
+
+- add tests for AnthropicProvider and setup test environment - ([5aa0986](https://github.com/belingud/yaicli/commit/5aa0986618444f95a1b9a69448f90bcac975ad4d)) - Belingud
+
+
+---
 ## [0.7.8](https://github.com/belingud/yaicli/compare/v0.7.7..v0.7.8) - 2025-07-03
 
 ### 📚 Documentation
