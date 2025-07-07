@@ -1,3 +1,4 @@
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,6 +20,50 @@ def patched_config_path(tmp_path_factory):
         # Yield the path in case some tests need to interact with the file
         yield config_file
     # Patch is automatically reverted after yield, tmp dir is cleaned up by pytest
+
+
+# Add a session-scoped fixture to set test provider and credentials
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment():
+    """Set up the test environment with mock credentials and default provider."""
+    # Store original environment variables
+    original_env = {}
+    for key in [
+        "YAI_PROVIDER",
+        "YAI_API_KEY",
+        "YAI_MODEL",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "AWS_REGION",
+        "PROJECT_ID",
+        "CLOUD_ML_REGION",
+        "ANTHROPIC_BEDROCK_BASE_URL",
+        "ANTHROPIC_VERTEX_BASE_URL",
+    ]:
+        original_env[key] = os.environ.get(key)
+
+    # Set test environment variables
+    os.environ["YAI_PROVIDER"] = "openai"  # Use OpenAI as the test provider
+    os.environ["YAI_API_KEY"] = "test_api_key"
+    os.environ["YAI_MODEL"] = "gpt-3.5-turbo"
+
+    # Add mock AWS credentials to prevent failures in Anthropic provider tests
+    os.environ["AWS_ACCESS_KEY_ID"] = "test_access_key"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "test_secret_key"
+    os.environ["AWS_SESSION_TOKEN"] = "test_session_token"
+    os.environ["AWS_REGION"] = "us-east-1"
+
+    # Run the tests
+    yield
+
+    # Restore original environment variables
+    for key, value in original_env.items():
+        if value is None:
+            if key in os.environ:
+                del os.environ[key]
+        else:
+            os.environ[key] = value
 
 
 @pytest.fixture(scope="function")
