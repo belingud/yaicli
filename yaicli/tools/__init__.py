@@ -33,6 +33,23 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
     return transformed_schemas
 
 
+def get_anthropic_schemas() -> List[Dict[str, Any]]:
+    """Get Anthropic-compatible function schemas
+
+    Returns:
+        List of function schemas in Anthropic format
+    """
+    transformed_schemas = []
+    for function in list_functions():
+        schema = {
+            "name": function.name,
+            "description": function.description,
+            "parameters": function.parameters,
+        }
+        transformed_schemas.append(schema)
+    return transformed_schemas
+
+
 def get_openai_mcp_tools() -> list[dict[str, Any]]:
     """Get OpenAI-compatible function schemas
 
@@ -47,6 +64,22 @@ def get_openai_mcp_tools() -> list[dict[str, Any]]:
         return get_mcp_manager().to_openai_tools()
     except Exception as e:
         raise MCPToolsError(f"Error getting MCP tools: {e}") from e
+
+
+def get_anthropic_mcp_tools() -> list[dict[str, Any]]:
+    """Get Anthropic-compatible function schemas
+
+    Returns:
+        List of function schemas in Anthropic format
+    Raises:
+        MCPToolsError: If error getting MCP tools
+        ValueError: If error getting MCP tools
+        FileNotFoundError: If MCP config file not found
+    """
+    try:
+        return get_mcp_manager().to_anthropic_tools()
+    except Exception as e:
+        raise MCPToolsError(f"Error getting MCP tools for Anthropic: {e}") from e
 
 
 def execute_tool_call(tool_call: ToolCall) -> Tuple[str, bool]:

@@ -1,3 +1,5 @@
+# type: ignore
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -109,13 +111,15 @@ class TestCLIInitialization:
         with (
             patch("yaicli.cli.get_console"),
             patch("yaicli.config.cfg", new=MagicMock()),
-            patch("yaicli.llms.client.LLMClient"),
             patch("yaicli.cli.Printer"),
             patch("yaicli.cli.FileChatManager"),
             patch("pathlib.Path.mkdir"),
             patch("yaicli.cli.PromptSession"),
         ):
-            cli = CLI()
+            # Create a mock LLMClient and pass it directly to CLI
+            mock_client = MagicMock()
+            cli = CLI(client=mock_client)
+
             assert cli.verbose is False
             assert cli.current_mode == TEMP_MODE
             assert cli.chat.history == []
@@ -126,7 +130,6 @@ class TestCLIInitialization:
         with (
             patch("yaicli.cli.get_console") as mock_console_func,
             patch("yaicli.config.cfg", new=MagicMock()),
-            patch("yaicli.llms.client.LLMClient"),
             patch("yaicli.cli.Printer"),
             patch("yaicli.cli.FileChatManager"),
             patch("pathlib.Path.mkdir"),
@@ -135,7 +138,10 @@ class TestCLIInitialization:
             mock_console = MagicMock()
             mock_console_func.return_value = mock_console
 
-            cli = CLI(verbose=True)
+            # Create a mock LLMClient and pass it directly to CLI
+            mock_client = MagicMock()
+            cli = CLI(verbose=True, client=mock_client)
+
             assert cli.verbose is True
             # Verify console.print was called for config display
             mock_console.print.assert_any_call("Loading Configuration:", style="bold cyan")
@@ -405,8 +411,8 @@ class TestChatManagement:
             history=[{"role": "user", "content": "Test message"}, {"role": "assistant", "content": "Test response"}],
             title="Test_Chat_1",
             date="2023-01-01",  # Add date attribute that's required
-            idx=1,
-            path="/path/to/chat",
+            idx="1",
+            path=Path("/path/to/chat"),
         )
         cli.chat_manager.load_chat_by_index.return_value = mock_chat_data
 
@@ -431,7 +437,7 @@ class TestChatManagement:
 
         # Create a Chat object with the path property
         mock_path = Path("/test/path/chat1.json")
-        mock_chat = Chat(history=[], title="Test Chat", date="2023-01-01", idx=1, path=mock_path)
+        mock_chat = Chat(history=[], title="Test Chat", date="2023-01-01", idx="1", path=mock_path)
 
         # Set up the mock to return the Chat object
         cli.chat_manager.load_chat_by_index.return_value = mock_chat

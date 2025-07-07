@@ -1,5 +1,6 @@
 import configparser
 import json
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from os import getenv
@@ -16,6 +17,7 @@ from .const import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
 )
+from .exceptions import ConfigError
 from .utils import str2bool
 
 
@@ -98,7 +100,11 @@ class Config(dict):
             return
 
         config_parser = CasePreservingConfigParser()
-        config_parser.read(CONFIG_PATH, encoding="utf-8")
+        try:
+            config_parser.read(CONFIG_PATH, encoding="utf-8")
+        except configparser.DuplicateOptionError as e:
+            self.console.print(f"[red]Error:[/red] {e}", justify=self["JUSTIFY"])
+            raise ConfigError(str(e)) from None
 
         # Check if "core" section exists in the config file
         if "core" not in config_parser or not config_parser["core"]:
@@ -175,7 +181,10 @@ class Config(dict):
 @lru_cache(1)
 def get_config() -> Config:
     """Get the configuration singleton"""
-    return Config()
+    try:
+        return Config()
+    except ConfigError:
+        sys.exit()
 
 
 cfg = get_config()

@@ -1,6 +1,6 @@
 [project]
 name = "yaicli"
-version = "0.7.8"
+version = "0.7.9"
 description = "A simple CLI tool to interact with LLM"
 authors = [{ name = "belingud", email = "im.victor@qq.com" }]
 readme = "README.md"
@@ -92,6 +92,10 @@ huggingface = [
 ]
 mistral = [
     "mistralai>=1.8.2",
+]
+anthropic = [
+    "anthropic[bedrock]>=0.57.1",
+    "google-cloud-aiplatform>=1.101.0",
 ]
 
 [tool.pytest.ini_options]

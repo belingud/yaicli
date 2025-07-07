@@ -38,7 +38,7 @@ from .const import (
     TEMP_MODE,
     DefaultRoleNames,
 )
-from .exceptions import ChatSaveError
+from .exceptions import ChatSaveError, YaicliError
 from .history import LimitedFileHistory
 from .llms import LLMClient
 from .printer import Printer
@@ -560,6 +560,6 @@ class CLI:
         """Create an LLM client instance based on configuration"""
         try:
             return LLMClient(provider_name=cfg["PROVIDER"].lower(), verbose=self.verbose, config=cfg)
-        except Exception as e:
+        except YaicliError as e:
             self.console.print(f"Error creating client: {e}", style="red")
             raise typer.Abort()

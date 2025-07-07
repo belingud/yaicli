@@ -74,6 +74,9 @@ class TestProviderFactory:
             "bailian-intl",
             "spark",
             "together",
+            "anthropic",
+            "anthropic-bedrock",
+            "anthropic-vertex",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers
