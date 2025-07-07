@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - main
   workflow_dispatch:
 
 permissions:
@@ -22,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
         
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -34,15 +37,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install mkdocs mkdocs-material
+          pip install mkdocs mkdocs-material mkdocstrings
           
       - name: Build docs
-        run: mkdocs build -f docs/mkdocs.yml
+        run: mkdocs build
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: ./docs/site
+          path: ./site
           
   deploy:
     environment:
