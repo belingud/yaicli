@@ -1,5 +1,21 @@
 
 ---
+## [0.7.13](https://github.com/belingud/yaicli/compare/v0.7.12..v0.7.13) - 2025-07-09
+
+### 🐛 Bug Fixes
+
+- update APP_REFERER and improve type annotations in OpenAIProvider - ([a04a2c5](https://github.com/belingud/yaicli/commit/a04a2c51b040fdb842b488dc149240c286adccb6)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([b18aaea](https://github.com/belingud/yaicli/commit/b18aaeae8e1de14a9d5656cf6017e2265af088e9)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- remove unused GitHub Actions workflow - ([87e802c](https://github.com/belingud/yaicli/commit/87e802c43dad6b2a3e455b520d19cd1603b86514)) - Belingud
+
+
+---
 ## [0.7.12](https://github.com/belingud/yaicli/compare/v0.7.11..v0.7.12) - 2025-07-09
 
 ### 🐛 Bug Fixes
