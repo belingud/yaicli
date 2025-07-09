@@ -83,7 +83,6 @@ all = [
     "huggingface-hub>=0.33.0",
     "mistralai>=1.8.2",
     "anthropic[bedrock,vertex]>=0.57.1",
-    "google-cloud-aiplatform>=1.101.0",
 ]
 doubao = ["volcengine-python-sdk>=3.0.15"]
 ollama = ["ollama>=0.5.1"]
@@ -97,7 +96,6 @@ mistral = [
 ]
 anthropic = [
     "anthropic[bedrock,vertex]>=0.57.1",
-    "google-cloud-aiplatform>=1.101.0",
 ]
 
 [tool.pytest.ini_options]
