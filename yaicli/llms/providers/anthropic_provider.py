@@ -150,7 +150,7 @@ class AnthropicProvider(Provider):
             if params.get("tools"):
                 self.console.print("Tools:")
                 self.console.print(params["tools"])
-            self.console.print("Tool choice:", params["tool_choice"])
+                self.console.print("Tool choice:", params["tool_choice"])
             if params.get("extra_body"):
                 self.console.print("Extra body:")
                 self.console.print(params["extra_body"])
