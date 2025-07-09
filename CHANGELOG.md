@@ -1,5 +1,18 @@
 
 ---
+## [0.7.11](https://github.com/belingud/yaicli/compare/v0.7.10..v0.7.11) - 2025-07-09
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([2a1ea8c](https://github.com/belingud/yaicli/commit/2a1ea8c90d481ee5ce663ccbf87b928d649a7e85)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- remove docs.yml workflow - ([b2e6aed](https://github.com/belingud/yaicli/commit/b2e6aed8e9e43c18a5cacdc2a9326068741ce6bb)) - Belingud
+- remove google-cloud-aiplatform dependency - ([6118c85](https://github.com/belingud/yaicli/commit/6118c85f9bdc6cd130bbd07f38ac03f366b04466)) - Belingud
+
+
+---
 ## [0.7.10](https://github.com/belingud/yaicli/compare/v0.7.9..v0.7.10) - 2025-07-09
 
 ### 📚 Documentation
