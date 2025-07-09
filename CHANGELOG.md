@@ -1,5 +1,17 @@
 
 ---
+## [0.7.12](https://github.com/belingud/yaicli/compare/v0.7.11..v0.7.12) - 2025-07-09
+
+### 🐛 Bug Fixes
+
+- Indent tool choice print statement - ([f70ba3a](https://github.com/belingud/yaicli/commit/f70ba3a04851b95ba8c7395ec7de67a2b33e09e9)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([c53150f](https://github.com/belingud/yaicli/commit/c53150f1fa841c2f283dba2453cde8ed915b868a)) - Belingud
+
+
+---
 ## [0.7.11](https://github.com/belingud/yaicli/compare/v0.7.10..v0.7.11) - 2025-07-09
 
 ### 📚 Documentation
