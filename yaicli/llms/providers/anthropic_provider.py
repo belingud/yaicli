@@ -147,10 +147,11 @@ class AnthropicProvider(Provider):
             self.console.print("System prompt:", params["system"])
             self.console.print("Messages:")
             self.console.print(params["messages"])
-            self.console.print("Tools:")
-            self.console.print(params["tools"])
+            if params.get("tools"):
+                self.console.print("Tools:")
+                self.console.print(params["tools"])
             self.console.print("Tool choice:", params["tool_choice"])
-            if "extra_body" in params:
+            if params.get("extra_body"):
                 self.console.print("Extra body:")
                 self.console.print(params["extra_body"])
 
