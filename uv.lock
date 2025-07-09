@@ -146,6 +146,9 @@ bedrock = [
     { name = "boto3" },
     { name = "botocore" },
 ]
+vertex = [
+    { name = "google-auth", extra = ["requests"] },
+]
 
 [[package]]
 name = "anyio"
@@ -848,6 +851,11 @@ dependencies = [
 sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/9e/9b/e92ef23b84fa10a64ce4831390b7a4c2e53c0132568d99d4ae61d04c8855/google_auth-2.40.3.tar.gz", hash = "sha256:500c3a29adedeb36ea9cf24b8d10858e152f2412e3ca37829b3fa18e33d63b77" }
 wheels = [
     { url = "https://repo.huaweicloud.com/repository/pypi/packages/17/63/b19553b658a1692443c62bd07e5868adaa0ad746a0751ba62c59568cd45b/google_auth-2.40.3-py2.py3-none-any.whl", hash = "sha256:1370d4593e86213563547f97a92752fc658456fe4514c809544f330fed45a7ca" },
+]
+
+[package.optional-dependencies]
+requests = [
+    { name = "requests" },
 ]
 
 [[package]]
@@ -3060,7 +3068,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
-    { name = "anthropic", extra = ["bedrock"] },
+    { name = "anthropic", extra = ["bedrock", "vertex"] },
     { name = "cohere" },
     { name = "google-cloud-aiplatform" },
     { name = "google-genai" },
@@ -3070,7 +3078,7 @@ all = [
     { name = "volcengine-python-sdk" },
 ]
 anthropic = [
-    { name = "anthropic", extra = ["bedrock"] },
+    { name = "anthropic", extra = ["bedrock", "vertex"] },
     { name = "google-cloud-aiplatform" },
 ]
 cohere = [
@@ -3109,8 +3117,8 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", extras = ["bedrock"], marker = "extra == 'all'", specifier = ">=0.57.1" },
-    { name = "anthropic", extras = ["bedrock"], marker = "extra == 'anthropic'", specifier = ">=0.57.1" },
+    { name = "anthropic", extras = ["bedrock", "vertex"], marker = "extra == 'all'", specifier = ">=0.57.1" },
+    { name = "anthropic", extras = ["bedrock", "vertex"], marker = "extra == 'anthropic'", specifier = ">=0.57.1" },
     { name = "click", specifier = ">=8.1.8" },
     { name = "cohere", marker = "extra == 'all'", specifier = ">=5.15.0" },
     { name = "cohere", marker = "extra == 'cohere'", specifier = ">=5.15.0" },
