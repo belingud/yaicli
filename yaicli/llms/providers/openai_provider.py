@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, cast
 
 import openai
 from openai._streaming import Stream
@@ -45,7 +45,7 @@ class OpenAIProvider(Provider):
         self.console = get_console()
 
         # Store completion params
-        self._completion_params = None
+        self._completion_params: Optional[Dict[str, Any]] = None
 
     @property
     def completion_params(self) -> Dict[str, Any]:
@@ -56,7 +56,7 @@ class OpenAIProvider(Provider):
     def get_client_params(self) -> Dict[str, Any]:
         """Get the client parameters"""
         # Initialize client params
-        client_params = {
+        client_params: Dict[str, Any] = {
             "api_key": self.config["API_KEY"],
             "base_url": self.config["BASE_URL"] or self.DEFAULT_BASE_URL,
             "default_headers": {"X-Title": self.APP_NAME, "HTTP_Referer": self.APP_REFERER},
@@ -111,13 +111,9 @@ class OpenAIProvider(Provider):
             openai.APIError: If API request fails
         """
         openai_messages = self._convert_messages(messages)
-        if self.verbose:
-            self.console.print("Messages:")
-            self.console.print(openai_messages)
 
         params = self.completion_params.copy()
         params["messages"] = openai_messages
-        params["stream"] = stream
         tools = []
 
         if self.enable_function:
@@ -133,14 +129,18 @@ class OpenAIProvider(Provider):
             tools.extend(mcp_tools)
         if tools:
             params["tools"] = tools
-
+        if self.verbose:
+            self.console.print("Messages:")
+            self.console.print(openai_messages)
+            if params.get("tools"):
+                self.console.print("Tools:")
+                self.console.print(params["tools"])
+        response = self.client.chat.completions.create(**params, stream=stream)
         try:
             if stream:
-                response = self.client.chat.completions.create(**params)
-                yield from self._handle_stream_response(response)
+                yield from self._handle_stream_response(cast(Stream[ChatCompletionChunk], response))
             else:
-                response = self.client.chat.completions.create(**params)
-                yield from self._handle_normal_response(response)
+                yield from self._handle_normal_response(cast(ChatCompletion, response))
         except (openai.APIStatusError, openai.APIResponseValidationError) as e:
             try:
                 body = e.response.json()
@@ -156,7 +156,7 @@ class OpenAIProvider(Provider):
             )
             return
         choice = response.choices[0]
-        content = choice.message.content or ""  # type: ignore
+        content = choice.message.content or ""
         reasoning = choice.message.reasoning_content  # type: ignore
         finish_reason = choice.finish_reason
         tool_call: Optional[ToolCall] = None
