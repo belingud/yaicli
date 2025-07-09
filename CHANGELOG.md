@@ -1,5 +1,30 @@
 
 ---
+## [0.7.10](https://github.com/belingud/yaicli/compare/v0.7.9..v0.7.10) - 2025-07-09
+
+### 📚 Documentation
+
+- update provider documentation and navigation - ([bffb3c6](https://github.com/belingud/yaicli/commit/bffb3c6572cc185c73db4a5c93a7dab5747d100e)) - Belingud
+- correct logo path in index.md - ([97b94cb](https://github.com/belingud/yaicli/commit/97b94cbc10253f0faf5ef80683c4b3e8d85e37b1)) - Belingud
+- update function calling and MCP documentation - ([030129b](https://github.com/belingud/yaicli/commit/030129bc0bf08f3cb2ab3345bda43cf21ce6a19f)) - Belingud
+- update CHANGELOG with new release notes - ([4845ca0](https://github.com/belingud/yaicli/commit/4845ca0b2e628c31bb9b9ec7d35e8196b9938469)) - Belingud
+- add more doc files - ([8c5fffe](https://github.com/belingud/yaicli/commit/8c5fffee74cd893f0308c140332df9371f7a36c6)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add vertex support to anthropic dependency - ([80e8252](https://github.com/belingud/yaicli/commit/80e82525ada61cf3565125b3348efb53d240a124)) - Belingud
+- add new dependencies for anthropic and google-cloud-aiplatform - ([9f9ceaf](https://github.com/belingud/yaicli/commit/9f9ceaf288ef0314157969bc771b9aabfad24575)) - Belingud
+- add debug steps to docs.yml - ([1a7e4f1](https://github.com/belingud/yaicli/commit/1a7e4f1142487b4c355df48503e2c4e4c189370d)) - Belingud
+- update GitHub Actions workflow for docs deployment - ([cb3af0f](https://github.com/belingud/yaicli/commit/cb3af0f9eeb28370af87c91b5bc3f25329ba4683)) - Belingud
+- update docs.yml to trigger on master branch - ([6df9996](https://github.com/belingud/yaicli/commit/6df9996cc77a048e450ccff2d61565f090ea3c29)) - Belingud
+- update GitHub Actions workflow and docs - ([f371d11](https://github.com/belingud/yaicli/commit/f371d1155070f1c86ab4211b33d6d02371db3b6f)) - Belingud
+- update docs.yml to trigger on docs branch - ([d87644b](https://github.com/belingud/yaicli/commit/d87644bd4420d813ebe7db348a684bd30bfea41e)) - Belingud
+- update GitHub Actions dependencies - ([60ab515](https://github.com/belingud/yaicli/commit/60ab515b785409b5813f2fe7fe13fe229dea8be1)) - Belingud
+- add main branch to docs workflow and update dependencies - ([bc5e312](https://github.com/belingud/yaicli/commit/bc5e3127e20b079447f7c08ff187f76a2f2d21e0)) - Belingud
+- add mkdocs workflow - ([f566602](https://github.com/belingud/yaicli/commit/f566602bb2f26862091902748c180b86ddc1a069)) - Belingud
+
+
+---
 ## [0.7.9](https://github.com/belingud/yaicli/compare/v0.7.8..v0.7.9) - 2025-07-07
 
 ### ⛰️  Features
