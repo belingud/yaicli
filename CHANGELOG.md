@@ -1,5 +1,17 @@
 
 ---
+## [0.7.14](https://github.com/belingud/yaicli/compare/v0.7.13..v0.7.14) - 2025-07-10
+
+### ⛰️  Features
+
+- add cerebras provider support - ([d6cc354](https://github.com/belingud/yaicli/commit/d6cc35480de2e939d08a0d8570b9ea4f3054d057)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([f4bd8d3](https://github.com/belingud/yaicli/commit/f4bd8d34cb4c08565b45a44cb1b7a3c0366e8328)) - Belingud
+
+
+---
 ## [0.7.13](https://github.com/belingud/yaicli/compare/v0.7.12..v0.7.13) - 2025-07-09
 
 ### 🐛 Bug Fixes
