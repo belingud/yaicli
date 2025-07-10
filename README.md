@@ -118,6 +118,7 @@ pip install .
 - Anthropic/Claude
 - Anthropic Bedrock
 - Anthropic Vertex
+- Cerebras
 - Chatglm
 - Chuts
 - Cohere
@@ -382,6 +383,14 @@ DO_SAMPLE=
 PROVIDER=chutes
 API_KEY=
 MODEL=deepseek-ai/DeepSeek-V3-0324
+```
+
+#### Cerebras
+
+```ini
+PROVIDER=cerebras
+API_KEY=
+MODEL=llama3.3-70b
 ```
 
 #### AI21

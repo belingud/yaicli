@@ -77,6 +77,7 @@ class ProviderFactory:
         "anthropic-vertex": (".providers.anthropic_provider", "AnthropicVertexProvider"),
         "bailian": (".providers.bailian_provider", "BailianProvider"),
         "bailian-intl": (".providers.bailian_provider", "BailianIntlProvider"),
+        "cerebras": (".providers.cerebras_provider", "CerebrasProvider"),
         "chatglm": (".providers.chatglm_provider", "ChatglmProvider"),
         "chutes": (".providers.chutes_provider", "ChutesProvider"),
         "cohere": (".providers.cohere_provider", "CohereProvider"),
