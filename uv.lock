@@ -265,6 +265,23 @@ wheels = [
 ]
 
 [[package]]
+name = "cerebras-cloud-sdk"
+version = "1.35.0"
+source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/4e/c9/b140f033fac39a6f94d8e3ee90aa5eb1282a203bcb75ec4774446e65229d/cerebras_cloud_sdk-1.35.0.tar.gz", hash = "sha256:1b65185b4688516f41716aa5ec19c5c9645e24b259a841cfff17542615e376a4" }
+wheels = [
+    { url = "https://repo.huaweicloud.com/repository/pypi/packages/da/c6/36d7a1461463c6c1034b20385eef7cb5a334302e7ceea054d41418e33eb6/cerebras_cloud_sdk-1.35.0-py3-none-any.whl", hash = "sha256:4103972e4a36ca5be92190958ffc3b6a14fefca6d60d743a72d3e3a119642160" },
+]
+
+[[package]]
 name = "certifi"
 version = "2025.6.15"
 source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple" }
@@ -2614,6 +2631,7 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "anthropic", extra = ["bedrock", "vertex"] },
+    { name = "cerebras-cloud-sdk" },
     { name = "cohere" },
     { name = "google-genai" },
     { name = "huggingface-hub" },
@@ -2623,6 +2641,9 @@ all = [
 ]
 anthropic = [
     { name = "anthropic", extra = ["bedrock", "vertex"] },
+]
+cerebras = [
+    { name = "cerebras-cloud-sdk" },
 ]
 cohere = [
     { name = "cohere" },
@@ -2662,6 +2683,8 @@ docs = [
 requires-dist = [
     { name = "anthropic", extras = ["bedrock", "vertex"], marker = "extra == 'all'", specifier = ">=0.57.1" },
     { name = "anthropic", extras = ["bedrock", "vertex"], marker = "extra == 'anthropic'", specifier = ">=0.57.1" },
+    { name = "cerebras-cloud-sdk", marker = "extra == 'all'", specifier = ">=1.35.0" },
+    { name = "cerebras-cloud-sdk", marker = "extra == 'cerebras'", specifier = ">=1.35.0" },
     { name = "click", specifier = ">=8.1.8" },
     { name = "cohere", marker = "extra == 'all'", specifier = ">=5.15.0" },
     { name = "cohere", marker = "extra == 'cohere'", specifier = ">=5.15.0" },
@@ -2686,7 +2709,7 @@ requires-dist = [
     { name = "volcengine-python-sdk", marker = "extra == 'all'", specifier = ">=3.0.15" },
     { name = "volcengine-python-sdk", marker = "extra == 'doubao'", specifier = ">=3.0.15" },
 ]
-provides-extras = ["all", "doubao", "ollama", "cohere", "gemini", "huggingface", "mistral", "anthropic"]
+provides-extras = ["all", "doubao", "ollama", "cohere", "gemini", "huggingface", "mistral", "anthropic", "cerebras"]
 
 [package.metadata.requires-dev]
 dev = [

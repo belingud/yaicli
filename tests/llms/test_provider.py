@@ -77,6 +77,7 @@ class TestProviderFactory:
             "anthropic",
             "anthropic-bedrock",
             "anthropic-vertex",
+            "cerebras",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers

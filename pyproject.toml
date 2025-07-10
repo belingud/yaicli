@@ -83,20 +83,16 @@ all = [
     "huggingface-hub>=0.33.0",
     "mistralai>=1.8.2",
     "anthropic[bedrock,vertex]>=0.57.1",
+    "cerebras-cloud-sdk>=1.35.0",
 ]
 doubao = ["volcengine-python-sdk>=3.0.15"]
 ollama = ["ollama>=0.5.1"]
 cohere = ["cohere>=5.15.0"]
 gemini = ["google-genai>=1.20.0"]
-huggingface = [
-    "huggingface-hub>=0.33.0",
-]
-mistral = [
-    "mistralai>=1.8.2",
-]
-anthropic = [
-    "anthropic[bedrock,vertex]>=0.57.1",
-]
+huggingface = ["huggingface-hub>=0.33.0"]
+mistral = ["mistralai>=1.8.2"]
+anthropic = ["anthropic[bedrock,vertex]>=0.57.1"]
+cerebras = ["cerebras-cloud-sdk>=1.35.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -122,11 +118,7 @@ dev = [
     "tox>=4.27.0",
     "tox-uv>=1.26.1",
 ]
-docs = [
-    "mkdocs>=1.6.1",
-    "mkdocs-material>=9.6.15",
-    "mkdocstrings>=0.29.1",
-]
+docs = ["mkdocs>=1.6.1", "mkdocs-material>=9.6.15", "mkdocstrings>=0.29.1"]
 
 [tool.isort]
 profile = "black"
