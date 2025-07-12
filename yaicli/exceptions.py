@@ -14,6 +14,10 @@ class ConfigMissingError(ConfigError):
     """Missing required key in config"""
 
 
+class ProviderError(YaicliError):
+    """Error in provider"""
+
+
 class ChatSaveError(YaicliError):
     """Error saving chat"""
 

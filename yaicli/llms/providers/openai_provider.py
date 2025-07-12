@@ -1,4 +1,5 @@
 import json
+import os
 from copy import deepcopy
 from typing import Any, Dict, Generator, List, Optional, cast
 
@@ -9,7 +10,7 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from ...config import cfg
 from ...console import get_console
-from ...exceptions import MCPToolsError
+from ...exceptions import MCPToolsError, ProviderError
 from ...schemas import ChatMessage, LLMResponse, ToolCall
 from ...tools import get_openai_mcp_tools, get_openai_schemas
 from ..provider import Provider
@@ -244,3 +245,94 @@ class OpenAIProvider(Provider):
     def detect_tool_role(self) -> str:
         """Return the role that should be used for tool responses"""
         return "tool"
+
+
+class OpenAIAzure(OpenAIProvider):
+    CLIENT_CLS = openai.AzureOpenAI
+
+    def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):
+        self.config = config
+        self.enable_function = self.config["ENABLE_FUNCTIONS"]
+        self.enable_mcp = self.config["ENABLE_MCP"]
+        self.verbose = verbose
+
+        # Initialize client
+        self.client_params = self.get_client_params()
+        self.client = self.CLIENT_CLS(**self.client_params)
+        self.console = get_console()
+
+        # Store completion params
+        self._completion_params: Optional[Dict[str, Any]] = None
+
+    def get_client_params(self) -> Dict[str, Any]:
+        """
+        azure_endpoint: Your Azure endpoint, including the resource, e.g. `https://example-resource.azure.openai.com/`
+
+        azure_ad_token: Your Azure Active Directory token, https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id
+
+        azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on every request.
+
+        azure_deployment: A model deployment, if given with `azure_endpoint`, sets the base client URL to include `/deployments/{azure_deployment}`.
+            Not supported with Assistants APIs.
+        """
+        api_key = self.config.get("API_KEY")
+        azure_ad_token = self.config.get("AZURE_AD_TOKEN")
+        api_version = self.config.get("API_VERSION")
+        default_query = self.config.get("DEFAULT_QUERY")
+        azure_ad_token_provider = self.config.get("AZURE_AD_TOKEN_PROVIDER")
+        if api_key is None:
+            api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+
+        if azure_ad_token is None:
+            azure_ad_token = os.environ.get("AZURE_OPENAI_AD_TOKEN")
+
+        if api_key is None and azure_ad_token is None and azure_ad_token_provider is None:
+            raise ProviderError(
+                "Missing credentials. Please pass one of `api_key`, `azure_ad_token`, `azure_ad_token_provider`, or the `AZURE_OPENAI_API_KEY` or `AZURE_OPENAI_AD_TOKEN` environment variables."
+            )
+
+        if api_version is None:
+            api_version = os.environ.get("OPENAI_API_VERSION")
+
+        if api_version is None:
+            raise ProviderError(
+                "Must provide either the `api_version` argument or the `OPENAI_API_VERSION` environment variable"
+            )
+
+        if default_query is None:
+            default_query = {"api-version": api_version}
+        else:
+            default_query = {**default_query, "api-version": api_version}
+        default_headers = self.config.get("DEFAULT_HEADERS") or {}
+        default_headers.update({"X-Title": self.APP_NAME, "HTTP_Referer": self.APP_REFERER})
+        base_url = self.config.get("BASE_URL") or None  # set to None if base url is empty
+        azure_deployment = self.config.get("AZURE_DEPLOYMENT")
+        azure_endpoint = self.config.get("AZURE_ENDPOINT")
+
+        if base_url is None:
+            if azure_endpoint is None:
+                azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+
+            if azure_endpoint is None:
+                raise ValueError(
+                    "Must provide one of the `base_url` or `azure_endpoint` arguments, or the `AZURE_OPENAI_ENDPOINT` environment variable"
+                )
+
+            if azure_deployment is not None:
+                base_url = f"{azure_endpoint.rstrip('/')}/openai/deployments/{azure_deployment}"
+            else:
+                base_url = f"{azure_endpoint.rstrip('/')}/openai"
+        else:
+            if azure_endpoint is not None:
+                raise ValueError("base_url and azure_endpoint are mutually exclusive")
+
+        return {
+            "api_key": api_key,
+            "azure_ad_token": azure_ad_token,
+            "azure_ad_token_provider": azure_ad_token_provider,
+            "default_query": default_query,
+            "default_headers": default_headers,
+            "azure_endpoint": azure_endpoint,
+            "azure_deployment": azure_deployment,
+            "base_url": base_url,
+        }
