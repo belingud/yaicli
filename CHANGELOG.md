@@ -1,5 +1,18 @@
 
 ---
+## [0.7.15](https://github.com/belingud/yaicli/compare/v0.7.14..v0.7.15) - 2025-07-12
+
+### ⛰️  Features
+
+- enable openai azure provider and add docs - ([7be0da3](https://github.com/belingud/yaicli/commit/7be0da3523f44d8ad7296911b1c2a5897b868b7a)) - Belingud
+- add openai azure provider support - ([6384d1f](https://github.com/belingud/yaicli/commit/6384d1fc99801c6035d981f82335e48898d3ffb5)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([a2aa596](https://github.com/belingud/yaicli/commit/a2aa596273f14c17b904c9704388f269403d6648)) - Belingud
+
+
+---
 ## [0.7.14](https://github.com/belingud/yaicli/compare/v0.7.13..v0.7.14) - 2025-07-10
 
 ### ⛰️  Features
