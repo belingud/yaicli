@@ -1,5 +1,17 @@
 
 ---
+## [0.7.16](https://github.com/belingud/yaicli/compare/v0.7.15..v0.7.16) - 2025-07-12
+
+### 🐛 Bug Fixes
+
+- ensure live stop and remove update interval - ([f9bb0aa](https://github.com/belingud/yaicli/commit/f9bb0aa780ee66fa147f401c760a1beda7f674e0)) - Belingud
+
+### 📚 Documentation
+
+- add new release notes for v0.7.15 - ([a347b64](https://github.com/belingud/yaicli/commit/a347b64b35d2488ec0e4f304fbcf3178f2404c55)) - Belingud
+
+
+---
 ## [0.7.15](https://github.com/belingud/yaicli/compare/v0.7.14..v0.7.15) - 2025-07-12
 
 ### ⛰️  Features

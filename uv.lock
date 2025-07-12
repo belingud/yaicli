@@ -2612,7 +2612,7 @@ wheels = [
 
 [[package]]
 name = "yaicli"
-version = "0.7.15"
+version = "0.7.16"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
