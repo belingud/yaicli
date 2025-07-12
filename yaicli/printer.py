@@ -1,4 +1,3 @@
-import time
 from dataclasses import dataclass, field
 from typing import Iterator, List, Tuple, Union
 
@@ -18,7 +17,6 @@ class Printer:
     content_markdown: bool = True
 
     _REASONING_PREFIX: str = "> "
-    _UPDATE_INTERVAL: float = 0.01
 
     def __post_init__(self):
         self.code_theme: str = self.config["CODE_THEME"]
@@ -170,33 +168,48 @@ class Printer:
 
         return full_content, full_reasoning
 
+    def _create_and_start_live(self) -> Live:
+        """Create and start a new Live instance."""
+        live = Live(console=self.console)
+        live.start()
+        return live
+
+    def _safe_stop_live(self, live: Live) -> None:
+        """Safely stop a Live instance if it's running."""
+        if live.is_started:
+            live.stop()
+
     def display_stream(self, stream_iterator: Iterator[Union["LLMResponse", RefreshLive]]) -> tuple[str, str]:
         """Process and display LLMContent stream, including reasoning and content parts."""
         self._reset_state()
         full_content = full_reasoning = ""
-        live = Live(console=self.console)
-        live.start()
+        live = self._create_and_start_live()
 
-        for chunk in stream_iterator:
-            if isinstance(chunk, RefreshLive):
-                # Refresh live display when in next completion
-                live.stop()
-                live = Live(console=self.console)
-                live.start()
-                # Initialize full_content and full_reasoning for the next completion
-                full_content = full_reasoning = ""
-                self._reset_state()
-                continue
+        try:
+            for chunk in stream_iterator:
+                if isinstance(chunk, RefreshLive):
+                    # Gracefully transition to new live session
+                    self._safe_stop_live(live)
+                    live = self._create_and_start_live()
 
-            # Process chunk and update content/reasoning
-            full_content, full_reasoning = self._process_chunk(
-                chunk.content or "", chunk.reasoning or "", full_content, full_reasoning
-            )
+                    # Reset state for next completion
+                    full_content = full_reasoning = ""
+                    self._reset_state()
+                    continue
 
-            # Update display
-            formatted_display = self._format_display_text(full_content, full_reasoning)
-            live.update(formatted_display)
-            time.sleep(self._UPDATE_INTERVAL)
+                # Process chunk and update content/reasoning
+                full_content, full_reasoning = self._process_chunk(
+                    chunk.content or "", chunk.reasoning or "", full_content, full_reasoning
+                )
 
-        live.stop()
+                # Update display
+                formatted_display = self._format_display_text(full_content, full_reasoning)
+                live.update(formatted_display)
+
+        except Exception as e:
+            self._safe_stop_live(live)
+            raise e from None
+        finally:
+            self._safe_stop_live(live)
+
         return full_content, full_reasoning
