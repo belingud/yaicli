@@ -95,6 +95,7 @@ class ProviderFactory:
         "nvida": (".providers.nvida_provider", "NvidiaProvider"),
         "ollama": (".providers.ollama_provider", "OllamaProvider"),
         "openai": (".providers.openai_provider", "OpenAIProvider"),
+        "openai-azure": (".providers.openai_provider", "OpenAIAzure"),
         "openrouter": (".providers.openrouter_provider", "OpenRouterProvider"),
         "sambanova": (".providers.sambanova_provider", "SambanovaProvider"),
         "siliconflow": (".providers.siliconflow_provider", "SiliconFlowProvider"),

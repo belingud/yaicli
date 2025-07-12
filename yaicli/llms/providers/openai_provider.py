@@ -278,17 +278,15 @@ class OpenAIAzure(OpenAIProvider):
         api_key = self.config.get("API_KEY")
         azure_ad_token = self.config.get("AZURE_AD_TOKEN")
         api_version = self.config.get("API_VERSION")
-        default_query = self.config.get("DEFAULT_QUERY")
-        azure_ad_token_provider = self.config.get("AZURE_AD_TOKEN_PROVIDER")
         if api_key is None:
             api_key = os.environ.get("AZURE_OPENAI_API_KEY")
 
         if azure_ad_token is None:
             azure_ad_token = os.environ.get("AZURE_OPENAI_AD_TOKEN")
 
-        if api_key is None and azure_ad_token is None and azure_ad_token_provider is None:
+        if api_key is None and azure_ad_token is None:
             raise ProviderError(
-                "Missing credentials. Please pass one of `api_key`, `azure_ad_token`, `azure_ad_token_provider`, or the `AZURE_OPENAI_API_KEY` or `AZURE_OPENAI_AD_TOKEN` environment variables."
+                "Missing credentials. Please pass one of `api_key`, `azure_ad_token`, or the `AZURE_OPENAI_API_KEY` or `AZURE_OPENAI_AD_TOKEN` environment variables."
             )
 
         if api_version is None:
@@ -299,10 +297,7 @@ class OpenAIAzure(OpenAIProvider):
                 "Must provide either the `api_version` argument or the `OPENAI_API_VERSION` environment variable"
             )
 
-        if default_query is None:
-            default_query = {"api-version": api_version}
-        else:
-            default_query = {**default_query, "api-version": api_version}
+        default_query = {"api-version": api_version}
         default_headers = self.config.get("DEFAULT_HEADERS") or {}
         default_headers.update({"X-Title": self.APP_NAME, "HTTP_Referer": self.APP_REFERER})
         base_url = self.config.get("BASE_URL") or None  # set to None if base url is empty
@@ -329,7 +324,6 @@ class OpenAIAzure(OpenAIProvider):
         return {
             "api_key": api_key,
             "azure_ad_token": azure_ad_token,
-            "azure_ad_token_provider": azure_ad_token_provider,
             "default_query": default_query,
             "default_headers": default_headers,
             "azure_endpoint": azure_endpoint,
