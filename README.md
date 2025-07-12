@@ -134,6 +134,7 @@ pip install .
 - ModelScope
 - Ollama
 - Openai
+- Openai Azure
 - Sambanova
 - Siliconflow
 - Spark
@@ -243,6 +244,38 @@ REASONING_EFFORT=
 ```
 
 See official for more details: https://platform.openai.com/docs/guides/reasoning?api-mode=chat
+
+#### Openai Azure
+
+```ini
+PROVIDER=openai-azure
+BASE_URL=
+API_KEY=
+MODEL=gpt-4o
+```
+
+Support config keys:
+
+```ini
+AZURE_AD_TOKEN=
+AZURE_ENDPOINT=
+AZURE_DEPLOYMENT=
+API_VERSION=
+```
+
+Support environment variables:
+
+```shell
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_AD_TOKEN=
+AZURE_OPENAI_ENDPOINT=
+```
+
+If `API_KEY` not set in config, will look for `AZURE_OPENAI_API_KEY` environment variable.
+
+If `AZURE_AD_TOKEN` not set in config, will look for `AZURE_OPENAI_AD_TOKEN` environment variable.
+
+If `BASE_URL` and `AZURE_ENDPOINT` not set in config, will look for `AZURE_OPENAI_ENDPOINT` environment variable.
 
 #### Anghropic/Claude
 

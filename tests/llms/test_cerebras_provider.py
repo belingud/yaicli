@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from yaicli.llms.providers.cerebras_provider import CerebrasProvider
-from yaicli.schemas import ChatMessage, ToolCall
+from yaicli.schemas import ChatMessage
 
 
 class TestCerebrasProvider:
@@ -277,12 +277,13 @@ class TestCerebrasProvider:
 
             # Check that it inherits from OpenAIProvider
             from yaicli.llms.providers.openai_provider import OpenAIProvider
+
             assert isinstance(provider, OpenAIProvider)
 
             # Check that specific methods are available
-            assert hasattr(provider, '_convert_messages')
-            assert hasattr(provider, 'completion')
-            assert hasattr(provider, 'detect_tool_role')
+            assert hasattr(provider, "_convert_messages")
+            assert hasattr(provider, "completion")
+            assert hasattr(provider, "detect_tool_role")
 
     def test_get_client_params_override(self, mock_config):
         """Test that get_client_params method correctly overrides parent implementation"""
