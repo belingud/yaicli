@@ -6,46 +6,98 @@ YAICLI supports a wide range of LLM providers, giving you flexibility to choose 
 
 YAICLI currently integrates with the following LLM providers:
 
-| Provider                   | Description                         | Default Base URL                                          | API Documentation                                                                |
-| -------------------------- | ----------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| OpenAI                     | Default provider with GPT models    | `https://api.openai.com/v1`                               | [Docs](https://platform.openai.com/docs/api-reference)                           |
-| Claude                     | Anthropic's Claude models           | `https://api.anthropic.com/v1`                            | [Docs](https://docs.anthropic.com/claude/reference/getting-started-with-the-api) |
-| Claude (OpenAI-compatible) | Claude via OpenAI-compatible API    | `https://api.anthropic.com/v1/openai`                     | [Docs](https://docs.anthropic.com/en/api/openai-sdk)                             |
-| Gemini                     | Google's Gemini models              | `https://generativelanguage.googleapis.com/v1beta/openai` | [Docs](https://ai.google.dev/gemini-api/docs/openai)                             |
-| Cohere                     | Cohere's Command models             | `https://api.cohere.com`                                  | [Docs](https://docs.cohere.com/docs)                                             |
-| Mistral                    | Mistral AI models                   | `https://api.mistral.ai/v1`                               | [Docs](https://docs.mistral.ai/api/)                                             |
-| Ollama                     | Local models via Ollama             | `http://localhost:11434`                                  | [Docs](https://github.com/ollama/ollama)                                         |
-| ChatGLM                    | Zhipu.ai's GLM models               |                                                           | [Docs](https://open.bigmodel.cn/dev/api)                                         |
-| Deepseek                   | DeepSeek's models                   |                                                           | [Docs](https://platform.deepseek.com)                                            |
-| Doubao                     | Doubao models                       |                                                           | -                                                                                |
-| HuggingFace                | Various models via HF Inference API |                                                           | [Docs](https://huggingface.co/docs/inference-api)                                |
-| Minimax                    | Minimax models                      |                                                           | [Docs](https://www.minimaxi.com)                                                 |
-| ModelScope                 | ModelScope models                   |                                                           | [Docs](https://www.modelscope.cn)                                                |
-| NVIDIA NIM                 | NVIDIA's NIM models                 |                                                           | [Docs](https://www.nvidia.com/en-us/ai-data-science/products/nim/)               |
-| Sambanova                  | SambaNoova's models                 |                                                           | [Docs](https://docs.sambanova.ai/)                                               |
-| Siliconflow                | Siliconflow models                  |                                                           | -                                                                                |
-| Spark                      | iFlytek's Spark models              |                                                           | [Docs](https://www.xfyun.cn/doc/spark/Web.html)                                  |
-| Targon                     | Targon models                       |                                                           | -                                                                                |
-| Together                   | Together.ai models                  |                                                           | [Docs](https://docs.together.ai/)                                                |
-| Vertex AI                  | Google Cloud Vertex AI              |                                                           | [Docs](https://cloud.google.com/vertex-ai)                                       |
-| X AI                       | X AI's Grok models                  |                                                           | -                                                                                |
-| Yi                         | 01.ai's Yi models                   |                                                           | [Docs](https://platform.01.ai/)                                                  |
+### Major Cloud Providers
+
+| Provider           | Description                   | Default Base URL                                          | API Documentation                                                                |
+| ------------------ | ----------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| OpenAI             | GPT models and advanced AI    | `https://api.openai.com/v1`                               | [Docs](https://platform.openai.com/docs/api-reference)                           |
+| Anthropic (Claude) | Advanced reasoning and safety | `https://api.anthropic.com`                               | [Docs](https://docs.anthropic.com/claude/reference/getting-started-with-the-api) |
+| Google Gemini      | Multimodal AI models          | `https://generativelanguage.googleapis.com/v1beta/openai` | [Docs](https://ai.google.dev/gemini-api/docs/openai)                             |
+| Cohere             | Enterprise-focused models     | `https://api.cohere.com/v2`                               | [Docs](https://docs.cohere.com/docs)                                             |
+| Mistral            | European AI models            | `https://api.mistral.ai/v1`                               | [Docs](https://docs.mistral.ai/api/)                                             |
+
+### High-Performance Inference
+
+| Provider   | Description                    | Default Base URL                      | API Documentation                                                     |
+| ---------- | ------------------------------ | ------------------------------------- | --------------------------------------------------------------------- |
+| Groq       | Ultra-fast inference platform  | `https://api.groq.com/openai/v1`      | [Docs](https://console.groq.com/docs/quickstart)                      |
+| Cerebras   | Hardware-accelerated inference | `https://api.cerebras.ai`             | [Docs](https://inference-docs.cerebras.ai/)                           |
+| NVIDIA NIM | GPU-optimized models           | `https://integrate.api.nvidia.com/v1` | [Docs](https://www.nvidia.com/en-us/ai-data-science/products/nim/)    |
+| SambaNova  | High-performance AI platform   | `https://api.sambanova.ai/v1`         | [Docs](https://docs.sambanova.ai/sambastudio/latest/open-ai-api.html) |
+
+### Multi-Provider & Aggregation
+
+| Provider    | Description                        | Default Base URL               | API Documentation                                 |
+| ----------- | ---------------------------------- | ------------------------------ | ------------------------------------------------- |
+| OpenRouter  | Unified API for multiple providers | `https://openrouter.ai/api/v1` | [Docs](https://openrouter.ai/docs)                |
+| Together    | Open-source model platform         | `https://api.together.xyz/v1`  | [Docs](https://docs.together.ai/)                 |
+| HuggingFace | Open-source model hub              | -                              | [Docs](https://huggingface.co/docs/inference-api) |
+
+### Cloud Platform Integration
+
+| Provider  | Description              | Default Base URL | API Documentation                          |
+| --------- | ------------------------ | ---------------- | ------------------------------------------ |
+| Vertex AI | Google Cloud AI platform | -                | [Docs](https://cloud.google.com/vertex-ai) |
+
+### Specialized & Regional
+
+| Provider   | Description                   | Default Base URL                                    | API Documentation                                                       |
+| ---------- | ----------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------- |
+| DeepSeek   | Code and reasoning specialist | `https://api.deepseek.com/v1`                       | [Docs](https://platform.deepseek.com)                                   |
+| XAI (Grok) | Real-time information models  | `https://api.xai.com/v1`                            | [Docs](https://docs.x.ai/)                                              |
+| Yi (01.AI) | Multilingual AI models        | `https://api.lingyiwanwu.com/v1`                    | [Docs](https://platform.01.ai/)                                         |
+| Doubao     | ByteDance AI models           | `https://ark.cn-beijing.volces.com/api/v3`          | [Docs](https://www.volcengine.com/docs/82379)                           |
+| ChatGLM    | Zhipu AI models               | `https://open.bigmodel.cn/api/paas/v4/`             | [Docs](https://open.bigmodel.cn/dev/api)                                |
+| Moonshot   | Chinese AI models             | `https://api.moonshot.cn/v1`                        | [Docs](https://platform.moonshot.cn/docs/api/chat)                      |
+| Minimax    | Chinese multimodal models     | `https://api.minimaxi.com/v1`                       | [Docs](https://platform.minimaxi.com/document/platform)                 |
+| ModelScope | Alibaba's model platform      | `https://api-inference.modelscope.cn/v1/`           | [Docs](https://modelscope.cn/docs/model-service/API-Inference/intro)    |
+| Bailian    | Alibaba Cloud AI              | `https://dashscope.aliyuncs.com/compatible-mode/v1` | [Docs](https://help.aliyun.com/zh/model-studio/use-qwen-by-calling-api) |
+
+### Local & Self-Hosted
+
+| Provider | Description         | Default Base URL         | API Documentation                        |
+| -------- | ------------------- | ------------------------ | ---------------------------------------- |
+| Ollama   | Local model hosting | `http://localhost:11434` | [Docs](https://github.com/ollama/ollama) |
 
 ## Feature Comparison
 
-| Provider    | Streaming | Function Calling | MCP Support | Reasoning |
-| ----------- | --------- | ---------------- | ----------- | --------- |
-| OpenAI      | ✅         | ✅                | ✅           | ✅         |
-| Claude      | ✅         | ✅                | ✅           | ✅         |
-| Gemini      | ✅         | ✅                | ✅           | ✅         |
-| Cohere      | ✅         | ✅                | ✅           | ✅         |
-| Mistral     | ✅         | ✅                | ✅           | ✅         |
-| Ollama      | ✅         | ✅                | ✅           | ✅         |
-| ChatGLM     | ✅         | ✅                | ✅           | ✅         |
-| Deepseek    | ✅         | ✅                | ✅           | ✅         |
-| HuggingFace | ✅         | ✅                | ✅           | ✅         |
-| Vertex AI   | ✅         | ✅                | ✅           | ✅         |
-| Together    | ✅         | ✅                | ✅           | ✅         |
+### Core Features
+
+| Provider           | Streaming | Function Calling | MCP Support |
+| ------------------ | --------- | ---------------- | ----------- |
+| OpenAI             | ✅         | ✅                | ✅           |
+| Anthropic (Claude) | ✅         | ✅                | ✅           |
+| Google Gemini      | ✅         | ✅                | ✅           |
+| Cohere             | ✅         | ✅                | ✅           |
+| Mistral            | ✅         | ✅                | ✅           |
+| Groq               | ✅         | ✅                | ✅           |
+| Cerebras           | ✅         | ✅                | ✅           |
+| NVIDIA NIM         | ✅         | ✅                | ✅           |
+| SambaNova          | ✅         | ✅                | ✅           |
+| OpenRouter         | ✅         | ✅                | ✅           |
+| Together           | ✅         | ✅                | ✅           |
+| HuggingFace        | ✅         | ✅                | ✅           |
+| Vertex AI          | ✅         | ✅                | ✅           |
+| DeepSeek           | ✅         | ✅                | ✅           |
+| XAI (Grok)         | ✅         | ✅                | ✅           |
+| Yi (01.AI)         | ✅         | ✅                | ✅           |
+| Doubao             | ✅         | ✅                | ✅           |
+| ChatGLM            | ✅         | ✅                | ✅           |
+| Ollama             | ✅         | ✅                | ✅           |
+
+### Performance Characteristics
+
+| Provider  | Speed | Cost | Context    | Special Features      |
+| --------- | ----- | ---- | ---------- | --------------------- |
+| Groq      | 🔥🔥🔥   | 💰💰   | Standard   | Ultra-fast inference  |
+| Cerebras  | 🔥🔥🔥   | 💰💰💰  | Standard   | Hardware acceleration |
+| OpenAI    | 🔥🔥    | 💰💰💰  | Large      | Industry standard     |
+| Anthropic | 🔥🔥    | 💰💰💰  | Very Large | Safety-focused        |
+| Ollama    | 🔥     | Free | Varies     | Local, private        |
+| DeepSeek  | 🔥🔥    | 💰    | Large      | Code specialist       |
+| Together  | 🔥🔥    | 💰    | Standard   | Open source focus     |
+
+**Legend:** 🔥 = Speed level, 💰 = Cost level
 
 ## Optional Dependencies
 
@@ -59,79 +111,42 @@ pip install 'yaicli[all]'
 pip install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,anthropic]'
 ```
 
-## Provider Configuration
-
-Each provider has specific configuration options. Below are basic configuration examples for the most popular providers:
-
-### OpenAI (Default)
-
-```ini
-PROVIDER=openai
-API_KEY=sk-...
-MODEL=gpt-4o
-```
-
-### Claude
-
-```ini
-PROVIDER=claude
-API_KEY=sk-ant-...
-MODEL=claude-3-opus-20240229
-```
-
-### Gemini
-
-```ini
-PROVIDER=gemini
-API_KEY=AI...
-MODEL=gemini-2.5-flash
-```
-
-### Cohere
-
-```ini
-PROVIDER=cohere
-API_KEY=...
-MODEL=command-r-plus
-```
-
-### Mistral
-
-```ini
-PROVIDER=mistral
-API_KEY=...
-MODEL=codestral-latest
-```
-
-### Ollama (Local)
-
-```ini
-PROVIDER=ollama
-MODEL=qwen3:32b
-```
-
-### Vertex AI (Google Cloud)
-
-```ini
-PROVIDER=vertexai
-MODEL=gemini-2.5-flash
-PROJECT=your-gcp-project-id
-LOCATION=us-central1
-```
-
 ## Provider-Specific Documentation
 
 For detailed configuration options for each provider, refer to the provider-specific pages:
 
+### Major Cloud Providers
 - [OpenAI](openai.md)
-- [Azure OpenAI](azure.md) 
-- [Gemini](gemini.md)
+- [Anthropic (Claude)](anthropic.md)
+- [Google Gemini](gemini.md)
+- [DeepSeek](deepseek.md)
+- [Cohere](cohere.md)
+- [Mistral](mistral.md)
+- [ChatGLM](chatglm.md)
 - [Moonshot](moonshot.md)
-- [DashScope](dashscope.md)
-- [Zhipu](zhipu.md)
-- [Qwen](qwen.md)
-- [Baichuan](baichuan.md)
+- [XAI (Grok)](xai.md)
+- [Yi (01.AI)](yi.md)
+- [Doubao](doubao.md)
 - [Minimax](minimax.md)
+
+### High-Performance Inference
+- [Groq](groq.md)
+- [Cerebras](cerebras.md)
+- [NVIDIA NIM](nvidia.md)
+- [SambaNova](sambanova.md)
+
+### Multi-Provider & Aggregation
+- [OpenRouter](openrouter.md)
+- [Together](together.md)
+- [HuggingFace](huggingface.md)
+- [ModelScope](modelscope.md)
+- [Bailian](bailian.md)
+
+### Cloud Platform Integration
+- [Vertex AI](vertexai.md)
+
+### Local & Self-Hosted
+- [Ollama](ollama.md)
 
 ## Using Custom OpenAI-Compatible Endpoints
 

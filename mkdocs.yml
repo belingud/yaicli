@@ -44,13 +44,28 @@ nav:
   - Providers:
       - Overview & Feature Matrix: providers/overview.md
       - OpenAI: providers/openai.md
+      - Anthropic (Claude): providers/anthropic.md
       - Gemini: providers/gemini.md
+      - Cohere: providers/cohere.md
+      - Ollama: providers/ollama.md
+      - Mistral: providers/mistral.md
+      - DeepSeek: providers/deepseek.md
+      - Groq: providers/groq.md
+      - Together: providers/together.md
+      - VertexAI: providers/vertexai.md
+      - OpenRouter: providers/openrouter.md
+      - HuggingFace: providers/huggingface.md
+      - XAI (Grok): providers/xai.md
+      - Yi (01.AI): providers/yi.md
+      - Cerebras: providers/cerebras.md
+      - Doubao: providers/doubao.md
+      - NVIDIA NIM: providers/nvidia.md
+      - SambaNova: providers/sambanova.md
       - Moonshot: providers/moonshot.md
-      - ModScope: providers/modscope.md
+      - ModelScope: providers/modelscope.md
       - ChatGLM: providers/chatglm.md
       - Bailian: providers/bailian.md
       - Minimax: providers/minimax.md
-      - Anthropic: providers/anthropic.md
   - Advanced:
       - Prompt Template System: advanced/prompts.md
       - Conversation & History: advanced/history.md
