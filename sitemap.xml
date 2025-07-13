@@ -2,122 +2,174 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://belingud.github.io/yaicli/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/changelog/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/contributing/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/faq/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/getting-started/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/install/</loc>
-         <lastmod>2025-07-07</lastmod>
-    </url>
-    <url>
-         <loc>https://belingud.github.io/yaicli/installation/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/advanced/debugging/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/advanced/history/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/advanced/prompts/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/dev/add-provider/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/dev/architecture/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/dev/debug-cli/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
-         <loc>https://belingud.github.io/yaicli/providers/azure/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <loc>https://belingud.github.io/yaicli/providers/anthropic/</loc>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
-         <loc>https://belingud.github.io/yaicli/providers/baichuan/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <loc>https://belingud.github.io/yaicli/providers/bailian/</loc>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
-         <loc>https://belingud.github.io/yaicli/providers/dashscope/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <loc>https://belingud.github.io/yaicli/providers/cerebras/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/chatglm/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/cohere/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/deepseek/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/doubao/</loc>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/providers/gemini/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/groq/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/huggingface/</loc>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/providers/minimax/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/mistral/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/modelscope/</loc>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/providers/moonshot/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/nvidia/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/ollama/</loc>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/providers/openai/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/openrouter/</loc>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/providers/overview/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
-         <loc>https://belingud.github.io/yaicli/providers/qwen/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <loc>https://belingud.github.io/yaicli/providers/sambanova/</loc>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
-         <loc>https://belingud.github.io/yaicli/providers/zhipu/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <loc>https://belingud.github.io/yaicli/providers/together/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/vertexai/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/xai/</loc>
+         <lastmod>2025-07-13</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/providers/yi/</loc>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/usage/advanced/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/usage/basic/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/usage/cli/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/usage/commands/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/usage/configuration/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/usage/interactive/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
     <url>
          <loc>https://belingud.github.io/yaicli/usage/modes/</loc>
-         <lastmod>2025-07-07</lastmod>
+         <lastmod>2025-07-13</lastmod>
     </url>
 </urlset>
