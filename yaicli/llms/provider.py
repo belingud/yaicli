@@ -92,6 +92,7 @@ class ProviderFactory:
         "minimax": (".providers.minimax_provider", "MinimaxProvider"),
         "mistral": (".providers.mistral_provider", "MistralProvider"),
         "modelscope": (".providers.modelscope_provider", "ModelScopeProvider"),
+        "moonshot": (".providers.moonshot_provider", "MoonshotProvider"),
         "nvida": (".providers.nvida_provider", "NvidiaProvider"),
         "ollama": (".providers.ollama_provider", "OllamaProvider"),
         "openai": (".providers.openai_provider", "OpenAIProvider"),

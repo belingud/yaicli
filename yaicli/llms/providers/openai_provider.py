@@ -59,13 +59,14 @@ class OpenAIProvider(Provider):
         # Initialize client params
         client_params: Dict[str, Any] = {
             "api_key": self.config["API_KEY"],
-            "base_url": self.config["BASE_URL"] or self.DEFAULT_BASE_URL,
+            "base_url": self.config.get("BASE_URL") or self.DEFAULT_BASE_URL,
             "default_headers": {"X-Title": self.APP_NAME, "HTTP_Referer": self.APP_REFERER},
         }
 
         # Add extra headers if set
-        if self.config["EXTRA_HEADERS"]:
-            client_params["default_headers"] = {**self.config["EXTRA_HEADERS"], **client_params["default_headers"]}
+        extra_headers = self.config.get("EXTRA_HEADERS")
+        if extra_headers:
+            client_params["default_headers"] = {**extra_headers, **client_params["default_headers"]}
         return client_params
 
     def get_completion_params_keys(self) -> Dict[str, str]:
@@ -277,6 +278,7 @@ class OpenAIAzure(OpenAIProvider):
         """
         api_key = self.config.get("API_KEY")
         azure_ad_token = self.config.get("AZURE_AD_TOKEN")
+        azure_ad_token_provider = self.config.get("AZURE_AD_TOKEN_PROVIDER")
         api_version = self.config.get("API_VERSION")
         if api_key is None:
             api_key = os.environ.get("AZURE_OPENAI_API_KEY")
@@ -298,6 +300,10 @@ class OpenAIAzure(OpenAIProvider):
             )
 
         default_query = {"api-version": api_version}
+        # Merge with custom default query if provided
+        custom_default_query = self.config.get("DEFAULT_QUERY")
+        if custom_default_query:
+            default_query.update(custom_default_query)
         default_headers = self.config.get("DEFAULT_HEADERS") or {}
         default_headers.update({"X-Title": self.APP_NAME, "HTTP_Referer": self.APP_REFERER})
         base_url = self.config.get("BASE_URL") or None  # set to None if base url is empty
@@ -321,7 +327,7 @@ class OpenAIAzure(OpenAIProvider):
             if azure_endpoint is not None:
                 raise ValueError("base_url and azure_endpoint are mutually exclusive")
 
-        return {
+        client_params = {
             "api_key": api_key,
             "azure_ad_token": azure_ad_token,
             "default_query": default_query,
@@ -330,3 +336,9 @@ class OpenAIAzure(OpenAIProvider):
             "azure_deployment": azure_deployment,
             "base_url": base_url,
         }
+        
+        # Add azure_ad_token_provider if provided
+        if azure_ad_token_provider:
+            client_params["azure_ad_token_provider"] = azure_ad_token_provider
+            
+        return client_params

@@ -46,6 +46,7 @@ class TestProviderFactory:
         """Test that ProviderFactory has the expected provider types"""
         expected_providers = {
             "openai",
+            "openai-azure",
             "modelscope",
             "chatglm",
             "openrouter",
@@ -78,6 +79,7 @@ class TestProviderFactory:
             "anthropic-bedrock",
             "anthropic-vertex",
             "cerebras",
+            "moonshot",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers

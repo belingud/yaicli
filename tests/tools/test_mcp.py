@@ -173,6 +173,9 @@ class TestMCPClient:
         # Setup mock config
         mock_config = Mock()
         mock_from_file.return_value = mock_config
+        
+        # Reset the singleton instance to ensure clean test
+        MCPClient._instance = None
 
         # Create two instances
         client1 = MCPClient()
@@ -181,7 +184,7 @@ class TestMCPClient:
         # Verify they are the same object
         assert client1 is client2
 
-        # Verify initialization only happened once
+        # Verify initialization only happened once (client creation happens only during first instantiation)
         mock_client_class.assert_called_once_with(mock_config.servers)
 
     @patch("yaicli.tools.mcp.get_or_create_event_loop")

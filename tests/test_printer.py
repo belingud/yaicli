@@ -170,8 +170,7 @@ class TestPrinter(unittest.TestCase):
             self.printer.display_normal = original_display_normal
 
     @patch("yaicli.printer.Live")
-    @patch("yaicli.printer.time")
-    def test_display_stream(self, mock_time, mock_live):
+    def test_display_stream(self, mock_live):
         """Test display_stream method with LLMContent."""
         # Create mock messages list
         messages = []

@@ -135,12 +135,16 @@ class TestCerebrasProvider:
 
     def test_client_class(self, mock_config):
         """Test that the correct client class is used"""
-        with patch("cerebras.cloud.sdk.Cerebras") as mock_cerebras:
+        with patch.object(CerebrasProvider, "CLIENT_CLS") as mock_cerebras:
+            mock_client_instance = MagicMock()
+            mock_cerebras.return_value = mock_client_instance
+            
             provider = CerebrasProvider(config=mock_config)
 
             # Verify Cerebras client class is used
-            assert provider.CLIENT_CLS.__name__ == "Cerebras"
-            mock_cerebras.assert_called_once()
+            assert provider.CLIENT_CLS == mock_cerebras
+            # Verify client was instantiated during initialization
+            mock_cerebras.assert_called_once_with(**provider.client_params)
 
     def test_completion_params_keys_mapping(self, mock_config):
         """Test completion parameters keys mapping"""
@@ -307,9 +311,11 @@ class TestCerebrasProvider:
         minimal_config = {
             "API_KEY": "test_key",
             "MODEL": "llama3.1-8b",
+            "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
         }
 
-        with patch("cerebras.cloud.sdk.Cerebras"):
+        with patch("yaicli.llms.providers.cerebras_provider.Cerebras"):
             provider = CerebrasProvider(config=minimal_config)
 
             # Should use defaults for missing values
