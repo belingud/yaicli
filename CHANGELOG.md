@@ -1,5 +1,22 @@
 
 ---
+## [0.7.17](https://github.com/belingud/yaicli/compare/v0.7.16..v0.7.17) - 2025-07-13
+
+### ⛰️  Features
+
+- add moonshot provider support - ([8109255](https://github.com/belingud/yaicli/commit/81092559488aebb09dadd714bb88f90e74417159)) - Belingud
+
+### 📚 Documentation
+
+- add more provider docs - ([30e981d](https://github.com/belingud/yaicli/commit/30e981d728c309fae1bc0b42c639d427fed73a96)) - Belingud
+- update changelog for v0.7.16 release - ([e10b79a](https://github.com/belingud/yaicli/commit/e10b79a0968fb068b83eb821da197daa2a0205f7)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update uv lock - ([794305a](https://github.com/belingud/yaicli/commit/794305ab264602b2ec6811eca342d5dd45028d7c)) - Belingud
+
+
+---
 ## [0.7.16](https://github.com/belingud/yaicli/compare/v0.7.15..v0.7.16) - 2025-07-12
 
 ### 🐛 Bug Fixes
