@@ -32,7 +32,7 @@ When searching history with `Ctrl+R`:
 
 ## Interactive Commands
 
-YAICLI provides special commands that begin with a slash (`/`):
+YAICLI provides special commands that begin with a slash (`/`) or an exclamation mark (`!`):
 
 | Command            | Description                                |
 | ------------------ | ------------------------------------------ |
@@ -45,6 +45,9 @@ YAICLI provides special commands that begin with a slash (`/`):
 | `/del <index>`     | Delete a saved chat session                |
 | `/exit`            | Exit the application                       |
 | `/mode chat\|exec` | Switch between chat and execute modes      |
+| `!<command>`       | Execute a shell command directly           |
+
+With `!<command>`, you can execute a shell command directly without leaving the interactive mode. For example, `!ls -al` will list files in the current directory, `!git status` will show the git status, etc.
 
 ## Auto-Suggestion
 
@@ -66,6 +69,7 @@ To enter multi-line input:
 4. Press `Enter` on an empty line to submit
 
 This is useful for:
+
 - Writing multi-line code examples
 - Composing complex prompts
 - Structuring lists or tables
@@ -81,6 +85,7 @@ When in Execute mode and reviewing a suggested command:
 | `n`    | Cancel execution                  |
 
 When editing a command:
+
 - The full command is presented in an editable field
 - Make your changes and press `Enter` to execute
 - Press `Esc` to cancel the edit
@@ -91,8 +96,8 @@ YAICLI uses visual indicators to help you understand the current state:
 
 | Indicator           | Meaning                 |
 | ------------------- | ----------------------- |
-| `💬 >`               | Chat mode prompt        |
-| `🚀 >`               | Execute mode prompt     |
+| `💬 >`              | Chat mode prompt        |
+| `🚀 >`              | Execute mode prompt     |
 | Cursor animation    | Processing your request |
 | Syntax highlighting | Code in responses       |
 
