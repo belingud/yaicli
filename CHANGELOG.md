@@ -1,5 +1,26 @@
 
 ---
+## [0.8.0](https://github.com/belingud/yaicli/compare/v0.7.17..v0.8.0) - 2025-07-14
+
+### ⛰️  Features
+
+- add run shell directly cmd in chat - ([126f5df](https://github.com/belingud/yaicli/commit/126f5dfc3c6bd6262672c5841cea81be1df1cf92)) - Belingud
+
+### 🚜 Refactor
+
+- improve chat history display and tool call handling - ([145fdc6](https://github.com/belingud/yaicli/commit/145fdc60ca8dd999d0de7b401b7a27ce4eafc4cd)) - Belingud
+
+### 📚 Documentation
+
+- add shell command execution feature to CLI and usage docs - ([fd22f9d](https://github.com/belingud/yaicli/commit/fd22f9d75bfa973ac05c8baf7a30a8e0f48b6445)) - Belingud
+- update changelog for v0.7.17 release - ([f1165a6](https://github.com/belingud/yaicli/commit/f1165a673f15ee5d727b6f4b677d8c8e737bb2b2)) - Belingud
+
+### 🧪 Testing
+
+- update test case for run shell command - ([9a2f2b7](https://github.com/belingud/yaicli/commit/9a2f2b71df051d1f63172e558c1245e3816e86af)) - Belingud
+
+
+---
 ## [0.7.17](https://github.com/belingud/yaicli/compare/v0.7.16..v0.7.17) - 2025-07-13
 
 ### ⛰️  Features
