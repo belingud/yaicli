@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Generator, List
 
 from ..schemas import ChatMessage, LLMResponse
+from ..utils import option_callback
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -126,3 +127,13 @@ class ProviderFactory:
         module_path, class_name = cls.providers_map[provider_type]
         module = importlib.import_module(module_path, package="yaicli.llms")
         return getattr(module, class_name)(verbose=verbose, **kwargs)
+
+    @classmethod
+    @option_callback
+    def list_providers(cls, _: Any) -> None:
+        """List the available providers and exit."""
+        print("Available PROVIDERS:")
+        print("--------------------")
+        for i in cls.providers_map:
+            print(i)
+        print("--------------------")

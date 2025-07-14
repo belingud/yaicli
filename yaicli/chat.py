@@ -44,7 +44,7 @@ class Chat:
         """Create Chat instance from dictionary"""
         chat = cls(
             idx=data.get("idx", None),
-            title=data.get("title", None),
+            title=data.get("title", "Untitled Chat"),
             date=data.get("date", datetime.now().isoformat()),
             path=data.get("path", None),
         )
