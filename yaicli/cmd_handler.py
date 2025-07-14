@@ -140,15 +140,22 @@ class CmdHandler:
             self.cli.console.print("History is empty.", style="yellow")
         else:
             self.cli.console.print("Chat History:", style="bold underline")
-            for i in range(0, len(self.cli.chat.history), 2):
-                user_msg = self.cli.chat.history[i]
-                assistant_msg = self.cli.chat.history[i + 1] if (i + 1) < len(self.cli.chat.history) else None
-                self.cli.console.print(f"[dim]{i // 2 + 1}[/dim] [bold blue]User:[/bold blue] {user_msg.content}")
-                if assistant_msg:
-                    md = Markdown(assistant_msg.content or "", code_theme=cfg["CODE_THEME"])
+            message_count = 1
+            for msg in self.cli.chat.history:
+                if msg.role == "user" and msg.content:
+                    self.cli.console.print(f"[dim]{message_count}[/dim] [bold blue]User:[/bold blue] {msg.content}")
+                    message_count += 1
+                elif msg.role == "assistant" and (msg.content or msg.tool_calls):
+                    content = msg.content or ""
+                    if msg.tool_calls:
+                        content += "\n"
+                        for t in msg.tool_calls:
+                            content += f">Tool Call: {t.name}({t.arguments})\n"
+                    md = Markdown(content, code_theme=cfg["CODE_THEME"])
                     padded_md = Padding(md, (0, 0, 0, 4))
                     self.cli.console.print("    Assistant:", style="bold green")
                     self.cli.console.print(padded_md)
+                # Skip other roles (like "tool") and empty messages - they are not displayed
         return True
 
     def handle_list(self) -> bool:
