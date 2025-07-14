@@ -93,18 +93,17 @@ class TestAnthropicProvider:
             mock_response.stop_reason = "stop"
             mock_client.messages.create.return_value = mock_response
 
-            # 创建提供商并测试完成
             provider = AnthropicProvider(config=mock_config)
             messages = [ChatMessage(role="user", content="Hello")]
             responses = list(provider.completion(messages))
 
-            # 验证客户端调用
+            # Verify client call
             mock_client.messages.create.assert_called_once()
             call_args = mock_client.messages.create.call_args
             assert call_args[1]["messages"] == [{"role": "user", "content": "Hello"}]
             assert "tools" in call_args[1]
 
-            # 验证响应
+            # Verify response
             assert len(responses) == 1
             assert responses[0].content == "Hello, world"
             assert responses[0].finish_reason == "stop"
@@ -139,23 +138,20 @@ class TestAnthropicProvider:
 
             mock_client.messages.create.return_value = [chunk1, chunk2, chunk3]
 
-            # 直接模拟tools模块
             with patch.dict(sys.modules, {"yaicli.llms.providers.anthropic_provider": MagicMock()}):
-                # 测试流式完成
                 provider = AnthropicProvider(config=mock_config)
-                # 跳过工具加载部分
                 provider.enable_function = False
                 provider.enable_mcp = False
 
                 messages = [ChatMessage(role="user", content="Hello")]
                 responses = list(provider.completion(messages, stream=True))
 
-                # 验证客户端调用
+                # Verify client call
                 mock_client.messages.create.assert_called_once()
                 call_args = mock_client.messages.create.call_args
                 assert call_args[1]["stream"] is True
 
-                # 验证响应
+                # Verify response
                 assert len(responses) == 3
                 assert responses[0].content == "Hello"
                 assert responses[1].content == " world"
@@ -176,7 +172,7 @@ class TestAnthropicProvider:
             mock_client = MagicMock()
             mock_anthropic_cls.return_value = mock_client
 
-            # 创建带有工具调用的模拟响应
+            # Create a simulated response with tool calls
             mock_tool_use = MagicMock()
             mock_tool_use.type = "tool_use"
             mock_tool_use.id = "tool_1"
@@ -193,12 +189,11 @@ class TestAnthropicProvider:
 
             mock_client.messages.create.return_value = mock_response
 
-            # 测试带工具调用的完成
             provider = AnthropicProvider(config=mock_config)
             messages = [ChatMessage(role="user", content="What's the weather?")]
             responses = list(provider.completion(messages))
 
-            # 验证响应中的工具调用
+            # Verify tool call in response
             assert len(responses) == 1
             assert responses[0].tool_call is not None
             assert responses[0].tool_call.id == "tool_1"

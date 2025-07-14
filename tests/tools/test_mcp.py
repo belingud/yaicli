@@ -173,7 +173,7 @@ class TestMCPClient:
         # Setup mock config
         mock_config = Mock()
         mock_from_file.return_value = mock_config
-        
+
         # Reset the singleton instance to ensure clean test
         MCPClient._instance = None
 
