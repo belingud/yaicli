@@ -23,6 +23,7 @@ Press TAB to switch mode
 /save <title>      : Save current chat
 /load <index>      : Load a saved chat
 /del <index>       : Delete a saved chat
+!<command>         : Execute shell command directly (e.g., !ls -al)
 /exit|Ctrl+D|Ctrl+C: Exit
 /mode chat|exec    : Switch mode (Case insensitive)
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ Press TAB to switch mode
 /save <title>      : Save current chat
 /load <index>      : Load a saved chat
 /del <index>       : Delete a saved chat
+!<command>         : Execute shell command directly (e.g., !ls -al)
 /exit|Ctrl+D|Ctrl+C: Exit
 /mode chat|exec    : Switch mode (Case insensitive)
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

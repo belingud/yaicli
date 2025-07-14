@@ -8,6 +8,7 @@ from .config import cfg
 from .const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
 from .exceptions import YaicliError
 from .functions import install_functions, print_functions, print_mcp
+from .llms.provider import ProviderFactory
 from .role import RoleManager
 
 app = typer.Typer(
@@ -162,6 +163,13 @@ def main(
         "--template",
         help="Show the default config file template and exit.",
         rich_help_panel="Other Options",
+    ),
+    list_providers: bool = typer.Option(  # noqa: F841
+        False,
+        "--list-providers",
+        help="List the available providers and exit.",
+        rich_help_panel="Other Options",
+        callback=ProviderFactory.list_providers,
     ),
     show_reasoning: bool = typer.Option(  # noqa: F841
         cfg["SHOW_REASONING"],

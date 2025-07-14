@@ -66,8 +66,8 @@ class LLMClient:
         """
         if recursion_depth >= self.max_recursion_depth:
             self.console.print(
-                f"Maximum recursion depth ({self.max_recursion_depth}) reached, stopping further tool calls",
-                style="yellow",
+                f"Maximum tool call depth ({self.max_recursion_depth}) reached. Stopping further tool calls...",
+                style="bold yellow",
             )
             return
 
@@ -86,6 +86,14 @@ class LLMClient:
             if llm_response.tool_call and llm_response.tool_call.id not in tool_calls:
                 tool_calls[llm_response.tool_call.id] = llm_response.tool_call
 
+        # Always add assistant response to messages first
+        assistant_message = ChatMessage(
+            role="assistant",
+            content=assistant_response_content,
+            tool_calls=list(tool_calls.values()) if tool_calls else []
+        )
+        messages.append(assistant_message)
+
         # Check if we need to execute tools
         if not tool_calls or not (self.enable_function or self.enable_mcp):
             return
@@ -97,7 +105,7 @@ class LLMClient:
 
         # Execute tools and continue conversation
         yield from self._execute_tools_and_continue(
-            messages, assistant_response_content, valid_tool_calls, stream, recursion_depth
+            messages, valid_tool_calls, stream, recursion_depth
         )
 
     def _get_valid_tool_calls(self, tool_calls: dict[str, ToolCall]) -> List[ToolCall]:
@@ -117,7 +125,6 @@ class LLMClient:
     def _execute_tools_and_continue(
         self,
         messages: List[ChatMessage],
-        assistant_response_content: str,
         tool_calls: List[ToolCall],
         stream: bool,
         recursion_depth: int,
@@ -126,8 +133,7 @@ class LLMClient:
         # Signal that new content is coming
         yield RefreshLive()
 
-        # Add assistant message with tool calls to history (only once)
-        messages.append(ChatMessage(role="assistant", content=assistant_response_content, tool_calls=tool_calls))
+        # Assistant message has already been added to messages in completion_with_tools
 
         # Execute each tool call and add results to messages
         tool_role = self.provider.detect_tool_role()

@@ -336,9 +336,9 @@ class OpenAIAzure(OpenAIProvider):
             "azure_deployment": azure_deployment,
             "base_url": base_url,
         }
-        
+
         # Add azure_ad_token_provider if provided
         if azure_ad_token_provider:
             client_params["azure_ad_token_provider"] = azure_ad_token_provider
-            
+
         return client_params

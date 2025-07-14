@@ -138,7 +138,7 @@ class TestCerebrasProvider:
         with patch.object(CerebrasProvider, "CLIENT_CLS") as mock_cerebras:
             mock_client_instance = MagicMock()
             mock_cerebras.return_value = mock_client_instance
-            
+
             provider = CerebrasProvider(config=mock_config)
 
             # Verify Cerebras client class is used

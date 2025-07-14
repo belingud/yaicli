@@ -367,8 +367,6 @@ class TestChatManagement:
         # The actual implementation wraps history and title in a Chat object
         # We can't directly verify parameters but can check the method was called
         assert cli.chat_manager.save_chat.called
-        # 不再检查这个消息，因为业务代码可能已经不再显示它
-        # cli.console.print.assert_any_call("No chat history to save.", style="yellow")
 
     def test_save_chat_with_history(self, cli_with_mocks):
         """Test saving chat with history."""

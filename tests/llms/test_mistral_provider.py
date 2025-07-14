@@ -156,7 +156,6 @@ class TestMistralProvider:
             assert len(params["tools"]) == 1
             assert params["tools"][0]["function"]["name"] == "regular_func"
 
-    # 创建通用的响应模拟辅助方法
     def _create_mock_normal_response(self, content="Test response", finish_reason="stop", tool_calls=None):
         """Helper method to create mock normal responses"""
         mock_response = MagicMock(spec=ChatCompletionResponse)

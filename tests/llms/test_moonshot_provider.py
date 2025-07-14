@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from yaicli.exceptions import ProviderError
 from yaicli.llms.providers.moonshot_provider import MoonshotProvider
 from yaicli.schemas import ChatMessage, ToolCall
 
@@ -274,7 +273,7 @@ class TestMoonshotProvider:
 
         # Create mock streaming response
         mock_chunks = []
-        
+
         # First chunk with content
         chunk1 = MagicMock()
         choice1 = MagicMock()
@@ -337,15 +336,16 @@ class TestMoonshotProvider:
 
             # Check that it's an instance of the expected classes
             from yaicli.llms.providers.openai_provider import OpenAIProvider
+
             assert isinstance(provider, OpenAIProvider)
             assert isinstance(provider, MoonshotProvider)
 
             # Check that it has the expected attributes and methods
-            assert hasattr(provider, 'completion')
-            assert hasattr(provider, '_convert_messages')
-            assert hasattr(provider, 'detect_tool_role')
-            assert hasattr(provider, 'DEFAULT_BASE_URL')
-            assert hasattr(provider, 'COMPLETION_PARAMS_KEYS')
+            assert hasattr(provider, "completion")
+            assert hasattr(provider, "_convert_messages")
+            assert hasattr(provider, "detect_tool_role")
+            assert hasattr(provider, "DEFAULT_BASE_URL")
+            assert hasattr(provider, "COMPLETION_PARAMS_KEYS")
 
     def test_moonshot_specific_configuration(self, mock_config):
         """Test Moonshot-specific configuration values"""
@@ -354,11 +354,11 @@ class TestMoonshotProvider:
 
             # Test Moonshot-specific defaults
             assert provider.DEFAULT_BASE_URL == "https://api.moonshot.cn/v1"
-            
+
             # Test that the parameter mapping is appropriate for Moonshot
             expected_params = {
                 "model": "MODEL",
-                "temperature": "TEMPERATURE", 
+                "temperature": "TEMPERATURE",
                 "top_p": "TOP_P",
                 "max_tokens": "MAX_TOKENS",
                 "timeout": "TIMEOUT",
@@ -381,7 +381,7 @@ class TestMoonshotProvider:
 
         with patch("openai.OpenAI"), patch("yaicli.tools.get_openai_schemas") as mock_schemas:
             mock_schemas.return_value = []
-            
+
             # Create provider in verbose mode
             provider = MoonshotProvider(config=mock_config, verbose=True)
             provider.client = mock_openai_client
@@ -396,9 +396,11 @@ class TestMoonshotProvider:
             # Verify verbose output was called
             provider.console.print.assert_called()
 
-    def test_completion_with_mcp_enabled_setting(self, mock_config, mock_openai_client):
+    @patch("yaicli.tools.get_openai_schemas")
+    def test_completion_with_mcp_enabled_setting(self, mock_get_schemas, mock_config, mock_openai_client):
         """Test that MCP setting is properly configured"""
         mock_config["ENABLE_MCP"] = True
+        mock_get_schemas.return_value = []
 
         # Setup mock response
         mock_response = MagicMock()
@@ -411,19 +413,23 @@ class TestMoonshotProvider:
         mock_response.choices = [mock_choice]
         mock_openai_client.chat.completions.create.return_value = mock_response
 
-        with patch("openai.OpenAI"):
-            provider = MoonshotProvider(config=mock_config)
-            provider.client = mock_openai_client
+        with patch("yaicli.llms.providers.openai_provider.get_openai_mcp_tools") as mock_mcp_tools:
+            mock_mcp_tools.return_value = []
 
-            # Verify MCP is enabled in the provider
-            assert provider.enable_mcp is True
+            with patch("openai.OpenAI"):
+                provider = MoonshotProvider(config=mock_config)
+                provider.client = mock_openai_client
 
-            # Call completion
-            messages = [ChatMessage(role="user", content="Test")]
-            list(provider.completion(messages, stream=False))
+                # Verify MCP is enabled in the provider
+                assert provider.enable_mcp is True
 
-            # Verify the call was made
-            mock_openai_client.chat.completions.create.assert_called_once()
+                # Call completion
+                messages = [ChatMessage(role="user", content="Test")]
+                list(provider.completion(messages, stream=False))
+
+                # Verify the call was made
+                mock_openai_client.chat.completions.create.assert_called_once()
+                mock_mcp_tools.assert_called_once()
 
     def test_completion_with_disabled_functions(self, mock_config, mock_openai_client):
         """Test completion with functions disabled"""

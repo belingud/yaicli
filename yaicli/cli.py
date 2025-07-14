@@ -12,11 +12,11 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.keys import Keys
 from rich.markdown import Markdown
-from rich.padding import Padding
 from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .chat import Chat, FileChatManager, chat_mgr
+from .cmd_handler import CmdHandler
 from .config import cfg
 from .console import get_console
 from .const import (
@@ -68,6 +68,7 @@ class CLI:
         self.role: Role = self.role_manager.get_role(self.role_name)
         self.printer = Printer()
         self.client = client or self._create_client()
+        self.cmd_handler = CmdHandler(self)
 
         self.bindings = KeyBindings()
 
@@ -243,88 +244,7 @@ class CLI:
     # ------------------- Special commands -------------------
     def _handle_special_commands(self, user_input: str) -> Union[bool, str]:
         """Handle special command return: True-continue loop, False-exit loop, str-non-special command"""
-        lower_input = user_input.lower().strip()
-        if lower_input in CMD_HELP:
-            # case-insensitive
-            self.print_help()
-            return True
-        if lower_input == CMD_EXIT:
-            # case-insensitive
-            return False
-        if lower_input == CMD_CLEAR and self.current_mode == CHAT_MODE:
-            # case-insensitive
-            self.chat.history.clear()
-            self.console.print("Chat history cleared", style="bold yellow")
-            return True
-        if lower_input == CMD_HISTORY:
-            # case-insensitive
-            if not self.chat.history:
-                self.console.print("History is empty.", style="yellow")
-            else:
-                self.console.print("Chat History:", style="bold underline")
-                for i in range(0, len(self.chat.history), 2):
-                    user_msg = self.chat.history[i]
-                    assistant_msg = self.chat.history[i + 1] if (i + 1) < len(self.chat.history) else None
-                    self.console.print(f"[dim]{i // 2 + 1}[/dim] [bold blue]User:[/bold blue] {user_msg.content}")
-                    if assistant_msg:
-                        md = Markdown(assistant_msg.content or "", code_theme=cfg["CODE_THEME"])
-                        padded_md = Padding(md, (0, 0, 0, 4))
-                        self.console.print("    Assistant:", style="bold green")
-                        self.console.print(padded_md)
-            return True
-
-        # Handle /save command - optional title parameter
-        if lower_input.startswith(CMD_SAVE_CHAT):
-            # Save chat with title from user raw input, case-sensitive
-            parts = user_input.split(maxsplit=1)
-            title = parts[1] if len(parts) > 1 else self.chat.title
-            self._save_chat(title)
-            return True
-
-        # Handle /load command - requires index parameter
-        if lower_input.startswith(CMD_LOAD_CHAT):
-            # Load chat by index from user raw input, case-sensitive
-            parts = user_input.split(maxsplit=1)
-            if len(parts) == 2 and parts[1].isdigit():
-                # Try to parse as an index first
-                self._load_chat_by_index(index=parts[1])
-            else:
-                self.console.print(f"Usage: {CMD_LOAD_CHAT} <index>", style="yellow")
-                self._list_chats()
-            return True
-
-        # Handle /delete command - requires index parameter
-        if lower_input.startswith(CMD_DELETE_CHAT):
-            # Delete chat by index from user raw input, case-sensitive
-            parts = user_input.split(maxsplit=1)
-            if len(parts) == 2 and parts[1].isdigit():
-                self._delete_chat_by_index(index=parts[1])
-            else:
-                self.console.print(f"Usage: {CMD_DELETE_CHAT} <index>", style="yellow")
-                self._list_chats()
-            return True
-
-        # Handle /list command to list saved chats
-        if lower_input == CMD_LIST_CHATS:
-            # case-insensitive
-            self._list_chats()
-            return True
-
-        # Handle /mode command
-        if lower_input.startswith(CMD_MODE):
-            # Switch mode by lower user input, case-insensitive
-            parts = lower_input.split(maxsplit=1)
-            if len(parts) == 2 and parts[1] in [CHAT_MODE, EXEC_MODE]:
-                new_mode = parts[1]
-                if self.current_mode != new_mode:
-                    self.current_mode = new_mode
-                    self.set_role(DefaultRoleNames.SHELL if self.current_mode == EXEC_MODE else self.init_role)
-                else:
-                    self.console.print(f"Already in {self.current_mode} mode.", style="yellow")
-            else:
-                self.console.print(f"Usage: {CMD_MODE} {CHAT_MODE}|{EXEC_MODE}", style="yellow")
-            return True
-        return user_input
+        return self.cmd_handler.handle_command(user_input)
 
     def _build_messages(self, user_input: str) -> list[ChatMessage]:
         """Build message list for LLM API"""
@@ -490,6 +410,7 @@ class CLI:
         self.console.print(f"{load_cmd:<19}: Load a saved chat")
         delete_cmd = f"{CMD_DELETE_CHAT} <index>"
         self.console.print(f"{delete_cmd:<19}: Delete a saved chat")
+        self.console.print(f"{'!<command>':<19}: Execute shell command directly (e.g., !ls -al)")
         cmd_exit = f"{CMD_EXIT}|Ctrl+D|Ctrl+C"
         self.console.print(f"{cmd_exit:<19}: Exit")
         cmd_mode = f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"
