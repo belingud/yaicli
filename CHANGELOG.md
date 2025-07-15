@@ -1,5 +1,26 @@
 
 ---
+## [0.8.2](https://github.com/belingud/yaicli/compare/v0.8.1..v0.8.2) - 2025-07-15
+
+### 🐛 Bug Fixes
+
+- add tool result handling in AnthropicProvider and update tool schema - ([8e27965](https://github.com/belingud/yaicli/commit/8e2796502c16435b1c60779801dd2d85e7e321b5)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.1 release - ([1c546cd](https://github.com/belingud/yaicli/commit/1c546cd318a918716a98ee95c6a6192f4bb858f7)) - Belingud
+
+### 🧪 Testing
+
+- add test for converting messages with tool results - ([3b04a71](https://github.com/belingud/yaicli/commit/3b04a71640fe721f50e33e53230cdee11f1d36b5)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update deploy-docs.yml for better readability - ([17ad8eb](https://github.com/belingud/yaicli/commit/17ad8eb32bb5d5781a9beb15713d4261308e6028)) - Belingud
+- add GitHub Actions workflow for deploying MkDocs - ([a653a29](https://github.com/belingud/yaicli/commit/a653a29c26bb4a1ca234102af1525b2b07eff50d)) - Belingud
+
+
+---
 ## [0.8.1](https://github.com/belingud/yaicli/compare/v0.8.0..v0.8.1) - 2025-07-15
 
 ### 🚜 Refactor
