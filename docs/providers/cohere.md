@@ -17,7 +17,7 @@ TEMPERATURE=0.7
 | ------------- | ------------------------- | --------------------------- |
 | `API_KEY`     | Cohere API key (required) | -                           |
 | `MODEL`       | Model to use              | -                           |
-| `TEMPERATURE` | Randomness (0.0-1.0)      | `0.7`                       |
+| `TEMPERATURE` | Randomness (0.0-1.0)      | `0.3`                       |
 | `TIMEOUT`     | Request timeout (seconds) | `60`                        |
 | `BASE_URL`    | Custom API endpoint       | `https://api.cohere.com/v2` |
 | `ENVIRONMENT` | Environment setting       | -                           |
