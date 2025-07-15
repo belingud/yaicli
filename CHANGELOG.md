@@ -1,5 +1,18 @@
 
 ---
+## [0.8.1](https://github.com/belingud/yaicli/compare/v0.8.0..v0.8.1) - 2025-07-15
+
+### 🚜 Refactor
+
+- add conditional newline in tool call content - ([7bb167f](https://github.com/belingud/yaicli/commit/7bb167f6078d797bcfd4e3c069de9fcd5e2ce196)) - Belingud
+
+### 📚 Documentation
+
+- update documentation for providers - ([f36de06](https://github.com/belingud/yaicli/commit/f36de0692129ac941954b9aa839e39e23907c430)) - Belingud
+- update changelog for v0.8.0 release - ([1cd2fc4](https://github.com/belingud/yaicli/commit/1cd2fc4148597755280511896abf2ab5ea71562b)) - Belingud
+
+
+---
 ## [0.8.0](https://github.com/belingud/yaicli/compare/v0.7.17..v0.8.0) - 2025-07-14
 
 ### ⛰️  Features
