@@ -148,7 +148,7 @@ class CmdHandler:
                 elif msg.role == "assistant" and (msg.content or msg.tool_calls):
                     content = msg.content or ""
                     if msg.tool_calls:
-                        content += "\n"
+                        content += "\n" if content else ""  # Add newline if there's assistant content before tool calls
                         for t in msg.tool_calls:
                             content += f">Tool Call: {t.name}({t.arguments})\n"
                     md = Markdown(content, code_theme=cfg["CODE_THEME"])
