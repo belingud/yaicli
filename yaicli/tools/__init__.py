@@ -44,7 +44,7 @@ def get_anthropic_schemas() -> List[Dict[str, Any]]:
         schema = {
             "name": function.name,
             "description": function.description,
-            "parameters": function.parameters,
+            "input_schema": function.parameters,
         }
         transformed_schemas.append(schema)
     return transformed_schemas
