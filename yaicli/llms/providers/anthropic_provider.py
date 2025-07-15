@@ -141,7 +141,7 @@ class AnthropicProvider(Provider):
 
         if tools:
             params["tools"] = tools
-            params["tool_choice"] = "auto"
+            params["tool_choice"] = {"type": "auto", "disable_parallel_tool_use": True}
 
         if self.verbose:
             self.console.print("System prompt:", params["system"])
@@ -264,6 +264,57 @@ class AnthropicProvider(Provider):
     def detect_tool_role(self) -> str:
         """Return the role that should be used for tool responses"""
         return "tool"
+
+    def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
+        """Convert ChatMessage list to Anthropic format with proper tool result handling"""
+        converted_messages = []
+        i = 0
+        
+        while i < len(messages):
+            msg = messages[i]
+            
+            # Handle regular messages
+            if msg.role != "tool":
+                message: Dict[str, Any] = {"role": msg.role, "content": msg.content or ""}
+                
+                # Handle tool calls in assistant messages
+                if msg.role == "assistant" and msg.tool_calls:
+                    content = []
+                    if msg.content:
+                        content.append({"type": "text", "text": msg.content})
+                    
+                    for tool_call in msg.tool_calls:
+                        content.append({
+                            "type": "tool_use",
+                            "id": tool_call.id,
+                            "name": tool_call.name,
+                            "input": json.loads(tool_call.arguments)
+                        })
+                    
+                    message["content"] = content
+                
+                converted_messages.append(message)
+                i += 1
+            else:
+                # Handle tool results - collect consecutive tool messages
+                tool_results = []
+                while i < len(messages) and messages[i].role == "tool":
+                    tool_msg = messages[i]
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_msg.tool_call_id,
+                        "content": tool_msg.content or ""
+                    })
+                    i += 1
+                
+                # Add tool results as a user message
+                if tool_results:
+                    converted_messages.append({
+                        "role": "user",
+                        "content": tool_results
+                    })
+        
+        return converted_messages
 
 
 class AnthropicBedrockProvider(AnthropicProvider):
