@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#qwen" class="md-skip">
+        <a href="#bailian-qwen" class="md-skip">
           Skip to content
         </a>
       
@@ -1153,6 +1153,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Bailian
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1164,6 +1177,97 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#international-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      International Version
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#default-api-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Default API Endpoints
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Models
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Important Notes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resources
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1537,6 +1641,86 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#international-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      International Version
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#default-api-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Default API Endpoints
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Models
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Important Notes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resources
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1554,10 +1738,100 @@
   
 
 
-<h1 id="qwen">Qwen<a class="headerlink" href="#qwen" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p>TODO: Add content for <strong>qwen</strong>.</p>
-</blockquote>
+<h1 id="bailian-qwen">Bailian (Qwen)<a class="headerlink" href="#bailian-qwen" title="Permanent link">&para;</a></h1>
+<p>Bailian is Alibaba Cloud's intelligent language model service that provides Qwen series models through an OpenAI-compatible interface.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="na">PROVIDER</span><span class="o">=</span><span class="s">bailian</span>
+<span class="na">API_KEY</span><span class="o">=</span><span class="s">your-aliyun-api-key</span>
+<span class="na">MODEL</span><span class="o">=</span><span class="s">qwen-plus</span>
+<span class="na">TEMPERATURE</span><span class="o">=</span><span class="s">0.3</span>
+<span class="na">MAX_TOKENS</span><span class="o">=</span><span class="s">2048</span>
+</code></pre></div>
+<h2 id="international-version">International Version<a class="headerlink" href="#international-version" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="na">PROVIDER</span><span class="o">=</span><span class="s">bailian-intl</span>
+<span class="na">API_KEY</span><span class="o">=</span><span class="s">your-aliyun-api-key</span>
+<span class="na">MODEL</span><span class="o">=</span><span class="s">qwen-plus</span>
+<span class="na">TEMPERATURE</span><span class="o">=</span><span class="s">0.3</span>
+<span class="na">MAX_TOKENS</span><span class="o">=</span><span class="s">2048</span>
+</code></pre></div>
+<h2 id="key-parameters">Key Parameters<a class="headerlink" href="#key-parameters" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>API_KEY</code></td>
+<td>Alibaba Cloud API key (required)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>MODEL</code></td>
+<td>Model to use</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>TEMPERATURE</code></td>
+<td>Randomness (0.0-1.0)</td>
+<td><code>0.3</code></td>
+</tr>
+<tr>
+<td><code>TOP_P</code></td>
+<td>Nucleus sampling</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>MAX_TOKENS</code></td>
+<td>Max response tokens</td>
+<td><code>1024</code></td>
+</tr>
+<tr>
+<td><code>TIMEOUT</code></td>
+<td>Request timeout (seconds)</td>
+<td><code>60</code></td>
+</tr>
+<tr>
+<td><code>BASE_URL</code></td>
+<td>Custom API endpoint</td>
+<td>See below</td>
+</tr>
+</tbody>
+</table>
+<h2 id="default-api-endpoints">Default API Endpoints<a class="headerlink" href="#default-api-endpoints" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Domestic version: <code>https://dashscope.aliyuncs.com/compatible-mode/v1</code></li>
+<li>International version: <code>https://dashscope-intl.aliyuncs.com/compatible-mode/v1</code></li>
+</ul>
+<h2 id="supported-models">Supported Models<a class="headerlink" href="#supported-models" title="Permanent link">&para;</a></h2>
+<p>Qwen series models:</p>
+<ul>
+<li><code>qwen-plus</code>: Enhanced version</li>
+<li><code>qwen-max</code>: Advanced version</li>
+<li><code>qwen-max-longcontext</code>: Long context version</li>
+<li><code>qwen-turbo</code>: Lightweight fast version</li>
+</ul>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<ul>
+<li>✅ Streaming responses</li>
+<li>✅ Function calling</li>
+<li>✅ MCP support</li>
+</ul>
+<h2 id="important-notes">Important Notes<a class="headerlink" href="#important-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Requires an Alibaba Cloud account with Bailian service enabled</li>
+<li>Usage-based billing, refer to Alibaba Cloud official pricing</li>
+<li>Service provided through OpenAI-compatible interface</li>
+<li>Supports Alibaba Cloud region restrictions</li>
+</ul>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://help.aliyun.com/zh/model-studio/use-qwen-by-calling-api">Official API Documentation</a></li>
+<li><a href="https://dashscope.console.aliyun.com/">Alibaba Cloud Bailian Console</a></li>
+</ul>
 
 
 

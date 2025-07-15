@@ -1946,7 +1946,7 @@
 </tbody>
 </table>
 <h2 id="interactive-commands">Interactive Commands<a class="headerlink" href="#interactive-commands" title="Permanent link">&para;</a></h2>
-<p>YAICLI provides special commands that begin with a slash (<code>/</code>):</p>
+<p>YAICLI provides special commands that begin with a slash (<code>/</code>) or an exclamation mark (<code>!</code>):</p>
 <table>
 <thead>
 <tr>
@@ -1991,8 +1991,13 @@
 <td><code>/mode chat\|exec</code></td>
 <td>Switch between chat and execute modes</td>
 </tr>
+<tr>
+<td><code>!&lt;command&gt;</code></td>
+<td>Execute a shell command directly</td>
+</tr>
 </tbody>
 </table>
+<p>With <code>!&lt;command&gt;</code>, you can execute a shell command directly without leaving the interactive mode. For example, <code>!ls -al</code> will list files in the current directory, <code>!git status</code> will show the git status, etc.</p>
 <h2 id="auto-suggestion">Auto-Suggestion<a class="headerlink" href="#auto-suggestion" title="Permanent link">&para;</a></h2>
 <p>YAICLI offers auto-suggestions based on your command history. As you type, it shows light gray text suggesting completions from your history:</p>
 <ul>
@@ -2009,10 +2014,12 @@
 <li>Continue adding lines as needed</li>
 <li>Press <code>Enter</code> on an empty line to submit</li>
 </ol>
-<p>This is useful for:
-- Writing multi-line code examples
-- Composing complex prompts
-- Structuring lists or tables</p>
+<p>This is useful for:</p>
+<ul>
+<li>Writing multi-line code examples</li>
+<li>Composing complex prompts</li>
+<li>Structuring lists or tables</li>
+</ul>
 <h2 id="command-editing">Command Editing<a class="headerlink" href="#command-editing" title="Permanent link">&para;</a></h2>
 <p>When in Execute mode and reviewing a suggested command:</p>
 <table>
@@ -2037,10 +2044,12 @@
 </tr>
 </tbody>
 </table>
-<p>When editing a command:
-- The full command is presented in an editable field
-- Make your changes and press <code>Enter</code> to execute
-- Press <code>Esc</code> to cancel the edit</p>
+<p>When editing a command:</p>
+<ul>
+<li>The full command is presented in an editable field</li>
+<li>Make your changes and press <code>Enter</code> to execute</li>
+<li>Press <code>Esc</code> to cancel the edit</li>
+</ul>
 <h2 id="visual-indicators">Visual Indicators<a class="headerlink" href="#visual-indicators" title="Permanent link">&para;</a></h2>
 <p>YAICLI uses visual indicators to help you understand the current state:</p>
 <table>

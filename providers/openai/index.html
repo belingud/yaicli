@@ -670,6 +670,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    OpenAI
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -681,6 +694,88 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#azure-openai-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Azure OpenAI Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#azure-key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Azure Key Parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Important Notes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resources
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1537,6 +1632,77 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#azure-openai-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Azure OpenAI Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#azure-key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Azure Key Parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Important Notes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resources
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1554,10 +1720,156 @@
   
 
 
-<h1 id="openai">Openai<a class="headerlink" href="#openai" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p>TODO: Add content for <strong>openai</strong>.</p>
-</blockquote>
+<h1 id="openai">OpenAI<a class="headerlink" href="#openai" title="Permanent link">&para;</a></h1>
+<p>OpenAI's GPT models and API services.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="na">PROVIDER</span><span class="o">=</span><span class="s">openai</span>
+<span class="na">API_KEY</span><span class="o">=</span><span class="s">sk-your-openai-api-key</span>
+<span class="na">MODEL</span><span class="o">=</span><span class="s">o3</span>
+<span class="na">TEMPERATURE</span><span class="o">=</span><span class="s">0.3</span>
+<span class="na">TOP_P</span><span class="o">=</span><span class="s">1.0</span>
+<span class="na">MAX_TOKENS</span><span class="o">=</span><span class="s">1024</span>
+<span class="na">REASONING_EFFORT</span><span class="o">=</span><span class="s">low</span>
+</code></pre></div>
+<h2 id="key-parameters">Key Parameters<a class="headerlink" href="#key-parameters" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>API_KEY</code></td>
+<td>OpenAI API key (required)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>MODEL</code></td>
+<td>Model to use</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>TEMPERATURE</code></td>
+<td>Randomness (0.0-1.0)</td>
+<td><code>0.3</code></td>
+</tr>
+<tr>
+<td><code>TOP_P</code></td>
+<td>Nucleus sampling</td>
+<td><code>1.0</code></td>
+</tr>
+<tr>
+<td><code>MAX_TOKENS</code></td>
+<td>Max response tokens</td>
+<td><code>1024</code></td>
+</tr>
+<tr>
+<td><code>TIMEOUT</code></td>
+<td>Request timeout (seconds)</td>
+<td><code>60</code></td>
+</tr>
+<tr>
+<td><code>REASONING_EFFORT</code></td>
+<td>Thinking depth (0-10)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>BASE_URL</code></td>
+<td>Custom API endpoint</td>
+<td><code>https://api.openai.com/v1</code></td>
+</tr>
+<tr>
+<td><code>EXTRA_HEADERS</code></td>
+<td>Additional request headers</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>EXTRA_BODY</code></td>
+<td>Additional request parameters</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h2 id="azure-openai-configuration">Azure OpenAI Configuration<a class="headerlink" href="#azure-openai-configuration" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="na">PROVIDER</span><span class="o">=</span><span class="s">openai_azure</span>
+<span class="na">API_KEY</span><span class="o">=</span><span class="s">your-azure-openai-key</span>
+<span class="na">ENDPOINT</span><span class="o">=</span><span class="s">https://your-resource.openai.azure.com/</span>
+<span class="na">API_VERSION</span><span class="o">=</span><span class="s">2024-02-01</span>
+<span class="na">DEPLOYMENT</span><span class="o">=</span><span class="s">your-deployment-name</span>
+<span class="na">MODEL</span><span class="o">=</span><span class="s">gpt-4</span>
+</code></pre></div>
+<h2 id="azure-key-parameters">Azure Key Parameters<a class="headerlink" href="#azure-key-parameters" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>API_KEY</code></td>
+<td>Azure OpenAI key</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>ENDPOINT</code></td>
+<td>Azure OpenAI endpoint</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>API_VERSION</code></td>
+<td>Azure OpenAI API version</td>
+<td><code>2024-02-01</code></td>
+</tr>
+<tr>
+<td><code>DEPLOYMENT</code></td>
+<td>Azure deployment name</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>AD_TOKEN</code></td>
+<td>Azure AD OAuth token (optional)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>DEFAULT_QUERY</code></td>
+<td>Default query parameters</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<ul>
+<li>✅ Streaming responses</li>
+<li>✅ Function calling</li>
+<li>✅ MCP support</li>
+<li>✅ Vision capabilities</li>
+<li>✅ Reasoning parameters</li>
+<li>✅ Azure integration</li>
+<li>✅ High context windows</li>
+</ul>
+<h2 id="important-notes">Important Notes<a class="headerlink" href="#important-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>API keys start with <code>sk-</code></li>
+<li>Rate limits apply based on your plan</li>
+<li>Azure requires additional configuration</li>
+<li>Models have different token limits and capabilities</li>
+<li>Pricing varies by model and usage</li>
+<li>Some models support image input</li>
+<li>Custom base URLs can be set for compatible endpoints</li>
+</ul>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://platform.openai.com/docs/api-reference">OpenAI API Documentation</a></li>
+<li><a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/">Azure OpenAI Documentation</a></li>
+<li><a href="https://platform.openai.com/docs/models">OpenAI Models</a></li>
+<li><a href="https://openai.com/pricing">OpenAI Pricing</a></li>
+</ul>
 
 
 
