@@ -1,5 +1,22 @@
 
 ---
+## [0.8.3](https://github.com/belingud/yaicli/compare/v0.8.2..v0.8.3) - 2025-07-16
+
+### ⛰️  Features
+
+- add new configuration options and refactor CLI options - ([a52ee92](https://github.com/belingud/yaicli/commit/a52ee9211a28c09f6bf2eef88edb113236beef55)) - Belingud
+
+### 📚 Documentation
+
+- add `MAX_TOOL_CALL_DEPTH` configuration option - ([c1cf420](https://github.com/belingud/yaicli/commit/c1cf420777abdbb9a7156f08fecda23a454fe421)) - Belingud
+- update changelog for v0.8.2 release - ([5f27d5d](https://github.com/belingud/yaicli/commit/5f27d5d58cdffa4adaefffa64d924c42a2d12c46)) - Belingud
+
+### 🧪 Testing
+
+- update test cases for AnthropicProvider and CLI - ([367ea89](https://github.com/belingud/yaicli/commit/367ea891e96a95fa8474fb569d64ca862cd089a6)) - Belingud
+
+
+---
 ## [0.8.2](https://github.com/belingud/yaicli/compare/v0.8.1..v0.8.2) - 2025-07-15
 
 ### 🐛 Bug Fixes
