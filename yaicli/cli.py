@@ -48,6 +48,28 @@ from .utils import detect_os, detect_shell, filter_command
 
 
 class CLI:
+    __slots__ = (
+        "verbose",
+        "init_role",
+        "role_name",
+        "console",
+        "chat_manager",
+        "role_manager",
+        "role",
+        "printer",
+        "client",
+        "cmd_handler",
+        "bindings",
+        "current_mode",
+        "interactive_round",
+        "chat_start_time",
+        "is_temp_session",
+        "chat",
+        "chat_history_dir",
+        "session",
+        "history",
+    )
+
     def __init__(
         self,
         verbose: bool = False,

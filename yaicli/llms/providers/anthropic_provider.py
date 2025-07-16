@@ -269,30 +269,32 @@ class AnthropicProvider(Provider):
         """Convert ChatMessage list to Anthropic format with proper tool result handling"""
         converted_messages = []
         i = 0
-        
+
         while i < len(messages):
             msg = messages[i]
-            
+
             # Handle regular messages
             if msg.role != "tool":
                 message: Dict[str, Any] = {"role": msg.role, "content": msg.content or ""}
-                
+
                 # Handle tool calls in assistant messages
                 if msg.role == "assistant" and msg.tool_calls:
                     content = []
                     if msg.content:
                         content.append({"type": "text", "text": msg.content})
-                    
+
                     for tool_call in msg.tool_calls:
-                        content.append({
-                            "type": "tool_use",
-                            "id": tool_call.id,
-                            "name": tool_call.name,
-                            "input": json.loads(tool_call.arguments)
-                        })
-                    
+                        content.append(
+                            {
+                                "type": "tool_use",
+                                "id": tool_call.id,
+                                "name": tool_call.name,
+                                "input": json.loads(tool_call.arguments),
+                            }
+                        )
+
                     message["content"] = content
-                
+
                 converted_messages.append(message)
                 i += 1
             else:
@@ -300,20 +302,15 @@ class AnthropicProvider(Provider):
                 tool_results = []
                 while i < len(messages) and messages[i].role == "tool":
                     tool_msg = messages[i]
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": tool_msg.tool_call_id,
-                        "content": tool_msg.content or ""
-                    })
+                    tool_results.append(
+                        {"type": "tool_result", "tool_use_id": tool_msg.tool_call_id, "content": tool_msg.content or ""}
+                    )
                     i += 1
-                
+
                 # Add tool results as a user message
                 if tool_results:
-                    converted_messages.append({
-                        "role": "user",
-                        "content": tool_results
-                    })
-        
+                    converted_messages.append({"role": "user", "content": tool_results})
+
         return converted_messages
 
 

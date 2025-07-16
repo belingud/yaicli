@@ -74,6 +74,7 @@ DEFAULT_SHOW_FUNCTION_OUTPUT: BOOL_STR = "true"
 DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium", "default", "null"]] = None
 DEFAULT_ENABLE_MCP: BOOL_STR = "false"
 DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
+DEFAULT_MAX_TOOL_CALL_DEPTH: int = 8
 
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.
@@ -115,7 +116,7 @@ DEFAULT_ROLES: dict[str, dict[str, Any]] = {
 # The value is a dictionary with the following keys:
 # - value: the default value of the configuration option
 # - env_key: the environment variable key of the configuration option
-# - type: the type of the configuration option
+# - type: the type of the configuration option, dict -> json, bool -> boolstr
 DEFAULT_CONFIG_MAP = {
     # Core API settings
     "BASE_URL": {"value": "", "env_key": "YAI_BASE_URL", "type": str},
@@ -159,6 +160,7 @@ DEFAULT_CONFIG_MAP = {
     },
     "ENABLE_MCP": {"value": DEFAULT_ENABLE_MCP, "env_key": "YAI_ENABLE_MCP", "type": bool},
     "SHOW_MCP_OUTPUT": {"value": DEFAULT_SHOW_MCP_OUTPUT, "env_key": "YAI_SHOW_MCP_OUTPUT", "type": bool},
+    "MAX_TOOL_CALL_DEPTH": {"value": DEFAULT_MAX_TOOL_CALL_DEPTH, "env_key": "YAI_MAX_TOOL_CALL_DEPTH", "type": int},
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
@@ -218,4 +220,7 @@ SHOW_FUNCTION_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_FUNCTION_OUTPUT"]["value"]}
 ENABLE_MCP={DEFAULT_CONFIG_MAP["ENABLE_MCP"]["value"]}
 # Set to false to disable showing MCP output when calling MCP tools
 SHOW_MCP_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_MCP_OUTPUT"]["value"]}
+
+# Maximum number of tool calls to make in a single request
+MAX_TOOL_CALL_DEPTH={DEFAULT_CONFIG_MAP["MAX_TOOL_CALL_DEPTH"]["value"]}
 """

@@ -284,7 +284,7 @@ class MCPToolConverter:
             anthropic_tool = {
                 "name": gen_mcp_tool_name(tool.name),
                 "description": tool.description or "",
-                "parameters": tool.inputSchema,
+                "input_schema": tool.inputSchema,
             }
             anthropic_tools.append(anthropic_tool)
 

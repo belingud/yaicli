@@ -1,8 +1,9 @@
 import importlib.util
 import sys
-from typing import Callable, List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 
-from instructor import OpenAISchema
+if TYPE_CHECKING:
+    from instructor import OpenAISchema
 
 from ..const import FUNCTIONS_DIR
 from ..utils import wrap_function
@@ -11,11 +12,12 @@ from ..utils import wrap_function
 class Function:
     """Function description class"""
 
-    def __init__(self, function: type[OpenAISchema]):
+    def __init__(self, function: type["OpenAISchema"]):
         self.name = function.openai_schema["name"]
         self.description = function.openai_schema.get("description", "")
         self.parameters = function.openai_schema.get("parameters", {})
         self.execute = function.execute  # type: ignore
+        self.func_cls = function
 
 
 _func_name_map: Optional[dict[str, Function]] = None
@@ -39,7 +41,7 @@ def get_func_name_map() -> dict[str, Function]:
         sys.modules[module_name] = module
         spec.loader.exec_module(module)  # type: ignore
 
-        if not issubclass(module.Function, OpenAISchema):
+        if not hasattr(module.Function, "openai_schema") or not hasattr(module.Function, "anthropic_schema"):
             raise TypeError(f"Function {module_name} must be a subclass of instructor.OpenAISchema")
         if not hasattr(module.Function, "execute"):
             raise TypeError(f"Function {module_name} must have an 'execute' classmethod")

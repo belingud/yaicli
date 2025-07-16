@@ -23,11 +23,7 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
     for function in list_functions():
         schema = {
             "type": "function",
-            "function": {
-                "name": function.name,
-                "description": function.description,
-                "parameters": function.parameters,
-            },
+            "function": function.func_cls.openai_schema,
         }
         transformed_schemas.append(schema)
     return transformed_schemas
@@ -41,12 +37,7 @@ def get_anthropic_schemas() -> List[Dict[str, Any]]:
     """
     transformed_schemas = []
     for function in list_functions():
-        schema = {
-            "name": function.name,
-            "description": function.description,
-            "input_schema": function.parameters,
-        }
-        transformed_schemas.append(schema)
+        transformed_schemas.append(function.func_cls.anthropic_schema)
     return transformed_schemas
 
 
