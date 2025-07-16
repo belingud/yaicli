@@ -212,26 +212,26 @@ class TestAnthropicProvider:
         """Test _convert_messages properly handles tool results"""
         with patch("yaicli.llms.providers.anthropic_provider.Anthropic"):
             provider = AnthropicProvider(config=mock_config)
-            
+
             from yaicli.schemas import ToolCall
-            
+
             # Create messages with tool calls and results
             messages = [
                 ChatMessage(role="user", content="What's the weather?"),
                 ChatMessage(
-                    role="assistant", 
+                    role="assistant",
                     content="I'll check the weather for you.",
-                    tool_calls=[ToolCall(id="tool_1", name="get_weather", arguments='{"location": "New York"}')]
+                    tool_calls=[ToolCall(id="tool_1", name="get_weather", arguments='{"location": "New York"}')],
                 ),
                 ChatMessage(role="tool", content="15 degrees", tool_call_id="tool_1"),
             ]
-            
+
             converted = provider._convert_messages(messages)
-            
+
             # Check user message
             assert converted[0]["role"] == "user"
             assert converted[0]["content"] == "What's the weather?"
-            
+
             # Check assistant message with tool call
             assert converted[1]["role"] == "assistant"
             assert isinstance(converted[1]["content"], list)
@@ -242,7 +242,7 @@ class TestAnthropicProvider:
             assert converted[1]["content"][1]["id"] == "tool_1"
             assert converted[1]["content"][1]["name"] == "get_weather"
             assert converted[1]["content"][1]["input"] == {"location": "New York"}
-            
+
             # Check tool result as user message
             assert converted[2]["role"] == "user"
             assert isinstance(converted[2]["content"], list)

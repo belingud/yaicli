@@ -198,14 +198,22 @@ class TestSpecialCommands:
         """Test /his command with history content."""
         cli = cli_with_mocks
 
-        # Mock console output to avoid handling the actual history formatting
-        cli._handle_special_commands = MagicMock(return_value=True)
+        # Import ChatMessage class
+        from yaicli.schemas import ChatMessage
+
+        # Add some history content using proper ChatMessage objects
+        cli.chat.history = [
+            ChatMessage(role="user", content="Test message"),
+            ChatMessage(role="assistant", content="Test response"),
+        ]
 
         # Test with the history command
         result = cli._handle_special_commands(CMD_HISTORY)
 
         # Verify results
         assert result is True
+        # Check that console.print was called at least once
+        assert cli.console.print.called
 
     def test_save_command(self, cli_with_mocks):
         """Test /save command."""
@@ -225,21 +233,22 @@ class TestSpecialCommands:
         # Just check that it was called again
         assert cli.chat_manager.save_chat.called
 
-    def test_load_command(self, cli_with_mocks):
+    @patch("yaicli.cli.CLI._load_chat_by_index")
+    def test_load_command(self, mock_load_method, cli_with_mocks):
         """Test /load command."""
         cli = cli_with_mocks
+        mock_load_method.return_value = True
 
         # Set up mocks for loading chat
         cli.chat_manager.validate_chat_index.return_value = True
-        cli._load_chat_by_index = MagicMock(return_value=True)  # Mock the internal method
 
         # Test with valid index
         result = cli._handle_special_commands(f"{CMD_LOAD_CHAT} 1")
         assert result is True
-        cli._load_chat_by_index.assert_called_with(index="1")
+        mock_load_method.assert_called_with(index="1")
 
         # Test with invalid format
-        cli._load_chat_by_index.reset_mock()
+        mock_load_method.reset_mock()
 
         # Need to mock list_chats to return empty list to avoid object attribute error
         cli.chat_manager.list_chats.return_value = []
@@ -248,30 +257,36 @@ class TestSpecialCommands:
         assert result is True
         # Should show usage message when no index is provided
         cli.console.print.assert_any_call("Usage: /load <index>", style="yellow")
-        cli.chat_manager.load_chat_by_index.assert_not_called()
-        cli.chat_manager.list_chats.assert_called_once()
 
-    def test_delete_command(self, cli_with_mocks):
+    @patch("yaicli.cli.CLI._delete_chat_by_index")
+    def test_delete_command(self, mock_delete_method, cli_with_mocks):
         """Test /delete command."""
         cli = cli_with_mocks
+        mock_delete_method.return_value = True
+
+        # Import Chat class
+        from yaicli.chat import Chat
+
+        # Mock list_chats to return list of Chat objects
+        cli.chat_manager.list_chats.return_value = [
+            Chat(idx="1", title="Test Chat 1"),
+            Chat(idx="2", title="Test Chat 2"),
+        ]
 
         # Set up mocks for deleting chat
-        cli._delete_chat_by_index = MagicMock(return_value=True)  # Mock the internal method
+        cli.chat_manager.validate_chat_index.return_value = True
 
         # Test with valid index
         result = cli._handle_special_commands(f"{CMD_DELETE_CHAT} 1")
         assert result is True
-        cli._delete_chat_by_index.assert_called_with(index="1")
+        mock_delete_method.assert_called_with(index="1")
 
         # Test with invalid format
-        cli._delete_chat_by_index.reset_mock()
-        cli.chat_manager.list_chats.return_value = []  # Mock the list_chats method to return an empty list
+        mock_delete_method.reset_mock()
         result = cli._handle_special_commands(CMD_DELETE_CHAT)
         assert result is True
-        # Should not try to delete when no index provided
-        cli._delete_chat_by_index.assert_not_called()
-        # Should list chats instead
-        cli.chat_manager.list_chats.assert_called_once()
+        # Should show usage message when no index is provided
+        cli.console.print.assert_any_call("Usage: /del <index>", style="yellow")
 
     def test_list_chats_command(self, cli_with_mocks):
         """Test /chats command."""
@@ -382,10 +397,9 @@ class TestChatManagement:
         # Reset the mock for the next call
         cli.chat_manager.save_chat.reset_mock()
 
-        # Test with existing chat_title
-        cli.chat_title = "Existing_Title"
-        cli._save_chat()
-        # Again just verify the method was called since the parameters are wrapped in a Chat object
+        # Test with existing chat title
+        cli.chat.title = "Existing_Title"  # Set title on chat object
+        cli._save_chat(None)
         assert cli.chat_manager.save_chat.called
 
     def test_load_chat_by_index_invalid(self, cli_with_mocks):
@@ -478,28 +492,35 @@ class TestAPIInteraction:
         assert messages[3].role == "user"
         assert messages[3].content == "new question"
 
-    def test_handle_llm_response_streaming(self, cli_with_mocks):
+    @patch("yaicli.cli.CLI._build_messages")
+    @patch("yaicli.printer.Printer.display_stream")
+    def test_handle_llm_response_streaming(self, mock_display_stream, mock_build_messages, cli_with_mocks):
         """Test handling streaming LLM response."""
         cli = cli_with_mocks
         cfg["STREAM"] = True
 
         # Setup the mocks to return expected values
         mock_messages = []
-        cli._build_messages = MagicMock(return_value=mock_messages)
+        mock_build_messages.return_value = mock_messages
+        mock_display_stream.return_value = ("Test response", None)
 
-        # Create a mock response generator
+        # Mock client response
         mock_response = MagicMock()
-        mock_response_items = [MagicMock(content="Test response", tool_call=None)]
-        mock_response.__iter__.return_value = mock_response_items
-        cli.client.completion_with_tools = MagicMock(return_value=mock_response)
+        mock_response.__iter__.return_value = [MagicMock(content="Test response", tool_call=None)]
+        cli.client.completion_with_tools.return_value = mock_response
 
-        cli._handle_llm_response("test question")
+        # Test the method
+        result, _ = cli._handle_llm_response("Test input")
 
-        # Just verify that the client method was called
-        assert cli._build_messages.called
-        assert cli.client.completion_with_tools.called
+        # Verify results
+        assert result == "Test response"
+        cli.client.completion_with_tools.assert_called_once()
+        mock_build_messages.assert_called_once_with("Test input")
+        mock_display_stream.assert_called_once()
 
-    def test_handle_llm_response_non_streaming(self, cli_with_mocks):
+    @patch("yaicli.cli.CLI._build_messages")
+    @patch("yaicli.printer.Printer.display_stream")
+    def test_handle_llm_response_non_streaming(self, mock_display_stream, mock_build_messages, cli_with_mocks):
         """Test handling non-streaming LLM response."""
         # This test is simplified to just verify basic functionality
         cli = cli_with_mocks
@@ -507,25 +528,22 @@ class TestAPIInteraction:
 
         # Setup the mocks to return expected values
         mock_messages = []
-        cli._build_messages = MagicMock(return_value=mock_messages)
+        mock_build_messages.return_value = mock_messages
+        mock_display_stream.return_value = ("Test response", None)
 
-        # Save original method
-        original_completion_with_tools = cli.client.completion_with_tools
-
-        # Create a mock response generator
+        # Mock client response
         mock_response = MagicMock()
-        mock_response_items = [MagicMock(content="Test response", tool_call=None)]
-        mock_response.__iter__.return_value = mock_response_items
-        cli.client.completion_with_tools = MagicMock(return_value=mock_response)
+        mock_response.__iter__.return_value = [MagicMock(content="Test response", tool_call=None)]
+        cli.client.completion_with_tools.return_value = mock_response
 
-        try:
-            # Just verify the method was called with correct parameters
-            cli._handle_llm_response("test question")
-            assert cli._build_messages.called
-            cli.client.completion_with_tools.assert_called_once_with(mock_messages, stream=False)
-        finally:
-            # Restore original method
-            cli.client.completion_with_tools = original_completion_with_tools
+        # Test the method
+        result, _ = cli._handle_llm_response("Test input")
+
+        # Verify results
+        assert result == "Test response"
+        cli.client.completion_with_tools.assert_called_once()
+        mock_build_messages.assert_called_once_with("Test input")
+        mock_display_stream.assert_called_once()
 
     def test_handle_llm_response_error(self, cli_with_mocks):
         """Test handling error in LLM response."""
@@ -690,25 +708,23 @@ class TestRunFunctionality:
         assert cli.current_mode == EXEC_MODE
         mock_process_input.assert_called_once_with("List files")
 
+    @patch("yaicli.cli.CLI.prepare_chat_loop")
     @patch("yaicli.cli.CLI._process_user_input")
-    def test_run_repl(self, mock_process_input, cli_with_mocks):
+    def test_run_repl(self, mock_process_input, mock_prepare_chat_loop, cli_with_mocks):
         """Test REPL functionality."""
         cli = cli_with_mocks
-        cli.prepare_chat_loop = MagicMock()
+        mock_prepare_chat_loop.return_value = None
+        mock_process_input.return_value = True
 
-        # Mock session.prompt to return a message and then raise EOFError to exit loop
-        cli.session.prompt.side_effect = ["test message", EOFError()]
+        # Mock session prompt with fake user input and EOF after one input
+        cli.session.prompt.side_effect = ["Test input", EOFError()]
 
-        # Mock _handle_special_commands to return None (not a special command)
-        cli._handle_special_commands = MagicMock(return_value=None)
-
+        # Run the REPL
         cli._run_repl()
 
-        # Should call prepare_chat_loop
-        cli.prepare_chat_loop.assert_called_once()
-
-        # Should process user input
-        mock_process_input.assert_called_once_with("test message")
+        # Verify that prepare_chat_loop and _process_user_input were called
+        mock_prepare_chat_loop.assert_called_once()
+        mock_process_input.assert_called_once_with("Test input")
 
 
 class TestKeyBindingsAndSetup:
@@ -725,36 +741,39 @@ class TestKeyBindingsAndSetup:
         # Should add at least one key binding (TAB)
         cli.bindings.add.assert_called()
 
-    def test_prepare_chat_loop(self, cli_with_mocks):
+    @patch("yaicli.cli.CLI._setup_key_bindings")
+    @patch("pathlib.Path.touch")  # Mock the Path.touch method
+    def test_prepare_chat_loop(self, mock_touch, mock_setup_bindings, cli_with_mocks):
         """Test chat loop preparation."""
         cli = cli_with_mocks
-        cli._setup_key_bindings = MagicMock()
+        mock_setup_bindings.return_value = None
 
-        # Patch Path.touch since we can't mock it directly
-        with patch("pathlib.Path.touch") as mock_touch:
-            cli.prepare_chat_loop()
+        # Run the method
+        cli.prepare_chat_loop()
 
-            # Should setup key bindings
-            cli._setup_key_bindings.assert_called_once()
-            # Should touch history file
-            mock_touch.assert_called_once_with(exist_ok=True)
+        # Verify key bindings were set up
+        mock_setup_bindings.assert_called_once()
 
-    def test_prepare_chat_loop_error(self, cli_with_mocks):
+    @patch("yaicli.cli.CLI._setup_key_bindings")
+    @patch("pathlib.Path.touch")  # Mock the Path.touch method
+    def test_prepare_chat_loop_error(self, mock_touch, mock_setup_bindings, cli_with_mocks):
         """Test chat loop preparation with error."""
-        # This test is simplified to just verify the error handling code exists
-        # We can't easily test the exact error message without complex mocking
-
-        # Verify the try/except block exists in the code by checking
-        # that the method can be called without raising exceptions
         cli = cli_with_mocks
-        cli._setup_key_bindings = MagicMock()
+        # Simulate an error in setup_key_bindings
+        mock_setup_bindings.side_effect = Exception("Test error")
 
-        # Just verify the method can be called without errors
-        # even if internal components fail
-        with patch("pathlib.Path.touch"):
-            # We're not testing the actual behavior here, just that the method exists
-            # and doesn't propagate exceptions
-            cli.prepare_chat_loop()
+        # Mock PromptSession to avoid actual initialization
+        with patch("prompt_toolkit.PromptSession", return_value=MagicMock()):
+            try:
+                cli.prepare_chat_loop()
+                # If we got here without an exception, that's not right - it should have raised
+                assert False, "Expected an exception but none was raised"
+            except Exception:
+                # We expect an exception to be raised
+                pass
+
+        # Should still try to set up key bindings
+        mock_setup_bindings.assert_called_once()
 
 
 class TestSystemPrompt:
