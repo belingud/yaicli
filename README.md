@@ -191,6 +191,7 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `SHOW_FUNCTION_OUTPUT` | Show function output when calling function  | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
 | `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
 | `SHOW_MCP_OUTPUT`      | Show MCP output when calling mcp            | `true`                   | `YAI_SHOW_MCP_OUTPUT`      |
+| `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
 
 
 ### LLM Provider Configuration

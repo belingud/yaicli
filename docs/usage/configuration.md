@@ -93,36 +93,38 @@ SHOW_MCP_OUTPUT=false
 
 ## Configuration Options Reference
 
-| Option | Description | Default | Environment Variable |
-|--------|-------------|---------|---------------------|
-| `PROVIDER` | LLM provider (openai, claude, cohere, etc.) | `openai` | `YAI_PROVIDER` |
-| `BASE_URL` | API endpoint URL | - | `YAI_BASE_URL` |
-| `API_KEY` | Your API key | - | `YAI_API_KEY` |
-| `MODEL` | LLM model to use | `gpt-4o` | `YAI_MODEL` |
-| `DEFAULT_ROLE` | Default role | `DEFAULT` | `YAI_DEFAULT_ROLE` |
-| `SHELL_NAME` | Shell type | `auto` | `YAI_SHELL_NAME` |
-| `OS_NAME` | Operating system | `auto` | `YAI_OS_NAME` |
-| `STREAM` | Enable streaming | `true` | `YAI_STREAM` |
-| `TIMEOUT` | API timeout (seconds) | `60` | `YAI_TIMEOUT` |
-| `EXTRA_HEADERS` | Extra headers | - | `YAI_EXTRA_HEADERS` |
-| `EXTRA_BODY` | Extra body | - | `YAI_EXTRA_BODY` |
-| `REASONING_EFFORT` | Reasoning effort | - | `YAI_REASONING_EFFORT` |
-| `INTERACTIVE_ROUND` | Interactive mode rounds | `25` | `YAI_INTERACTIVE_ROUND` |
-| `CODE_THEME` | Syntax highlighting theme | `monokai` | `YAI_CODE_THEME` |
-| `TEMPERATURE` | Response randomness | `0.3` | `YAI_TEMPERATURE` |
-| `TOP_P` | Top-p sampling | `1.0` | `YAI_TOP_P` |
-| `MAX_TOKENS` | Max response tokens | `1024` | `YAI_MAX_TOKENS` |
-| `MAX_HISTORY` | Max history entries | `500` | `YAI_MAX_HISTORY` |
-| `AUTO_SUGGEST` | Enable history suggestions | `true` | `YAI_AUTO_SUGGEST` |
-| `SHOW_REASONING` | Enable reasoning display | `true` | `YAI_SHOW_REASONING` |
-| `JUSTIFY` | Text alignment | `default` | `YAI_JUSTIFY` |
-| `CHAT_HISTORY_DIR` | Chat history directory | `<tempdir>/yaicli/chats` | `YAI_CHAT_HISTORY_DIR` |
-| `MAX_SAVED_CHATS` | Max saved chats | `20` | `YAI_MAX_SAVED_CHATS` |
-| `ROLE_MODIFY_WARNING` | Warn when modifying built-in roles | `true` | `YAI_ROLE_MODIFY_WARNING` |
-| `ENABLE_FUNCTIONS` | Enable function calling | `true` | `YAI_ENABLE_FUNCTIONS` |
-| `SHOW_FUNCTION_OUTPUT` | Show function output | `true` | `YAI_SHOW_FUNCTION_OUTPUT` |
-| `ENABLE_MCP` | Enable MCP tools | `false` | `YAI_ENABLE_MCP` |
-| `SHOW_MCP_OUTPUT` | Show MCP output | `true` | `YAI_SHOW_MCP_OUTPUT` |
+| Option                 | Description                                 | Default                  | Environment Variable       |
+| ---------------------- | ------------------------------------------- | ------------------------ | -------------------------- |
+| `PROVIDER`             | LLM provider (openai, claude, cohere, etc.) | `openai`                 | `YAI_PROVIDER`             |
+| `BASE_URL`             | API endpoint URL                            | -                        | `YAI_BASE_URL`             |
+| `API_KEY`              | Your API key                                | -                        | `YAI_API_KEY`              |
+| `MODEL`                | LLM model to use                            | `gpt-4o`                 | `YAI_MODEL`                |
+| `DEFAULT_ROLE`         | Default role                                | `DEFAULT`                | `YAI_DEFAULT_ROLE`         |
+| `SHELL_NAME`           | Shell type                                  | `auto`                   | `YAI_SHELL_NAME`           |
+| `OS_NAME`              | Operating system                            | `auto`                   | `YAI_OS_NAME`              |
+| `STREAM`               | Enable streaming                            | `true`                   | `YAI_STREAM`               |
+| `TIMEOUT`              | API timeout (seconds)                       | `60`                     | `YAI_TIMEOUT`              |
+| `EXTRA_HEADERS`        | Extra headers                               | -                        | `YAI_EXTRA_HEADERS`        |
+| `EXTRA_BODY`           | Extra body                                  | -                        | `YAI_EXTRA_BODY`           |
+| `REASONING_EFFORT`     | Reasoning effort                            | -                        | `YAI_REASONING_EFFORT`     |
+| `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                     | `YAI_INTERACTIVE_ROUND`    |
+| `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                | `YAI_CODE_THEME`           |
+| `TEMPERATURE`          | Response randomness                         | `0.3`                    | `YAI_TEMPERATURE`          |
+| `TOP_P`                | Top-p sampling                              | `1.0`                    | `YAI_TOP_P`                |
+| `MAX_TOKENS`           | Max response tokens                         | `1024`                   | `YAI_MAX_TOKENS`           |
+| `MAX_HISTORY`          | Max history entries                         | `500`                    | `YAI_MAX_HISTORY`          |
+| `AUTO_SUGGEST`         | Enable history suggestions                  | `true`                   | `YAI_AUTO_SUGGEST`         |
+| `SHOW_REASONING`       | Enable reasoning display                    | `true`                   | `YAI_SHOW_REASONING`       |
+| `JUSTIFY`              | Text alignment                              | `default`                | `YAI_JUSTIFY`              |
+| `CHAT_HISTORY_DIR`     | Chat history directory                      | `<tempdir>/yaicli/chats` | `YAI_CHAT_HISTORY_DIR`     |
+| `MAX_SAVED_CHATS`      | Max saved chats                             | `20`                     | `YAI_MAX_SAVED_CHATS`      |
+| `ROLE_MODIFY_WARNING`  | Warn when modifying built-in roles          | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
+| `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
+| `SHOW_FUNCTION_OUTPUT` | Show function output                        | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
+| `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
+| `SHOW_MCP_OUTPUT`      | Show MCP output                             | `true`                   | `YAI_SHOW_MCP_OUTPUT`      |
+| `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
+
 
 ## Syntax Highlighting Themes
 
