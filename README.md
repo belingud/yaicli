@@ -126,6 +126,7 @@ pip install .
 - Cohere Sagemaker
 - Deepseek
 - Doubao
+- Fireworks
 - Gemini
 - Groq
 - Huggingface
