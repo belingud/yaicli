@@ -66,6 +66,7 @@ nav:
       - ChatGLM: providers/chatglm.md
       - Bailian: providers/bailian.md
       - Minimax: providers/minimax.md
+      - Fireworks: providers/fireworks.md
   - Advanced:
       - Prompt Template System: advanced/prompts.md
       - Conversation & History: advanced/history.md
