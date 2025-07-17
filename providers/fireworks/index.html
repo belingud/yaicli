@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://belingud.github.io/yaicli/providers/huggingface/">
+        <link rel="canonical" href="https://belingud.github.io/yaicli/providers/fireworks/">
       
       
-        <link rel="prev" href="../openrouter/">
+        <link rel="prev" href="../minimax/">
       
       
-        <link rel="next" href="../xai/">
+        <link rel="next" href="../../advanced/prompts/">
       
       
       <link rel="icon" href="../../assets/artwork/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>HuggingFace - YAICLI</title>
+        <title>Fireworks - YAICLI</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#configuration" class="md-skip">
+        <a href="#fireworks-ai" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              HuggingFace
+              Fireworks
             
           </span>
         </div>
@@ -913,30 +913,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    HuggingFace
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../huggingface/" class="md-nav__link">
         
   
   
@@ -947,60 +927,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Configuration
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      Key Parameters
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#features" class="md-nav__link">
-    <span class="md-ellipsis">
-      Features
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#important-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Important Notes
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1263,10 +1189,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../fireworks/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Fireworks
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1277,6 +1225,101 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Options
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#function-calling-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Function Calling Support
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Function Calling Support">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#best-practices-for-function-calling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices for Function Calling
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1623,30 +1666,14 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Configuration
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      Key Parameters
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#features" class="md-nav__link">
@@ -1658,9 +1685,66 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#important-notes" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
-      Important Notes
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Options
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#function-calling-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Function Calling Support
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Function Calling Support">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#best-practices-for-function-calling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices for Function Calling
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
     </span>
   </a>
   
@@ -1685,98 +1769,52 @@
   
 
 
-  <h1>HuggingFace</h1>
-
-<div class="codehilite"><pre><span></span><code># HuggingFace
-</code></pre></div>
-
-<p>HuggingFace Inference API for accessing various models.</p>
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="na">PROVIDER</span><span class="o">=</span><span class="s">huggingface</span>
-<span class="na">API_KEY</span><span class="o">=</span><span class="s">hf_your-huggingface-token</span>
-<span class="na">MODEL</span><span class="o">=</span><span class="s">meta-llama/Llama-3.1-70B-Instruct</span>
-<span class="na">TEMPERATURE</span><span class="o">=</span><span class="s">0.7</span>
-<span class="na">HF_PROVIDER</span><span class="o">=</span><span class="s">auto</span>
-</code></pre></div>
-<h2 id="key-parameters">Key Parameters<a class="headerlink" href="#key-parameters" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>API_KEY</code></td>
-<td>HuggingFace API token (required)</td>
-<td>-</td>
-</tr>
-<tr>
-<td><code>MODEL</code></td>
-<td>Model to use</td>
-<td>-</td>
-</tr>
-<tr>
-<td><code>TEMPERATURE</code></td>
-<td>Randomness (0.0-1.0)</td>
-<td><code>0.3</code></td>
-</tr>
-<tr>
-<td><code>TOP_P</code></td>
-<td>Nucleus sampling</td>
-<td><code>1.0</code></td>
-</tr>
-<tr>
-<td><code>MAX_TOKENS</code></td>
-<td>Max response tokens</td>
-<td><code>1024</code></td>
-</tr>
-<tr>
-<td><code>TIMEOUT</code></td>
-<td>Request timeout (seconds)</td>
-<td><code>60</code></td>
-</tr>
-<tr>
-<td><code>BASE_URL</code></td>
-<td>Custom API endpoint</td>
-<td>-</td>
-</tr>
-<tr>
-<td><code>HF_PROVIDER</code></td>
-<td>HuggingFace provider</td>
-<td><code>auto</code></td>
-</tr>
-<tr>
-<td><code>BILL_TO</code></td>
-<td>Billing configuration</td>
-<td>-</td>
-</tr>
-<tr>
-<td><code>EXTRA_HEADERS</code></td>
-<td>Additional HTTP headers</td>
-<td><code>{}</code></td>
-</tr>
-</tbody>
-</table>
+<h1 id="fireworks-ai">Fireworks AI<a class="headerlink" href="#fireworks-ai" title="Permanent link">&para;</a></h1>
+<p><a href="https://fireworks.ai/">Fireworks AI</a> is an artificial intelligence platform that provides high-performance large language model APIs.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
 <ul>
-<li>✅ Streaming responses</li>
-<li>✅ Function calling</li>
-<li>✅ Multiple model access</li>
-<li>✅ Serverless inference</li>
-<li>✅ Dedicated endpoints</li>
-<li>✅ Custom billing options</li>
+<li>Support for function calling and MCP</li>
+<li>OpenAI API compatibility</li>
+<li>Support for various advanced models like Llama 3.1, Mixtral, and more</li>
 </ul>
-<h2 id="important-notes">Important Notes<a class="headerlink" href="#important-notes" title="Permanent link">&para;</a></h2>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>To use Fireworks AI, you need to:
+1. Register on the <a href="https://fireworks.ai/">Fireworks AI website</a> and obtain an API key
+2. Install the <code>fireworks-ai</code> package: <code>uv tool install 'yaicli[fireworks]'</code>
+3. Set up your API key and model</p>
+<h3 id="configuration-options">Configuration Options<a class="headerlink" href="#configuration-options" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Fireworks configuration</span>
+<span class="na">PROVIDER</span><span class="o">=</span><span class="s">fireworks</span><span class="w">  </span><span class="c1"># Provider type</span>
+<span class="na">MODEL</span><span class="o">=</span><span class="s">llama-v3p1-70b-instruct</span><span class="w">  </span><span class="c1"># Model name</span>
+<span class="na">API_KEY</span><span class="o">=</span><span class="s">your_api_key_here</span><span class="w">  </span><span class="c1"># Your API key</span>
+<span class="na">ACCOUNT</span><span class="o">=</span><span class="s">fireworks</span>
+</code></pre></div>
+<h2 id="function-calling-support">Function Calling Support<a class="headerlink" href="#function-calling-support" title="Permanent link">&para;</a></h2>
+<p>Fireworks supports an OpenAI-compatible function calling API, but with some differences:</p>
 <ul>
-<li>Based on ChatGLM provider implementation</li>
-<li>Uses HuggingFace InferenceClient</li>
-<li>Supports both serverless and dedicated endpoints</li>
-<li>Provider can be set to specific inference backends</li>
-<li>Billing can be configured for enterprise usage</li>
-<li>Wide variety of open-source models available</li>
+<li>No support for parallel function calls</li>
+<li>No support for nested function calls</li>
+<li>Simplified tool choice options</li>
+</ul>
+<h3 id="best-practices-for-function-calling">Best Practices for Function Calling<a class="headerlink" href="#best-practices-for-function-calling" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Number of Functions</strong>: For best performance, keep the function list below 7 items</li>
+<li><strong>Function Description</strong>: Describe function capabilities in detail to improve model understanding</li>
+<li><strong>System Prompt</strong>: Not recommended to add additional system prompts to avoid interfering with function calling capabilities</li>
+<li><strong>Temperature Parameter</strong>: Set temperature to 0.0 or a low value to help the model generate only confident predictions</li>
+</ul>
+<h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
+<p>Using Fireworks AI for a simple conversation:</p>
+<div class="highlight"><pre><span></span><code><span class="na">PROVIDER</span><span class="o">=</span><span class="s">fireworks</span>
+<span class="na">MODEL</span><span class="o">=</span><span class="s">llama-v3p1-70b-instruct</span>
+<span class="na">API_KEY</span><span class="o">=</span><span class="s">your_api_key_here</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span><span class="s2">&quot;Explain the basic principles of quantum computing&quot;</span>
+</code></pre></div>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://fireworks.ai/">Fireworks AI Website</a></li>
+<li><a href="https://fireworks.ai/docs/getting-started/introduction">Fireworks Docs</a> </li>
 </ul>
 
 
