@@ -179,6 +179,7 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                     | `YAI_INTERACTIVE_ROUND`    |
 | `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                | `YAI_CODE_THEME`           |
 | `TEMPERATURE`          | Response randomness                         | `0.7`                    | `YAI_TEMPERATURE`          |
+| `FREQUENCY_PENALTY`    | Repeat pubnish                              | `0.0`                    | `YAI_FREQUENCY_PENALTY`    |
 | `TOP_P`                | Top-p sampling                              | `1.0`                    | `YAI_TOP_P`                |
 | `MAX_TOKENS`           | Max response tokens                         | `1024`                   | `YAI_MAX_TOKENS`           |
 | `MAX_HISTORY`          | Max history entries                         | `500`                    | `YAI_MAX_HISTORY`          |
