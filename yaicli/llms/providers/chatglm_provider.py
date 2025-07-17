@@ -22,6 +22,7 @@ class ChatglmProvider(OpenAIProvider):
         "max_tokens": "MAX_TOKENS",
         "do_sample": "DO_SAMPLE",
         "extra_body": "EXTRA_BODY",
+        "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
     def _handle_normal_response(self, response: ChatCompletion) -> Generator[LLMResponse, None, None]:

@@ -73,6 +73,7 @@ class MistralProvider(Provider):
                 "X-Title": self.APP_NAME,
                 "HTTP_Referer": self.APP_REFERER,
             },
+            "frequency_penalty": self.config["FREQUENCY_PENALTY"],
         }
         if self.config["EXTRA_HEADERS"]:
             params["http_headers"] = {**self.config["EXTRA_HEADERS"], **params["http_headers"]}

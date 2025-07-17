@@ -4,7 +4,7 @@ import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from os import getenv
-from typing import Optional
+from typing import Optional, Any
 
 from rich import get_console
 from rich.console import Console
@@ -53,7 +53,6 @@ class Config(dict):
     def __init__(self, console: Optional[Console] = None):
         """Initializes and loads the configuration."""
         self.console = console or get_console()
-
         super().__init__()
         self.reload()
 
@@ -75,16 +74,22 @@ class Config(dict):
 
     def _load_defaults(self) -> None:
         """Load default configuration values as strings."""
-        defaults = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
-        self.update(defaults)
+        # Direct update instead of creating temporary dict
+        for key, config_info in DEFAULT_CONFIG_MAP.items():
+            self[key] = config_info["value"]
 
-    def _ensure_version_updated_config_keys(self) -> None:
+    def _ensure_version_updated_config_keys(self, config_parser: CasePreservingConfigParser) -> None:
         """Ensure configuration keys added in version updates exist in the config file.
-        Appends missing keys to the config file if they don't exist.
+        
+        Uses config parser to check for missing keys instead of full text search.
+        Only writes to file if keys are actually missing.
         """
-        with open(CONFIG_PATH, "r+", encoding="utf-8") as f:
-            config_content = f.read()
-            if "CHAT_HISTORY_DIR" not in config_content.strip():  # Check for empty lines
+        # Check using config parser instead of full text search
+        core_section = config_parser["core"] if config_parser.has_section("core") else {}
+        
+        if "CHAT_HISTORY_DIR" not in core_section:
+            # Only append if the key is missing
+            with open(CONFIG_PATH, "a", encoding="utf-8") as f:
                 f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}\n")
 
     def _load_from_file(self) -> None:
@@ -107,17 +112,20 @@ class Config(dict):
             raise ConfigError(str(e)) from None
 
         # Check if "core" section exists in the config file
-        if "core" not in config_parser or not config_parser["core"]:
+        if not config_parser.has_section("core"):
             return
 
-        for k, v in {"SHELL_NAME": "Unknown Shell", "OS_NAME": "Unknown OS"}.items():
-            if not config_parser["core"].get(k, "").strip():
-                config_parser["core"][k] = v
+        # Set default values for missing shell/OS info
+        core_section = config_parser["core"]
+        for key, default_value in {"SHELL_NAME": "Unknown Shell", "OS_NAME": "Unknown OS"}.items():
+            if not core_section.get(key, "").strip():
+                core_section[key] = default_value
 
-        self.update(dict(config_parser["core"]))
+        # Update config with file values
+        self.update(dict(core_section))
 
         # Check if keys added in version updates are missing and add them
-        self._ensure_version_updated_config_keys()
+        self._ensure_version_updated_config_keys(config_parser)
 
     def _load_from_env(self) -> None:
         """Load configuration from environment variables.
@@ -129,53 +137,70 @@ class Config(dict):
             if env_value is not None:
                 self[key] = env_value
 
+    def _convert_value(self, raw_value: str, target_type: type, key: str) -> Any:
+        """Convert a raw string value to the target type.
+        
+        Args:
+            raw_value: The raw string value to convert
+            target_type: The target type to convert to
+            key: The configuration key (for error reporting)
+            
+        Returns:
+            The converted value or the default value if conversion fails
+        """
+        if raw_value is None:
+            raw_value = DEFAULT_CONFIG_MAP[key]["value"]
+            
+        try:
+            if target_type is bool:
+                return str2bool(raw_value)
+            elif target_type in (int, float, str):
+                return target_type(raw_value) if raw_value else raw_value
+            elif target_type is dict and raw_value:
+                return json.loads(raw_value)
+            return raw_value
+        except (ValueError, TypeError, json.JSONDecodeError) as e:
+            # Log warning and fallback to default
+            default_value = DEFAULT_CONFIG_MAP[key]["value"]
+            self.console.print(
+                f"[yellow]Warning:[/] Invalid value '{raw_value}' for '{key}'. "
+                f"Expected type '{target_type.__name__}'. Using default value '{default_value}'. Error: {e}",
+                style="dim",
+                justify=self["JUSTIFY"],
+            )
+            
+            # Try to convert default value
+            try:
+                if target_type is bool:
+                    return str2bool(default_value)
+                elif target_type in (int, float, str):
+                    return target_type(default_value)
+                elif target_type is dict:
+                    return json.loads(default_value)
+            except (ValueError, TypeError, json.JSONDecodeError):
+                # If default conversion also fails, log error and return raw value
+                self.console.print(
+                    f"[red]Error:[/red] Could not convert default value for '{key}'. Using raw value.",
+                    style="error",
+                    justify=self["JUSTIFY"],
+                )
+                return raw_value
+
     def _apply_type_conversion(self) -> None:
         """Apply type conversion to configuration values.
 
-        Updates the configuration dictionary in-place with properly typed values.
-        Falls back to default values if conversion fails.
+        Optimized version that reduces redundant operations and improves error handling.
         """
-        default_values_map = {k: v["value"] for k, v in DEFAULT_CONFIG_MAP.items()}
-
         for key, config_info in DEFAULT_CONFIG_MAP.items():
             target_type = config_info["type"]
             raw_value = self[key]
-            converted_value = None
-
-            try:
-                if raw_value is None:
-                    raw_value = default_values_map.get(key, "")
-                if target_type is bool:
-                    converted_value = str2bool(raw_value)
-                elif target_type in (int, float, str):
-                    converted_value = target_type(raw_value) if raw_value else raw_value
-                elif target_type is dict and raw_value:
-                    converted_value = json.loads(raw_value)
-            except (ValueError, TypeError, json.JSONDecodeError) as e:
-                self.console.print(
-                    f"[yellow]Warning:[/] Invalid value '{raw_value}' for '{key}'. "
-                    f"Expected type '{target_type.__name__}'. Using default value '{default_values_map[key]}'. Error: {e}",
-                    style="dim",
-                    justify=self["JUSTIFY"],
-                )
-                # Fallback to default string value if conversion fails
-                try:
-                    if target_type is bool:
-                        converted_value = str2bool(default_values_map[key])
-                    elif target_type in (int, float, str):
-                        converted_value = target_type(default_values_map[key])
-                    elif target_type is dict:
-                        converted_value = json.loads(default_values_map[key])
-                except (ValueError, TypeError, json.JSONDecodeError):
-                    # If default also fails (unlikely), keep the raw merged value or a sensible default
-                    self.console.print(
-                        f"[red]Error:[/red] Could not convert default value for '{key}'. Using raw value.",
-                        style="error",
-                        justify=self["JUSTIFY"],
-                    )
-                    converted_value = raw_value  # Or assign a hardcoded safe default
-
-            self[key] = converted_value
+            
+            # Skip conversion if already correct type (optimization for common case)
+            if isinstance(raw_value, target_type):
+                continue
+                
+            # Convert the value
+            self[key] = self._convert_value(raw_value, target_type, key)
 
 
 @lru_cache(1)

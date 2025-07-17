@@ -12,4 +12,5 @@ class MinimaxProvider(OpenAIProvider):
         "max_tokens": "MAX_TOKENS",
         "timeout": "TIMEOUT",
         "extra_body": "EXTRA_BODY",
+        "frequency_penalty": "FREQUENCY_PENALTY",
     }

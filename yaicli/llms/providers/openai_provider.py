@@ -30,6 +30,7 @@ class OpenAIProvider(Provider):
         "timeout": "TIMEOUT",
         "extra_body": "EXTRA_BODY",
         "reasoning_effort": "REASONING_EFFORT",
+        "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
     def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):

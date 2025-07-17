@@ -30,6 +30,7 @@ class AnthropicProvider(Provider):
         "stop_sequences": "STOP_SEQUENCES",
         "metadata": "METADATA",
         "extra_body": "EXTRA_BODY",
+        "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
     def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):

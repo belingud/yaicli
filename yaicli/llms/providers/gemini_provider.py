@@ -52,6 +52,7 @@ class GeminiProvider(Provider):
             "temperature": self.config["TEMPERATURE"],
             "top_p": self.config["TOP_P"],
             "http_options": http_options,
+            "frequency_penalty": self.config["FREQUENCY_PENALTY"],
         }
         if self.config.get("TOP_K"):
             config_map["top_k"] = self.config["TOP_K"]

@@ -8,6 +8,7 @@ class DeepSeekProvider(OpenAIProvider):
     COMPLETION_PARAMS_KEYS = {
         "model": "MODEL",
         "temperature": "TEMPERATURE",
+        "frequency_penalty": "FREQUENCY_PENALTY",
         "top_p": "TOP_P",
         "max_tokens": "MAX_TOKENS",
         "timeout": "TIMEOUT",

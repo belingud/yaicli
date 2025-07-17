@@ -42,7 +42,7 @@ class CohereProvider(Provider):
             "api_key": self.config["API_KEY"],
             "timeout": self.config["TIMEOUT"],
         }
-        if self.config["BASE_URL"]:
+        if self.config.get("BASE_URL"):
             self.client_params["base_url"] = self.config["BASE_URL"]
         self.client = self.create_client()
         self.console = get_console()
@@ -234,8 +234,8 @@ class CohereProvider(Provider):
         """
         # Get configuration values
         model = self.config.get("MODEL", self.DEFAULT_MODEL)
-        temperature = float(self.config.get("TEMPERATURE", 0.7))
-
+        temperature = float(self.config.get("TEMPERATURE", 0.3))
+        frequency_penalty = float(self.config.get("FREQUENCY_PENALTY", 0.0))
         # Prepare messages and tools
         cohere_messages = self._convert_messages(messages)
         if self.verbose:
@@ -244,7 +244,13 @@ class CohereProvider(Provider):
         tools = self._prepare_tools()
 
         # Common request parameters
-        request_params = {"model": model, "messages": cohere_messages, "temperature": temperature, **kwargs}
+        request_params = {
+            "model": model,
+            "messages": cohere_messages,
+            "temperature": temperature,
+            "frequency_penalty": frequency_penalty,
+            **kwargs,
+        }
 
         # Add tools if available
         if tools:

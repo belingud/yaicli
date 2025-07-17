@@ -15,6 +15,7 @@ class GroqProvider(OpenAIProvider):
         "timeout": "TIMEOUT",
         "extra_body": "EXTRA_BODY",
         "reasoning_effort": "REASONING_EFFORT",
+        "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
     def get_completion_params(self) -> Dict[str, Any]:

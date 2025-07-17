@@ -18,6 +18,7 @@ class CerebrasProvider(OpenAIProvider):
         "max_completion_tokens": "MAX_TOKENS",
         "timeout": "TIMEOUT",
         "extra_body": "EXTRA_BODY",
+        "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
     def get_client_params(self) -> Dict[str, Any]:

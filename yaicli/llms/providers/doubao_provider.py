@@ -33,6 +33,7 @@ class DoubaoProvider(OpenAIProvider):
             "top_p": self.config["TOP_P"],
             "max_tokens": self.config["MAX_TOKENS"],
             "timeout": self.config["TIMEOUT"],
+            "frequency_penalty": self.config.get("FREQUENCY_PENALTY", 0.0),
         }
         if self.config.get("EXTRA_BODY", None):
             params["extra_body"] = self.config["EXTRA_BODY"]
