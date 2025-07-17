@@ -86,6 +86,7 @@ class ProviderFactory:
         "cohere-sagemaker": (".providers.cohere_provider", "CohereSagemakerProvider"),
         "deepseek": (".providers.deepseek_provider", "DeepSeekProvider"),
         "doubao": (".providers.doubao_provider", "DoubaoProvider"),
+        "fireworks": (".providers.fireworks_provider", "FireworksProvider"),
         "gemini": (".providers.gemini_provider", "GeminiProvider"),
         "groq": (".providers.groq_provider", "GroqProvider"),
         "huggingface": (".providers.huggingface_provider", "HuggingFaceProvider"),

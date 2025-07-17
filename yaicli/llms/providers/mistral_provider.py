@@ -1,7 +1,13 @@
 import json
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union, cast
 
-from mistralai import Mistral
+from mistralai import (
+    DocumentURLChunk,
+    ImageURLChunk,
+    Mistral,
+    ReferenceChunk,
+    TextChunk,
+)
 from mistralai.models import ChatCompletionResponse, CompletionEvent, ContentChunk
 from mistralai.models import ToolCall as MistralToolCall
 from mistralai.utils.eventstreaming import EventStream
@@ -196,13 +202,18 @@ class MistralProvider(Provider):
         """
         content = ""
         for i in delta_content:
-            if i.type == "text":
+            _type = getattr(i, "type", None) or getattr(i, "TYPE", None)
+            if _type == "text":
+                i = cast(TextChunk, i)
                 content += i.text
-            elif i.type == "image_url":
+            elif _type == "image_url":
+                i = cast(ImageURLChunk, i)
                 content += i.image_url if isinstance(i.image_url, str) else i.image_url.url
-            elif i.type == "document_url":
+            elif _type == "document_url":
+                i = cast(DocumentURLChunk, i)
                 content += f"[{i.document_name}]({i.document_url})"
-            elif i.type == "reference":
+            elif _type == "reference":
+                i = cast(ReferenceChunk, i)
                 content += "Reference IDs: " + json.dumps(i.reference_ids)
         return content
 

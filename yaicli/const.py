@@ -55,6 +55,7 @@ DEFAULT_ROLE = "DEFAULT"
 DEFAULT_OS_NAME = "auto"
 DEFAULT_STREAM: BOOL_STR = "true"
 DEFAULT_TEMPERATURE: float = 0.3
+DEFAULT_FREQUENCY_PENALTY: float = 0.0
 DEFAULT_TOP_P: float = 1.0
 DEFAULT_MAX_TOKENS: int = 1024
 DEFAULT_MAX_HISTORY: int = 500
@@ -129,6 +130,7 @@ DEFAULT_CONFIG_MAP = {
     # API call parameters
     "STREAM": {"value": DEFAULT_STREAM, "env_key": "YAI_STREAM", "type": bool},
     "TEMPERATURE": {"value": DEFAULT_TEMPERATURE, "env_key": "YAI_TEMPERATURE", "type": float},
+    "FREQUENCY_PENALTY": {"value": DEFAULT_FREQUENCY_PENALTY, "env_key": "YAI_FREQUENCY_PENALTY", "type": float},
     "TOP_P": {"value": DEFAULT_TOP_P, "env_key": "YAI_TOP_P", "type": float},
     "MAX_TOKENS": {"value": DEFAULT_MAX_TOKENS, "env_key": "YAI_MAX_TOKENS", "type": int},
     "TIMEOUT": {"value": DEFAULT_TIMEOUT, "env_key": "YAI_TIMEOUT", "type": int},
@@ -179,6 +181,7 @@ STREAM={DEFAULT_CONFIG_MAP["STREAM"]["value"]}
 
 # LLM parameters
 TEMPERATURE={DEFAULT_CONFIG_MAP["TEMPERATURE"]["value"]}
+FREQUENCY_PENALTY={DEFAULT_CONFIG_MAP["FREQUENCY_PENALTY"]["value"]}
 TOP_P={DEFAULT_CONFIG_MAP["TOP_P"]["value"]}
 MAX_TOKENS={DEFAULT_CONFIG_MAP["MAX_TOKENS"]["value"]}
 TIMEOUT={DEFAULT_CONFIG_MAP["TIMEOUT"]["value"]}
