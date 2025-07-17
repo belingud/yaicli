@@ -80,6 +80,7 @@ class TestProviderFactory:
             "anthropic-vertex",
             "cerebras",
             "moonshot",
+            "fireworks",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers
