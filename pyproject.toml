@@ -84,6 +84,7 @@ all = [
     "mistralai>=1.8.2",
     "anthropic[bedrock,vertex]>=0.57.1",
     "cerebras-cloud-sdk>=1.35.0",
+    "fireworks-ai>=0.15.15",
 ]
 doubao = ["volcengine-python-sdk>=3.0.15"]
 ollama = ["ollama>=0.5.1"]
@@ -93,6 +94,7 @@ huggingface = ["huggingface-hub>=0.33.0"]
 mistral = ["mistralai>=1.8.2"]
 anthropic = ["anthropic[bedrock,vertex]>=0.57.1"]
 cerebras = ["cerebras-cloud-sdk>=1.35.0"]
+fireworks = ["fireworks-ai>=0.15.15"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
