@@ -1,5 +1,15 @@
 
 ---
+## [0.8.4](https://github.com/belingud/yaicli/compare/v0.8.3..v0.8.4) - 2025-07-17
+
+### 📚 Documentation
+
+- add Fireworks to README.md - ([ba80dbc](https://github.com/belingud/yaicli/commit/ba80dbcc8233f4382eec8becd1c7a87a6f38d583)) - Belingud
+- add Fireworks AI provider documentation - ([27df748](https://github.com/belingud/yaicli/commit/27df7486fd352cf45b22b4fafc35fdc8e3d1c72c)) - Belingud
+- update changelog for v0.8.3 release - ([4851cd0](https://github.com/belingud/yaicli/commit/4851cd0f20643113522cc7266d7271164d61acc6)) - Belingud
+
+
+---
 ## [0.8.3](https://github.com/belingud/yaicli/compare/v0.8.2..v0.8.3) - 2025-07-16
 
 ### ⛰️  Features
@@ -52,6 +62,8 @@
 
 ---
 ## [0.8.0](https://github.com/belingud/yaicli/compare/v0.7.17..v0.8.0) - 2025-07-14
+
+**Disable time sleep in streaming response content from this version.**
 
 ### ⛰️  Features
 
