@@ -1,5 +1,27 @@
 
 ---
+## [0.8.5](https://github.com/belingud/yaicli/compare/v0.8.4..v0.8.5) - 2025-07-17
+
+### ⛰️  Features
+
+- add FireworksProvider and frequency penalty support - ([a316006](https://github.com/belingud/yaicli/commit/a3160067410a07b07d75de969dd294a61c089254)) - Belingud
+
+### 📚 Documentation
+
+- add frequency penalty configuration to README - ([8fe3836](https://github.com/belingud/yaicli/commit/8fe3836f027853b9b8048de2940de5c8d34c2800)) - Belingud
+- update changelog for v0.8.4 release - ([afd4f95](https://github.com/belingud/yaicli/commit/afd4f950c20bed8ab3bd4d8159e22b18e8d477a1)) - Belingud
+
+### 🧪 Testing
+
+- add frequency_penalty to llm provider tests - ([8f4da43](https://github.com/belingud/yaicli/commit/8f4da43d067ef819ad873e3339dde9436c226a18)) - Belingud
+- add Fireworks provider tests - ([cfc189f](https://github.com/belingud/yaicli/commit/cfc189fb9423049ddfe00588a127b3742cecefc1)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add fireworks-ai dependency - ([0ff81af](https://github.com/belingud/yaicli/commit/0ff81af3a5723f94f4c4a86a00310eb35b51701f)) - Belingud
+
+
+---
 ## [0.8.4](https://github.com/belingud/yaicli/compare/v0.8.3..v0.8.4) - 2025-07-17
 
 ### 📚 Documentation
