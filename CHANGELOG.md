@@ -1,5 +1,17 @@
 
 ---
+## [0.8.6](https://github.com/belingud/yaicli/compare/v0.8.5..v0.8.6) - 2025-07-19
+
+### 🚜 Refactor
+
+- remove frequency_penalty for cerebras and add get_tools method - ([c6a16a5](https://github.com/belingud/yaicli/commit/c6a16a5739c71b8768102f4655aa0618f83d546d)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.5 release - ([a4e358b](https://github.com/belingud/yaicli/commit/a4e358b32aa4837c8ec6e72b04ad9e0bfd8601a2)) - Belingud
+
+
+---
 ## [0.8.5](https://github.com/belingud/yaicli/compare/v0.8.4..v0.8.5) - 2025-07-17
 
 ### ⛰️  Features
