@@ -105,7 +105,6 @@ class TestCerebrasProvider:
                 "top_p": mock_config["TOP_P"],
                 "max_completion_tokens": mock_config["MAX_TOKENS"],
                 "timeout": mock_config["TIMEOUT"],
-                "frequency_penalty": mock_config["FREQUENCY_PENALTY"],
             }
             assert provider.completion_params == expected_completion_params
 
@@ -161,7 +160,6 @@ class TestCerebrasProvider:
                 "max_completion_tokens": "MAX_TOKENS",
                 "timeout": "TIMEOUT",
                 "extra_body": "EXTRA_BODY",
-                "frequency_penalty": "FREQUENCY_PENALTY",
             }
             assert provider.COMPLETION_PARAMS_KEYS == expected_mapping
 

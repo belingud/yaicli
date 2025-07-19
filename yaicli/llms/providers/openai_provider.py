@@ -93,6 +93,27 @@ class OpenAIProvider(Provider):
             if self.config.get(config_key, None) is not None and self.config[config_key] != "":
                 completion_params[api_key] = self.config[config_key]
         return completion_params
+    
+    def get_tools(self) -> List[dict]:
+        """
+        Get the tools for the completion request.
+
+        Returns:
+            List[dict]: List of tool objects to use in the completion request.
+        """
+        tools = []
+        if self.enable_function:
+            tools.extend(get_openai_schemas())
+
+        # Add MCP tools if enabled
+        if self.enable_mcp:
+            try:
+                mcp_tools = get_openai_mcp_tools()
+            except (ValueError, FileNotFoundError, MCPToolsError) as e:
+                self.console.print(f"Failed to load MCP tools: {e}", style="red")
+                mcp_tools = []
+            tools.extend(mcp_tools)
+        return tools
 
     def completion(
         self,
@@ -117,19 +138,7 @@ class OpenAIProvider(Provider):
 
         params = self.completion_params.copy()
         params["messages"] = openai_messages
-        tools = []
-
-        if self.enable_function:
-            tools.extend(get_openai_schemas())
-
-        # Add MCP tools if enabled
-        if self.enable_mcp:
-            try:
-                mcp_tools = get_openai_mcp_tools()
-            except (ValueError, FileNotFoundError, MCPToolsError) as e:
-                self.console.print(f"Failed to load MCP tools: {e}", style="red")
-                mcp_tools = []
-            tools.extend(mcp_tools)
+        tools = self.get_tools()
         if tools:
             params["tools"] = tools
         if self.verbose:
@@ -160,7 +169,7 @@ class OpenAIProvider(Provider):
             return
         choice = response.choices[0]
         content = choice.message.content or ""
-        reasoning = choice.message.reasoning_content  # type: ignore
+        reasoning = getattr(choice.message, "reasoning_content", "")
         finish_reason = choice.finish_reason
         tool_call: Optional[ToolCall] = None
 
