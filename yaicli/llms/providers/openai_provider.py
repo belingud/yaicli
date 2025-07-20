@@ -93,7 +93,7 @@ class OpenAIProvider(Provider):
             if self.config.get(config_key, None) is not None and self.config[config_key] != "":
                 completion_params[api_key] = self.config[config_key]
         return completion_params
-    
+
     def get_tools(self) -> List[dict]:
         """
         Get the tools for the completion request.
@@ -184,6 +184,17 @@ class OpenAIProvider(Provider):
 
         yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason, tool_call=tool_call)
 
+    def _first_chunk_error(self, chunk) -> Optional[LLMResponse]:
+        """
+        Return error LLMResponse if first chunk is error message
+        """
+        # Some api could return error message in the first chunk, no choices to handle, return raw response to show the message
+        # TODO: check which provider should do this
+        # LLMResponse(
+        #     content=json.dumps(getattr(chunk, "base_resp", None) or chunk.to_dict()), finish_reason="stop"
+        # )
+        return None
+
     def _handle_stream_response(self, response: Stream[ChatCompletionChunk]) -> Generator[LLMResponse, None, None]:
         """Handle streaming response from OpenAI API"""
         # Initialize tool call object to accumulate tool call data across chunks
@@ -193,9 +204,9 @@ class OpenAIProvider(Provider):
         for chunk in response:
             if not chunk.choices and not started:
                 # Some api could return error message in the first chunk, no choices to handle, return raw response to show the message
-                yield LLMResponse(
-                    content=json.dumps(getattr(chunk, "base_resp", None) or chunk.to_dict()), finish_reason="stop"
-                )
+                _first_chunk_llm_resp = self._first_chunk_error(chunk)
+                if _first_chunk_llm_resp is not None:
+                    yield _first_chunk_llm_resp
                 started = True
                 continue
 
