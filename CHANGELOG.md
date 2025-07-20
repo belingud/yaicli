@@ -1,5 +1,17 @@
 
 ---
+## [0.8.7](https://github.com/belingud/yaicli/compare/v0.8.6..v0.8.7) - 2025-07-20
+
+### ⛰️  Features
+
+- add error handling for first chunk in OpenAIProvider - ([c6e3eae](https://github.com/belingud/yaicli/commit/c6e3eae356d69b71926c843269ddb26c2a2afd49)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.6 release - ([1104d0f](https://github.com/belingud/yaicli/commit/1104d0fbfac7d7b3d74c69dce8500dd901fdf30c)) - Belingud
+
+
+---
 ## [0.8.6](https://github.com/belingud/yaicli/compare/v0.8.5..v0.8.6) - 2025-07-19
 
 ### 🚜 Refactor
