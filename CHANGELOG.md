@@ -1,5 +1,17 @@
 
 ---
+## [0.8.8](https://github.com/belingud/yaicli/compare/v0.8.7..v0.8.8) - 2025-07-21
+
+### 🐛 Bug Fixes
+
+- remove frequency_penalty from AnthropicProvider - ([6d21e6a](https://github.com/belingud/yaicli/commit/6d21e6ad8a17bda94faac6a38ebea84dc5485c14)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.7 release - ([b788c6c](https://github.com/belingud/yaicli/commit/b788c6c1a3bac58fb68e22ba1393c9519302357b)) - Belingud
+
+
+---
 ## [0.8.7](https://github.com/belingud/yaicli/compare/v0.8.6..v0.8.7) - 2025-07-20
 
 ### ⛰️  Features
