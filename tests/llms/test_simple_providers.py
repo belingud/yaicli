@@ -360,7 +360,7 @@ class TestCustomBaseURL:
             # Test with Together provider
             provider = TogetherProvider(config=mock_config)
             assert provider.client_params["base_url"] == mock_config["BASE_URL"]
-            
+
             # Test with Fireworks provider
             provider = FireworksProvider(config=mock_config)
             assert provider.client_params["base_url"] == mock_config["BASE_URL"]

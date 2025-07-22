@@ -27,7 +27,7 @@ class TestFireworksProvider:
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
         }
-    
+
     @pytest.fixture
     def mock_fireworks_client(self):
         """Create a mock Fireworks client"""
@@ -38,7 +38,7 @@ class TestFireworksProvider:
 
         client_mock = MagicMock()
         client_mock.chat = chat_mock
-        
+
         return client_mock
 
     def test_init(self, mock_config):
@@ -47,14 +47,14 @@ class TestFireworksProvider:
         mock_fireworks_cls = MagicMock()
         mock_client_instance = MagicMock()
         mock_fireworks_cls.return_value = mock_client_instance
-        
+
         # Patch the CLIENT_CLS that gets called in __init__
-        with patch.object(FireworksProvider, 'CLIENT_CLS', mock_fireworks_cls):
+        with patch.object(FireworksProvider, "CLIENT_CLS", mock_fireworks_cls):
             provider = FireworksProvider(config=mock_config)
-            
+
             # Verify client was created with correct parameters
             mock_fireworks_cls.assert_called_once()
-            
+
             # Check initialization parameters
             assert provider.client_params["base_url"] == FireworksProvider.DEFAULT_BASE_URL
             assert provider.client_params["base_url"] == "https://api.fireworks.ai/inference/v1"
@@ -72,14 +72,14 @@ class TestFireworksProvider:
         """Test initialization with extra headers"""
         extra_headers = {"X-Custom": "test"}
         mock_config["EXTRA_HEADERS"] = extra_headers
-        
+
         # Mock client class
         mock_fireworks_cls = MagicMock()
         mock_client_instance = MagicMock()
         mock_fireworks_cls.return_value = mock_client_instance
-        
+
         # Patch the CLIENT_CLS
-        with patch.object(FireworksProvider, 'CLIENT_CLS', mock_fireworks_cls):
+        with patch.object(FireworksProvider, "CLIENT_CLS", mock_fireworks_cls):
             provider = FireworksProvider(config=mock_config)
 
             # Check headers were properly set
@@ -95,9 +95,9 @@ class TestFireworksProvider:
         mock_fireworks_cls = MagicMock()
         mock_client_instance = MagicMock()
         mock_fireworks_cls.return_value = mock_client_instance
-        
+
         # Patch the CLIENT_CLS
-        with patch.object(FireworksProvider, 'CLIENT_CLS', mock_fireworks_cls):
+        with patch.object(FireworksProvider, "CLIENT_CLS", mock_fireworks_cls):
             provider = FireworksProvider(config=mock_config)
 
             # Directly test the get_client_params method
@@ -112,14 +112,14 @@ class TestFireworksProvider:
         """Test get_client_params with custom account"""
         # Set a custom account
         mock_config["ACCOUNT"] = "fireworks-dev"
-        
+
         # Mock client class
         mock_fireworks_cls = MagicMock()
         mock_client_instance = MagicMock()
         mock_fireworks_cls.return_value = mock_client_instance
-        
+
         # Patch the CLIENT_CLS
-        with patch.object(FireworksProvider, 'CLIENT_CLS', mock_fireworks_cls):
+        with patch.object(FireworksProvider, "CLIENT_CLS", mock_fireworks_cls):
             provider = FireworksProvider(config=mock_config)
 
             # Directly test the get_client_params method
@@ -134,9 +134,9 @@ class TestFireworksProvider:
         mock_fireworks_cls = MagicMock()
         mock_client_instance = MagicMock()
         mock_fireworks_cls.return_value = mock_client_instance
-        
+
         # Patch the CLIENT_CLS
-        with patch.object(FireworksProvider, 'CLIENT_CLS', mock_fireworks_cls):
+        with patch.object(FireworksProvider, "CLIENT_CLS", mock_fireworks_cls):
             provider = FireworksProvider(config=mock_config)
 
             # Check that the method returns the expected value
@@ -149,9 +149,9 @@ class TestFireworksProvider:
         mock_fireworks_cls = MagicMock()
         mock_client_instance = MagicMock()
         mock_fireworks_cls.return_value = mock_client_instance
-        
+
         # Patch the CLIENT_CLS
-        with patch.object(FireworksProvider, 'CLIENT_CLS', mock_fireworks_cls):
+        with patch.object(FireworksProvider, "CLIENT_CLS", mock_fireworks_cls):
             provider = FireworksProvider(config=mock_config)
 
             # Set up the mock to return an empty list

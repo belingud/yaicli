@@ -4,7 +4,7 @@ import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from os import getenv
-from typing import Optional, Any
+from typing import Any, Optional
 
 from rich import get_console
 from rich.console import Console
@@ -80,13 +80,13 @@ class Config(dict):
 
     def _ensure_version_updated_config_keys(self, config_parser: CasePreservingConfigParser) -> None:
         """Ensure configuration keys added in version updates exist in the config file.
-        
+
         Uses config parser to check for missing keys instead of full text search.
         Only writes to file if keys are actually missing.
         """
         # Check using config parser instead of full text search
         core_section = config_parser["core"] if config_parser.has_section("core") else {}
-        
+
         if "CHAT_HISTORY_DIR" not in core_section:
             # Only append if the key is missing
             with open(CONFIG_PATH, "a", encoding="utf-8") as f:
@@ -139,18 +139,18 @@ class Config(dict):
 
     def _convert_value(self, raw_value: str, target_type: type, key: str) -> Any:
         """Convert a raw string value to the target type.
-        
+
         Args:
             raw_value: The raw string value to convert
             target_type: The target type to convert to
             key: The configuration key (for error reporting)
-            
+
         Returns:
             The converted value or the default value if conversion fails
         """
         if raw_value is None:
             raw_value = DEFAULT_CONFIG_MAP[key]["value"]
-            
+
         try:
             if target_type is bool:
                 return str2bool(raw_value)
@@ -168,7 +168,7 @@ class Config(dict):
                 style="dim",
                 justify=self["JUSTIFY"],
             )
-            
+
             # Try to convert default value
             try:
                 if target_type is bool:
@@ -194,11 +194,11 @@ class Config(dict):
         for key, config_info in DEFAULT_CONFIG_MAP.items():
             target_type = config_info["type"]
             raw_value = self[key]
-            
+
             # Skip conversion if already correct type (optimization for common case)
             if isinstance(raw_value, target_type):
                 continue
-                
+
             # Convert the value
             self[key] = self._convert_value(raw_value, target_type, key)
 

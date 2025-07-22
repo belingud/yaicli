@@ -54,7 +54,7 @@ def setup_test_environment():
     os.environ["AWS_SECRET_ACCESS_KEY"] = "test_secret_key"
     os.environ["AWS_SESSION_TOKEN"] = "test_session_token"
     os.environ["AWS_REGION"] = "us-east-1"
-    
+
     # Add mock Fireworks credentials
     os.environ["FIREWORKS_API_KEY"] = "test_fireworks_api_key"
 
