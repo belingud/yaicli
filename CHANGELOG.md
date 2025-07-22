@@ -1,5 +1,25 @@
 
 ---
+## [0.8.9](https://github.com/belingud/yaicli/compare/v0.8.8..v0.8.9) - 2025-07-22
+
+### ⛰️  Features
+
+- add OpenAICampatibleProvider and update Config imports - ([72f8d91](https://github.com/belingud/yaicli/commit/72f8d914ba19a3818520542c7f43da4310b59de6)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.8 release - ([063faf7](https://github.com/belingud/yaicli/commit/063faf7cddeca9709924b3ac6e8791c6b83cd26d)) - Belingud
+
+### 🧪 Testing
+
+- add openai-compatible provider to test cases - ([4f75278](https://github.com/belingud/yaicli/commit/4f75278faf06f2ad83206707996a584210f0590c)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update uv lock - ([e339adf](https://github.com/belingud/yaicli/commit/e339adfae55d0834082dde3ae0be94ca6f17394b)) - Belingud
+
+
+---
 ## [0.8.8](https://github.com/belingud/yaicli/compare/v0.8.7..v0.8.8) - 2025-07-21
 
 ### 🐛 Bug Fixes
