@@ -1,12 +1,24 @@
 import importlib.util
+import json
 import sys
+from functools import wraps
 from typing import TYPE_CHECKING, Callable, List, Optional
 
 if TYPE_CHECKING:
     from instructor import OpenAISchema
 
 from ..const import FUNCTIONS_DIR
-from ..utils import wrap_function
+
+
+def wrap_gemini_function(func: Callable) -> Callable:
+    """Wrap a function to add a name and docstring"""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        print(f"\033[94m@Function call: {wrapper.__name__}({json.dumps(kwargs) if kwargs else args})\033[0m")
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 class Function:
@@ -85,7 +97,7 @@ def get_functions_gemini_format() -> List[Callable]:
     """Get functions in gemini format"""
     gemini_functions = []
     for func_name, func in get_func_name_map().items():
-        wrapped_func = wrap_function(func.execute)
+        wrapped_func = wrap_gemini_function(func.execute)
         wrapped_func.__name__ = func_name
         wrapped_func.__doc__ = func.description
         gemini_functions.append(wrapped_func)
