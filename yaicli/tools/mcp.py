@@ -383,6 +383,7 @@ class MCPToolConverter:
 
         # Dynamic function
         def dynamic_function(**kwargs):
+            print(f"\033[94m@MCP call: {dynamic_function.__name__}({json.dumps(kwargs)})\033[0m")
             return tool_obj.execute(**kwargs)
 
         # Set function attributes

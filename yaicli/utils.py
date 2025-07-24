@@ -1,7 +1,6 @@
 import asyncio
 import platform
 import uuid
-from functools import wraps
 from os import getenv
 from os.path import basename, pathsep
 from typing import Any, Callable, Optional, TypeVar
@@ -157,16 +156,6 @@ def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             return loop
-
-
-def wrap_function(func: Callable) -> Callable:
-    """Wrap a function to add a name and docstring"""
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-
-    return wrapper
 
 
 def gen_tool_call_id() -> str:
