@@ -1,5 +1,17 @@
 
 ---
+## [0.8.10](https://github.com/belingud/yaicli/compare/v0.8.9..v0.8.10) - 2025-07-24
+
+### ⛰️  Features
+
+- update wrap_gemini_function to add gemini func call log - ([f34d322](https://github.com/belingud/yaicli/commit/f34d32277638e272cd4b1909fa0f5540029736b3)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.9 release - ([73e9ab8](https://github.com/belingud/yaicli/commit/73e9ab8c835c9d227ec824af33bd2710d8812088)) - Belingud
+
+
+---
 ## [0.8.9](https://github.com/belingud/yaicli/compare/v0.8.8..v0.8.9) - 2025-07-22
 
 ### ⛰️  Features
