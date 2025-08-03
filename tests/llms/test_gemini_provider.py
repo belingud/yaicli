@@ -5,7 +5,7 @@ import pytest
 
 from yaicli.llms.providers.gemini_provider import GeminiProvider
 from yaicli.schemas import ChatMessage
-from yaicli.utils import wrap_function
+from yaicli.tools.function import wrap_gemini_function
 
 
 class TestGeminiProvider:
@@ -48,7 +48,7 @@ class TestGeminiProvider:
             """Test function docstring"""
             return x + y
 
-        wrapped = wrap_function(test_func)
+        wrapped = wrap_gemini_function(test_func)
 
         # Check function attributes are preserved
         assert wrapped.__name__ == "test_func"

@@ -81,7 +81,7 @@ class TestProviderFactory:
             "cerebras",
             "moonshot",
             "fireworks",
-            "openai-campatible",
+            "openai-compatible",
         }
 
         assert set(ProviderFactory.providers_map.keys()) == expected_providers

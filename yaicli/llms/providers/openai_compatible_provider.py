@@ -8,7 +8,7 @@ from ...schemas import LLMResponse, ToolCall
 from .openai_provider import OpenAIProvider
 
 
-class OpenAICampatibleProvider(OpenAIProvider):
+class OpenAICompatibleProvider(OpenAIProvider):
     def _handle_stream_response(self, response: Stream[ChatCompletionChunk]) -> Generator[LLMResponse, None, None]:
         """Handle streaming response from OpenAI API"""
         # Initialize tool call object to accumulate tool call data across chunks
