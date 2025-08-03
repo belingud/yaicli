@@ -1,5 +1,13 @@
 
 ---
+## [0.8.11](https://github.com/belingud/yaicli/compare/v0.8.10..v0.8.11) - 2025-08-03
+
+### 📚 Documentation
+
+- update changelog for v0.8.10 release - ([c212daa](https://github.com/belingud/yaicli/commit/c212daad1807648ce5f96b576dbd336ee24c278a)) - Belingud
+
+
+---
 ## [0.8.10](https://github.com/belingud/yaicli/compare/v0.8.9..v0.8.10) - 2025-07-24
 
 ### ⛰️  Features
