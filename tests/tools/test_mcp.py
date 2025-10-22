@@ -1,11 +1,16 @@
+import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+import typer
 from fastmcp.client.client import CallToolResult
 from mcp.types import TextContent, Tool
+from rich.console import Console
 
 from yaicli.const import MCP_JSON_PATH
+from yaicli.functions import MCP_DETAILS_ALL_FLAG, print_mcp_details
 from yaicli.tools.mcp import (
     MCP,
     MCPClient,
@@ -645,3 +650,62 @@ class TestGlobalFunctions:
         # Verify
         assert result == mock_tool
         mock_manager.get_tool.assert_called_once_with("test_tool")
+
+
+class TestPrintMCPDetails:
+    @staticmethod
+    def _create_config(tmp_path: Path, data: dict) -> Path:
+        path = tmp_path / "mcp.json"
+        path.write_text(json.dumps(data))
+        return path
+
+    @staticmethod
+    def _make_manager(tools_map):
+        class FakeClient:
+            def __init__(self, mapping):
+                self._mapping = mapping
+
+            @property
+            def tools_map(self):
+                return self._mapping
+
+        return SimpleNamespace(client=FakeClient(tools_map))
+
+    def test_print_mcp_details_missing_config(self, tmp_path):
+        console = Console(record=True)
+        fake_path = tmp_path / "mcp.json"
+        with patch("yaicli.functions.console", console), patch("yaicli.functions.MCP_JSON_PATH", fake_path):
+            with pytest.raises(typer.Exit):
+                print_mcp_details(None, MCP_DETAILS_ALL_FLAG)
+        assert "No mcp config found" in console.export_text()
+
+    def test_print_mcp_details_with_tools(self, tmp_path):
+        config_path = self._create_config(
+            tmp_path,
+            {"mcpServers": {"notes": {"transport": "stdio", "command": "notes-cli"}}},
+        )
+        tool = SimpleNamespace(
+            name=gen_mcp_tool_name("create_note"),
+            description="Create note",
+            parameters={"properties": {"title": {"type": "string"}}, "required": ["title"]},
+        )
+        manager = self._make_manager({tool.name: tool})
+        console = Console(record=True)
+        with patch("yaicli.functions.console", console), patch("yaicli.functions.MCP_JSON_PATH", config_path), patch(
+            "yaicli.functions.get_mcp_manager", return_value=manager
+        ):
+            with pytest.raises(typer.Exit):
+                print_mcp_details(None, MCP_DETAILS_ALL_FLAG)
+        output = console.export_text()
+        assert "MCP: notes" in output
+        assert "create_note" in output
+        assert "title* (string)" in output
+
+    def test_print_mcp_details_filter_not_found(self, tmp_path):
+        config_path = self._create_config(tmp_path, {"mcpServers": {"notes": {"transport": "stdio"}}})
+        console = Console(record=True)
+        with patch("yaicli.functions.console", console), patch("yaicli.functions.MCP_JSON_PATH", config_path):
+            with pytest.raises(typer.Exit) as exc_info:
+                print_mcp_details(None, "unknown")
+        assert exc_info.value.exit_code == 1
+        assert "not found" in console.export_text()
