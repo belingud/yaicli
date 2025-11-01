@@ -113,6 +113,8 @@ class LLMClient:
         valid_tool_calls = []
 
         for tool_call in tool_calls.values():
+            if self.verbose:
+                self.console.print(f"Raw tool call name: {tool_call.name}")
             is_mcp = tool_call.name.startswith(MCP_TOOL_NAME_PREFIX)
 
             if is_mcp and self.enable_mcp:
