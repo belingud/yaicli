@@ -7,7 +7,12 @@ from .chat import FileChatManager
 from .config import cfg
 from .const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
 from .exceptions import YaicliError
-from .functions import install_functions, print_functions, print_mcp
+from .functions import (
+    install_functions,
+    print_functions,
+    print_mcp,
+    print_mcp_details,
+)
 from .llms.provider import ProviderFactory
 from .role import RoleManager
 
@@ -229,6 +234,14 @@ class MCPOptions:
         rich_help_panel="MCP Options",
         callback=print_mcp,
     )
+    list_mcp_details = typer.Option(
+        None,
+        "--list-mcp-details",
+        help="Show detailed MCP configuration and available tools. Usage: --list-mcp-details= (list all) or --list-mcp-details=<name> (filter by name).",
+        rich_help_panel="MCP Options",
+        callback=print_mcp_details,
+        show_default=False,
+    )
 
 
 class FunctionOptions:
@@ -307,6 +320,7 @@ def main(
     enable_mcp: bool = MCPOptions.enable_mcp,  # noqa: F841
     show_mcp_output: bool = MCPOptions.show_mcp_output,  # noqa: F841
     list_mcp: bool = MCPOptions.list_mcp,  # noqa: F841
+    list_mcp_details: Optional[str] = MCPOptions.list_mcp_details,  # noqa: F841
 ):
     """YAICLI: Your AI assistant in the command line.
 
