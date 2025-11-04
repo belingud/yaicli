@@ -240,10 +240,10 @@ class MCPOptions:
         "--list-mcp-details",
         help="Show MCP configuration and tools. Optionally filter by MCP name.",
         rich_help_panel="MCP Options",
+        is_flag=False,
         flag_value=MCP_DETAILS_ALL_FLAG,
         callback=print_mcp_details,
         show_default=False,
-        metavar="[MCP_NAME]",
     )
 
 
