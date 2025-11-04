@@ -676,7 +676,7 @@ class TestPrintMCPDetails:
         fake_path = tmp_path / "mcp.json"
         with patch("yaicli.functions.console", console), patch("yaicli.functions.MCP_JSON_PATH", fake_path):
             with pytest.raises(typer.Exit):
-                print_mcp_details(None, MCP_DETAILS_ALL_FLAG)
+                print_mcp_details(None, "")
         assert "No mcp config found" in console.export_text()
 
     def test_print_mcp_details_with_tools(self, tmp_path):
@@ -695,7 +695,7 @@ class TestPrintMCPDetails:
             "yaicli.functions.get_mcp_manager", return_value=manager
         ):
             with pytest.raises(typer.Exit):
-                print_mcp_details(None, MCP_DETAILS_ALL_FLAG)
+                print_mcp_details(None, "")
         output = console.export_text()
         assert "MCP: notes" in output
         assert "create_note" in output

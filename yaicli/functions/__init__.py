@@ -94,21 +94,28 @@ def _render_mcp_panel(
     return Panel(Group(*sections), title=f"MCP: {name}", title_align="left", border_style="cyan", expand=False)
 
 
-@option_callback
-def print_mcp_details(cls, value: Optional[str]) -> None:
-    filter_name: Optional[str] = None
-    if isinstance(value, str):
-        filter_name = None if value == MCP_DETAILS_ALL_FLAG else value.strip() or None
+def print_mcp_details(cls, value: Optional[str]) -> Optional[str]:
+    # Don't execute if value is None (option not provided)
+    if value is None:
+        return value
+    
+    # Handle empty string (when using --list-mcp-details= ) or the sentinel flag as "show all"
+    if value == "" or value == MCP_DETAILS_ALL_FLAG:
+        filter_name = None
+    elif isinstance(value, str):
+        filter_name = value.strip() or None
+    else:
+        filter_name = None
 
     if not MCP_JSON_PATH.exists():
         console.print("No mcp config found, please add your mcp config in ~/.config/yaicli/mcp.json")
-        return
+        raise typer.Exit()
 
     try:
         config = MCPConfig.from_file(MCP_JSON_PATH)
     except FileNotFoundError:
         console.print("No mcp config found, please add your mcp config in ~/.config/yaicli/mcp.json")
-        return
+        raise typer.Exit()
     except json.JSONDecodeError as exc:
         console.print(f"Failed to parse MCP config: {exc}", style="bold red")
         raise typer.Exit(code=1)
@@ -116,7 +123,7 @@ def print_mcp_details(cls, value: Optional[str]) -> None:
     servers = config.servers.get("mcpServers", {})
     if not servers:
         console.print("No MCP servers configured.")
-        return
+        raise typer.Exit()
 
     normalized_servers = {name: details for name, details in servers.items()}
     if filter_name:
@@ -167,6 +174,8 @@ def print_mcp_details(cls, value: Optional[str]) -> None:
         console.print(
             f"[yellow]Warning:[/] Unable to determine MCP association for tools: {', '.join(unassigned)}"
         )
+    
+    raise typer.Exit()
 
 
 @option_callback

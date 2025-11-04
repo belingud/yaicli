@@ -238,10 +238,8 @@ class MCPOptions:
     list_mcp_details = typer.Option(
         None,
         "--list-mcp-details",
-        help="Show MCP configuration and tools. Optionally filter by MCP name.",
+        help="Show detailed MCP configuration and available tools. Usage: --list-mcp-details= (list all) or --list-mcp-details=<name> (filter by name).",
         rich_help_panel="MCP Options",
-        is_flag=False,
-        flag_value=MCP_DETAILS_ALL_FLAG,
         callback=print_mcp_details,
         show_default=False,
     )
