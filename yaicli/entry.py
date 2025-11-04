@@ -8,7 +8,6 @@ from .config import cfg
 from .const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
 from .exceptions import YaicliError
 from .functions import (
-    MCP_DETAILS_ALL_FLAG,
     install_functions,
     print_functions,
     print_mcp,

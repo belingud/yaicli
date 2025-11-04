@@ -10,7 +10,7 @@ from mcp.types import TextContent, Tool
 from rich.console import Console
 
 from yaicli.const import MCP_JSON_PATH
-from yaicli.functions import MCP_DETAILS_ALL_FLAG, print_mcp_details
+from yaicli.functions import print_mcp_details
 from yaicli.tools.mcp import (
     MCP,
     MCPClient,
