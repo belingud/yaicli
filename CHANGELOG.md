@@ -1,5 +1,28 @@
 
 ---
+## [0.8.12](https://github.com/belingud/yaicli/compare/v0.8.11..v0.8.12) - 2026-01-08
+
+### ⛰️  Features
+
+- **(fetch_webpage)** enhance webpage fetching with retries and trafilatura support - ([cf64899](https://github.com/belingud/yaicli/commit/cf64899af3e87be038767381a81c8d8153025736)) - Belingud
+- **(filesystem)** add builtin filesystem functions for CLI - ([55a7039](https://github.com/belingud/yaicli/commit/55a7039dde531de4277eed80f78e4bc9ff86cb70)) - Belingud
+- add verbose logging for raw tool call names - ([fe1e1a0](https://github.com/belingud/yaicli/commit/fe1e1a0e4bcd0f6a189d10d7598e354921beaa85)) - Belingud
+
+### 🐛 Bug Fixes
+
+- improve security checks for file operations and refactor path handling - ([ca0ae47](https://github.com/belingud/yaicli/commit/ca0ae47d85d1c1bfe06406e76969af1e73f5c7f6)) - Belingud
+
+### 📚 Documentation
+
+- add changelog entry for v0.8.11 - ([4077b27](https://github.com/belingud/yaicli/commit/4077b2735f3a76e639e96634f21853c897093fd8)) - Belingud
+
+### 🧪 Testing
+
+- remove unused imports from test files - ([f736c04](https://github.com/belingud/yaicli/commit/f736c043e3febdf18c05916ca888c346db936efd)) - Belingud
+- add test files for filesystem operations - ([aec5980](https://github.com/belingud/yaicli/commit/aec5980e2b9089f298aea26a2bb89116df5370a6)) - Belingud
+
+
+---
 ## [0.8.11](https://github.com/belingud/yaicli/compare/v0.8.10..v0.8.11) - 2025-08-03
 
 ### 📚 Documentation
