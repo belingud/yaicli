@@ -52,41 +52,48 @@ class Function(OpenAISchema):
         """
         result = {"operation": operation, "path": path, "success": False, "error": None}
 
+        # Security check for dangerous paths - do this before path resolution
+        dangerous_paths = ["/etc/", "/sys/", "/proc/", "/dev/", "/bin/", "/usr/", "/sbin/"]
+
         try:
-            file_path = Path(path).expanduser().resolve()
-
-            # Security check for dangerous paths
-            dangerous_paths = ["/etc/", "/sys/", "/proc/", "/dev/", "/bin/", "/usr/", "/sbin/"]
-
-            if operation == "create_dir":
-                return cls._create_directory(file_path)
-
-            elif operation == "delete":
-                if any(str(file_path).startswith(dp) for dp in dangerous_paths):
+            if operation == "delete":
+                if any(path.startswith(dp) for dp in dangerous_paths):
                     result["error"] = "Cannot delete from system directory"
                     return json.dumps(result, ensure_ascii=False, indent=2)
-                return cls._delete(file_path)
 
             elif operation == "move":
                 if not destination:
                     result["error"] = "Destination path is required for 'move' operation"
                     return json.dumps(result, ensure_ascii=False, indent=2)
-                dest_path = Path(destination).expanduser().resolve()
-                if any(str(file_path).startswith(dp) or str(dest_path).startswith(dp) for dp in dangerous_paths):
+                if any(path.startswith(dp) for dp in dangerous_paths) or any(destination.startswith(dp) for dp in dangerous_paths):
                     result["error"] = "Cannot move to/from system directories"
                     return json.dumps(result, ensure_ascii=False, indent=2)
                 result["destination"] = destination
-                return cls._move(file_path, dest_path)
 
             elif operation == "copy":
                 if not destination:
                     result["error"] = "Destination path is required for 'copy' operation"
                     return json.dumps(result, ensure_ascii=False, indent=2)
-                dest_path = Path(destination).expanduser().resolve()
-                if any(str(dest_path).startswith(dp) for dp in dangerous_paths):
+                if any(destination.startswith(dp) for dp in dangerous_paths):
                     result["error"] = "Cannot copy to system directory"
                     return json.dumps(result, ensure_ascii=False, indent=2)
                 result["destination"] = destination
+
+            # Now resolve paths after security checks
+            file_path = Path(path).expanduser().resolve()
+
+            if operation == "create_dir":
+                return cls._create_directory(file_path)
+
+            elif operation == "delete":
+                return cls._delete(file_path)
+
+            elif operation == "move":
+                dest_path = Path(destination).expanduser().resolve()
+                return cls._move(file_path, dest_path)
+
+            elif operation == "copy":
+                dest_path = Path(destination).expanduser().resolve()
                 return cls._copy(file_path, dest_path)
 
             elif operation == "exists":
