@@ -1,7 +1,6 @@
 """Test fs_read_image function."""
 import base64
 import json
-from pathlib import Path
 
 from yaicli.functions.buildin.fs_read_image import Function
 

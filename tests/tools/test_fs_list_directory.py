@@ -1,6 +1,5 @@
 """Test fs_list_directory function."""
 import json
-from pathlib import Path
 
 from yaicli.functions.buildin.fs_list_directory import Function
 

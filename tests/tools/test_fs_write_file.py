@@ -1,6 +1,5 @@
 """Test fs_write_file function."""
 import json
-from pathlib import Path
 
 from yaicli.functions.buildin.fs_write_file import Function
 

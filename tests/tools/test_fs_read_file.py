@@ -1,6 +1,5 @@
 """Test fs_read_file function."""
 import json
-from pathlib import Path
 
 from yaicli.functions.buildin.fs_read_file import Function
 

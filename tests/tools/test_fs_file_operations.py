@@ -1,7 +1,5 @@
 """Test fs_file_operations function."""
 import json
-import shutil
-from pathlib import Path
 
 from yaicli.functions.buildin.fs_file_operations import Function
 

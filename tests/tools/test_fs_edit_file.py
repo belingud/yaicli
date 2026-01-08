@@ -1,7 +1,5 @@
 """Test fs_edit_file function."""
 import json
-import tempfile
-from pathlib import Path
 
 from yaicli.functions.buildin.fs_edit_file import Function
 
