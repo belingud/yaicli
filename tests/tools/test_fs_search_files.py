@@ -1,4 +1,5 @@
 """Test fs_search_files function."""
+
 import json
 
 from yaicli.functions.buildin.fs_search_files import Function
@@ -9,10 +10,10 @@ class TestFSSearchFiles:
         """Test searching files with default parameters."""
         (tmp_path / "test1.txt").write_text("content1")
         (tmp_path / "test2.txt").write_text("content2")
-        
+
         result = Function.execute(str(tmp_path), "test*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["search_path"] == str(tmp_path)
         assert result_dict["pattern"] == "test*.txt"
@@ -24,10 +25,10 @@ class TestFSSearchFiles:
         (tmp_path / "file1.txt").write_text("content1")
         (tmp_path / "file2.txt").write_text("content2")
         (tmp_path / "other.txt").write_text("content3")
-        
+
         result = Function.execute(str(tmp_path), "file*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "file1.txt" in file_names
@@ -43,10 +44,10 @@ class TestFSSearchFiles:
         nested = subdir / "nested"
         nested.mkdir()
         (nested / "file3.txt").write_text("content3")
-        
+
         result = Function.execute(str(tmp_path), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert len(result_dict["matches"]) == 3
 
@@ -55,10 +56,10 @@ class TestFSSearchFiles:
         (tmp_path / "file1.txt").write_text("content1")
         (tmp_path / "file2.py").write_text("content2")
         (tmp_path / "test.txt").write_text("content3")
-        
+
         result = Function.execute(str(tmp_path), "*.txt", exclude_patterns=["test*"])
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "file1.txt" in file_names
@@ -70,10 +71,10 @@ class TestFSSearchFiles:
         (tmp_path / "file2.txt").write_text("content2")
         (tmp_path / "test.txt").write_text("content3")
         (tmp_path / "other.txt").write_text("content4")
-        
+
         result = Function.execute(str(tmp_path), "*.txt", exclude_patterns=["test*", "other*"])
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "file1.txt" in file_names
@@ -84,10 +85,10 @@ class TestFSSearchFiles:
     def test_execute_no_matches(self, tmp_path):
         """Test searching when no files match."""
         (tmp_path / "file1.txt").write_text("content1")
-        
+
         result = Function.execute(str(tmp_path), "*.py")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert len(result_dict["matches"]) == 0
 
@@ -95,7 +96,7 @@ class TestFSSearchFiles:
         """Test searching in a non-existent directory."""
         result = Function.execute("/nonexistent/directory", "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is False
         assert "Search path does not exist" in result_dict["error"]
 
@@ -103,22 +104,22 @@ class TestFSSearchFiles:
         """Test searching when path is a file."""
         test_file = tmp_path / "test.txt"
         test_file.write_text("content")
-        
+
         result = Function.execute(str(test_file), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is False
         assert "Search path is not a directory" in result_dict["error"]
 
     def test_execute_file_structure(self, tmp_path):
         """Test that file info has correct structure."""
         (tmp_path / "test.txt").write_text("content")
-        
+
         result = Function.execute(str(tmp_path), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
-        
+
         file_info = result_dict["matches"][0]
         assert "path" in file_info
         assert "name" in file_info
@@ -130,20 +131,20 @@ class TestFSSearchFiles:
         """Test that file sizes are correct."""
         test_file = tmp_path / "test.txt"
         test_file.write_text("Hello World")
-        
+
         result = Function.execute(str(tmp_path), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["matches"][0]["size"] == 11
 
     def test_execute_file_paths(self, tmp_path):
         """Test that file paths are correct."""
         (tmp_path / "test.txt").write_text("content")
-        
+
         result = Function.execute(str(tmp_path), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["matches"][0]["full_path"] == str(tmp_path / "test.txt")
 
@@ -152,10 +153,10 @@ class TestFSSearchFiles:
         subdir = tmp_path / "subdir"
         subdir.mkdir()
         (subdir / "test.txt").write_text("content")
-        
+
         result = Function.execute(str(tmp_path), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["matches"][0]["full_path"] == str(subdir / "test.txt")
 
@@ -163,10 +164,10 @@ class TestFSSearchFiles:
         """Test case-sensitive search."""
         (tmp_path / "file.txt").write_text("content1")
         (tmp_path / "File.txt").write_text("content2")
-        
+
         result = Function.execute(str(tmp_path), "file.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "file.txt" in file_names
@@ -176,10 +177,10 @@ class TestFSSearchFiles:
         (tmp_path / "file1.txt").write_text("content1")
         (tmp_path / "file2.txt").write_text("content2")
         (tmp_path / "file10.txt").write_text("content3")
-        
+
         result = Function.execute(str(tmp_path), "file?.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "file1.txt" in file_names
@@ -191,10 +192,10 @@ class TestFSSearchFiles:
         (tmp_path / "file1.txt").write_text("content1")
         (tmp_path / "file2.txt").write_text("content2")
         (tmp_path / "file3.txt").write_text("content3")
-        
+
         result = Function.execute(str(tmp_path), "file[12].txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "file1.txt" in file_names
@@ -205,10 +206,10 @@ class TestFSSearchFiles:
         """Test searching for hidden files."""
         (tmp_path / "normal.txt").write_text("content1")
         (tmp_path / ".hidden.txt").write_text("content2")
-        
+
         result = Function.execute(str(tmp_path), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "normal.txt" in file_names
@@ -218,10 +219,10 @@ class TestFSSearchFiles:
         """Test excluding hidden files."""
         (tmp_path / "normal.txt").write_text("content1")
         (tmp_path / ".hidden.txt").write_text("content2")
-        
+
         result = Function.execute(str(tmp_path), "*.txt", exclude_patterns=[".*"])
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "normal.txt" in file_names
@@ -231,21 +232,21 @@ class TestFSSearchFiles:
         """Test searching in an empty directory."""
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
-        
+
         result = Function.execute(str(empty_dir), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert len(result_dict["matches"]) == 0
 
     def test_execute_returns_json_string(self, tmp_path):
         """Test that execute returns a valid JSON string."""
         (tmp_path / "test.txt").write_text("content")
-        
+
         result = Function.execute(str(tmp_path), "*.txt")
-        
+
         assert isinstance(result, str)
-        
+
         result_dict = json.loads(result)
         assert isinstance(result_dict, dict)
 
@@ -253,10 +254,10 @@ class TestFSSearchFiles:
         """Test searching files with special characters."""
         (tmp_path / "file with spaces.txt").write_text("content1")
         (tmp_path / "file-with-dashes.txt").write_text("content2")
-        
+
         result = Function.execute(str(tmp_path), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "file with spaces.txt" in file_names
@@ -269,10 +270,10 @@ class TestFSSearchFiles:
         subdir.mkdir()
         (subdir / "file2.txt").write_text("content2")
         (subdir / "test.txt").write_text("content3")
-        
+
         result = Function.execute(str(tmp_path), "*.txt", exclude_patterns=["test*"])
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert "file1.txt" in file_names
@@ -284,10 +285,10 @@ class TestFSSearchFiles:
         (tmp_path / "file.txt").write_text("content")
         (tmp_path / "dir1").mkdir()
         (tmp_path / "dir2").mkdir()
-        
+
         result = Function.execute(str(tmp_path), "dir*")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         file_names = [f["name"] for f in result_dict["matches"]]
         assert len(file_names) == 0
@@ -298,10 +299,10 @@ class TestFSSearchFiles:
         (tmp_path / "file1.txt").write_text("content1")
         (tmp_path / "file2.py").write_text("content2")
         (tmp_path / "dir").mkdir()
-        
+
         result = Function.execute(str(tmp_path), "*")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert len(result_dict["matches"]) == 2
 
@@ -309,10 +310,10 @@ class TestFSSearchFiles:
         """Test max_results parameter."""
         for i in range(10):
             (tmp_path / f"file{i}.txt").write_text(f"content{i}")
-        
+
         result = Function.execute(str(tmp_path), "*.txt", max_results=5)
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert len(result_dict["matches"]) == 5
         assert result_dict["truncated"] is True
@@ -322,10 +323,10 @@ class TestFSSearchFiles:
         (tmp_path / "file1.txt").write_text("content1")
         (tmp_path / "file2.pyc").write_text("content2")
         (tmp_path / "test.txt").write_text("content3")
-        
+
         result = Function.execute(str(tmp_path), "*.txt", exclude_patterns=["test*"])
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["excluded_count"] >= 1
 
@@ -334,10 +335,10 @@ class TestFSSearchFiles:
         (tmp_path / "file1.txt").write_text("content1")
         (tmp_path / "file2.txt").write_text("content2")
         (tmp_path / "file3.py").write_text("content3")
-        
+
         result = Function.execute(str(tmp_path), "*.txt")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["total_scanned"] == 3
         assert result_dict["match_count"] == 2

@@ -1,4 +1,5 @@
 """Test fs_read_image function."""
+
 import base64
 import json
 
@@ -10,10 +11,10 @@ class TestFSReadImage:
         """Test reading a PNG image."""
         test_file = tmp_path / "test.png"
         test_file.write_bytes(self._create_png_header())
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["path"] == str(test_file)
         assert "base64" in result_dict
@@ -25,10 +26,10 @@ class TestFSReadImage:
         """Test reading a JPEG image."""
         test_file = tmp_path / "test.jpg"
         test_file.write_bytes(self._create_jpeg_header())
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["format"] == ".JPG"
 
@@ -36,10 +37,10 @@ class TestFSReadImage:
         """Test reading a GIF image."""
         test_file = tmp_path / "test.gif"
         test_file.write_bytes(b"GIF89a")
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["format"] == ".GIF"
 
@@ -47,10 +48,10 @@ class TestFSReadImage:
         """Test reading a BMP image."""
         test_file = tmp_path / "test.bmp"
         test_file.write_bytes(b"BM")
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["format"] == ".BMP"
 
@@ -58,10 +59,10 @@ class TestFSReadImage:
         """Test reading a WebP image."""
         test_file = tmp_path / "test.webp"
         test_file.write_bytes(b"RIFF....WEBP")
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["format"] == ".WEBP"
 
@@ -69,7 +70,7 @@ class TestFSReadImage:
         """Test reading a non-existent image file."""
         result = Function.execute("/nonexistent/image.png")
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is False
         assert "Image file does not exist" in result_dict["error"]
 
@@ -77,7 +78,7 @@ class TestFSReadImage:
         """Test reading when path is a directory."""
         result = Function.execute(str(tmp_path))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is False
         assert "Not a file" in result_dict["error"]
 
@@ -85,10 +86,10 @@ class TestFSReadImage:
         """Test reading a non-image file."""
         test_file = tmp_path / "test.txt"
         test_file.write_text("Not an image")
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is False
         assert "Unsupported format '.txt'" in result_dict["error"]
 
@@ -96,10 +97,10 @@ class TestFSReadImage:
         """Test reading an empty file."""
         test_file = tmp_path / "empty.png"
         test_file.write_bytes(b"")
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["base64"] == ""
         assert result_dict["size"] == 0
@@ -109,12 +110,12 @@ class TestFSReadImage:
         test_file = tmp_path / "test.png"
         original_data = self._create_png_header()
         test_file.write_bytes(original_data)
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
-        
+
         decoded_data = base64.b64decode(result_dict["base64"])
         assert decoded_data == original_data
 
@@ -123,10 +124,10 @@ class TestFSReadImage:
         test_file = tmp_path / "test.png"
         data = self._create_png_header()
         test_file.write_bytes(data)
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["size"] == len(data)
 
@@ -134,10 +135,10 @@ class TestFSReadImage:
         """Test that result has correct structure."""
         test_file = tmp_path / "test.png"
         test_file.write_bytes(self._create_png_header())
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert "path" in result_dict
         assert "base64" in result_dict
@@ -149,10 +150,10 @@ class TestFSReadImage:
         """Test that mime_type field is set correctly."""
         test_file = tmp_path / "test.png"
         test_file.write_bytes(self._create_png_header())
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["mime_type"] == "image/png"
 
@@ -161,10 +162,10 @@ class TestFSReadImage:
         test_file = tmp_path / "large.png"
         data = self._create_png_header() + b"\x00" * 10000
         test_file.write_bytes(data)
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["size"] == len(data)
 
@@ -172,11 +173,11 @@ class TestFSReadImage:
         """Test that execute returns a valid JSON string."""
         test_file = tmp_path / "test.png"
         test_file.write_bytes(self._create_png_header())
-        
+
         result = Function.execute(str(test_file))
-        
+
         assert isinstance(result, str)
-        
+
         result_dict = json.loads(result)
         assert isinstance(result_dict, dict)
 
@@ -184,10 +185,10 @@ class TestFSReadImage:
         """Test reading a TIFF image (not supported)."""
         test_file = tmp_path / "test.tif"
         test_file.write_bytes(b"II")
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is False
         assert "Unsupported format '.tif'" in result_dict["error"]
 
@@ -195,10 +196,10 @@ class TestFSReadImage:
         """Test reading a corrupted image file."""
         test_file = tmp_path / "corrupted.png"
         test_file.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 10)
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert result_dict["format"] == ".PNG"
 
@@ -206,10 +207,10 @@ class TestFSReadImage:
         """Test reading an image with wrong extension (should fail)."""
         test_file = tmp_path / "image.txt"
         test_file.write_bytes(self._create_png_header())
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is False
         assert "Unsupported format '.txt'" in result_dict["error"]
 
@@ -217,16 +218,21 @@ class TestFSReadImage:
         """Test that base64 data is a string."""
         test_file = tmp_path / "test.png"
         test_file.write_bytes(self._create_png_header())
-        
+
         result = Function.execute(str(test_file))
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert isinstance(result_dict["base64"], str)
 
     def _create_png_header(self):
         """Create a minimal PNG file header."""
-        return b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR" + b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde" + b"\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0\x00\x00\x00\x03\x00\x01\x00\x00\x00\x00IEND\xaeB`\x82"
+        return (
+            b"\x89PNG\r\n\x1a\n"
+            + b"\x00\x00\x00\rIHDR"
+            + b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
+            + b"\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0\x00\x00\x00\x03\x00\x01\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
 
     def _create_jpeg_header(self):
         """Create a minimal JPEG file header."""

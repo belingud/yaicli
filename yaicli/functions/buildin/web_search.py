@@ -42,9 +42,7 @@ class Function(OpenAISchema):
         title = "web_search"
 
     @classmethod
-    def execute(
-        cls, query: str, max_results: int = 10, region: str = "us-en", safesearch: str = "moderate"
-    ) -> str:
+    def execute(cls, query: str, max_results: int = 10, region: str = "us-en", safesearch: str = "moderate") -> str:
         """
         Search the web using DuckDuckGo and return results as JSON.
 
@@ -71,9 +69,7 @@ class Function(OpenAISchema):
             try:
                 from ddgs import DDGS
             except ImportError:
-                result["error"] = (
-                    "ddgs library not installed. Please install with: pip install -U ddgs"
-                )
+                result["error"] = "ddgs library not installed. Please install with: pip install -U ddgs"
                 return json.dumps(result, ensure_ascii=False, indent=2)
 
             # Perform search using new ddgs API

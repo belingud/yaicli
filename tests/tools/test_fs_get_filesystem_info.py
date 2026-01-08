@@ -1,4 +1,5 @@
 """Test fs_get_filesystem_info function."""
+
 import json
 from unittest.mock import patch
 
@@ -10,23 +11,23 @@ class TestFSGetFilesystemInfo:
         """Test getting filesystem info with default parameters."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert "system" in result_dict
         assert "disk_usage" in result_dict
-        
+
         assert "os" in result_dict["system"]
         assert "os_version" in result_dict["system"]
         assert "platform" in result_dict["system"]
         assert "architecture" in result_dict["system"]
-        
+
         assert isinstance(result_dict["disk_usage"], list)
 
     def test_execute_system_info(self):
         """Test getting system information."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert "system" in result_dict
         assert "os" in result_dict["system"]
@@ -40,11 +41,11 @@ class TestFSGetFilesystemInfo:
         """Test getting filesystem information."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert "disk_usage" in result_dict
         assert isinstance(result_dict["disk_usage"], list)
-        
+
         if len(result_dict["disk_usage"]) > 0:
             fs_info = result_dict["disk_usage"][0]
             assert "mount_point" in fs_info
@@ -57,7 +58,7 @@ class TestFSGetFilesystemInfo:
         """Test getting all information."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert "system" in result_dict
         assert "disk_usage" in result_dict
@@ -69,11 +70,11 @@ class TestFSGetFilesystemInfo:
         """Test getting filesystem info for a specific path."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert "disk_usage" in result_dict
         assert len(result_dict["disk_usage"]) >= 1
-        
+
         fs_info = result_dict["disk_usage"][0]
         assert "mount_point" in fs_info
 
@@ -81,9 +82,9 @@ class TestFSGetFilesystemInfo:
         """Test that system info has correct structure."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         system = result_dict["system"]
-        
+
         assert isinstance(system["os"], str)
         assert isinstance(system["os_version"], str)
         assert isinstance(system["platform"], str)
@@ -95,9 +96,9 @@ class TestFSGetFilesystemInfo:
         """Test that filesystem info has correct structure."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         filesystems = result_dict["disk_usage"]
-        
+
         for fs in filesystems:
             assert isinstance(fs["mount_point"], str)
             assert isinstance(fs["total"], int)
@@ -110,7 +111,7 @@ class TestFSGetFilesystemInfo:
         """Test filesystem info with a non-existent path."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert "disk_usage" in result_dict
 
@@ -118,19 +119,19 @@ class TestFSGetFilesystemInfo:
     def test_execute_disk_usage_error(self, mock_disk_usage):
         """Test handling of disk usage errors."""
         mock_disk_usage.side_effect = OSError("Permission denied")
-        
+
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert "disk_usage" in result_dict
 
     def test_execute_returns_json_string(self):
         """Test that execute returns a valid JSON string."""
         result = Function.execute()
-        
+
         assert isinstance(result, str)
-        
+
         result_dict = json.loads(result)
         assert isinstance(result_dict, dict)
 
@@ -138,11 +139,11 @@ class TestFSGetFilesystemInfo:
         """Test that multiple mountpoints are returned."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         filesystems = result_dict["disk_usage"]
-        
+
         assert len(filesystems) >= 1
-        
+
         mountpoints = [fs["mount_point"] for fs in filesystems]
         assert len(mountpoints) == len(set(mountpoints))
 
@@ -150,9 +151,9 @@ class TestFSGetFilesystemInfo:
         """Test that system info contains Python information."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         system = result_dict["system"]
-        
+
         assert "python_version" in system
         assert isinstance(system["python_version"], str)
 
@@ -160,7 +161,7 @@ class TestFSGetFilesystemInfo:
         """Test with empty path parameter."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         assert result_dict["success"] is True
         assert "disk_usage" in result_dict
 
@@ -168,9 +169,9 @@ class TestFSGetFilesystemInfo:
         """Test that filesystem info values are reasonable."""
         result = Function.execute()
         result_dict = json.loads(result)
-        
+
         filesystems = result_dict["disk_usage"]
-        
+
         for fs in filesystems:
             assert fs["total"] > 0
             assert fs["used"] >= 0

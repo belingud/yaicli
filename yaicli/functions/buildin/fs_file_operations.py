@@ -65,7 +65,9 @@ class Function(OpenAISchema):
                 if not destination:
                     result["error"] = "Destination path is required for 'move' operation"
                     return json.dumps(result, ensure_ascii=False, indent=2)
-                if any(path.startswith(dp) for dp in dangerous_paths) or any(destination.startswith(dp) for dp in dangerous_paths):
+                if any(path.startswith(dp) for dp in dangerous_paths) or any(
+                    destination.startswith(dp) for dp in dangerous_paths
+                ):
                     result["error"] = "Cannot move to/from system directories"
                     return json.dumps(result, ensure_ascii=False, indent=2)
                 result["destination"] = destination

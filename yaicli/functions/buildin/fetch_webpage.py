@@ -78,7 +78,7 @@ class Function(OpenAISchema):
     ) -> dict:
         """Get default headers for web requests."""
         ua = user_agent or Function._get_random_user_agent()
-        
+
         headers = {
             "User-Agent": ua,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -98,34 +98,34 @@ class Function(OpenAISchema):
             "Priority": "u=0, i",
             "Cache-Control": "no-cache",
         }
-        
+
         if referer:
             headers["Referer"] = referer
-        
+
         return headers
-    
+
     @staticmethod
     def _get_accept_language(language: Optional[str], url: Optional[str] = None) -> str:
         """Get Accept-Language header based on language preference or URL."""
         if language and language != "auto":
             return language
-        
+
         if url:
             domain = urlparse(url).netloc.lower()
-            
-            if any(tld in domain for tld in ['.cn', '.com.cn', '.net.cn', '.org.cn']):
+
+            if any(tld in domain for tld in [".cn", ".com.cn", ".net.cn", ".org.cn"]):
                 return "zh-CN,zh;q=0.9,en;q=0.8"
-            elif any(tld in domain for tld in ['.jp', '.co.jp']):
+            elif any(tld in domain for tld in [".jp", ".co.jp"]):
                 return "ja-JP,ja;q=0.9,en;q=0.8"
-            elif any(tld in domain for tld in ['.kr', '.co.kr']):
+            elif any(tld in domain for tld in [".kr", ".co.kr"]):
                 return "ko-KR,ko;q=0.9,en;q=0.8"
-            elif any(tld in domain for tld in ['.de', '.at', '.ch']):
+            elif any(tld in domain for tld in [".de", ".at", ".ch"]):
                 return "de-DE,de;q=0.9,en;q=0.8"
-            elif any(tld in domain for tld in ['.fr', '.be']):
+            elif any(tld in domain for tld in [".fr", ".be"]):
                 return "fr-FR,fr;q=0.9,en;q=0.8"
-            elif any(tld in domain for tld in ['.es', '.ar', '.mx']):
+            elif any(tld in domain for tld in [".es", ".ar", ".mx"]):
                 return "es-ES,es;q=0.9,en;q=0.8"
-        
+
         return "zh-CN,zh;q=0.9,en;q=0.8"
 
     @classmethod
@@ -144,7 +144,7 @@ class Function(OpenAISchema):
     ):
         """execute the function"""
         headers = cls._get_default_headers(user_agent, language, referer, url)
-        
+
         if use_trafilatura:
             return cls._fetch_with_trafilatura(
                 url=url,
@@ -154,7 +154,7 @@ class Function(OpenAISchema):
                 follow_redirects=follow_redirects,
                 headers=headers,
             )
-        
+
         return cls._fetch_with_httpx(
             url=url,
             timeout=timeout,
@@ -178,7 +178,7 @@ class Function(OpenAISchema):
     ) -> str:
         """Fetch webpage using httpx with retry logic."""
         last_error = None
-        
+
         for attempt in range(max_retries):
             try:
                 with httpx.Client(
@@ -188,14 +188,14 @@ class Function(OpenAISchema):
                     cookies=cookies,
                 ) as client:
                     response = client.get(url, headers=headers)
-                    
+
                     if response.status_code == 200:
                         return response.text
                     elif response.status_code in [301, 302, 303, 307, 308]:
                         continue
                     else:
                         return f"Failed to fetch {url}: HTTP {response.status_code} - {response.reason_phrase}"
-                        
+
             except httpx.TimeoutException as e:
                 last_error = f"Timeout error: {str(e)}"
                 if attempt < max_retries - 1:
@@ -216,7 +216,7 @@ class Function(OpenAISchema):
                 if attempt < max_retries - 1:
                     time.sleep(1 * (attempt + 1))
                     continue
-        
+
         return f"Failed to fetch {url} after {max_retries} attempts. Last error: {last_error}"
 
     @classmethod
@@ -234,9 +234,9 @@ class Function(OpenAISchema):
             import trafilatura
         except ImportError:
             return "trafilatura is not installed. Falling back to httpx."
-        
+
         last_error = None
-        
+
         for attempt in range(max_retries):
             try:
                 downloaded = trafilatura.fetch_url(
@@ -244,20 +244,20 @@ class Function(OpenAISchema):
                     no_ssl=not verify_ssl,
                     timeout=timeout,
                 )
-                
+
                 if downloaded:
                     content = trafilatura.extract(downloaded)
                     if content:
                         return content
-                
+
                 if attempt < max_retries - 1:
                     time.sleep(1 * (attempt + 1))
                     continue
-                    
+
             except Exception as e:
                 last_error = str(e)
                 if attempt < max_retries - 1:
                     time.sleep(1 * (attempt + 1))
                     continue
-        
+
         return f"Failed to extract content from {url} after {max_retries} attempts. Last error: {last_error}"
