@@ -54,6 +54,7 @@ keywords = [
 ]
 dependencies = [
     "click>=8.1.8",
+    "ddgs>=9.6.1",
     "distro>=1.9.0",
     "fastmcp>=2.10.1",
     "httpx>=0.28.1",
@@ -63,6 +64,7 @@ dependencies = [
     "prompt-toolkit>=3.0.50",
     "rich>=13.9.4",
     "socksio>=1.0.0",
+    "trafilatura>=1.6.1",
     "typer>=0.16.0",
 ]
 [project.urls]
