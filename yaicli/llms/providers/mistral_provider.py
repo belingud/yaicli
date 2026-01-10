@@ -89,6 +89,15 @@ class MistralProvider(Provider):
             params["tools"] = tools
             params["tool_choice"] = "auto"
             params["parallel_tool_calls"] = False
+
+        # Apply exclude params filtering
+        params = Provider.filter_excluded_params(
+            params,
+            self.config,
+            verbose=self.verbose,
+            console=self.console,
+        )
+
         return params
 
     def completion(self, messages: List[ChatMessage], stream: bool = False) -> Generator[LLMResponse, None, None]:

@@ -95,6 +95,14 @@ class OllamaProvider(Provider):
             if self.config.get(k, None) is not None:
                 options[v] = self.config[k]
 
+        # Apply exclude params filtering to options
+        options = Provider.filter_excluded_params(
+            options,
+            self.config,
+            verbose=self.verbose,
+            console=self.console,
+        )
+
         # Prepare parameters
         params = {
             "model": self.config.get("MODEL", "llama3"),

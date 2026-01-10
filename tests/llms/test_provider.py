@@ -39,6 +39,173 @@ class TestProvider:
         assert isinstance(provider, Provider)
 
 
+class TestFilterExcludedParams:
+    """Test the filter_excluded_params static method"""
+
+    def test_empty_exclude_params_returns_original(self):
+        """Test that empty EXCLUDE_PARAMS returns original params"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": ""}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == params
+
+    def test_none_exclude_params_returns_original(self):
+        """Test that None EXCLUDE_PARAMS returns original params"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+        config = {}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == params
+
+    def test_whitespace_only_exclude_params_returns_original(self):
+        """Test that whitespace-only EXCLUDE_PARAMS returns original params"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": "   "}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == params
+
+    def test_single_param_exclusion(self):
+        """Test excluding a single parameter"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": "temperature"}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == {"top_p": 1.0, "model": "gpt-4"}
+        assert "temperature" not in result
+
+    def test_multiple_params_exclusion(self):
+        """Test excluding multiple parameters"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4", "max_tokens": 1024}
+        config = {"EXCLUDE_PARAMS": "temperature,top_p"}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == {"model": "gpt-4", "max_tokens": 1024}
+        assert "temperature" not in result
+        assert "top_p" not in result
+
+    def test_case_insensitive_matching(self):
+        """Test that parameter matching is case-insensitive"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": "Temperature,TOP_P"}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == {"model": "gpt-4"}
+        assert "temperature" not in result
+        assert "top_p" not in result
+
+    def test_whitespace_handling(self):
+        """Test that whitespace in EXCLUDE_PARAMS is handled correctly"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": " temperature , top_p , "}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == {"model": "gpt-4"}
+        assert "temperature" not in result
+        assert "top_p" not in result
+
+    def test_nonexistent_params_silently_ignored(self):
+        """Test that excluding non-existent parameters doesn't cause errors"""
+        params = {"temperature": 0.5, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": "nonexistent,temperature"}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == {"model": "gpt-4"}
+        assert "temperature" not in result
+
+    def test_all_params_excluded(self):
+        """Test excluding all parameters returns empty dict"""
+        params = {"temperature": 0.5, "top_p": 1.0}
+        config = {"EXCLUDE_PARAMS": "temperature,top_p"}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == {}
+
+    def test_empty_params_dict(self):
+        """Test with empty params dict"""
+        params = {}
+        config = {"EXCLUDE_PARAMS": "temperature"}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == {}
+
+    def test_verbose_logging_enabled(self):
+        """Test that verbose logging prints excluded parameters"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": "temperature,top_p"}
+        mock_console = MagicMock()
+
+        result = Provider.filter_excluded_params(params, config, verbose=True, console=mock_console)
+
+        assert result == {"model": "gpt-4"}
+        mock_console.print.assert_called_once()
+        call_args = mock_console.print.call_args
+        assert "temperature" in call_args[0][0]
+        assert "top_p" in call_args[0][0]
+
+    def test_verbose_logging_disabled(self):
+        """Test that verbose=False does not log"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": "temperature"}
+        mock_console = MagicMock()
+
+        result = Provider.filter_excluded_params(params, config, verbose=False, console=mock_console)
+
+        assert result == {"top_p": 1.0, "model": "gpt-4"}
+        mock_console.print.assert_not_called()
+
+    def test_no_console_no_error(self):
+        """Test that not providing console doesn't cause errors"""
+        params = {"temperature": 0.5, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": "temperature"}
+
+        result = Provider.filter_excluded_params(params, config, verbose=True, console=None)
+
+        assert result == {"model": "gpt-4"}
+
+    def test_no_params_excluded_no_logging(self):
+        """Test that no logging when nothing is excluded"""
+        params = {"model": "gpt-4", "max_tokens": 1024}
+        config = {"EXCLUDE_PARAMS": "temperature,top_p"}
+        mock_console = MagicMock()
+
+        result = Provider.filter_excluded_params(params, config, verbose=True, console=mock_console)
+
+        assert result == {"model": "gpt-4", "max_tokens": 1024}
+        # Should not log if nothing was actually excluded
+        mock_console.print.assert_not_called()
+
+    def test_special_characters_in_param_names(self):
+        """Test handling of special characters in parameter names"""
+        params = {"temperature": 0.5, "max_tokens": 1024, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": "max_tokens"}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == {"temperature": 0.5, "model": "gpt-4"}
+        assert "max_tokens" not in result
+
+    def test_comma_separated_with_empty_elements(self):
+        """Test that empty elements from comma separation are ignored"""
+        params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+        config = {"EXCLUDE_PARAMS": "temperature,,top_p,"}
+
+        result = Provider.filter_excluded_params(params, config)
+
+        assert result == {"model": "gpt-4"}
+
+
 class TestProviderFactory:
     """Test the ProviderFactory class"""
 

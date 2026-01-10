@@ -72,6 +72,15 @@ class GeminiProvider(Provider):
             # TODO: support disable automatic function calling
             # config.automatic_function_calling = types.AutomaticFunctionCallingConfig(disable=False)
             config_map["tools"] = self.gen_gemini_functions()
+
+        # Apply exclude params filtering
+        config_map = Provider.filter_excluded_params(
+            config_map,
+            self.config,
+            verbose=self.verbose,
+            console=self.console,
+        )
+
         config = types.GenerateContentConfig(**config_map)
         return config
 

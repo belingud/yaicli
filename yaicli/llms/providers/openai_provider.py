@@ -92,6 +92,15 @@ class OpenAIProvider(Provider):
         for api_key, config_key in params_keys.items():
             if self.config.get(config_key, None) is not None and self.config[config_key] != "":
                 completion_params[api_key] = self.config[config_key]
+
+        # Apply exclude params filtering
+        completion_params = Provider.filter_excluded_params(
+            completion_params,
+            self.config,
+            verbose=self.verbose,
+            console=self.console,
+        )
+
         return completion_params
 
     def get_tools(self) -> List[dict]:

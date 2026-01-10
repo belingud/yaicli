@@ -76,6 +76,7 @@ DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium", "default", "
 DEFAULT_ENABLE_MCP: BOOL_STR = "false"
 DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
 DEFAULT_MAX_TOOL_CALL_DEPTH: int = 8
+DEFAULT_EXCLUDE_PARAMS: str = ""  # Empty by default
 
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.
@@ -163,6 +164,7 @@ DEFAULT_CONFIG_MAP = {
     "ENABLE_MCP": {"value": DEFAULT_ENABLE_MCP, "env_key": "YAI_ENABLE_MCP", "type": bool},
     "SHOW_MCP_OUTPUT": {"value": DEFAULT_SHOW_MCP_OUTPUT, "env_key": "YAI_SHOW_MCP_OUTPUT", "type": bool},
     "MAX_TOOL_CALL_DEPTH": {"value": DEFAULT_MAX_TOOL_CALL_DEPTH, "env_key": "YAI_MAX_TOOL_CALL_DEPTH", "type": int},
+    "EXCLUDE_PARAMS": {"value": DEFAULT_EXCLUDE_PARAMS, "env_key": "YAI_EXCLUDE_PARAMS", "type": str},
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
@@ -226,4 +228,8 @@ SHOW_MCP_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_MCP_OUTPUT"]["value"]}
 
 # Maximum number of tool calls to make in a single request
 MAX_TOOL_CALL_DEPTH={DEFAULT_CONFIG_MAP["MAX_TOOL_CALL_DEPTH"]["value"]}
+
+# Comma-separated list of API parameters to exclude from requests
+# Example: temperature,top_p,frequency_penalty
+EXCLUDE_PARAMS=
 """

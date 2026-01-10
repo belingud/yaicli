@@ -256,6 +256,14 @@ class CohereProvider(Provider):
         if tools:
             request_params["tools"] = tools
 
+        # Apply exclude params filtering
+        request_params = Provider.filter_excluded_params(
+            request_params,
+            self.config,
+            verbose=self.verbose,
+            console=self.console,
+        )
+
         # Call Cohere API
         try:
             if stream:
