@@ -1,5 +1,26 @@
 
 ---
+## [0.9.0](https://github.com/belingud/yaicli/compare/v0.8.12..v0.9.0) - 2026-01-10
+
+### ⛰️  Features
+
+- add EXCLUDE_PARAMS configuration option - ([d36ce77](https://github.com/belingud/yaicli/commit/d36ce774406b37cef7767a70329df4185256fa51)) - Belingud
+
+### 📚 Documentation
+
+- add implementation plan for EXCLUDE_PARAMS feature - ([ac3f743](https://github.com/belingud/yaicli/commit/ac3f743220f9ed8f602510ef6748473ec639e84c)) - Belingud
+- add changelog entries for v0.8.12 and v0.8.11 - ([94c09e6](https://github.com/belingud/yaicli/commit/94c09e6f766efb31a61867b1869bd2d6f3b80a54)) - Belingud
+
+### 🎨 Styling
+
+- format py files - ([6a6cea8](https://github.com/belingud/yaicli/commit/6a6cea8467cb9a95e5e8fe1a70d41c8741e6384d)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update uv sync command to include all groups and extras - ([c025d72](https://github.com/belingud/yaicli/commit/c025d72e87bd9bf7c3ab63112a359e1dce1d1b24)) - Belingud
+
+
+---
 ## [0.8.12](https://github.com/belingud/yaicli/compare/v0.8.11..v0.8.12) - 2026-01-08
 
 ### ⛰️  Features
