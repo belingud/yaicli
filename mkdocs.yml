@@ -35,6 +35,7 @@ nav:
   - Installation: install.md
   - Usage:
       - Command Overview: usage/commands.md
+      - File Context Management: usage/context.md
       - Configuration Guide: usage/configuration.md
       - Mode Switching (Chat / Execute): usage/modes.md
       - CLI Shortcuts & Hotkeys: usage/cli.md
