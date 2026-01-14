@@ -45,7 +45,11 @@ class AtPathCompleter(Completer):
         ]:
             if text.startswith(cmd):
                 partial_path = text[len(cmd) :]
-                yield from self._generate_path_completions(partial_path, start_offset=-len(partial_path))
+                partial_path = text[len(cmd) :]
+                if partial_path.startswith("@"):
+                    yield from self._generate_path_completions(partial_path[1:], start_offset=-len(partial_path) + 1)
+                else:
+                    yield from self._generate_path_completions(partial_path, start_offset=-len(partial_path))
                 return
 
     def _get_at_completions(self, document: Document) -> Iterable[Completion]:
