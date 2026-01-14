@@ -32,6 +32,8 @@ CMD_SAVE_CHAT = "/save"
 CMD_LOAD_CHAT = "/load"
 CMD_LIST_CHATS = "/list"
 CMD_DELETE_CHAT = "/del"
+CMD_CONTEXT = ("/context", "/ctx")
+CMD_ADD = "/add"
 CMD_HELP = ("/help", "?")
 
 EXEC_MODE = "exec"

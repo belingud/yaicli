@@ -1,6 +1,7 @@
 """Command handler for processing special commands in YAICLI."""
 
 import subprocess
+import shlex
 from typing import Union
 
 from rich.markdown import Markdown
@@ -9,7 +10,9 @@ from rich.padding import Padding
 from .config import cfg
 from .const import (
     CHAT_MODE,
+    CMD_ADD,
     CMD_CLEAR,
+    CMD_CONTEXT,
     CMD_DELETE_CHAT,
     CMD_EXIT,
     CMD_HELP,
@@ -46,7 +49,82 @@ class CmdHandler:
             CMD_LOAD_CHAT: self.handle_load,
             CMD_DELETE_CHAT: self.handle_delete,
             CMD_MODE: self.handle_mode,
+            CMD_ADD: self.handle_add_context,
+            CMD_CONTEXT[0] if isinstance(CMD_CONTEXT, tuple) else CMD_CONTEXT: self.handle_context,
+            "/ctx": self.handle_context,
         }
+
+    def handle_add_context(self, command_input: str) -> bool:
+        """Handle /add command to add file/dir to context.
+
+        Args:
+            command_input: "/add path/to/file"
+
+        Returns:
+            True to continue REPL
+        """
+        try:
+            parts = shlex.split(command_input)
+        except ValueError as e:
+            self.cli.console.print(f"Error parsing command: {e}", style="red")
+            return True
+
+        if len(parts) < 2:
+            self.cli.console.print(f"Usage: {CMD_ADD} <path>", style="yellow")
+            return True
+
+        path = parts[1]
+        if path.startswith("@"):
+            path = path[1:]
+        if self.cli.verbose:
+            self.cli.console.print(f"[dim][DEBUG] Adding context: {path}[/dim]")
+        self.cli.context_manager.add(path)
+        return True
+
+    def handle_context(self, command_input: str) -> bool:
+        """Handle /context (or /ctx) command.
+
+        Subcommands:
+            list: List context items
+            clear: Clear context
+            remove <path>: Remove item from context
+            add <path>: Add item (same as /add)
+
+        Args:
+            command_input: "/context <subcmd> [args]"
+        """
+        try:
+            parts = shlex.split(command_input)
+        except ValueError as e:
+            self.cli.console.print(f"Error parsing command: {e}", style="red")
+            return True
+
+        if len(parts) < 2:
+            # Default to list if no subcommand
+            self.cli.context_manager.list_items()
+            return True
+
+        subcmd = parts[1].lower()
+
+        if subcmd == "list":
+            self.cli.context_manager.list_items()
+        elif subcmd == "clear":
+            self.cli.context_manager.clear()
+        elif subcmd == "add":
+            if len(parts) < 3:
+                self.cli.console.print("Usage: /context add <path>", style="yellow")
+            else:
+                self.cli.context_manager.add(parts[2])
+        elif subcmd in ("remove", "rm", "delete", "del"):
+            if len(parts) < 3:
+                self.cli.console.print("Usage: /context remove <path>", style="yellow")
+            else:
+                self.cli.context_manager.remove(parts[2])
+        else:
+            self.cli.console.print(f"Unknown sub-command: {subcmd}", style="yellow")
+            self.cli.console.print("Available: list, clear, add, remove", style="dim")
+
+        return True
 
     def handle_command(self, user_input: str) -> Union[bool, str]:
         """Handle special command return: True-continue loop, False-exit loop, str-non-special command
@@ -70,13 +148,16 @@ class CmdHandler:
         if lower_input in self.commands:
             return self.commands[lower_input]()
 
-        # Check for commands with parameters (save, load, delete, mode)
+        # Check for commands with parameters (save, load, delete, mode, add, context)
         for cmd_prefix, handler in self.commands.items():
             if lower_input.startswith(cmd_prefix) and cmd_prefix in (
                 CMD_SAVE_CHAT,
                 CMD_LOAD_CHAT,
                 CMD_DELETE_CHAT,
                 CMD_MODE,
+                CMD_ADD,
+                CMD_CONTEXT[0] if isinstance(CMD_CONTEXT, tuple) else CMD_CONTEXT,
+                "/ctx",  # Also handle the /ctx alias
             ):
                 return handler(user_input)
 
