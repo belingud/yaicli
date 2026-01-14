@@ -452,7 +452,7 @@ class CLI:
         self.console.print(f"{load_cmd:<19}: Load a saved chat")
         delete_cmd = f"{CMD_DELETE_CHAT} <index>"
         self.console.print(f"{delete_cmd:<19}: Delete a saved chat")
-        self.console.print(f"{'/add <path>':<19}: Add file/dir to context")
+        self.console.print(f"{'/add <path>':<19}: Add @file/dir to context")
         self.console.print(f"{'/context, /ctx':<19}: Manage context (list, add, remove, clear)")
         self.console.print("[dim]  Tip: Type '@' for path completion, use Tab/arrows to select[/dim]")
         self.console.print(f"{'!<command>':<19}: Execute shell command directly (e.g., !ls -al)")
