@@ -54,7 +54,7 @@ class CmdHandler:
             "/ctx": self.handle_context,
         }
 
-    def handle_add_context(self, command_input: str) -> bool:
+    def handle_add_context(self, command_input: str = "") -> bool:
         """Handle /add command to add file/dir to context.
 
         Args:
@@ -81,7 +81,7 @@ class CmdHandler:
         self.cli.context_manager.add(path)
         return True
 
-    def handle_context(self, command_input: str) -> bool:
+    def handle_context(self, command_input: str = "") -> bool:
         """Handle /context (or /ctx) command.
 
         Subcommands:
@@ -100,6 +100,8 @@ class CmdHandler:
             return True
 
         if len(parts) < 2:
+            self.cli.console.print("Usage: /context <subcommand> [args]", style="yellow")
+            self.cli.console.print("Subcommands: list, clear, add <path>, remove <path>", style="dim")
             # Default to list if no subcommand
             self.cli.context_manager.list_items()
             return True
@@ -296,7 +298,7 @@ class CmdHandler:
             self.cli._list_chats()
         return True
 
-    def handle_mode(self, command_input: str) -> bool:
+    def handle_mode(self, command_input: str = "") -> bool:
         """Switch between chat and exec modes.
 
         Args:
