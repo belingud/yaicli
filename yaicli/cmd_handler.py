@@ -116,7 +116,10 @@ class CmdHandler:
             if len(parts) < 3:
                 self.cli.console.print("Usage: /context add <path>", style="yellow")
             else:
-                self.cli.context_manager.add(parts[2])
+                path = parts[2]
+                if path.startswith("@"):
+                    path = path[1:]
+                self.cli.context_manager.add(path)
         elif subcmd in ("remove", "rm", "delete", "del"):
             if len(parts) < 3:
                 self.cli.console.print("Usage: /context remove <path>", style="yellow")
