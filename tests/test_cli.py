@@ -564,6 +564,38 @@ class TestAPIInteraction:
         assert len(cli.chat.history) == initial_history_len
 
 
+class TestMessageFiltering:
+    """Test message filtering in CLI."""
+
+    @patch("yaicli.cli.CLI._handle_llm_response")
+    def test_process_user_input_filters_system_messages(self, mock_handle_llm, cli_with_mocks):
+        """Test that system messages are filtered out from history."""
+        cli = cli_with_mocks
+        from yaicli.schemas import ChatMessage
+
+        # Mock updated_messages containing system, user, assistant messages
+        mock_messages = [
+            ChatMessage(role="system", content="System Prompt"),
+            ChatMessage(role="system", content="Context File 1"),
+            ChatMessage(role="user", content="User Question"),
+            ChatMessage(role="system", content="@Reference File"),  # Should be filtered
+            ChatMessage(role="assistant", content="Assistant Answer"),
+        ]
+
+        # Mock handle_response to return these messages
+        mock_handle_llm.return_value = ("Answer", mock_messages)
+
+        # Call process_user_input
+        cli._process_user_input("User Question")
+
+        # Verify history filters out all "system" roles
+        assert len(cli.chat.history) == 2
+        assert cli.chat.history[0].role == "user"
+        assert cli.chat.history[0].content == "User Question"
+        assert cli.chat.history[1].role == "assistant"
+        assert cli.chat.history[1].content == "Assistant Answer"
+
+
 class TestCommandExecution:
     """Test command execution functionality."""
 

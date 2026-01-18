@@ -129,6 +129,104 @@ When in interactive chat or shell mode, you can use these special commands:
 | `/del <index>` | Delete a saved chat |
 | `/exit` | Exit the application |
 | `/mode chat\|exec` | Switch between chat and execute modes |
+| `/add <path>` | Add file or directory to context |
+| `/context <subcmd>` | Manage context (alias: `/ctx`) |
+
+#### Context Management Commands
+
+The `/add` and `/context` commands help you manage files and directories in the conversation context:
+
+| Command | Description |
+|---------|-------------|
+| `/add <path>` | Add a file or directory to the persistent context |
+| `/context list` or `/ctx list` | List all items in current context |
+| `/context clear` or `/ctx clear` | Remove all items from context |
+| `/context add <path>` | Add item to context (same as `/add`) |
+| `/context remove <path>` or `/ctx remove <path>` | Remove specific item from context |
+
+**Context Features:**
+
+- **Persistent**: Items added with `/add` stay in context for the entire session
+- **Smart reading**: Files are read and formatted for AI consumption
+- **Directory support**: Directories are scanned recursively (2 levels deep by default)
+- **Auto-ignores**: Skips `.git`, `node_modules`, `__pycache__`, `.venv`, etc.
+- **Flexible matching**: Use partial paths or filenames for removal
+
+**Example:**
+
+```bash
+💬 > /add src/main.py
+Added file to context: /path/to/src/main.py
+
+💬 > /add tests/
+Added directory to context: /path/to/tests/
+
+💬 > /context list
+┏━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Type   ┃ Path                          ┃
+┡━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ FILE   │ src/main.py                   │
+│ DIR    │ tests/                        │
+└────────┴───────────────────────────────┘
+
+💬 > /context remove main.py
+Removed from context: /path/to/src/main.py
+
+💬 > /ctx clear
+Context cleared.
+```
+
+### @ File References
+
+In addition to persistent context, you can temporarily reference files using the `@` symbol directly in your queries:
+
+**Syntax:**
+
+```bash
+# Single file reference
+@filename
+
+# Multiple files
+@file1.py @file2.py
+
+# Paths with spaces (use quotes)
+@"my document.txt"
+@'path with spaces/file.md'
+```
+
+**How it works:**
+
+1. Type `@` followed by a file path
+2. Press `Tab` for auto-completion and file browser
+3. Use arrow keys to select files
+4. The file content is automatically included in that message only
+5. References are replaced with filenames in the final message
+
+**Example:**
+
+```bash
+# Quick file analysis
+💬 > @README.md Summarize this project
+
+# Compare files
+💬 > @config.json @config.example.json What changed?
+
+# Use with quotes for spaces
+💬 > @"my notes.txt" Create a todo list from these notes
+
+# Path completion
+💬 > @src/ma[Tab]
+# Shows: src/main.py, src/math.py, etc.
+```
+
+**Differences from `/add`:**
+
+| Feature | `/add` | `@` reference |
+|---------|--------|---------------|
+| Duration | Entire session | Single message only |
+| Storage | Persistent context | Temporary inclusion |
+| Best for | Codebases you'll discuss repeatedly | Quick one-time file checks |
+| Management | Manual add/remove | Automatic per message |
 
 ## Keyboard Shortcuts
 

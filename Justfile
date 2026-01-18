@@ -3,6 +3,7 @@
 help:
     @just -l
 
+# Sync all packages
 sync:
     @echo "Syncing dependencies..."
     @uv sync --all-groups --all-extras

@@ -668,6 +668,8 @@ ai --code "Write a Python function to sort a list"
 
 # Analyze code from a file
 cat app.py | ai "Explain what this code does"
+# or use @
+ai '@Justfile What does this file do'
 
 # Debug with verbose mode
 ai --verbose "Explain quantum computing"
@@ -690,6 +692,8 @@ ai --verbose "Explain quantum computing"
 - `/del <index>` - Delete a saved chat
 - `/exit` - Exit the application
 - `/mode chat|exec` - Switch modes
+- `/add <path>` - Add file/dir to context
+- `/context|/ctx` - Manage context (list, add, remove, clear)
 
 **Keyboard Shortcuts**
 
@@ -810,6 +814,50 @@ cat demo.py | ai "Explain this code"
 ```bash
 cat error.log | ai "Why am I getting these errors in my Python app?"
 ```
+
+### File Context
+
+YAICLI supports adding files and directories to the conversation context for better understanding of your codebase.
+
+**Temporary @ References**
+
+Use `@` to reference files in your query:
+
+```bash
+# Reference a single file
+ai '@README.md What is this project about?'
+
+# Reference multiple files
+ai '@src/main.py @config.yaml Explain the architecture'
+
+# Use quotes for paths with spaces
+ai @"my document.txt" Summarize this
+```
+
+**Persistent Context**
+
+Add files/directories to context for the entire session:
+
+```bash
+ai --chat
+💬 > /add src/
+💬 > /context list
+# Shows all files in context
+
+💬 > Explain the codebase structure
+# AI can now see all files in src/
+
+💬 > /context remove src/
+💬 > /context clear
+# Remove or clear context
+```
+
+**Features**
+
+- Auto-completion: Type `@` and press `Tab` to browse files
+- Smart ignores: Automatically skips `.git`, `node_modules`, `__pycache__`, etc.
+- Directory support: Add entire directories (2-level depth by default)
+- Path flexibility: Use relative or absolute paths
 
 ## 📱 Examples
 
@@ -941,6 +989,22 @@ $ ai --code "write a fib generator" --model deepseek-r1
 To use function call, you need to install default functions by `ai --install-functions`.
 After that, you can check the functions by `ai --list-functions`.
 You can also define your own functions by adding them to the config folder in `~/.config/yaicli/functions/` (`C:\Users\<user>\.config\yaicli\functions` on Windows).
+
+```shell
+❯ ai --list-functions
+/Users/xxx/.config/yaicli/functions/fs_file_operations.py
+/Users/xxx/.config/yaicli/functions/fs_list_directory.py
+/Users/xxx/.config/yaicli/functions/fs_read_file.py
+/Users/xxx/.config/yaicli/functions/fs_write_file.py
+/Users/xxx/.config/yaicli/functions/fs_search_files.py
+/Users/xxx/.config/yaicli/functions/fetch_webpage.py
+/Users/xxx/.config/yaicli/functions/get_weather.py
+/Users/xxx/.config/yaicli/functions/fs_edit_file.py
+/Users/xxx/.config/yaicli/functions/fs_get_filesystem_info.py
+/Users/xxx/.config/yaicli/functions/web_search.py
+/Users/xxx/.config/yaicli/functions/fs_read_image.py
+/Users/xxx/.config/yaicli/functions/execute_shell_command.py
+```
 
 `--enable-functions` option is corresponds to the configuration key `ENABLE_FUNCTIONS`.
 
