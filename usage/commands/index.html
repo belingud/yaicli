@@ -16,7 +16,7 @@
         <link rel="prev" href="../../install/">
       
       
-        <link rel="next" href="../configuration/">
+        <link rel="next" href="../context/">
       
       
       <link rel="icon" href="../../assets/artwork/logo.png">
@@ -342,6 +342,8 @@
       
         
       
+        
+      
     
     
     
@@ -541,6 +543,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Interactive Mode Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#context-management-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context Management Commands
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      @ File References
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -565,6 +591,29 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    File Context Management
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1844,6 +1893,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Interactive Mode Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#context-management-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context Management Commands
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      @ File References
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2200,6 +2273,142 @@ ai<span class="w"> </span>--verbose<span class="w"> </span><span class="s2">&quo
 <tr>
 <td><code>/mode chat\|exec</code></td>
 <td>Switch between chat and execute modes</td>
+</tr>
+<tr>
+<td><code>/add &lt;path&gt;</code></td>
+<td>Add file or directory to context</td>
+</tr>
+<tr>
+<td><code>/context &lt;subcmd&gt;</code></td>
+<td>Manage context (alias: <code>/ctx</code>)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="context-management-commands">Context Management Commands<a class="headerlink" href="#context-management-commands" title="Permanent link">&para;</a></h4>
+<p>The <code>/add</code> and <code>/context</code> commands help you manage files and directories in the conversation context:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/add &lt;path&gt;</code></td>
+<td>Add a file or directory to the persistent context</td>
+</tr>
+<tr>
+<td><code>/context list</code> or <code>/ctx list</code></td>
+<td>List all items in current context</td>
+</tr>
+<tr>
+<td><code>/context clear</code> or <code>/ctx clear</code></td>
+<td>Remove all items from context</td>
+</tr>
+<tr>
+<td><code>/context add &lt;path&gt;</code></td>
+<td>Add item to context (same as <code>/add</code>)</td>
+</tr>
+<tr>
+<td><code>/context remove &lt;path&gt;</code> or <code>/ctx remove &lt;path&gt;</code></td>
+<td>Remove specific item from context</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Context Features:</strong></p>
+<ul>
+<li><strong>Persistent</strong>: Items added with <code>/add</code> stay in context for the entire session</li>
+<li><strong>Smart reading</strong>: Files are read and formatted for AI consumption</li>
+<li><strong>Directory support</strong>: Directories are scanned recursively (2 levels deep by default)</li>
+<li><strong>Auto-ignores</strong>: Skips <code>.git</code>, <code>node_modules</code>, <code>__pycache__</code>, <code>.venv</code>, etc.</li>
+<li><strong>Flexible matching</strong>: Use partial paths or filenames for removal</li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>/add<span class="w"> </span>src/main.py
+Added<span class="w"> </span>file<span class="w"> </span>to<span class="w"> </span>context:<span class="w"> </span>/path/to/src/main.py
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>/add<span class="w"> </span>tests/
+Added<span class="w"> </span>directory<span class="w"> </span>to<span class="w"> </span>context:<span class="w"> </span>/path/to/tests/
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>/context<span class="w"> </span>list
+┏━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃<span class="w"> </span>Type<span class="w">   </span>┃<span class="w"> </span>Path<span class="w">                          </span>┃
+┡━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│<span class="w"> </span>FILE<span class="w">   </span>│<span class="w"> </span>src/main.py<span class="w">                   </span>│
+│<span class="w"> </span>DIR<span class="w">    </span>│<span class="w"> </span>tests/<span class="w">                        </span>│
+└────────┴───────────────────────────────┘
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>/context<span class="w"> </span>remove<span class="w"> </span>main.py
+Removed<span class="w"> </span>from<span class="w"> </span>context:<span class="w"> </span>/path/to/src/main.py
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>/ctx<span class="w"> </span>clear
+Context<span class="w"> </span>cleared.
+</code></pre></div>
+<h3 id="file-references">@ File References<a class="headerlink" href="#file-references" title="Permanent link">&para;</a></h3>
+<p>In addition to persistent context, you can temporarily reference files using the <code>@</code> symbol directly in your queries:</p>
+<p><strong>Syntax:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Single file reference</span>
+@filename
+
+<span class="c1"># Multiple files</span>
+@file1.py<span class="w"> </span>@file2.py
+
+<span class="c1"># Paths with spaces (use quotes)</span>
+@<span class="s2">&quot;my document.txt&quot;</span>
+@<span class="s1">&#39;path with spaces/file.md&#39;</span>
+</code></pre></div>
+<p><strong>How it works:</strong></p>
+<ol>
+<li>Type <code>@</code> followed by a file path</li>
+<li>Press <code>Tab</code> for auto-completion and file browser</li>
+<li>Use arrow keys to select files</li>
+<li>The file content is automatically included in that message only</li>
+<li>References are replaced with filenames in the final message</li>
+</ol>
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Quick file analysis</span>
+💬<span class="w"> </span>&gt;<span class="w"> </span>@README.md<span class="w"> </span>Summarize<span class="w"> </span>this<span class="w"> </span>project
+
+<span class="c1"># Compare files</span>
+💬<span class="w"> </span>&gt;<span class="w"> </span>@config.json<span class="w"> </span>@config.example.json<span class="w"> </span>What<span class="w"> </span>changed?
+
+<span class="c1"># Use with quotes for spaces</span>
+💬<span class="w"> </span>&gt;<span class="w"> </span>@<span class="s2">&quot;my notes.txt&quot;</span><span class="w"> </span>Create<span class="w"> </span>a<span class="w"> </span>todo<span class="w"> </span>list<span class="w"> </span>from<span class="w"> </span>these<span class="w"> </span>notes
+
+<span class="c1"># Path completion</span>
+💬<span class="w"> </span>&gt;<span class="w"> </span>@src/ma<span class="o">[</span>Tab<span class="o">]</span>
+<span class="c1"># Shows: src/main.py, src/math.py, etc.</span>
+</code></pre></div>
+<p><strong>Differences from <code>/add</code>:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th><code>/add</code></th>
+<th><code>@</code> reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Duration</td>
+<td>Entire session</td>
+<td>Single message only</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>Persistent context</td>
+<td>Temporary inclusion</td>
+</tr>
+<tr>
+<td>Best for</td>
+<td>Codebases you'll discuss repeatedly</td>
+<td>Quick one-time file checks</td>
+</tr>
+<tr>
+<td>Management</td>
+<td>Manual add/remove</td>
+<td>Automatic per message</td>
 </tr>
 </tbody>
 </table>

@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://belingud.github.io/yaicli/usage/modes/">
+        <link rel="canonical" href="https://belingud.github.io/yaicli/usage/context/">
       
       
-        <link rel="prev" href="../configuration/">
+        <link rel="prev" href="../commands/">
       
       
-        <link rel="next" href="../cli/">
+        <link rel="next" href="../configuration/">
       
       
       <link rel="icon" href="../../assets/artwork/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Mode Switching (Chat / Execute) - YAICLI</title>
+        <title>File Context Management - YAICLI</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#mode-switching-chat-execute" class="md-skip">
+        <a href="#file-context-management" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Mode Switching (Chat / Execute)
+              File Context Management
             
           </span>
         </div>
@@ -402,10 +402,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../context/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    File Context Management
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -416,6 +438,350 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persistent-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Persistent Context
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Persistent Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding Files
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#viewing-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Viewing Context
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removing-context-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      Removing Context Items
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-command-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Complete Command Reference
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#temporary-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      Temporary @ References
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Temporary @ References">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Usage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#paths-with-spaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Paths with Spaces
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Auto-completion
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-context-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How Context Works
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How Context Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-reading-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Reading Process
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smart-file-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Smart File Handling
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#directory-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Directory Scanning
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Use Cases
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Use Cases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#codebase-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Codebase Analysis
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Review
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-add-persistent" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use /add (Persistent)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-temporary" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use @ (Temporary)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tips
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Workflow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Not Found
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binary-file-warning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Binary File Warning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#too-large-warning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Too Large Warning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context-too-long" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context Too Long
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -448,32 +814,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Mode Switching (Chat / Execute)
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../modes/" class="md-nav__link">
         
   
   
@@ -484,185 +828,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#available-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Available Modes
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Available Modes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-chat-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Chat Mode (💬)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-execute-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Execute Mode (🚀)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-quick-query-mode-default" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Quick Query Mode (Default)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#switching-between-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Switching Between Modes
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Switching Between Modes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#command-line-switches" class="md-nav__link">
-    <span class="md-ellipsis">
-      Command Line Switches
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#interactive-mode-switching" class="md-nav__link">
-    <span class="md-ellipsis">
-      Interactive Mode Switching
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Interactive Mode Switching">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-tab-key" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using Tab Key
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-commands" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using Commands
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#visual-indicators" class="md-nav__link">
-    <span class="md-ellipsis">
-      Visual Indicators
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mode-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      Mode Behavior
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Mode Behavior">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#chat-mode-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      Chat Mode Behavior
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#execute-mode-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      Execute Mode Behavior
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#chat-persistence" class="md-nav__link">
-    <span class="md-ellipsis">
-      Chat Persistence
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Next Steps
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1785,37 +1950,55 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#available-modes" class="md-nav__link">
+  <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
-      Available Modes
+      Overview
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Available Modes">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persistent-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Persistent Context
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Persistent Context">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-chat-mode" class="md-nav__link">
+  <a href="#adding-files" class="md-nav__link">
     <span class="md-ellipsis">
-      1. Chat Mode (💬)
+      Adding Files
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-execute-mode" class="md-nav__link">
+  <a href="#viewing-context" class="md-nav__link">
     <span class="md-ellipsis">
-      2. Execute Mode (🚀)
+      Viewing Context
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-quick-query-mode-default" class="md-nav__link">
+  <a href="#removing-context-items" class="md-nav__link">
     <span class="md-ellipsis">
-      3. Quick Query Mode (Default)
+      Removing Context Items
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-command-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Complete Command Reference
     </span>
   </a>
   
@@ -1827,94 +2010,37 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#switching-between-modes" class="md-nav__link">
+  <a href="#temporary-references" class="md-nav__link">
     <span class="md-ellipsis">
-      Switching Between Modes
+      Temporary @ References
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Switching Between Modes">
+    <nav class="md-nav" aria-label="Temporary @ References">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#command-line-switches" class="md-nav__link">
+  <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
-      Command Line Switches
+      Basic Usage
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#interactive-mode-switching" class="md-nav__link">
+  <a href="#paths-with-spaces" class="md-nav__link">
     <span class="md-ellipsis">
-      Interactive Mode Switching
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Interactive Mode Switching">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-tab-key" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using Tab Key
+      Paths with Spaces
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#using-commands" class="md-nav__link">
+  <a href="#auto-completion" class="md-nav__link">
     <span class="md-ellipsis">
-      Using Commands
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#visual-indicators" class="md-nav__link">
-    <span class="md-ellipsis">
-      Visual Indicators
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mode-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      Mode Behavior
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Mode Behavior">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#chat-mode-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      Chat Mode Behavior
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#execute-mode-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      Execute Mode Behavior
+      Auto-completion
     </span>
   </a>
   
@@ -1926,18 +2052,222 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#chat-persistence" class="md-nav__link">
+  <a href="#how-context-works" class="md-nav__link">
     <span class="md-ellipsis">
-      Chat Persistence
+      How Context Works
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How Context Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-reading-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Reading Process
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smart-file-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Smart File Handling
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#directory-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Directory Scanning
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Use Cases
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Use Cases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#codebase-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Codebase Analysis
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Review
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-add-persistent" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use /add (Persistent)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-temporary" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use @ (Temporary)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tips
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Workflow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+  <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
-      Next Steps
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Not Found
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binary-file-warning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Binary File Warning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#too-large-warning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Too Large Warning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context-too-long" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context Too Long
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
     </span>
   </a>
   
@@ -1962,116 +2292,289 @@
   
 
 
-<h1 id="mode-switching-chat-execute">Mode Switching (Chat / Execute)<a class="headerlink" href="#mode-switching-chat-execute" title="Permanent link">&para;</a></h1>
-<p>YAICLI offers multiple interaction modes to suit different needs. This page explains each mode and how to switch between them.</p>
-<h2 id="available-modes">Available Modes<a class="headerlink" href="#available-modes" title="Permanent link">&para;</a></h2>
-<p>YAICLI has three primary interaction modes:</p>
-<h3 id="1-chat-mode">1. Chat Mode (💬)<a class="headerlink" href="#1-chat-mode" title="Permanent link">&para;</a></h3>
-<p>Chat mode provides a natural conversation experience with the LLM, maintaining context and formatting responses with markdown.</p>
-<p><strong>Features:</strong>
-- Full conversation history and context tracking
-- Markdown and code formatting
-- Reasoning display for complex queries
-- Persistent chat storage and management</p>
-<p><strong>Best for:</strong>
-- Extended conversations
-- Complex questions requiring context
-- Learning and exploration</p>
-<h3 id="2-execute-mode">2. Execute Mode (🚀)<a class="headerlink" href="#2-execute-mode" title="Permanent link">&para;</a></h3>
-<p>Execute mode specializes in generating and safely running shell commands based on natural language descriptions.</p>
-<p><strong>Features:</strong>
-- OS-specific command generation
-- Command review and editing before execution
-- Command output display
-- Safe execution with confirmation</p>
-<p><strong>Best for:</strong>
-- System administration tasks
-- File operations
-- Command discovery
-- Automating repetitive tasks</p>
-<h3 id="3-quick-query-mode-default">3. Quick Query Mode (Default)<a class="headerlink" href="#3-quick-query-mode-default" title="Permanent link">&para;</a></h3>
-<p>The default non-interactive mode gives you quick answers without entering a persistent session.</p>
-<p><strong>Features:</strong>
-- Direct answers to questions
-- Support for piped input
-- Fast responses with minimal overhead</p>
-<p><strong>Best for:</strong>
-- One-off questions
-- Quick information lookups
-- Script integration</p>
-<h2 id="switching-between-modes">Switching Between Modes<a class="headerlink" href="#switching-between-modes" title="Permanent link">&para;</a></h2>
-<h3 id="command-line-switches">Command Line Switches<a class="headerlink" href="#command-line-switches" title="Permanent link">&para;</a></h3>
-<p>Use these flags when starting YAICLI:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Start in chat mode</span>
-ai<span class="w"> </span>--chat<span class="w"> </span><span class="s2">&quot;Optional chat title&quot;</span>
+<h1 id="file-context-management">File Context Management<a class="headerlink" href="#file-context-management" title="Permanent link">&para;</a></h1>
+<p>YAICLI provides powerful file context management capabilities that allow you to include files and directories in your AI conversations. This helps the AI understand your codebase, configuration files, documentation, and any other relevant context.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>There are two ways to include files in your conversations:</p>
+<ol>
+<li><strong>Persistent Context (<code>/add</code>)</strong>: Add files/directories that stay in context for the entire session</li>
+<li><strong>Temporary References (<code>@</code>)</strong>: Reference files on-the-fly for a single message</li>
+</ol>
+<h2 id="persistent-context">Persistent Context<a class="headerlink" href="#persistent-context" title="Permanent link">&para;</a></h2>
+<p>Use the <code>/add</code> command to add files or directories to your session context. These items remain available throughout your conversation until you remove them.</p>
+<h3 id="adding-files">Adding Files<a class="headerlink" href="#adding-files" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Add a single file</span>
+/add<span class="w"> </span>src/main.py
+<span class="c1"># Output: Added file to context: /path/to/src/main.py</span>
 
-<span class="c1"># Start in execute mode</span>
-ai<span class="w"> </span>--shell<span class="w"> </span><span class="s2">&quot;Create a backup script&quot;</span>
+<span class="c1"># Add a directory (scans recursively)</span>
+/add<span class="w"> </span>tests/
+<span class="c1"># Output: Added directory to context: /path/to/tests/</span>
 
-<span class="c1"># Quick query (default mode)</span>
-ai<span class="w"> </span><span class="s2">&quot;What is the capital of France?&quot;</span>
+<span class="c1"># Add multiple files</span>
+/add<span class="w"> </span>config.yaml<span class="w"> </span>README.md
 </code></pre></div>
-<h3 id="interactive-mode-switching">Interactive Mode Switching<a class="headerlink" href="#interactive-mode-switching" title="Permanent link">&para;</a></h3>
-<p>When in interactive mode (chat or execute), you can switch modes in several ways:</p>
-<h4 id="using-tab-key">Using Tab Key<a class="headerlink" href="#using-tab-key" title="Permanent link">&para;</a></h4>
-<p>Press the <code>Tab</code> key to toggle between Chat and Execute modes.</p>
-<h4 id="using-commands">Using Commands<a class="headerlink" href="#using-commands" title="Permanent link">&para;</a></h4>
-<p>Type <code>/mode</code> followed by the mode name:</p>
-<div class="highlight"><pre><span></span><code>/mode chat   # Switch to chat mode
-/mode exec   # Switch to execute mode
+<h3 id="viewing-context">Viewing Context<a class="headerlink" href="#viewing-context" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>/context<span class="w"> </span>list
+<span class="c1"># or</span>
+/ctx<span class="w"> </span>list
 </code></pre></div>
-<h4 id="visual-indicators">Visual Indicators<a class="headerlink" href="#visual-indicators" title="Permanent link">&para;</a></h4>
-<p>The prompt changes to indicate your current mode:
-- Chat mode: <code>💬 &gt;</code>
-- Execute mode: <code>🚀 &gt;</code></p>
-<h2 id="mode-behavior">Mode Behavior<a class="headerlink" href="#mode-behavior" title="Permanent link">&para;</a></h2>
-<h3 id="chat-mode-behavior">Chat Mode Behavior<a class="headerlink" href="#chat-mode-behavior" title="Permanent link">&para;</a></h3>
-<p>In chat mode:
-- The AI responds conversationally with rich formatting
-- Context is maintained between interactions
-- Input is treated as a conversation prompt</p>
-<p><strong>Example:</strong>
-<div class="highlight"><pre><span></span><code>💬 &gt; Tell me about quantum computing
-Assistant:
-Quantum computing uses quantum bits (qubits) that can exist in multiple 
-states simultaneously due to superposition...
+<p>Output example:
+<div class="highlight"><pre><span></span><code>┏━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Type   ┃ Path                          ┃
+┡━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ FILE   │ src/main.py                   │
+│ FILE   │ config.yaml                   │
+│ DIR    │ tests/                        │
+└────────┴───────────────────────────────┘
 </code></pre></div></p>
-<h3 id="execute-mode-behavior">Execute Mode Behavior<a class="headerlink" href="#execute-mode-behavior" title="Permanent link">&para;</a></h3>
-<p>In execute mode:
-- The AI interprets input as a request for a command
-- Generates appropriate commands for your OS and shell
-- Displays the command for review before execution</p>
-<p><strong>Example:</strong>
-<div class="highlight"><pre><span></span><code>🚀 &gt; Find all PDF files in my Downloads folder
-Assistant:
-find ~/Downloads -name &quot;*.pdf&quot;
-╭─ Suggest Command ─────────────────────╮
-│ find ~/Downloads -name &quot;*.pdf&quot;        │
-╰─────────────────────────────────────────╯
-Execute command? [e]dit, [y]es, [n]o (n): 
-</code></pre></div></p>
-<h2 id="chat-persistence">Chat Persistence<a class="headerlink" href="#chat-persistence" title="Permanent link">&para;</a></h2>
-<p>When starting a chat session with a title, the conversation is automatically saved:</p>
-<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--chat<span class="w"> </span><span class="s2">&quot;Python tips&quot;</span>
-</code></pre></div>
-<p>A chat started without a title is treated as temporary but can be saved later:</p>
-<div class="highlight"><pre><span></span><code>💬 &gt; /save &quot;Python tips&quot;
-Chat saved as: Python tips
-</code></pre></div>
-<p>You can list, load, and manage saved chats:</p>
-<div class="highlight"><pre><span></span><code>💬 &gt; /list
-Saved chats:
-1. Python tips (2023-07-01)
-2. Work project (2023-06-28)
+<h3 id="removing-context-items">Removing Context Items<a class="headerlink" href="#removing-context-items" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Remove by exact path</span>
+/context<span class="w"> </span>remove<span class="w"> </span>/path/to/src/main.py
 
-💬 &gt; /load 1
-Loading chat: Python tips
+<span class="c1"># Remove by filename (partial match)</span>
+/context<span class="w"> </span>remove<span class="w"> </span>main.py
+
+<span class="c1"># Clear all context</span>
+/context<span class="w"> </span>clear
 </code></pre></div>
-<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<h3 id="complete-command-reference">Complete Command Reference<a class="headerlink" href="#complete-command-reference" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Alias</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/add &lt;path&gt;</code></td>
+<td>-</td>
+<td>Add file/directory to context</td>
+</tr>
+<tr>
+<td><code>/context list</code></td>
+<td><code>/ctx list</code></td>
+<td>List all context items</td>
+</tr>
+<tr>
+<td><code>/context clear</code></td>
+<td><code>/ctx clear</code></td>
+<td>Remove all items</td>
+</tr>
+<tr>
+<td><code>/context add &lt;path&gt;</code></td>
+<td>-</td>
+<td>Same as <code>/add</code></td>
+</tr>
+<tr>
+<td><code>/context remove &lt;path&gt;</code></td>
+<td><code>/ctx rm</code></td>
+<td>Remove specific item</td>
+</tr>
+</tbody>
+</table>
+<h2 id="temporary-references">Temporary @ References<a class="headerlink" href="#temporary-references" title="Permanent link">&para;</a></h2>
+<p>For quick, one-time file inclusion, use the <code>@</code> symbol directly in your messages.</p>
+<h3 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Reference a single file</span>
+@README.md<span class="w"> </span>What<span class="w"> </span>is<span class="w"> </span>this<span class="w"> </span>project<span class="w"> </span>about?
+
+<span class="c1"># Reference multiple files</span>
+@src/main.py<span class="w"> </span>@config.yaml<span class="w"> </span>Explain<span class="w"> </span>the<span class="w"> </span>architecture
+
+<span class="c1"># The AI sees the file contents and responds based on them</span>
+</code></pre></div>
+<h3 id="paths-with-spaces">Paths with Spaces<a class="headerlink" href="#paths-with-spaces" title="Permanent link">&para;</a></h3>
+<p>Use quotes for filenames or paths containing spaces:</p>
+<div class="highlight"><pre><span></span><code>@<span class="s2">&quot;my document.txt&quot;</span><span class="w"> </span>Summarize<span class="w"> </span>this
+
+@<span class="s1">&#39;path with spaces/file.md&#39;</span><span class="w"> </span>What<span class="w"> </span>does<span class="w"> </span>this<span class="w"> </span><span class="k">do</span>?
+</code></pre></div>
+<h3 id="auto-completion">Auto-completion<a class="headerlink" href="#auto-completion" title="Permanent link">&para;</a></h3>
+<p>Type <code>@</code> and press <code>Tab</code> to browse files:</p>
+<div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>@src/<span class="o">[</span>Tab<span class="o">]</span>
+<span class="c1"># Shows file browser:</span>
+<span class="c1"># src/main.py</span>
+<span class="c1"># src/utils.py</span>
+<span class="c1"># src/config/</span>
+</code></pre></div>
+<p>Use arrow keys to navigate and select files.</p>
+<h2 id="how-context-works">How Context Works<a class="headerlink" href="#how-context-works" title="Permanent link">&para;</a></h2>
+<h3 id="file-reading-process">File Reading Process<a class="headerlink" href="#file-reading-process" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>File Detection</strong>: YAICLI checks if the path exists</li>
+<li><strong>Type Check</strong>: Determines if it's a file or directory</li>
+<li><strong>Content Reading</strong>:</li>
+<li>Files: Read entire content</li>
+<li>Directories: Recursively scan (2 levels deep by default)</li>
+<li><strong>Formatting</strong>: Content is formatted as Markdown code blocks</li>
+<li><strong>Submission</strong>: Formatted content is sent to the AI as a system message</li>
+</ol>
+<h3 id="smart-file-handling">Smart File Handling<a class="headerlink" href="#smart-file-handling" title="Permanent link">&para;</a></h3>
+<p><strong>Binary Files</strong>: Automatically skipped
+- Images: <code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.gif</code>, <code>.ico</code>
+- Archives: <code>.zip</code>, <code>.tar</code>, <code>.gz</code>
+- Compiled: <code>.pyc</code>, <code>.pdf</code></p>
+<p><strong>Size Limits</strong>: Files larger than 1MB are skipped</p>
+<p><strong>Encoding</strong>: UTF-8 with error replacement for non-UTF-8 characters</p>
+<h3 id="directory-scanning">Directory Scanning<a class="headerlink" href="#directory-scanning" title="Permanent link">&para;</a></h3>
+<p>When you add a directory, YAICLI:</p>
+<ol>
+<li>Scans files recursively (default: 2 levels deep)</li>
+<li>Skips hidden files (starting with <code>.</code>)</li>
+<li>Ignores common patterns:</li>
+<li><code>.git/</code></li>
+<li><code>__pycache__/</code></li>
+<li><code>.venv/</code>, <code>venv/</code></li>
+<li><code>node_modules/</code></li>
+<li><code>.idea/</code>, <code>.vscode/</code></li>
+<li><code>.DS_Store</code></li>
+</ol>
+<p><strong>Example Directory Structure:</strong></p>
+<div class="highlight"><pre><span></span><code>project/
+├── src/
+│   ├── main.py
+│   └── utils/
+│       ├── helpers.py
+│       └── config.py
+├── tests/
+│   └── test_main.py
+└── .git/          # Skipped
+└── node_modules/  # Skipped
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>/add<span class="w"> </span>src/
+<span class="c1"># Includes:</span>
+<span class="c1"># - src/main.py</span>
+<span class="c1"># - src/utils/helpers.py</span>
+<span class="c1"># - src/utils/config.py</span>
+</code></pre></div>
+<h2 id="use-cases">Use Cases<a class="headerlink" href="#use-cases" title="Permanent link">&para;</a></h2>
+<h3 id="codebase-analysis">Codebase Analysis<a class="headerlink" href="#codebase-analysis" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Add entire source directory</span>
+/add<span class="w"> </span>src/
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>Explain<span class="w"> </span>the<span class="w"> </span>architecture<span class="w"> </span>of<span class="w"> </span>this<span class="w"> </span>codebase
+<span class="c1"># AI now has full visibility into src/</span>
+</code></pre></div>
+<h3 id="configuration-review">Configuration Review<a class="headerlink" href="#configuration-review" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Multiple config files</span>
+/add<span class="w"> </span>.env
+/add<span class="w"> </span>docker-compose.yml
+/add<span class="w"> </span>config.yaml
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>Are<span class="w"> </span>there<span class="w"> </span>any<span class="w"> </span>security<span class="w"> </span>issues<span class="w"> </span><span class="k">in</span><span class="w"> </span>this<span class="w"> </span>configuration?
+<span class="c1"># AI reviews all config files together</span>
+</code></pre></div>
+<h3 id="debugging">Debugging<a class="headerlink" href="#debugging" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Add error log and source file</span>
+/add<span class="w"> </span>error.log
+/add<span class="w"> </span>src/handler.py
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>Why<span class="w"> </span>is<span class="w"> </span>this<span class="w"> </span>error<span class="w"> </span>happening<span class="w"> </span><span class="k">in</span><span class="w"> </span>handler.py?
+<span class="c1"># AI correlates the error with source code</span>
+</code></pre></div>
+<h3 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Quick reference for documentation</span>
+@api-docs.md<span class="w"> </span>@docs/api-guide.md<span class="w"> </span>Implement<span class="w"> </span>this<span class="w"> </span>endpoint
+
+<span class="c1"># vs persistent context for long sessions</span>
+/add<span class="w"> </span>docs/
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>Help<span class="w"> </span>me<span class="w"> </span>implement<span class="w"> </span>user<span class="w"> </span>authentication
+💬<span class="w"> </span>&gt;<span class="w"> </span>Now<span class="w"> </span>add<span class="w"> </span>password<span class="w"> </span>reset
+💬<span class="w"> </span>&gt;<span class="w"> </span>Finally,<span class="w"> </span>add<span class="w"> </span>email<span class="w"> </span>verification
+<span class="c1"># docs/ stays in context for entire session</span>
+</code></pre></div>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="when-to-use-add-persistent">When to Use <code>/add</code> (Persistent)<a class="headerlink" href="#when-to-use-add-persistent" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Learn more about <a href="../cli/">CLI shortcuts and hotkeys</a></li>
-<li>Explore <a href="../configuration/">configuration options</a></li>
-<li>Check out all available <a href="../commands/">commands</a></li>
+<li><strong>Working on a specific feature</strong>: Add relevant source files</li>
+<li><strong>Code reviews</strong>: Include all files being reviewed</li>
+<li><strong>Debugging sessions</strong>: Keep error logs and source files available</li>
+<li><strong>Documentation</strong>: Reference docs while implementing features</li>
+<li><strong>Multi-step tasks</strong>: Avoid repeating file references</li>
+</ul>
+<h3 id="when-to-use-temporary">When to Use <code>@</code> (Temporary)<a class="headerlink" href="#when-to-use-temporary" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Quick questions</strong>: One-time file checks</li>
+<li><strong>Comparing files</strong>: <code>@file1.json @file2.json</code></li>
+<li><strong>Minimal context</strong>: Don't clutter the conversation</li>
+<li><strong>Ad-hoc analysis</strong>: Quick look at a file</li>
+</ul>
+<h3 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Be Specific</strong>: Add only relevant files to avoid context bloat</li>
+<li><strong>Clean Up</strong>: Remove items with <code>/context remove</code> when done</li>
+<li><strong>Check Context</strong>: Use <code>/context list</code> to see what's active</li>
+<li><strong>Use Quoted Paths</strong>: For files with spaces, use <code>@"path"</code></li>
+<li><strong>Combine Both</strong>: Use <code>/add</code> for core files, <code>@</code> for temporary references</li>
+</ol>
+<h3 id="example-workflow">Example Workflow<a class="headerlink" href="#example-workflow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Start a coding session</span>
+ai<span class="w"> </span>--chat
+
+<span class="c1"># Add core source files</span>
+/add<span class="w"> </span>src/
+/add<span class="w"> </span>config.yaml
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>Add<span class="w"> </span>a<span class="w"> </span>new<span class="w"> </span>user<span class="w"> </span>registration<span class="w"> </span>endpoint
+
+<span class="c1"># Add a specific test file temporarily</span>
+@tests/test_auth.py<span class="w"> </span>Write<span class="w"> </span>tests<span class="w"> </span><span class="k">for</span><span class="w"> </span>this
+
+<span class="c1"># Reference documentation once</span>
+@docs/api-spec.md<span class="w"> </span>Follow<span class="w"> </span>these<span class="w"> </span>specs
+
+<span class="c1"># Context still has src/ and config.yaml</span>
+💬<span class="w"> </span>&gt;<span class="w"> </span>Update<span class="w"> </span>the<span class="w"> </span>password<span class="w"> </span>validation
+
+<span class="c1"># Clean up when done</span>
+/context<span class="w"> </span>clear
+</code></pre></div>
+<h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>File Size</strong>: Files &gt; 1MB are skipped</li>
+<li><strong>Binary Files</strong>: Automatically filtered out</li>
+<li><strong>Directory Depth</strong>: Limited to 2 levels by default</li>
+<li><strong>Context Window</strong>: Total content limited by your model's context window</li>
+<li><strong>Session Scope</strong>: Context doesn't persist across different <code>ai</code> invocations</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="file-not-found">File Not Found<a class="headerlink" href="#file-not-found" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>/add<span class="w"> </span>nonexistent.py
+Error:<span class="w"> </span>Path<span class="w"> </span>does<span class="w"> </span>not<span class="w"> </span>exist:<span class="w"> </span>/path/to/nonexistent.py
+</code></pre></div>
+<p><strong>Solution</strong>: Use relative paths from current directory or absolute paths</p>
+<h3 id="binary-file-warning">Binary File Warning<a class="headerlink" href="#binary-file-warning" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>@image.png
+Warning:<span class="w"> </span>Cannot<span class="w"> </span>include<span class="w"> </span>@image.png:<span class="w"> </span><span class="o">[</span>Binary<span class="w"> </span>file<span class="w"> </span>omitted<span class="o">]</span>
+</code></pre></div>
+<p><strong>Expected behavior</strong>: Binary files are automatically skipped</p>
+<h3 id="too-large-warning">Too Large Warning<a class="headerlink" href="#too-large-warning" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>@large-file.log
+Warning:<span class="w"> </span>Cannot<span class="w"> </span>include<span class="w"> </span>@large-file.log:<span class="w"> </span><span class="o">[</span>File<span class="w"> </span>too<span class="w"> </span>large:<span class="w"> </span><span class="m">2097152</span><span class="w"> </span>bytes<span class="w"> </span>-<span class="w"> </span>omitted<span class="o">]</span>
+</code></pre></div>
+<p><strong>Solution</strong>: Split the file or extract relevant portions</p>
+<h3 id="context-too-long">Context Too Long<a class="headerlink" href="#context-too-long" title="Permanent link">&para;</a></h3>
+<p>If the AI stops responding or behaves unexpectedly, your context may be too large.</p>
+<p><strong>Solution</strong>:
+<div class="highlight"><pre><span></span><code>/context<span class="w"> </span>list
+/context<span class="w"> </span>remove<span class="w"> </span>&lt;unnecessary-files&gt;
+</code></pre></div></p>
+<h2 id="related-features">Related Features<a class="headerlink" href="#related-features" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Function Calling</strong>: Use functions to interact with the file system</li>
+<li><strong>Pipe Input</strong>: <code>cat file.txt | ai "analyze this"</code></li>
+<li><strong>MCP Tools</strong>: External tools for file system operations</li>
+<li><strong>History Management</strong>: Save and restore conversations with context</li>
+</ul>
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../commands/">Command Reference</a></li>
+<li><a href="../interactive/">Interactive Mode</a></li>
+<li><a href="../configuration/">Configuration</a></li>
 </ul>
 
 
