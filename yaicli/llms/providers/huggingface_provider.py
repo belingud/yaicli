@@ -19,6 +19,7 @@ class HuggingFaceProvider(ChatglmProvider):
         "top_p": "TOP_P",
         "max_tokens": "MAX_TOKENS",
         "extra_body": "EXTRA_BODY",
+        "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
     def get_client_params(self) -> Dict[str, Any]:

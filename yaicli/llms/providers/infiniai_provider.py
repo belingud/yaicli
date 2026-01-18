@@ -13,6 +13,7 @@ class InfiniAIProvider(OpenAIProvider):
         "max_tokens": "MAX_TOKENS",
         "timeout": "TIMEOUT",
         "extra_body": "EXTRA_BODY",
+        "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
     def __init__(self, config: dict = cfg, **kwargs):

@@ -48,7 +48,7 @@ class TestLLMClient:
             "PROVIDER": "openai",
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
-            "MAX_RECURSION_DEPTH": 5,
+            "MAX_TOOL_CALL_DEPTH": 5,
         }
 
     @patch("yaicli.llms.provider.ProviderFactory.create_provider")
@@ -159,7 +159,7 @@ class TestLLMClient:
     def test_recursion_depth_limit(self, mock_factory, mock_execute_tool, mock_config):
         """Test that recursion depth is limited"""
         # Set a low recursion limit
-        mock_config["MAX_RECURSION_DEPTH"] = 2
+        mock_config["MAX_TOOL_CALL_DEPTH"] = 2
 
         # Setup tool call that will keep recursing
         tool_call = ToolCall(id="call_123", name="recursive_function", arguments="{}")
@@ -188,8 +188,8 @@ class TestLLMClient:
         # Call with recursive provider
         list(client.completion_with_tools(messages))
 
-        # Should have been called only up to MAX_RECURSION_DEPTH times
-        assert mock_execute_tool.call_count <= mock_config["MAX_RECURSION_DEPTH"]
+        # Should have been called only up to MAX_TOOL_CALL_DEPTH times
+        assert mock_execute_tool.call_count <= mock_config["MAX_TOOL_CALL_DEPTH"]
 
         # Check that provider.completion has been called at least once
         assert mock_provider.completion.called

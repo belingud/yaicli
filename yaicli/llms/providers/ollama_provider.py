@@ -86,10 +86,22 @@ class OllamaProvider(Provider):
         if self.verbose:
             self.console.print("Messages:")
             self.console.print(ollama_messages)
-        options = {"temperature": self.config["TEMPERATURE"], "top_p": self.config["TOP_P"]}
+        options = {
+            "temperature": self.config["TEMPERATURE"],
+            "top_p": self.config["TOP_P"],
+            "frequency_penalty": self.config["FREQUENCY_PENALTY"],
+        }
         for k, v in self.OPTION_KEYS:
             if self.config.get(k, None) is not None:
                 options[v] = self.config[k]
+
+        # Apply exclude params filtering to options
+        options = Provider.filter_excluded_params(
+            options,
+            self.config,
+            verbose=self.verbose,
+            console=self.console,
+        )
 
         # Prepare parameters
         params = {

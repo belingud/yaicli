@@ -1,6 +1,6 @@
 [project]
 name = "yaicli"
-version = "0.8.1"
+version = "0.9.0"
 description = "A simple CLI tool to interact with LLM"
 authors = [{ name = "belingud", email = "im.victor@qq.com" }]
 readme = "README.md"
@@ -54,6 +54,7 @@ keywords = [
 ]
 dependencies = [
     "click>=8.1.8",
+    "ddgs>=9.6.1",
     "distro>=1.9.0",
     "fastmcp>=2.10.1",
     "httpx>=0.28.1",
@@ -63,6 +64,7 @@ dependencies = [
     "prompt-toolkit>=3.0.50",
     "rich>=13.9.4",
     "socksio>=1.0.0",
+    "trafilatura>=1.6.1",
     "typer>=0.16.0",
 ]
 [project.urls]
@@ -84,6 +86,7 @@ all = [
     "mistralai>=1.8.2",
     "anthropic[bedrock,vertex]>=0.57.1",
     "cerebras-cloud-sdk>=1.35.0",
+    "fireworks-ai>=0.15.15",
 ]
 doubao = ["volcengine-python-sdk>=3.0.15"]
 ollama = ["ollama>=0.5.1"]
@@ -93,6 +96,7 @@ huggingface = ["huggingface-hub>=0.33.0"]
 mistral = ["mistralai>=1.8.2"]
 anthropic = ["anthropic[bedrock,vertex]>=0.57.1"]
 cerebras = ["cerebras-cloud-sdk>=1.35.0"]
+fireworks = ["fireworks-ai>=0.15.15"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

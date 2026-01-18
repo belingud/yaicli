@@ -24,6 +24,7 @@ class TestCerebrasProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "FREQUENCY_PENALTY": 0.0,
         }
 
     @pytest.fixture

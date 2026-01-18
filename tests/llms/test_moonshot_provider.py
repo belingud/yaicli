@@ -24,6 +24,7 @@ class TestMoonshotProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "FREQUENCY_PENALTY": 0.0,
         }
 
     @pytest.fixture
@@ -73,6 +74,7 @@ class TestMoonshotProvider:
                 "top_p": mock_config["TOP_P"],
                 "max_tokens": mock_config["MAX_TOKENS"],
                 "timeout": mock_config["TIMEOUT"],
+                "frequency_penalty": mock_config["FREQUENCY_PENALTY"],
             }
 
     def test_init_with_default_base_url(self, mock_config):
@@ -131,6 +133,7 @@ class TestMoonshotProvider:
                 "max_tokens": "MAX_TOKENS",
                 "timeout": "TIMEOUT",
                 "extra_body": "EXTRA_BODY",
+                "frequency_penalty": "FREQUENCY_PENALTY",
             }
             assert provider.COMPLETION_PARAMS_KEYS == expected_keys
 
@@ -363,6 +366,7 @@ class TestMoonshotProvider:
                 "max_tokens": "MAX_TOKENS",
                 "timeout": "TIMEOUT",
                 "extra_body": "EXTRA_BODY",
+                "frequency_penalty": "FREQUENCY_PENALTY",
             }
             assert provider.COMPLETION_PARAMS_KEYS == expected_params
 

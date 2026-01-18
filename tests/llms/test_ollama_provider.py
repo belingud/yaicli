@@ -23,6 +23,7 @@ class TestOllamaProvider:
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
             "THINK": "false",
+            "FREQUENCY_PENALTY": 0.0,
         }
 
     @pytest.fixture

@@ -284,7 +284,7 @@ class MCPToolConverter:
             anthropic_tool = {
                 "name": gen_mcp_tool_name(tool.name),
                 "description": tool.description or "",
-                "parameters": tool.inputSchema,
+                "input_schema": tool.inputSchema,
             }
             anthropic_tools.append(anthropic_tool)
 
@@ -383,6 +383,7 @@ class MCPToolConverter:
 
         # Dynamic function
         def dynamic_function(**kwargs):
+            print(f"\033[94m@MCP call: {dynamic_function.__name__}({json.dumps(kwargs)})\033[0m")
             return tool_obj.execute(**kwargs)
 
         # Set function attributes

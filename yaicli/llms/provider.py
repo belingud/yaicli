@@ -67,6 +67,55 @@ class Provider(ABC):
 
         return converted_messages
 
+    @staticmethod
+    def filter_excluded_params(
+        params: Dict[str, Any],
+        config: dict,
+        verbose: bool = False,
+        console=None,
+    ) -> Dict[str, Any]:
+        """Filter out excluded parameters from completion params.
+
+        Args:
+            params: The completion parameters dict to filter
+            config: The config dict containing EXCLUDE_PARAMS
+            verbose: Whether to log excluded parameters
+            console: Console instance for logging (optional)
+
+        Returns:
+            Filtered params dict with excluded parameters removed
+
+        Example:
+            >>> params = {"temperature": 0.5, "top_p": 1.0, "model": "gpt-4"}
+            >>> config = {"EXCLUDE_PARAMS": "temperature,top_p"}
+            >>> Provider.filter_excluded_params(params, config)
+            {"model": "gpt-4"}
+        """
+        exclude_str = config.get("EXCLUDE_PARAMS", "")
+        if not exclude_str or not exclude_str.strip():
+            return params
+
+        # Parse exclude list: strip whitespace, normalize to lowercase
+        exclude_list = [p.strip().lower() for p in exclude_str.split(",") if p.strip()]
+
+        if not exclude_list:
+            return params
+
+        # Track what was excluded for logging
+        excluded_keys = [k for k in params.keys() if k.lower() in exclude_list]
+
+        # Filter params using case-insensitive comparison
+        filtered = {k: v for k, v in params.items() if k.lower() not in exclude_list}
+
+        # Log if verbose and something was excluded
+        if verbose and excluded_keys and console:
+            console.print(
+                f"[yellow]Excluded parameters:[/yellow] {', '.join(excluded_keys)}",
+                style="dim",
+            )
+
+        return filtered
+
 
 class ProviderFactory:
     """Factory to create LLM provider instances"""
@@ -86,6 +135,7 @@ class ProviderFactory:
         "cohere-sagemaker": (".providers.cohere_provider", "CohereSagemakerProvider"),
         "deepseek": (".providers.deepseek_provider", "DeepSeekProvider"),
         "doubao": (".providers.doubao_provider", "DoubaoProvider"),
+        "fireworks": (".providers.fireworks_provider", "FireworksProvider"),
         "gemini": (".providers.gemini_provider", "GeminiProvider"),
         "groq": (".providers.groq_provider", "GroqProvider"),
         "huggingface": (".providers.huggingface_provider", "HuggingFaceProvider"),
@@ -98,6 +148,7 @@ class ProviderFactory:
         "ollama": (".providers.ollama_provider", "OllamaProvider"),
         "openai": (".providers.openai_provider", "OpenAIProvider"),
         "openai-azure": (".providers.openai_provider", "OpenAIAzure"),
+        "openai-compatible": (".providers.openai_compatible_provider", "OpenAICompatibleProvider"),
         "openrouter": (".providers.openrouter_provider", "OpenRouterProvider"),
         "sambanova": (".providers.sambanova_provider", "SambanovaProvider"),
         "siliconflow": (".providers.siliconflow_provider", "SiliconFlowProvider"),

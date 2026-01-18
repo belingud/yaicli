@@ -4,6 +4,7 @@ import pytest
 
 from yaicli.llms.providers.chutes_provider import ChutesProvider
 from yaicli.llms.providers.deepseek_provider import DeepSeekProvider
+from yaicli.llms.providers.fireworks_provider import FireworksProvider
 from yaicli.llms.providers.groq_provider import GroqProvider
 from yaicli.llms.providers.infiniai_provider import InfiniAIProvider
 from yaicli.llms.providers.modelscope_provider import ModelScopeProvider
@@ -358,6 +359,10 @@ class TestCustomBaseURL:
 
             # Test with Together provider
             provider = TogetherProvider(config=mock_config)
+            assert provider.client_params["base_url"] == mock_config["BASE_URL"]
+
+            # Test with Fireworks provider
+            provider = FireworksProvider(config=mock_config)
             assert provider.client_params["base_url"] == mock_config["BASE_URL"]
 
 

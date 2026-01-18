@@ -11,5 +11,6 @@ class YiProvider(OpenAIProvider):
         "top_p": "TOP_P",
         "max_tokens": "MAX_TOKENS",
         "timeout": "TIMEOUT",
+        "frequency_penalty": "FREQUENCY_PENALTY",
         "extra_body": "EXTRA_BODY",
     }

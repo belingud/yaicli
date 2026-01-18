@@ -18,6 +18,7 @@ class AI21Provider(OpenAIProvider):
         "max_tokens": "MAX_TOKENS",
         "timeout": "TIMEOUT",
         "extra_body": "EXTRA_BODY",
+        "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
     def _handle_stream_response(self, response: Stream[ChatCompletionChunk]) -> Generator[LLMResponse, None, None]:

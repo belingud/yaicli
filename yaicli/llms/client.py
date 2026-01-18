@@ -18,6 +18,8 @@ class LLMClient:
     3. Handling conversation flow with tools
     """
 
+    __slots__ = ("config", "verbose", "console", "enable_function", "enable_mcp", "max_tool_call_depth", "provider")
+
     def __init__(
         self,
         provider_name: str,
@@ -45,7 +47,7 @@ class LLMClient:
             provider_name = "openai"
         self.provider = ProviderFactory.create_provider(provider_name, config=config, verbose=verbose, **kwargs)
 
-        self.max_recursion_depth = config.get("MAX_RECURSION_DEPTH", 5)
+        self.max_tool_call_depth = self.config["MAX_TOOL_CALL_DEPTH"]
 
     def completion_with_tools(
         self,
@@ -64,9 +66,9 @@ class LLMClient:
         Yields:
             LLMResponse objects and control signals
         """
-        if recursion_depth >= self.max_recursion_depth:
+        if recursion_depth >= self.max_tool_call_depth:
             self.console.print(
-                f"Maximum tool call depth ({self.max_recursion_depth}) reached. Stopping further tool calls...",
+                f"Maximum tool call depth ({self.max_tool_call_depth}) reached. Stopping further tool calls...",
                 style="bold yellow",
             )
             return
@@ -90,7 +92,7 @@ class LLMClient:
         assistant_message = ChatMessage(
             role="assistant",
             content=assistant_response_content,
-            tool_calls=list(tool_calls.values()) if tool_calls else []
+            tool_calls=list(tool_calls.values()) if tool_calls else [],
         )
         messages.append(assistant_message)
 
@@ -104,15 +106,15 @@ class LLMClient:
             return
 
         # Execute tools and continue conversation
-        yield from self._execute_tools_and_continue(
-            messages, valid_tool_calls, stream, recursion_depth
-        )
+        yield from self._execute_tools_and_continue(messages, valid_tool_calls, stream, recursion_depth)
 
     def _get_valid_tool_calls(self, tool_calls: dict[str, ToolCall]) -> List[ToolCall]:
         """Filter tool calls based on enabled features"""
         valid_tool_calls = []
 
         for tool_call in tool_calls.values():
+            if self.verbose:
+                self.console.print(f"Raw tool call name: {tool_call.name}")
             is_mcp = tool_call.name.startswith(MCP_TOOL_NAME_PREFIX)
 
             if is_mcp and self.enable_mcp:

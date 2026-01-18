@@ -3,6 +3,7 @@
 help:
     @just -l
 
+# Sync all packages
 sync:
     @echo "Syncing dependencies..."
     @uv sync --all-groups --all-extras
@@ -50,7 +51,7 @@ publish: build
 # Install package in editable mode by uv
 install:
     @echo "Installing packages..."
-    @uv sync
+    @uv sync --all-groups --all-extras
 
 # Lock uv file and generate changelog from git log
 changelog:

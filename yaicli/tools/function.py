@@ -1,21 +1,35 @@
 import importlib.util
+import json
 import sys
-from typing import Callable, List, Optional
+from functools import wraps
+from typing import TYPE_CHECKING, Callable, List, Optional
 
-from instructor import OpenAISchema
+if TYPE_CHECKING:
+    from instructor import OpenAISchema
 
 from ..const import FUNCTIONS_DIR
-from ..utils import wrap_function
+
+
+def wrap_gemini_function(func: Callable) -> Callable:
+    """Wrap a function to add a name and docstring"""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        print(f"\033[94m@Function call: {wrapper.__name__}({json.dumps(kwargs) if kwargs else args})\033[0m")
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 class Function:
     """Function description class"""
 
-    def __init__(self, function: type[OpenAISchema]):
+    def __init__(self, function: type["OpenAISchema"]):
         self.name = function.openai_schema["name"]
         self.description = function.openai_schema.get("description", "")
         self.parameters = function.openai_schema.get("parameters", {})
         self.execute = function.execute  # type: ignore
+        self.func_cls = function
 
 
 _func_name_map: Optional[dict[str, Function]] = None
@@ -39,7 +53,7 @@ def get_func_name_map() -> dict[str, Function]:
         sys.modules[module_name] = module
         spec.loader.exec_module(module)  # type: ignore
 
-        if not issubclass(module.Function, OpenAISchema):
+        if not hasattr(module.Function, "openai_schema") or not hasattr(module.Function, "anthropic_schema"):
             raise TypeError(f"Function {module_name} must be a subclass of instructor.OpenAISchema")
         if not hasattr(module.Function, "execute"):
             raise TypeError(f"Function {module_name} must have an 'execute' classmethod")
@@ -83,7 +97,7 @@ def get_functions_gemini_format() -> List[Callable]:
     """Get functions in gemini format"""
     gemini_functions = []
     for func_name, func in get_func_name_map().items():
-        wrapped_func = wrap_function(func.execute)
+        wrapped_func = wrap_gemini_function(func.execute)
         wrapped_func.__name__ = func_name
         wrapped_func.__doc__ = func.description
         gemini_functions.append(wrapped_func)

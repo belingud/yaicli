@@ -29,6 +29,7 @@ class TestMistralProvider:
             "STREAM": True,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "FREQUENCY_PENALTY": 0.0,
         }
 
     @pytest.fixture

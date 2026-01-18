@@ -10,13 +10,13 @@ import typer
 from prompt_toolkit import PromptSession, prompt
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
-from prompt_toolkit.keys import Keys
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .chat import Chat, FileChatManager, chat_mgr
 from .cmd_handler import CmdHandler
+from .completer import AtPathCompleter
 from .config import cfg
 from .console import get_console
 from .const import (
@@ -38,6 +38,7 @@ from .const import (
     TEMP_MODE,
     DefaultRoleNames,
 )
+from .context import ContextManager, ctx_mgr
 from .exceptions import ChatSaveError, YaicliError
 from .history import LimitedFileHistory
 from .llms import LLMClient
@@ -48,12 +49,36 @@ from .utils import detect_os, detect_shell, filter_command
 
 
 class CLI:
+    __slots__ = (
+        "verbose",
+        "init_role",
+        "role_name",
+        "console",
+        "chat_manager",
+        "role_manager",
+        "role",
+        "printer",
+        "client",
+        "cmd_handler",
+        "bindings",
+        "current_mode",
+        "interactive_round",
+        "chat_start_time",
+        "is_temp_session",
+        "chat",
+        "chat_history_dir",
+        "session",
+        "history",
+        "context_manager",
+    )
+
     def __init__(
         self,
         verbose: bool = False,
         role: str = DefaultRoleNames.DEFAULT,
         chat_manager: Optional[FileChatManager] = None,
         role_manager: Optional[RoleManager] = None,
+        context_manager: Optional[ContextManager] = None,
         client=None,
     ):
         self.verbose: bool = verbose
@@ -65,6 +90,7 @@ class CLI:
         self.console = get_console()
         self.chat_manager = chat_manager or chat_mgr
         self.role_manager = role_manager or role_mgr
+        self.context_manager = context_manager or ctx_mgr
         self.role: Role = self.role_manager.get_role(self.role_name)
         self.printer = Printer()
         self.client = client or self._create_client()
@@ -247,16 +273,26 @@ class CLI:
         return self.cmd_handler.handle_command(user_input)
 
     def _build_messages(self, user_input: str) -> list[ChatMessage]:
-        """Build message list for LLM API"""
+        """Build message list for LLM API with @ file references expanded."""
         # Create the message list with system prompt
         messages = [ChatMessage(role="system", content=self.role.prompt)]
+
+        # Add context messages if any
+        context_msgs = self.context_manager.get_context_messages()
+        if context_msgs:
+            messages.extend(context_msgs)
+
+        # Parse and add temporary @ file references
+        at_refs_content, cleaned_input = self.context_manager.parse_at_references(user_input)
+        if at_refs_content:
+            messages.append(ChatMessage(role="system", content=at_refs_content))
 
         # Add previous conversation if available
         for msg in self.chat.history:
             messages.append(msg)
 
-        # Add user input
-        messages.append(ChatMessage(role="user", content=user_input))
+        # Add user input (with @ references cleaned up)
+        messages.append(ChatMessage(role="user", content=cleaned_input))
         return messages
 
     def _handle_llm_response(self, user_input: str) -> tuple[Optional[str], list[ChatMessage]]:
@@ -297,9 +333,10 @@ class CLI:
 
         # The client modifies the message list in place, so the updated_messages
         # contains the full history of the turn (system, history, user, assistant, tools).
-        # We replace the old history with the new one, removing the system prompt.
+        # We replace the old history with the new one, removing system messages (role prompt, context, etc.)
+        # to ensure they remain temporary and don't pollute the conversation history.
         if updated_messages:
-            self.chat.history = updated_messages[1:]
+            self.chat.history = [msg for msg in updated_messages if msg.role != "system"]
 
         self._check_history_len()
 
@@ -361,16 +398,21 @@ class CLI:
                 history=LimitedFileHistory(HISTORY_FILE, max_entries=self.interactive_round),
                 auto_suggest=AutoSuggestFromHistory() if cfg.get("AUTO_SUGGEST", True) else None,
                 enable_history_search=True,
+                completer=AtPathCompleter(),
+                complete_while_typing=True,  # Enable auto-completion for @ trigger
+                complete_in_thread=True,  # Don't block on completion
+                bottom_toolbar=" [Ctrl+T] Switch Mode ",
             )
         except Exception as e:
             self.console.print(f"Error initializing prompt session history: {e}", style="red")
             self.session = PromptSession(key_bindings=self.bindings)
 
     def _setup_key_bindings(self) -> None:
-        """Setup keyboard shortcuts (e.g., TAB for mode switching)."""
+        """Setup keyboard shortcuts with Ctrl+T for mode switching."""
 
-        @self.bindings.add(Keys.ControlI)  # TAB
+        @self.bindings.add("c-t")  # Ctrl+T to switch mode
         def _(event: KeyPressEvent) -> None:
+            """Switch between chat and exec mode."""
             self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
             self.set_role(DefaultRoleNames.SHELL if self.current_mode == EXEC_MODE else self.init_role)
 
@@ -398,7 +440,7 @@ class CLI:
         self.print_help()
 
     def print_help(self):
-        self.console.print("Press [bold yellow]TAB[/bold yellow] to switch mode")
+        self.console.print("Press [bold yellow]Ctrl+T[/bold yellow] to switch mode")
         help_cmd = "|".join(CMD_HELP)
         self.console.print(f"{help_cmd:<19}: Show help message")
         self.console.print(f"{CMD_CLEAR:<19}: Clear chat history")
@@ -410,6 +452,9 @@ class CLI:
         self.console.print(f"{load_cmd:<19}: Load a saved chat")
         delete_cmd = f"{CMD_DELETE_CHAT} <index>"
         self.console.print(f"{delete_cmd:<19}: Delete a saved chat")
+        self.console.print(f"{'/add <path>':<19}: Add @file/dir to context")
+        self.console.print(f"{'/context, /ctx':<19}: Manage context (list, add, remove, clear)")
+        self.console.print("[dim]  Tip: Type '@' for path completion, use Tab/arrows to select[/dim]")
         self.console.print(f"{'!<command>':<19}: Execute shell command directly (e.g., !ls -al)")
         cmd_exit = f"{CMD_EXIT}|Ctrl+D|Ctrl+C"
         self.console.print(f"{cmd_exit:<19}: Exit")
