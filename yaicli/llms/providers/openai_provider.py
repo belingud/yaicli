@@ -183,7 +183,7 @@ class OpenAIProvider(Provider):
         tool_call: Optional[ToolCall] = None
 
         # Check if the response contains reasoning content in model_extra
-        if hasattr(choice.message, "model_extra") and choice.message.model_extra:
+        if not reasoning and hasattr(choice.message, "model_extra") and choice.message.model_extra:
             model_extra = choice.message.model_extra
             reasoning = self._get_reasoning_content(model_extra)
 
