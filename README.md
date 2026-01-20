@@ -130,6 +130,8 @@ pip install .
 - Gemini
 - Groq
 - Huggingface
+- Longcat
+- Longcat Anthropic Format
 - Minimax
 - Mistral
 - ModelScope
@@ -386,6 +388,15 @@ See official docs for `HF_PROVIDER`: https://huggingface.co/docs/inference-provi
 PROVIDER=groq
 API_KEY=
 MODEL=llama-3.3-70b-versatile
+```
+
+#### LongCat
+
+```ini
+PROVIDER=longcat
+API_KEY=
+MODEL=LongCat-Flash-Chat
+BASE_URL=https://api.longcat.chat/openai
 ```
 
 #### XAI
