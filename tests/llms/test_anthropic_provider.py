@@ -202,6 +202,46 @@ class TestAnthropicProvider:
         finally:
             AnthropicProvider.CLIENT_CLS = real_cls
 
+    @patch("yaicli.llms.providers.anthropic_provider.Anthropic")
+    @patch("yaicli.tools.get_anthropic_schemas", return_value=[{"name": "test_function"}])
+    def test_completion_with_thinking_blocks(self, mock_get_schemas, mock_anthropic_cls, mock_config):
+        """Test completion with thinking blocks (reasoning content)"""
+        real_cls = AnthropicProvider.CLIENT_CLS
+        try:
+            AnthropicProvider.CLIENT_CLS = mock_anthropic_cls
+
+            # Set up mock client
+            mock_client = MagicMock()
+            mock_anthropic_cls.return_value = mock_client
+
+            # Create thinking block
+            mock_thinking_block = MagicMock()
+            mock_thinking_block.type = "thinking"
+            mock_thinking_block.thinking = "Let me analyze this step by step..."
+
+            # Create text block
+            mock_text_block = MagicMock()
+            mock_text_block.type = "text"
+            mock_text_block.text = "Here's my analysis: The answer is 42."
+
+            mock_response = MagicMock()
+            mock_response.content = [mock_thinking_block, mock_text_block]
+            mock_response.stop_reason = "stop"
+
+            mock_client.messages.create.return_value = mock_response
+
+            provider = AnthropicProvider(config=mock_config)
+            messages = [ChatMessage(role="user", content="What's the answer to life, universe, and everything?")]
+            responses = list(provider.completion(messages))
+
+            # Verify response includes reasoning content
+            assert len(responses) == 1
+            assert responses[0].content == "Here's my analysis: The answer is 42."
+            assert responses[0].reasoning == "Let me analyze this step by step..."
+            assert responses[0].finish_reason == "stop"
+        finally:
+            AnthropicProvider.CLIENT_CLS = real_cls
+
     def test_detect_tool_role(self, mock_config):
         """Test detect_tool_role returns the correct role"""
         with patch("yaicli.llms.providers.anthropic_provider.Anthropic"):
