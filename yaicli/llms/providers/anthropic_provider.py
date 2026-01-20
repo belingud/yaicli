@@ -150,7 +150,9 @@ class AnthropicProvider(Provider):
 
         if tools:
             params["tools"] = tools
-            params["tool_choice"] = {"type": "auto", "disable_parallel_tool_use": True}
+            # Disable parallel tool use by default for better compatibility
+            disable_parallel = self.config.get("DISABLE_PARALLEL_TOOL_USE", True)
+            params["tool_choice"] = {"type": "auto", "disable_parallel_tool_use": disable_parallel}
 
         if self.verbose:
             self.console.print("System prompt:", params["system"])
@@ -188,23 +190,36 @@ class AnthropicProvider(Provider):
             yield LLMResponse(content=json.dumps(response.model_dump()), finish_reason="stop")
             return
 
-        # Extract text from content blocks
+        # Extract content from all blocks in a single pass
         text_content = ""
+        thinking_content = ""
+        tool_call: Optional[ToolCall] = None
+
         for block in response.content:
             if block.type == "text" and hasattr(block, "text"):
                 text_content += block.text
+            elif block.type == "thinking":
+                # Handle thinking blocks
+                thinking_content += getattr(block, "thinking", "")
+            elif block.type == "tool_use":
+                # Handle tool use blocks
+                tool_call = ToolCall(
+                    id=getattr(block, "id", ""),
+                    name=block.name,
+                    # String input is already valid JSON, no need to convert
+                    arguments=block.input if isinstance(block.input, str) else json.dumps(block.input),
+                )
 
         # Get stop reason
         finish_reason = response.stop_reason or "stop"
 
-        # Handle tool use
-        tool_call: Optional[ToolCall] = None
-        for block in response.content:
-            if block.type == "tool_use":
-                tool_call = ToolCall(id=getattr(block, "id", ""), name=block.name, arguments=json.dumps(block.input))
-                break
-
-        yield LLMResponse(content=text_content, finish_reason=finish_reason, tool_call=tool_call)
+        # Yield response with all content types
+        yield LLMResponse(
+            reasoning=thinking_content if thinking_content else None,
+            content=text_content,
+            finish_reason=finish_reason,
+            tool_call=tool_call,
+        )
 
     def _handle_stream_response(self, response: Stream[RawMessageStreamEvent]) -> Generator[LLMResponse, None, None]:
         """Handle streaming response from Anthropic API"""

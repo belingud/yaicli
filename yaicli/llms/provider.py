@@ -140,6 +140,8 @@ class ProviderFactory:
         "groq": (".providers.groq_provider", "GroqProvider"),
         "huggingface": (".providers.huggingface_provider", "HuggingFaceProvider"),
         "infini-ai": (".providers.infiniai_provider", "InfiniAIProvider"),
+        "longcat": (".providers.longcat_provider", "LongCatProvider"),
+        "longcat-anthropic": (".providers.longcat_provider", "LongCatAnthropicProvider"),
         "minimax": (".providers.minimax_provider", "MinimaxProvider"),
         "mistral": (".providers.mistral_provider", "MistralProvider"),
         "modelscope": (".providers.modelscope_provider", "ModelScopeProvider"),
