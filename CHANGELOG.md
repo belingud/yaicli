@@ -1,5 +1,36 @@
 
 ---
+## [0.10.0](https://github.com/belingud/yaicli/compare/v0.9.0..v0.10.0) - 2026-01-20
+
+### ⛰️  Features
+
+- add longcat provider support and improve anthropic tool call handling - ([6ca2e8e](https://github.com/belingud/yaicli/commit/6ca2e8e35b28855c884a1d99f602be258ca16bba)) - Belingud
+- add default empty string to command handlers - ([0c6ebed](https://github.com/belingud/yaicli/commit/0c6ebedeef0a40cfccc35659e74a4b48ea45fc13)) - Belingud
+- update file/dir context help text - ([698fd61](https://github.com/belingud/yaicli/commit/698fd61b93572b5bb6873052cebfe170d661d99d)) - Belingud
+- add support for @-prefixed paths in AtPathCompleter - ([1b43712](https://github.com/belingud/yaicli/commit/1b43712e5b4fe447b96e490cab63e7d6321d62b5)) - Belingud
+
+### 🐛 Bug Fixes
+
+- compatible with /context add - ([e60333d](https://github.com/belingud/yaicli/commit/e60333decb220d63914e9ceb2cbe4e353c989b6b)) - Belingud
+
+### 📚 Documentation
+
+- add LongCat provider documentation - ([a3e4a79](https://github.com/belingud/yaicli/commit/a3e4a796ffdb9150f94c45fd6f4568b519b88ebc)) - Belingud
+- add context management and path completion features - ([1bc7c74](https://github.com/belingud/yaicli/commit/1bc7c74136fe09cab8eb0775752cd4a604941ba7)) - Belingud
+- add file context management feature documentation - ([4f53c73](https://github.com/belingud/yaicli/commit/4f53c739b3769270b37892389be602631f05ab22)) - Belingud
+- add changelog entries for v0.9.0 and v0.8.12 - ([8fbfb27](https://github.com/belingud/yaicli/commit/8fbfb27eb36398995b7fecb9ad2cad4caaf85ce7)) - Belingud
+
+### 🧪 Testing
+
+- add LongCat provider tests and improve Anthropic provider testing - ([5b950db](https://github.com/belingud/yaicli/commit/5b950db7b16d4ba5d08eb734161edd1131f42eee)) - Belingud
+- add message filtering and context management tests - ([43b226d](https://github.com/belingud/yaicli/commit/43b226dfd5702666fccdcd24b6ca9b593377fd6e)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update uv.lock - ([5fa5af4](https://github.com/belingud/yaicli/commit/5fa5af479810e3164fce82b3aad866901dc48f8c)) - Belingud
+
+
+---
 ## [0.9.0](https://github.com/belingud/yaicli/compare/v0.8.12..v0.9.0) - 2026-01-10
 
 ### ⛰️  Features
