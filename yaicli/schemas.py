@@ -11,6 +11,7 @@ class ChatMessage:
     name: Optional[str] = None
     tool_call_id: Optional[str] = None
     tool_calls: List["ToolCall"] = field(default_factory=list)
+    reasoning: Optional[str] = None  # Save reasoning content for interleaved thinking
 
 
 @dataclass

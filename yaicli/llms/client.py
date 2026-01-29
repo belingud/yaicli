@@ -75,6 +75,7 @@ class LLMClient:
 
         # Get completion from provider and collect response data
         assistant_response_content = ""
+        assistant_reasoning_content = ""  # Collect reasoning content
         # Providers may return identical tool calls with the same ID in a single response during streaming
         tool_calls: dict[str, ToolCall] = {}
 
@@ -85,6 +86,8 @@ class LLMClient:
             # Collect content and tool calls for potential tool execution
             if llm_response.content:
                 assistant_response_content += llm_response.content
+            if llm_response.reasoning:  # Collect reasoning content
+                assistant_reasoning_content += llm_response.reasoning
             if llm_response.tool_call and llm_response.tool_call.id not in tool_calls:
                 tool_calls[llm_response.tool_call.id] = llm_response.tool_call
 
@@ -93,6 +96,7 @@ class LLMClient:
             role="assistant",
             content=assistant_response_content,
             tool_calls=list(tool_calls.values()) if tool_calls else [],
+            reasoning=assistant_reasoning_content if assistant_reasoning_content else None,  # Save reasoning
         )
         messages.append(assistant_message)
 
