@@ -35,7 +35,7 @@ clean:
 # Run tests with pytest
 test:
     @echo "Running tests..."
-    @pytest
+    @uv run pytest
 
 # Build package with hatch (runs clean first)
 build:
