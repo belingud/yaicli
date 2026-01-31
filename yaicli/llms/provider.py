@@ -63,6 +63,10 @@ class Provider(ABC):
             if msg.role == "tool" and msg.tool_call_id:
                 message["tool_call_id"] = msg.tool_call_id
 
+            # Handle reasoning content for assistant messages
+            if msg.role == "assistant" and msg.reasoning:
+                message["reasoning"] = msg.reasoning
+
             converted_messages.append(message)
 
         return converted_messages

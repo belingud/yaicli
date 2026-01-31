@@ -407,6 +407,23 @@ API_KEY=
 MODEL=grok-3
 ```
 
+#### Minimax
+
+```ini
+PROVIDER=minimax
+API_KEY=
+MODEL=MiniMax-M2.1
+```
+
+Extra params:
+
+```ini
+# Enable/disable interleaved thinking (default: true)
+MINIMAX_REASONING_SPLIT=true
+```
+
+MiniMax-M2.1 supports **Interleaved Thinking** - the model can reason before each tool use. When enabled, reasoning content is preserved in conversation history and displayed alongside responses.
+
 #### Chatglm
 
 ```ini

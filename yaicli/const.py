@@ -167,6 +167,12 @@ DEFAULT_CONFIG_MAP = {
     "SHOW_MCP_OUTPUT": {"value": DEFAULT_SHOW_MCP_OUTPUT, "env_key": "YAI_SHOW_MCP_OUTPUT", "type": bool},
     "MAX_TOOL_CALL_DEPTH": {"value": DEFAULT_MAX_TOOL_CALL_DEPTH, "env_key": "YAI_MAX_TOOL_CALL_DEPTH", "type": int},
     "EXCLUDE_PARAMS": {"value": DEFAULT_EXCLUDE_PARAMS, "env_key": "YAI_EXCLUDE_PARAMS", "type": str},
+    # MiniMax specific settings
+    "MINIMAX_REASONING_SPLIT": {
+        "value": True,
+        "env_key": "YAI_MINIMAX_REASONING_SPLIT",
+        "type": bool,
+    },
 }
 
 DEFAULT_CONFIG_INI = f"""[core]
