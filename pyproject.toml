@@ -1,6 +1,6 @@
 [project]
 name = "yaicli"
-version = "0.11.0"
+version = "0.11.1"
 description = "A simple CLI tool to interact with LLM"
 authors = [{ name = "belingud", email = "im.victor@qq.com" }]
 readme = "README.md"
