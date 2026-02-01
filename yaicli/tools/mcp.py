@@ -11,9 +11,9 @@ from ..utils import get_or_create_event_loop
 # Lazy import fastmcp to improve startup time (saves ~1.6s)
 # These imports are only needed when MCP is actually used
 if TYPE_CHECKING:
-    from fastmcp.client import Client
-    from fastmcp.client.client import CallToolResult
-    from mcp.types import TextContent, Tool
+    from fastmcp.client import Client  # noqa: F401
+    from fastmcp.client.client import CallToolResult  # noqa: F401
+    from mcp.types import TextContent, Tool  # noqa: F401
 
 
 def _import_fastmcp():

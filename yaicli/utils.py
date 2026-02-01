@@ -148,14 +148,10 @@ def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
         # Try to get the current running event loop
         return asyncio.get_running_loop()
     except RuntimeError:
-        # No running event loop, get or create event loop
-        try:
-            return asyncio.get_event_loop()
-        except RuntimeError:
-            # Create a new event loop and set it as the current thread's event loop
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            return loop
+        # No running event loop, create a new one
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
 
 
 def gen_tool_call_id() -> str:
