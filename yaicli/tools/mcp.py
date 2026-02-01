@@ -3,14 +3,26 @@ import json
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
-
-from fastmcp.client import Client
-from fastmcp.client.client import CallToolResult
-from mcp.types import TextContent, Tool
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from ..const import MCP_JSON_PATH
 from ..utils import get_or_create_event_loop
+
+# Lazy import fastmcp to improve startup time (saves ~1.6s)
+# These imports are only needed when MCP is actually used
+if TYPE_CHECKING:
+    from fastmcp.client import Client
+    from fastmcp.client.client import CallToolResult
+    from mcp.types import TextContent, Tool
+
+
+def _import_fastmcp():
+    """Lazy import fastmcp modules"""
+    from fastmcp.client import Client
+    from fastmcp.client.client import CallToolResult
+    from mcp.types import TextContent, Tool
+
+    return Client, CallToolResult, TextContent, Tool
 
 MCP_TOOL_NAME_PREFIX = "_mcp__"
 
@@ -100,17 +112,20 @@ class MCP:
         except Exception as e:
             return f"Tool '{self.name}' execution failed: {e}"
 
-    def _format_result(self, result: CallToolResult) -> str:
+    def _format_result(self, result: Any) -> str:
         """Format result to string
         This function is used to format the result to string.
         It will return the text of the first result if the result is a TextContent.
         It will return the string representation of the first result if the result is not a TextContent.
 
         Args:
-            result: CallToolResult
+            result: CallToolResult (from fastmcp)
         Returns:
             str
         """
+        # Lazy import to avoid loading fastmcp at module level
+        _, _, TextContent, _ = _import_fastmcp()
+
         if not result or not result.content:
             return ""
 
@@ -150,11 +165,13 @@ class MCPClient:
             config = MCPConfig.from_file(MCP_JSON_PATH)
 
         self.config = config
+        # Lazy import Client only when creating the MCP client
+        Client, _, _, _ = _import_fastmcp()
         self._client = Client(self.config.servers)
 
         # _tools_map: "_mcp__<original_tool_name>" -> MCP
         self._tools_map: Optional[Dict[str, MCP]] = None
-        self._tools: Optional[List[Tool]] = None
+        self._tools: Optional[List[Any]] = None  # List[Tool] from mcp.types
         self._initialized = True
 
     def ping(self) -> None:
@@ -167,39 +184,39 @@ class MCPClient:
         async with self._client:
             await self._client.ping()
 
-    def list_tools(self) -> List[Tool]:
+    def list_tools(self) -> List[Any]:
         """Get tool list
         This function will list all tools from the MCP server.
         Returns:
-            List[Tool]: Tool object list from fastmcp.types.Tool
+            List[Tool]: Tool object list from mcp.types.Tool
         """
         if self._tools is None:
             loop = get_or_create_event_loop()
             self._tools = loop.run_until_complete(self._list_tools_async())
         return self._tools
 
-    async def _list_tools_async(self) -> List[Tool]:
+    async def _list_tools_async(self) -> List[Any]:
         """Async get tool list"""
         async with self._client:
             return await self._client.list_tools()
 
-    def call_tool(self, tool_name: str, **kwargs) -> CallToolResult:
+    def call_tool(self, tool_name: str, **kwargs) -> Any:
         """Call tool"""
         tool_name = parse_mcp_tool_name(tool_name)
         loop = get_or_create_event_loop()
         return loop.run_until_complete(self._call_tool_async(tool_name, **kwargs))
 
-    async def _call_tool_async(self, tool_name: str, **kwargs) -> CallToolResult:
+    async def _call_tool_async(self, tool_name: str, **kwargs) -> Any:
         """Async call tool"""
         async with self._client:
             return await self._client.call_tool(tool_name, kwargs)
 
     @property
-    def tools(self) -> List[Tool]:
+    def tools(self) -> List[Any]:
         """Get tool list
         This property will be lazy loaded.
         Returns:
-            List[Tool]: Tool object list from fastmcp.types.Tool
+            List[Tool]: Tool object list from mcp.types.Tool
         Raises:
             ValueError: If error getting MCP tools
             FileNotFoundError: If MCP config file not found
@@ -433,7 +450,7 @@ class MCPManager:
         """Test connection"""
         self.client.ping()
 
-    def list_tools(self) -> List[Tool]:
+    def list_tools(self) -> List[Any]:
         """Get tool name list"""
         return self.client.tools
 
