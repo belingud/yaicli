@@ -401,16 +401,15 @@ class CLI:
                 completer=AtPathCompleter(),
                 complete_while_typing=True,  # Enable auto-completion for @ trigger
                 complete_in_thread=True,  # Don't block on completion
-                bottom_toolbar=" [Ctrl+T] Switch Mode ",
             )
         except Exception as e:
             self.console.print(f"Error initializing prompt session history: {e}", style="red")
             self.session = PromptSession(key_bindings=self.bindings)
 
     def _setup_key_bindings(self) -> None:
-        """Setup keyboard shortcuts with Ctrl+T for mode switching."""
+        """Setup keyboard shortcuts with Shift+Tab for mode switching."""
 
-        @self.bindings.add("c-t")  # Ctrl+T to switch mode
+        @self.bindings.add("s-tab")  # Shift+Tab to switch mode
         def _(event: KeyPressEvent) -> None:
             """Switch between chat and exec mode."""
             self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
@@ -440,7 +439,7 @@ class CLI:
         self.print_help()
 
     def print_help(self):
-        self.console.print("Press [bold yellow]Ctrl+T[/bold yellow] to switch mode")
+        self.console.print("Press [bold yellow]Shift+Tab[/bold yellow] to switch mode")
         help_cmd = "|".join(CMD_HELP)
         self.console.print(f"{help_cmd:<19}: Show help message")
         self.console.print(f"{CMD_CLEAR:<19}: Clear chat history")

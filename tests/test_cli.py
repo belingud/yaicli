@@ -770,8 +770,8 @@ class TestKeyBindingsAndSetup:
 
         cli._setup_key_bindings()
 
-        # Should add at least one key binding (TAB)
-        cli.bindings.add.assert_called()
+        # Should register Shift+Tab as mode toggle.
+        cli.bindings.add.assert_called_once_with("s-tab")
 
     @patch("yaicli.cli.CLI._setup_key_bindings")
     @patch("pathlib.Path.touch")  # Mock the Path.touch method
