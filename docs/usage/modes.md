@@ -72,9 +72,9 @@ ai "What is the capital of France?"
 
 When in interactive mode (chat or execute), you can switch modes in several ways:
 
-#### Using Tab Key
+#### Using Shift+Tab Key
 
-Press the `Tab` key to toggle between Chat and Execute modes.
+Press the `Shift+Tab` key to toggle between Chat and Execute modes.
 
 #### Using Commands
 

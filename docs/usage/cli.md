@@ -11,7 +11,7 @@ These shortcuts work in all interactive modes:
 | Shortcut             | Description                       |
 | -------------------- | --------------------------------- |
 | `Ctrl+C` or `Ctrl+D` | Exit the application              |
-| `Tab`                | Toggle between Chat/Execute modes |
+| `Shift+Tab`          | Toggle between Chat/Execute modes |
 | `Ctrl+R`             | Search command history            |
 | `↑/↓`                | Navigate through command history  |
 | `Ctrl+L`             | Clear the screen                  |

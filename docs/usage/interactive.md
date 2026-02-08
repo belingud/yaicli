@@ -15,7 +15,7 @@ ai --chat "What's the meaning of life"
 
 Welcome to YAICLI!
 Current: Persistent Session: What's the meaning of life
-Press TAB to switch mode
+Press Shift+Tab to switch mode
 /help|?            : Show help message
 /clear             : Clear chat history
 /his               : Show chat history
@@ -43,7 +43,7 @@ ai --chat
 
 Welcome to YAICLI!
 Current: Temporary Session (use /save to make persistent)
-Press TAB to switch mode
+Press Shift+Tab to switch mode
 /help|?            : Show help message
 /clear             : Clear chat history
 /his               : Show chat history
@@ -72,7 +72,7 @@ Press TAB to switch mode
 
 ## Keyboard Shortcuts
 
-- `Tab` - Toggle between Chat/Execute modes
+- `Shift+Tab` - Toggle between Chat/Execute modes
 - `Ctrl+C` or `Ctrl+D` - Exit
 - `Ctrl+R` - Search history
 - `↑/↓` - Navigate through history

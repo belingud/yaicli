@@ -725,7 +725,7 @@ ai --verbose "Explain quantum computing"
 
 **Keyboard Shortcuts**
 
-- `Tab` - Toggle between Chat/Execute modes
+- `Shift+Tab` - Toggle between Chat/Execute modes
 - `Ctrl+C` or `Ctrl+D` - Exit
 - `Ctrl+R` - Search history
 - `↑/↓` - Navigate through history
@@ -798,7 +798,7 @@ Chat title: hello
 
 Welcome to YAICLI!
 Current: Persistent Session: hello
-Press TAB to switch mode
+Press Shift+Tab to switch mode
 /clear             : Clear chat history
 /his               : Show chat history
 /list              : List saved chats
@@ -944,7 +944,7 @@ Starting a temporary chat session (will not be saved automatically)
 
 Welcome to YAICLI!
 Current: Temporary Session (use /save to make persistent)
-Press TAB to switch mode
+Press Shift+Tab to switch mode
 /clear             : Clear chat history
 /his               : Show chat history
 /list              : List saved chats
