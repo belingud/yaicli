@@ -35,6 +35,9 @@ def get_mcp(name: str):
 
 console = get_console()
 
+_openai_schemas_cache: List[Dict[str, Any]] | None = None
+_anthropic_schemas_cache: List[Dict[str, Any]] | None = None
+
 
 def get_openai_schemas() -> List[Dict[str, Any]]:
     """Get OpenAI-compatible function schemas
@@ -42,6 +45,9 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
     Returns:
         List of function schemas in OpenAI format
     """
+    global _openai_schemas_cache
+    if _openai_schemas_cache is not None:
+        return _openai_schemas_cache
     transformed_schemas = []
     for function in list_functions():
         schema = {
@@ -49,6 +55,7 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
             "function": function.func_cls.openai_schema,
         }
         transformed_schemas.append(schema)
+    _openai_schemas_cache = transformed_schemas
     return transformed_schemas
 
 
@@ -58,9 +65,13 @@ def get_anthropic_schemas() -> List[Dict[str, Any]]:
     Returns:
         List of function schemas in Anthropic format
     """
+    global _anthropic_schemas_cache
+    if _anthropic_schemas_cache is not None:
+        return _anthropic_schemas_cache
     transformed_schemas = []
     for function in list_functions():
         transformed_schemas.append(function.func_cls.anthropic_schema)
+    _anthropic_schemas_cache = transformed_schemas
     return transformed_schemas
 
 

@@ -121,12 +121,19 @@ def get_function(name: str) -> Function:
     raise ValueError(f"Function {name!r} not found")
 
 
+_gemini_functions_cache: Optional[List[Callable]] = None
+
+
 def get_functions_gemini_format() -> List[Callable]:
     """Get functions in gemini format"""
+    global _gemini_functions_cache
+    if _gemini_functions_cache is not None:
+        return _gemini_functions_cache
     gemini_functions = []
     for func_name, func in get_func_name_map().items():
         wrapped_func = wrap_gemini_function(func.execute)
         wrapped_func.__name__ = func_name
         wrapped_func.__doc__ = func.description
         gemini_functions.append(wrapped_func)
+    _gemini_functions_cache = gemini_functions
     return gemini_functions
