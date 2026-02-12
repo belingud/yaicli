@@ -4,7 +4,7 @@ import platform
 import shutil
 from pathlib import Path
 
-from instructor import OpenAISchema
+from yaicli.function_schema import OpenAISchema
 from pydantic import Field
 
 

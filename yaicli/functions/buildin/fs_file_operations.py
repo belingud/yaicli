@@ -3,7 +3,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from instructor import OpenAISchema
+from yaicli.function_schema import OpenAISchema
 from pydantic import Field
 
 

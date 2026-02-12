@@ -58,6 +58,7 @@ dependencies = [
     "ddgs>=9.6.1",
     "distro>=1.9.0",
     "fastmcp>=2.10.1",
+    "docstring-parser>=0.16",
     "httpx>=0.28.1",
     "instructor>=1.7.9",
     "json-repair>=0.44.1",

@@ -7,7 +7,7 @@ from .chat import FileChatManager
 from .config import cfg
 from .const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
 from .exceptions import YaicliError
-from .functions import install_functions, print_functions, print_mcp
+from .functions import install_functions, print_functions, print_mcp, reinstall_functions
 from .llms.provider import ProviderFactory
 from .role import RoleManager
 
@@ -248,6 +248,14 @@ class FunctionOptions:
         callback=print_functions,
     )
 
+    reinstall_functions = typer.Option(
+        False,
+        "--reinstall-functions",
+        help="Reinstall builtin functions (overwrites existing builtin files, preserves custom ones).",
+        rich_help_panel="Function Options",
+        callback=reinstall_functions,
+    )
+
     enable_functions = typer.Option(
         cfg["ENABLE_FUNCTIONS"],
         "--enable-functions/--disable-functions",
@@ -300,6 +308,7 @@ def main(
     justify: JustifyEnum = OtherOptions.justify,  # noqa: F841
     # ------------------- Function Options -------------------
     install_functions: bool = FunctionOptions.install_functions,  # noqa: F841
+    reinstall_functions: bool = FunctionOptions.reinstall_functions,  # noqa: F841
     list_functions: bool = FunctionOptions.list_functions,  # noqa: F841
     enable_functions: bool = FunctionOptions.enable_functions,  # noqa: F841
     show_function_output: bool = FunctionOptions.show_function_output,  # noqa: F841
