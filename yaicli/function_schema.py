@@ -13,13 +13,27 @@ R_co = TypeVar("R_co", covariant=True)
 
 
 class classproperty(Generic[R_co]):
-    """Descriptor for class-level properties."""
+    """Descriptor for class-level properties with per-class caching."""
 
     def __init__(self, method: Callable[[Any], R_co]) -> None:
         self.cproperty = method
+        self.attr_name = ""
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        self.attr_name = f"_classproperty_cache_{name}"
 
     def __get__(self, instance: object, cls: type[Any]) -> R_co:
-        return self.cproperty(cls)
+        cache_attr = self.attr_name
+        if cache_attr:
+            try:
+                return getattr(cls, cache_attr)
+            except AttributeError:
+                pass
+        value = self.cproperty(cls)
+        if cache_attr:
+            # Store cache directly on the subclass to avoid recomputation
+            type.__setattr__(cls, cache_attr, value)
+        return value
 
 
 class OpenAISchema(BaseModel):
