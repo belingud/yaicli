@@ -5,9 +5,12 @@ from functools import wraps
 from typing import TYPE_CHECKING, Callable, List, Optional
 
 if TYPE_CHECKING:
-    from instructor import OpenAISchema
+    from yaicli.function_schema import OpenAISchema
 
+from ..console import get_console
 from ..const import FUNCTIONS_DIR
+
+_deprecated_warned: set[str] = set()
 
 
 def wrap_gemini_function(func: Callable) -> Callable:
@@ -35,6 +38,26 @@ class Function:
 _func_name_map: Optional[dict[str, Function]] = None
 
 
+def _check_deprecated_import(file_path) -> None:
+    """Check if a function file uses the deprecated instructor import and print a warning."""
+    name = file_path.name
+    if name in _deprecated_warned:
+        return
+    try:
+        source = file_path.read_text(encoding="utf-8")
+    except Exception:
+        return
+    if "from instructor import" in source:
+        _deprecated_warned.add(name)
+        console = get_console()
+        console.print(
+            f"[yellow]WARNING:[/yellow] {name}: 'from instructor import OpenAISchema' is deprecated "
+            f"and will be removed in a future version. "
+            f"Please change to 'from yaicli.function_schema import OpenAISchema'. "
+            f"Run [bold]ai --reinstall-functions[/bold] to update builtin functions."
+        )
+
+
 def get_func_name_map() -> dict[str, Function]:
     """Get function name map"""
     global _func_name_map
@@ -47,6 +70,9 @@ def get_func_name_map() -> dict[str, Function]:
     for file in FUNCTIONS_DIR.glob("*.py"):
         if file.name.startswith("_"):
             continue
+
+        _check_deprecated_import(file)
+
         module_name = str(file).replace("/", ".").rstrip(".py")
         spec = importlib.util.spec_from_file_location(module_name, str(file))
         module = importlib.util.module_from_spec(spec)  # type: ignore
@@ -54,7 +80,9 @@ def get_func_name_map() -> dict[str, Function]:
         spec.loader.exec_module(module)  # type: ignore
 
         if not hasattr(module.Function, "openai_schema") or not hasattr(module.Function, "anthropic_schema"):
-            raise TypeError(f"Function {module_name} must be a subclass of instructor.OpenAISchema")
+            raise TypeError(
+                f"Function {module_name} must be a subclass of yaicli.function_schema.OpenAISchema"
+            )
         if not hasattr(module.Function, "execute"):
             raise TypeError(f"Function {module_name} must have an 'execute' classmethod")
 

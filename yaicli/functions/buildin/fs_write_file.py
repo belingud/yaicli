@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
 
-from instructor import OpenAISchema
 from pydantic import Field
+
+from yaicli.function_schema import OpenAISchema
 
 
 class Function(OpenAISchema):

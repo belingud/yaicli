@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import List, Union
 
-from instructor import OpenAISchema
+from yaicli.function_schema import OpenAISchema
 from pydantic import Field
 
 

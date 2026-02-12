@@ -29,6 +29,23 @@ def install_functions(cls, _: Any) -> None:
 
 
 @option_callback
+def reinstall_functions(cls, _: Any) -> None:
+    """Reinstall builtin functions (overwrites existing builtin files, preserves custom ones)"""
+    cur_dir = Path(__file__).absolute().parent
+    buildin_dir = cur_dir / "buildin"
+    buildin_funcs = {p.name: p for p in buildin_dir.glob("*.py")}
+    console.print("Reinstalling builtin functions...")
+    if not FUNCTIONS_DIR.exists():
+        FUNCTIONS_DIR.mkdir(parents=True)
+    for name, src in buildin_funcs.items():
+        dst = FUNCTIONS_DIR / name
+        if dst.exists():
+            dst.unlink()
+        shutil.copy(src, dst, follow_symlinks=True)
+        console.print(f"Reinstalled {dst}")
+
+
+@option_callback
 def print_functions(cls, _: Any) -> None:
     """List all available buildin functions"""
     if not FUNCTIONS_DIR.exists():
