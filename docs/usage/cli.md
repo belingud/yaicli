@@ -129,6 +129,19 @@ cat error.log | ai "Explain these errors"
 cat data.csv | ai "Convert this CSV to JSON"
 ```
 
+### Image Input
+
+```bash
+# Local image file
+ai --image photo.jpg "What is in this image?"
+
+# Multiple images
+ai -i img1.png -i img2.png "Compare these"
+
+# Image URL
+ai --image https://example.com/photo.jpg "Describe this"
+```
+
 ## Next Steps
 
 - Learn about different [interaction modes](modes.md)

@@ -40,6 +40,13 @@ generate and execute shell commands, or get quick answers without leaving your w
 - **Safe Command Execution**: Verification before running any command
 - **Flexible Input**: Pipe content directly (`cat log.txt | ai "analyze this"`)
 
+### 🖼️ Image Input (Vision)
+
+- **Local Images**: Pass local image files with `--image/-i` (JPEG, PNG, GIF, WebP)
+- **URL Images**: Pass image URLs directly to vision-capable models
+- **Multi-Image**: Specify `--image` multiple times for comparison tasks
+- **30+ Providers**: Automatic format conversion for OpenAI, Anthropic, Gemini, Ollama families
+
 ### 🔌 Universal LLM Compatibility
 
 - **OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
@@ -699,6 +706,15 @@ cat app.py | ai "Explain what this code does"
 # or use @
 ai '@Justfile What does this file do'
 
+# Send an image to a vision model
+ai --image photo.jpg "What is in this image?"
+
+# Send multiple images
+ai -i img1.png -i img2.png "Compare these two screenshots"
+
+# Send an image URL
+ai --image https://example.com/photo.jpg "Describe this"
+
 # Debug with verbose mode
 ai --verbose "Explain quantum computing"
 ```
@@ -816,6 +832,38 @@ Chat History:
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 >
 ```
+
+### Image Input
+
+Send images to vision-capable models (GPT-4o, Claude 3, Gemini, Llama 3.2 Vision, etc.) directly from the CLI.
+
+**Local image file**
+
+```bash
+ai --image photo.jpg "What is in this image?"
+```
+
+**Multiple images**
+
+```bash
+ai -i screenshot1.png -i screenshot2.png "Compare these two UIs"
+```
+
+**Image URL**
+
+```bash
+ai --image https://example.com/diagram.png "Explain this architecture diagram"
+```
+
+**Image without text prompt**
+
+```bash
+ai --image photo.jpg
+```
+
+Supported formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), GIF (`.gif`), WebP (`.webp`).
+
+> **Note**: Image input is currently supported in single-shot mode only, not in interactive `--chat` mode. Providers without vision support (Cohere, HuggingFace, ChatGLM, ModelScope) will receive a warning and the images will be stripped.
 
 ### Input Methods
 

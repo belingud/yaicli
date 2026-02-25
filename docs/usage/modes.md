@@ -44,11 +44,13 @@ The default non-interactive mode gives you quick answers without entering a pers
 **Features:**
 - Direct answers to questions
 - Support for piped input
+- Image input support via `--image` / `-i`
 - Fast responses with minimal overhead
 
 **Best for:**
 - One-off questions
 - Quick information lookups
+- Image analysis with vision models
 - Script integration
 
 ## Switching Between Modes
@@ -66,6 +68,9 @@ ai --shell "Create a backup script"
 
 # Quick query (default mode)
 ai "What is the capital of France?"
+
+# Quick query with image input
+ai --image photo.jpg "What is in this image?"
 ```
 
 ### Interactive Mode Switching

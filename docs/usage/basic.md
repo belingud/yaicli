@@ -35,6 +35,28 @@ Debug with verbose mode
 ai --verbose "Explain quantum computing"
 ```
 
+## Image Input
+
+Send images to vision-capable models directly from the command line using `--image` / `-i`:
+
+```bash
+# Describe a local image
+ai --image photo.jpg "What is in this image?"
+
+# Compare multiple images
+ai -i img1.png -i img2.png "What are the differences?"
+
+# Use an image URL
+ai --image https://example.com/diagram.png "Explain this diagram"
+
+# Send image without text prompt
+ai --image photo.jpg
+```
+
+Supported formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), GIF (`.gif`), WebP (`.webp`).
+
+> **Note**: Image input works in single-shot mode only (not `--chat`). Providers without vision support will show a warning and ignore the images.
+
 ## Command Line Reference
 
 ```
@@ -97,5 +119,8 @@ ai --verbose "Explain quantum computing"
 │                                             [default: disable-mcp]                                                     │
 │ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: show)                                     │
 │ --list-mcp                                  List all available mcp.                                                    │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Image Options ───────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --image  -i      TEXT  Image file path or URL to include with the prompt. Can be specified multiple times.            │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```

@@ -85,6 +85,65 @@ ai 'What is the latest exchange rate between BTC and USD?' --enable-mcp
 
 Configure MCP tools in `~/.config/yaicli/mcp.json`.
 
+## Image Input (Vision)
+
+YAICLI supports sending images to vision-capable models (GPT-4o, Claude 3, Gemini, Llama 3.2 Vision, etc.) using the `--image` / `-i` option.
+
+### Local Images
+
+Pass a local image file path. The image will be validated and base64-encoded before sending:
+
+```bash
+ai --image photo.jpg "What is in this image?"
+ai -i screenshot.png "Describe the UI layout"
+```
+
+Supported formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), GIF (`.gif`), WebP (`.webp`).
+
+### URL Images
+
+Pass an image URL to send it directly to the provider:
+
+```bash
+ai --image https://example.com/diagram.png "Explain this architecture"
+```
+
+### Multiple Images
+
+Use `-i` multiple times to send multiple images in one request:
+
+```bash
+ai -i before.png -i after.png "What changed between these two screenshots?"
+```
+
+### Image-Only Invocation
+
+You can send an image without a text prompt:
+
+```bash
+ai --image photo.jpg
+```
+
+### Provider Compatibility
+
+Image input is automatically formatted for each provider family:
+
+| Provider Family | Providers | Image Format |
+|----------------|-----------|--------------|
+| OpenAI-compatible | OpenAI, DeepSeek, Groq, Mistral, OpenRouter, etc. (~25) | `content` array with `image_url` blocks |
+| Anthropic | Anthropic, Anthropic Bedrock, Anthropic Vertex | `content` array with `image` + `source` blocks |
+| Gemini | Gemini, Vertex AI | `Part.from_bytes()` / `Part.from_uri()` |
+| Ollama | Ollama | Separate `images` array (base64 only) |
+
+Providers without vision support (Cohere, HuggingFace, ChatGLM, ModelScope) will show a warning and send text-only messages.
+
+### Limitations
+
+- Image input is supported in **single-shot mode only**, not in interactive `--chat` mode
+- No client-side file size limit; the provider API enforces its own limits
+- Ollama may not support URL images; use local files instead
+- No automatic image resizing or optimization
+
 ## Custom Configuration
 
 ### LLM Provider Configuration
