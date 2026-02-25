@@ -319,6 +319,26 @@ class AnthropicProvider(Provider):
 
                     message["content"] = content
 
+                # Handle images in user messages
+                elif msg.images:
+                    content = []
+                    # Image blocks before text (Anthropic best practice)
+                    for img in msg.images:
+                        if img.is_url:
+                            content.append({"type": "image", "source": {"type": "url", "url": img.data}})
+                        else:
+                            content.append(
+                                {
+                                    "type": "image",
+                                    "source": {"type": "base64", "media_type": img.media_type, "data": img.data},
+                                }
+                            )
+                    # Text block after images
+                    text = msg.content or ""
+                    if text:
+                        content.append({"type": "text", "text": text})
+                    message["content"] = content
+
                 converted_messages.append(message)
                 i += 1
             else:

@@ -515,7 +515,7 @@ class TestAPIInteraction:
         # Verify results
         assert result == "Test response"
         cli.client.completion_with_tools.assert_called_once()
-        mock_build_messages.assert_called_once_with("Test input")
+        mock_build_messages.assert_called_once_with("Test input", images=None)
         mock_display_stream.assert_called_once()
 
     @patch("yaicli.cli.CLI._build_messages")
@@ -542,7 +542,7 @@ class TestAPIInteraction:
         # Verify results
         assert result == "Test response"
         cli.client.completion_with_tools.assert_called_once()
-        mock_build_messages.assert_called_once_with("Test input")
+        mock_build_messages.assert_called_once_with("Test input", images=None)
         mock_display_stream.assert_called_once()
 
     def test_handle_llm_response_error(self, cli_with_mocks):
@@ -690,7 +690,7 @@ class TestRunFunctionality:
 
         cli.run(chat=False, shell=False, user_input="Test prompt")
         # Use keyword arguments to match actual call
-        mock_run_once.assert_called_once_with("Test prompt", shell=False, code=False)
+        mock_run_once.assert_called_once_with("Test prompt", shell=False, code=False, images=None)
 
     @patch("yaicli.cli.CLI._run_once")
     def test_run_shell_mode(self, mock_run_once, cli_with_mocks):
@@ -699,7 +699,7 @@ class TestRunFunctionality:
 
         cli.run(chat=False, shell=True, user_input="Generate command")
         # Use keyword arguments to match actual call
-        mock_run_once.assert_called_once_with("Generate command", shell=True, code=False)
+        mock_run_once.assert_called_once_with("Generate command", shell=True, code=False, images=None)
 
     def test_run_no_input(self, cli_with_mocks):
         """Test running with no input."""
@@ -738,7 +738,7 @@ class TestRunFunctionality:
 
         # Verify mode was set correctly before processing
         assert cli.current_mode == EXEC_MODE
-        mock_process_input.assert_called_once_with("List files")
+        mock_process_input.assert_called_once_with("List files", images=None)
 
     @patch("yaicli.cli.CLI.prepare_chat_loop")
     @patch("yaicli.cli.CLI._process_user_input")

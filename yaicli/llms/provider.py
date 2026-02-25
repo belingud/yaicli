@@ -67,6 +67,22 @@ class Provider(ABC):
             if msg.role == "assistant" and msg.reasoning:
                 message["reasoning"] = msg.reasoning
 
+            # Handle images: convert content to content array with image_url blocks
+            if msg.images:
+                content_blocks: list = []
+                # Add text block
+                text = msg.content or ""
+                if text:
+                    content_blocks.append({"type": "text", "text": text})
+                # Add image blocks
+                for img in msg.images:
+                    if img.is_url:
+                        url = img.data
+                    else:
+                        url = f"data:{img.media_type};base64,{img.data}"
+                    content_blocks.append({"type": "image_url", "image_url": {"url": url}})
+                message["content"] = content_blocks
+
             converted_messages.append(message)
 
         return converted_messages

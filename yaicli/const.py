@@ -80,6 +80,9 @@ DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
 DEFAULT_MAX_TOOL_CALL_DEPTH: int = 8
 DEFAULT_EXCLUDE_PARAMS: str = ""  # Empty by default
 
+# Providers known to not support vision/image input
+NO_VISION_PROVIDERS = {"cohere", "cohere-bedrock", "cohere-sagemaker", "huggingface", "chatglm", "modelscope"}
+
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.
 The context conversation may contain other types of messages, 

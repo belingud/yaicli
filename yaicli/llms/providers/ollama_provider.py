@@ -71,6 +71,10 @@ class OllamaProvider(Provider):
             if msg.role == "tool" and msg.tool_call_id:
                 message["tool_call_id"] = msg.tool_call_id
 
+            # Handle images: Ollama uses a separate 'images' array of base64 strings
+            if msg.images:
+                message["images"] = [img.data for img in msg.images]
+
             converted_messages.append(message)
 
         return converted_messages

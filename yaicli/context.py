@@ -5,7 +5,8 @@ from typing import Dict, List, Optional
 from rich.table import Table
 
 from .console import get_console
-from .schemas import ChatMessage
+from .image import SUPPORTED_IMAGE_EXTENSIONS, encode_local_image
+from .schemas import ChatMessage, ImageData
 
 console = get_console()
 
@@ -150,18 +151,19 @@ class ContextManager:
         messages.append(ChatMessage(role="system", content=full_content))
         return messages
 
-    def parse_at_references(self, text: str) -> tuple[str, str]:
+    def parse_at_references(self, text: str) -> tuple[str, str, list[ImageData]]:
         """Parse @ file references from text and read their content.
 
         This method extracts @path references from the input text, reads the file
         contents, and returns both the file contents as a formatted message and
         the original text with @ references replaced by file names.
+        Image files are detected and returned as ImageData for multimodal input.
 
         Args:
             text: Input text potentially containing @path references
 
         Returns:
-            Tuple of (file_contents_message, cleaned_text)
+            Tuple of (file_contents_message, cleaned_text, at_images)
         """
         import re
 
@@ -172,10 +174,11 @@ class ContextManager:
         matches = re.finditer(pattern, text)
 
         if not matches:
-            return "", text
+            return "", text, []
 
         file_contents = ["Referenced files for this query:\n"]
         cleaned_text = text
+        at_images: list[ImageData] = []
 
         # Collect all matches first to avoid modification issues during iteration
         for match in matches:
@@ -192,28 +195,36 @@ class ContextManager:
                     path = Path.cwd() / path_str
 
                 if path.exists() and path.is_file():
-                    content = self._read_file(path)
-                    # Check if content is valid text (not an error/warning message starting with [)
-                    if content and not content.strip().startswith("["):
-                        file_contents.append(f"\n## File: {path.name}\nPath: {path}\n```\n{content}\n```\n")
-                        cleaned_text = cleaned_text.replace(full_match, f"'{path.name}'")
+                    if path.suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS:
+                        try:
+                            at_images.append(encode_local_image(str(path)))
+                            cleaned_text = cleaned_text.replace(full_match, f"'{path.name}'")
+                        except Exception as e:
+                            console.print(f"Warning: Could not process image @{path_str}: {e}", style="yellow")
+                            cleaned_text = cleaned_text.replace(full_match, f"'{path.name}'")
                     else:
-                        # File exists but has issues (binary, too large, error)
-                        console.print(f"Warning: Cannot include @{path_str}: {content}", style="yellow")
-                        cleaned_text = cleaned_text.replace(full_match, f"'{path.name}'")
+                        content = self._read_file(path)
+                        # Check if content is valid text (not an error/warning message starting with [)
+                        if content and not content.strip().startswith("["):
+                            file_contents.append(f"\n## File: {path.name}\nPath: {path}\n```\n{content}\n```\n")
+                            cleaned_text = cleaned_text.replace(full_match, f"'{path.name}'")
+                        else:
+                            # File exists but has issues (binary, too large, error)
+                            console.print(f"Warning: Cannot include @{path_str}: {content}", style="yellow")
+                            cleaned_text = cleaned_text.replace(full_match, f"'{path.name}'")
             except Exception as e:
                 console.print(f"Warning: Could not read @{path_str}: {e}", style="yellow")
 
         if len(file_contents) > 1:
-            return "\n".join(file_contents), cleaned_text
-        return "", cleaned_text
+            return "\n".join(file_contents), cleaned_text, at_images
+        return "", cleaned_text, at_images
 
     def _read_file(self, path: Path) -> Optional[str]:
         """Safely read file content"""
         try:
             # Skip binary files roughly
             # This is a simple check, could be improved
-            if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".pyc"}:
+            if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".zip", ".tar", ".gz", ".pyc"}:
                 return "[Binary file omitted]"
 
             # Skip if file is too large (e.g. > 1MB)

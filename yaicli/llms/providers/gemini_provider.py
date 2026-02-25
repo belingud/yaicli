@@ -1,3 +1,4 @@
+import base64
 import json
 from typing import Any, Callable, Dict, Generator, List
 
@@ -90,7 +91,22 @@ class GeminiProvider(Provider):
         for msg in messages:
             if msg.role == "system":
                 continue
-            content = types.Content(role=self._map_role(msg.role), parts=[types.Part(text=msg.content)])
+
+            parts = []
+
+            # Add image parts before text
+            if msg.images:
+                for img in msg.images:
+                    if img.is_url:
+                        parts.append(types.Part.from_uri(file_uri=img.data, mime_type=img.media_type))
+                    else:
+                        img_bytes = base64.standard_b64decode(img.data)
+                        parts.append(types.Part.from_bytes(data=img_bytes, mime_type=img.media_type))
+
+            # Add text part
+            parts.append(types.Part(text=msg.content))
+
+            content = types.Content(role=self._map_role(msg.role), parts=parts)
             if msg.role == "tool":
                 content.role = "user"
                 content.parts = [
