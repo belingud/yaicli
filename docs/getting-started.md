@@ -1,6 +1,6 @@
 # Getting Started with YAICLI
 
-YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (LLMs) like GPT-4o directly to your terminal. This guide will help you get up and running quickly.
+YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (LLMs) like GPT-5.2 directly to your terminal. This guide will help you get up and running quickly.
 
 ## Quick Start
 

@@ -42,7 +42,7 @@ The configuration file uses the INI format with the following sections:
 PROVIDER=openai
 BASE_URL=
 API_KEY=
-MODEL=gpt-4o
+MODEL=gpt-5.2
 
 DEFAULT_ROLE=DEFAULT
 # auto detect shell and os (or specify manually, e.g., bash, zsh, powershell.exe)
@@ -98,7 +98,7 @@ SHOW_MCP_OUTPUT=false
 | `PROVIDER`             | LLM provider (openai, claude, cohere, etc.) | `openai`                 | `YAI_PROVIDER`             |
 | `BASE_URL`             | API endpoint URL                            | -                        | `YAI_BASE_URL`             |
 | `API_KEY`              | Your API key                                | -                        | `YAI_API_KEY`              |
-| `MODEL`                | LLM model to use                            | `gpt-4o`                 | `YAI_MODEL`                |
+| `MODEL`                | LLM model to use                            | `gpt-5.2`                | `YAI_MODEL`                |
 | `DEFAULT_ROLE`         | Default role                                | `DEFAULT`                | `YAI_DEFAULT_ROLE`         |
 | `SHELL_NAME`           | Shell type                                  | `auto`                   | `YAI_SHELL_NAME`           |
 | `OS_NAME`              | Operating system                            | `auto`                   | `YAI_OS_NAME`              |

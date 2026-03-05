@@ -11,7 +11,7 @@ YAICLI is a command-line interface for interacting with Large Language Models (L
 ### What LLM providers are supported?
 
 YAICLI supports multiple providers including:
-- OpenAI (GPT-4o, GPT-3.5, etc.)
+- OpenAI (GPT-5.1, GPT-5.2, etc.)
 - Google Gemini
 - Claude (Anthropic)
 - Cohere

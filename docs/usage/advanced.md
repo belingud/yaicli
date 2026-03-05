@@ -87,7 +87,7 @@ Configure MCP tools in `~/.config/yaicli/mcp.json`.
 
 ## Image Input (Vision)
 
-YAICLI supports sending images to vision-capable models (GPT-4o, Claude 3, Gemini, Llama 3.2 Vision, etc.) using the `--image` / `-i` option.
+YAICLI supports sending images to vision-capable models (GPT-5.2, Claude 3, Gemini, Llama 3.2 Vision, etc.) using the `--image` / `-i` option.
 
 ### Local Images
 
@@ -155,7 +155,7 @@ YAICLI works with many LLM providers. Configure your preferred provider in the c
 PROVIDER=openai  # or cohere, gemini, ollama, etc.
 BASE_URL=        # leave empty for default provider URL
 API_KEY=your_api_key_here
-MODEL=gpt-4o
+MODEL=gpt-5.2
 ```
 
 ### Syntax Highlighting Themes
@@ -185,4 +185,4 @@ Example for Qwen3's thinking behavior:
 EXTRA_BODY={"enable_thinking": false}
 # Or limit thinking tokens:
 EXTRA_BODY={"thinking_budget": 4096}
-``` 
+```
