@@ -51,7 +51,7 @@ MCP_JSON_PATH = CONFIG_PATH.parent / "mcp.json"
 DEFAULT_CODE_THEME = "monokai"
 DEFAULT_PROVIDER = "openai"
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
-DEFAULT_MODEL = "gpt-4o"
+DEFAULT_MODEL = "gpt-5.2"
 DEFAULT_SHELL_NAME = "auto"
 DEFAULT_ROLE = "DEFAULT"
 DEFAULT_OS_NAME = "auto"
@@ -85,15 +85,15 @@ NO_VISION_PROVIDERS = {"cohere", "cohere-bedrock", "cohere-sagemaker", "huggingf
 
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.
-The context conversation may contain other types of messages, 
+The context conversation may contain other types of messages,
 but you should only respond with a single valid {_shell} shell command for {_os}.
 Do not include any explanations, comments, or formatting — only the command as plain text, avoiding Markdown formatting.
 """
 
 DEFAULT_PROMPT = """
-You are YAICLI, a system management and programing assistant, 
-You are managing {_os} operating system with {_shell} shell. 
-Your responses should be concise and use Markdown format (but dont't use ```markdown), 
+You are YAICLI, a system management and programing assistant,
+You are managing {_os} operating system with {_shell} shell.
+Your responses should be concise and use Markdown format (but dont't use ```markdown),
 unless the user explicitly requests more details.
 """
 
