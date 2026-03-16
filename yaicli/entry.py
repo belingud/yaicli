@@ -1,4 +1,5 @@
 import sys
+from importlib.metadata import version as pkg_version
 from typing import Annotated, Any, List, Optional
 
 import typer
@@ -18,6 +19,12 @@ app = typer.Typer(
     pretty_exceptions_enable=False,  # Let the CLI handle errors gracefully
     rich_markup_mode="rich",  # Render rich text in help messages
 )
+
+
+def version_callback(value: bool):
+    if value:
+        typer.echo(f"yaicli {pkg_version('yaicli')}")
+        raise typer.Exit()
 
 
 def override_config(
@@ -163,6 +170,16 @@ class CodeOptions:
 
 
 class OtherOptions:
+    version = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show version and exit.",
+        rich_help_panel="Other Options",
+        callback=version_callback,
+        is_eager=True,
+    )
+
     verbose = typer.Option(
         False,
         "--verbose",
@@ -311,6 +328,7 @@ def main(
     # ------------------- Code Options -------------------
     code: bool = CodeOptions.code,
     # ------------------- Other Options -------------------
+    version: Optional[bool] = OtherOptions.version,  # noqa: F841
     verbose: bool = OtherOptions.verbose,
     template: bool = OtherOptions.template,
     list_providers: bool = OtherOptions.list_providers,  # noqa: F841
