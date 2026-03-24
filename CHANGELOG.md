@@ -1,5 +1,13 @@
 
 ---
+## [0.15.0](https://github.com/belingud/yaicli/compare/v0.14.2..v0.15.0) - 2026-03-24
+
+### ⛰️  Features
+
+- feat: add -v/--version flag to show version and exit - ([bae66c2](https://github.com/belingud/yaicli/commit/bae66c2cd4e59b8c82158adffa742b7601958ebf)) - Belingud
+
+
+---
 ## [0.10.0](https://github.com/belingud/yaicli/compare/v0.9.0..v0.10.0) - 2026-01-20
 
 ### ⛰️  Features
