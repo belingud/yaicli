@@ -279,7 +279,10 @@ class TestAnthropicConvertMessages:
         content = result[0]["content"]
         assert isinstance(content, list)
         # Image block before text block
-        assert content[0] == {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "abc123"}}
+        assert content[0] == {
+            "type": "image",
+            "source": {"type": "base64", "media_type": "image/png", "data": "abc123"},
+        }
         assert content[1] == {"type": "text", "text": "Describe"}
 
     @patch("yaicli.llms.providers.anthropic_provider.Anthropic")

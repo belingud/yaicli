@@ -224,7 +224,19 @@ class ContextManager:
         try:
             # Skip binary files roughly
             # This is a simple check, could be improved
-            if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".zip", ".tar", ".gz", ".pyc"}:
+            if path.suffix.lower() in {
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".webp",
+                ".ico",
+                ".pdf",
+                ".zip",
+                ".tar",
+                ".gz",
+                ".pyc",
+            }:
                 return "[Binary file omitted]"
 
             # Skip if file is too large (e.g. > 1MB)

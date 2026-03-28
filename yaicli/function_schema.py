@@ -64,8 +64,7 @@ class OpenAISchema(BaseModel):
                 schema["description"] = docstring.short_description
             else:
                 schema["description"] = (
-                    f"Correctly extracted `{cls.__name__}` with all "
-                    f"the required parameters with correct types"
+                    f"Correctly extracted `{cls.__name__}` with all the required parameters with correct types"
                 )
 
         return {

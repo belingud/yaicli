@@ -5,22 +5,26 @@ import pytest
 
 from yaicli.llms.client import LLMClient
 from yaicli.llms.provider import Provider
-from yaicli.schemas import ChatMessage, LLMResponse, RefreshLive, ToolCall
+from yaicli.schemas import ChatMessage, LLMResponse, RefreshLive, ToolCall, ToolPolicy
 
 
 class MockProvider(Provider):
     """Mock provider for testing"""
 
-    def __init__(self, responses=None):
+    def __init__(self, responses=None, enable_functions=True, enable_mcp=False):
         """Initialize with predefined responses"""
         self.responses = responses or [LLMResponse(content="Test response")]
         self.completion_called = False
+        self.enable_function = enable_functions
+        self.enable_mcp = enable_mcp
+        self.config = {"ENABLE_FUNCTIONS": enable_functions, "ENABLE_MCP": enable_mcp}
 
-    def completion(self, messages, stream=False):
+    def completion(self, messages, stream=False, tool_policy=None):
         """Return predefined responses"""
         self.completion_called = True
         self.messages = messages
         self.stream = stream
+        self.tool_policy = tool_policy
 
         # Directly return predefined responses
         for response in self.responses:
@@ -78,7 +82,7 @@ class TestLLMClient:
         """Test completion without tool calls"""
         # Create a mock provider with simple responses
         responses = [LLMResponse(content="Hello"), LLMResponse(content=" world!")]
-        provider = MockProvider(responses=responses)
+        provider = MockProvider(responses=responses, enable_functions=True, enable_mcp=False)
         mock_factory.return_value = provider
 
         # Create client with our mock provider
@@ -91,6 +95,7 @@ class TestLLMClient:
         # Verify provider was called
         assert provider.completion_called
         assert provider.messages == messages
+        assert provider.tool_policy == ToolPolicy(enable_functions=True, enable_mcp=False)
 
         # Verify responses were forwarded
         assert len(responses) == 2
@@ -113,6 +118,7 @@ class TestLLMClient:
 
         # Set the return value for detect_tool_role
         mock_provider.detect_tool_role.return_value = "tool"
+        mock_provider.resolve_tool_policy.return_value = ToolPolicy(enable_functions=True, enable_mcp=False)
 
         # First call returns response with tool calls
         first_call_responses = [
@@ -154,7 +160,7 @@ class TestLLMClient:
         assert isinstance(responses[2], LLMResponse)
         assert responses[2].content == "It's sunny in New York"
 
-    @patch("yaicli.tools.execute_tool_call")
+    @patch("yaicli.llms.client.execute_tool_call")
     @patch("yaicli.llms.provider.ProviderFactory.create_provider")
     def test_recursion_depth_limit(self, mock_factory, mock_execute_tool, mock_config):
         """Test that recursion depth is limited"""
@@ -170,6 +176,7 @@ class TestLLMClient:
 
         # Set return value for detect_tool_role
         mock_provider.detect_tool_role.return_value = "tool"
+        mock_provider.resolve_tool_policy.return_value = ToolPolicy(enable_functions=True, enable_mcp=False)
 
         # Configure completion method to always return responses with tool calls
         mock_provider.completion.side_effect = lambda *args, **kwargs: iter(
@@ -194,7 +201,7 @@ class TestLLMClient:
         # Check that provider.completion has been called at least once
         assert mock_provider.completion.called
 
-    @patch("yaicli.tools.execute_tool_call")
+    @patch("yaicli.llms.client.execute_tool_call")
     @patch("yaicli.llms.provider.ProviderFactory.create_provider")
     def test_functions_disabled(self, mock_factory, mock_execute_tool, mock_config):
         """Test that tool calls are not executed when functions are disabled"""
@@ -208,7 +215,7 @@ class TestLLMClient:
         responses = [LLMResponse(content="Let me check the weather", finish_reason="tool_calls", tool_call=tool_call)]
 
         # Set up mock provider
-        provider = MockProvider(responses=responses)
+        provider = MockProvider(responses=responses, enable_functions=False, enable_mcp=False)
         mock_factory.return_value = provider
 
         # Create client
@@ -227,3 +234,65 @@ class TestLLMClient:
         assert len(responses) == 1
         assert isinstance(responses[0], LLMResponse)
         assert responses[0].content == "Let me check the weather"
+        assert messages[-1].tool_calls == []
+
+    @patch("yaicli.llms.client.execute_tool_call")
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_request_tool_policy_drops_disallowed_tool_calls(self, mock_factory, mock_execute_tool, mock_config):
+        """Test request-scoped policy drops disallowed tool calls from execution and history."""
+        tool_call = ToolCall(id="call_123", name="get_weather", arguments='{"location": "New York"}')
+        provider = MockProvider(
+            responses=[LLMResponse(content="Tool attempt", finish_reason="tool_calls", tool_call=tool_call)]
+        )
+        mock_factory.return_value = provider
+
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
+        messages = [ChatMessage(role="user", content="What's the weather?")]
+
+        responses = list(
+            client.completion_with_tools(
+                messages,
+                tool_policy=ToolPolicy(enable_functions=False, enable_mcp=False),
+            )
+        )
+
+        mock_execute_tool.assert_not_called()
+        assert len(responses) == 1
+        assert responses[0].content == "Tool attempt"
+        assert messages[-1].tool_calls == []
+
+    @patch("yaicli.llms.client.execute_tool_call")
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_request_tool_policy_keeps_allowed_mcp_tool_calls(self, mock_factory, mock_execute_tool, mock_config):
+        """Test request-scoped policy can allow MCP calls while filtering function calls."""
+        function_tool_call = ToolCall(id="call_123", name="get_weather", arguments='{"location": "New York"}')
+        mcp_tool_call = ToolCall(id="call_456", name="_mcp__clock", arguments='{"timezone": "UTC"}')
+        provider = MagicMock(spec=Provider)
+        mock_factory.return_value = provider
+        mock_execute_tool.return_value = ("12:00 UTC", True)
+        provider.detect_tool_role.return_value = "tool"
+        provider.resolve_tool_policy.return_value = ToolPolicy(enable_functions=False, enable_mcp=True)
+        provider.completion.side_effect = [
+            iter(
+                [
+                    LLMResponse(content="", finish_reason=None, tool_call=function_tool_call),
+                    LLMResponse(content="Using MCP instead", finish_reason="tool_calls", tool_call=mcp_tool_call),
+                ]
+            ),
+            iter([LLMResponse(content="MCP complete", finish_reason="stop")]),
+        ]
+
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
+        messages = [ChatMessage(role="user", content="What time is it?")]
+
+        responses = list(
+            client.completion_with_tools(
+                messages,
+                tool_policy=ToolPolicy(enable_functions=False, enable_mcp=True),
+            )
+        )
+
+        mock_execute_tool.assert_called_once()
+        assert mock_execute_tool.call_args[0][0].name == "_mcp__clock"
+        assert any(isinstance(response, RefreshLive) for response in responses)
+        assert messages[-3].tool_calls == [mcp_tool_call]

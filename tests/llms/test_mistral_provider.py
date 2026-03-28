@@ -7,7 +7,7 @@ from mistralai.utils.eventstreaming import EventStream
 
 from yaicli.exceptions import MCPToolsError
 from yaicli.llms.providers.mistral_provider import MistralProvider
-from yaicli.schemas import ChatMessage, ToolCall
+from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
 
 
 class TestMistralProvider:
@@ -139,6 +139,24 @@ class TestMistralProvider:
             # Verify both function types are included
             assert "tools" in params
             assert len(params["tools"]) == 2
+
+    @patch("yaicli.llms.providers.mistral_provider.get_openai_schemas")
+    @patch("yaicli.llms.providers.mistral_provider.get_openai_mcp_tools")
+    def test_get_completion_params_request_tool_policy_disables_all_tools(
+        self, mock_get_mcp_tools, mock_get_schemas, mock_config
+    ):
+        """Test request-scoped policy removes Mistral tool settings."""
+        mock_config["ENABLE_MCP"] = True
+        mock_get_schemas.return_value = [{"type": "function", "function": {"name": "test_func"}}]
+        mock_get_mcp_tools.return_value = [{"type": "function", "function": {"name": "_mcp__clock"}}]
+
+        with patch("mistralai.Mistral"), patch("warnings.filterwarnings"):
+            provider = MistralProvider(config=mock_config)
+            params = provider.get_completion_params(tool_policy=ToolPolicy(False, False))
+
+            assert "tools" not in params
+            assert "tool_choice" not in params
+            assert "parallel_tool_calls" not in params
 
     @patch("yaicli.llms.providers.mistral_provider.get_openai_schemas")
     @patch("yaicli.llms.providers.mistral_provider.get_openai_mcp_tools")

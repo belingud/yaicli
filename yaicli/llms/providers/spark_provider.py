@@ -1,7 +1,8 @@
 from copy import deepcopy
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from ...config import cfg
+from ...schemas import ToolPolicy
 from .openai_provider import OpenAIProvider
 
 
@@ -38,11 +39,12 @@ class SparkProvider(OpenAIProvider):
 
         super().__init__(config_copy, verbose, **kwargs)
 
-    def get_completion_params(self) -> Dict[str, Any]:
-        completion_params = super().get_completion_params()
+    def get_completion_params(self, tool_policy: Optional[ToolPolicy] = None) -> Dict[str, Any]:
+        completion_params = super().get_completion_params(tool_policy=tool_policy)
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
 
         # Only process when function call is enabled
-        if self.enable_function:
+        if effective_tool_policy.enable_functions:
             # Check if the current model supports function call (by checking the model name)
             model_name = completion_params.get("model", "")
             function_call_supported = any(

@@ -68,7 +68,9 @@ class TestTyperApp:
         result = runner.invoke(app, ["--shell", prompt_text])
         assert result.exit_code == 0
         mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=True, code=False, user_input=prompt_text, images=[])
+        mock_cli_instance.run.assert_called_once_with(
+            chat=False, shell=True, code=False, user_input=prompt_text, images=[]
+        )
 
     @patch("yaicli.cli.CLI.evaluate_role_name", return_value=DefaultRoleNames.DEFAULT)
     def test_prompt_mode(self, mock_evaluate_role_name, mock_cli_class, mock_cli_instance):
@@ -77,7 +79,9 @@ class TestTyperApp:
         result = runner.invoke(app, [prompt_text])
         assert result.exit_code == 0
         mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, code=False, user_input=prompt_text, images=[])
+        mock_cli_instance.run.assert_called_once_with(
+            chat=False, shell=False, code=False, user_input=prompt_text, images=[]
+        )
 
     @patch("yaicli.cli.CLI.evaluate_role_name", return_value=DefaultRoleNames.DEFAULT)
     def test_verbose_mode(self, mock_evaluate_role_name, mock_cli_class, mock_cli_instance):
@@ -87,7 +91,9 @@ class TestTyperApp:
         assert result.exit_code == 0
         # Verify CLI was instantiated with verbose=True
         mock_cli_class.assert_called_once_with(verbose=True, role="DEFAULT")
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, code=False, user_input=prompt_text, images=[])
+        mock_cli_instance.run.assert_called_once_with(
+            chat=False, shell=False, code=False, user_input=prompt_text, images=[]
+        )
 
     @patch("yaicli.cli.CLI.evaluate_role_name", return_value=DefaultRoleNames.DEFAULT)
     def test_stdin_prompt(self, mock_evaluate_role_name, mock_cli_class, mock_cli_instance):
@@ -98,7 +104,9 @@ class TestTyperApp:
             result = runner.invoke(app, input=stdin_text)
         assert result.exit_code == 0
         mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, code=False, user_input=stdin_text, images=[])
+        mock_cli_instance.run.assert_called_once_with(
+            chat=False, shell=False, code=False, user_input=stdin_text, images=[]
+        )
 
     @patch("yaicli.cli.CLI.evaluate_role_name", return_value=DefaultRoleNames.DEFAULT)
     def test_stdin_and_arg_prompt(self, mock_evaluate_role_name, mock_cli_class, mock_cli_instance):
@@ -110,7 +118,9 @@ class TestTyperApp:
             result = runner.invoke(app, [arg_text], input=stdin_text)
         assert result.exit_code == 0
         mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
-        mock_cli_instance.run.assert_called_once_with(chat=False, shell=False, code=False, user_input=expected_prompt, images=[])
+        mock_cli_instance.run.assert_called_once_with(
+            chat=False, shell=False, code=False, user_input=expected_prompt, images=[]
+        )
 
     def test_no_prompt_no_chat(self):
         """Test calling without prompt and without --chat."""

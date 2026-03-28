@@ -24,6 +24,7 @@ def _import_fastmcp():
 
     return Client, CallToolResult, TextContent, Tool
 
+
 MCP_TOOL_NAME_PREFIX = "_mcp__"
 
 

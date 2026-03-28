@@ -10,7 +10,7 @@ from json_repair import repair_json
 from ...config import cfg
 from ...console import get_console
 from ...exceptions import ConfigMissingError, MCPToolsError
-from ...schemas import ChatMessage, LLMResponse, ToolCall
+from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ..provider import Provider
 
 
@@ -104,6 +104,7 @@ class AnthropicProvider(Provider):
         self,
         messages: List[ChatMessage],
         stream: bool = False,
+        tool_policy: Optional[ToolPolicy] = None,
     ) -> Generator[LLMResponse, None, None]:
         """
         Send completion request to Anthropic and return responses.
@@ -128,10 +129,11 @@ class AnthropicProvider(Provider):
             params["system"] = system_prompt
         params["messages"] = anthropic_messages
         params["stream"] = stream
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
 
         # Add tools if enabled
         tools = []
-        if self.enable_function:
+        if effective_tool_policy.enable_functions:
             try:
                 from ...tools import get_anthropic_schemas
 
@@ -139,7 +141,7 @@ class AnthropicProvider(Provider):
             except ImportError:
                 self.console.print("Function tools not available for Anthropic", style="yellow")
 
-        if self.enable_mcp:
+        if effective_tool_policy.enable_mcp:
             try:
                 from ...tools import get_anthropic_mcp_tools
 

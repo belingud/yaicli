@@ -21,6 +21,7 @@ from yaicli.const import (
     TEMP_MODE,
     DefaultRoleNames,
 )
+from yaicli.schemas import ToolPolicy
 
 
 @pytest.fixture
@@ -517,6 +518,60 @@ class TestAPIInteraction:
         cli.client.completion_with_tools.assert_called_once()
         mock_build_messages.assert_called_once_with("Test input", images=None)
         mock_display_stream.assert_called_once()
+
+    @patch("yaicli.cli.CLI._build_messages")
+    @patch("yaicli.printer.Printer.display_stream")
+    def test_handle_llm_response_exec_mode_disables_tools(
+        self, mock_display_stream, mock_build_messages, cli_with_mocks
+    ):
+        """Test exec mode passes a tool policy that disables all tools."""
+        cli = cli_with_mocks
+        cli.current_mode = EXEC_MODE
+
+        mock_build_messages.return_value = []
+        mock_display_stream.return_value = ("ls -la", None)
+
+        with patch("yaicli.cli.cfg") as mock_cfg:
+            mock_cfg.__getitem__.side_effect = lambda key: {
+                "STREAM": True,
+                "ENABLE_FUNCTIONS": True,
+                "ENABLE_MCP": True,
+            }[key]
+            mock_response = MagicMock()
+            mock_response.__iter__.return_value = [MagicMock(content="ls -la", tool_call=None)]
+            cli.client.completion_with_tools.return_value = mock_response
+
+            cli._handle_llm_response("List files")
+
+        call_kwargs = cli.client.completion_with_tools.call_args.kwargs
+        assert call_kwargs["tool_policy"] == ToolPolicy(enable_functions=False, enable_mcp=False)
+
+    @patch("yaicli.cli.CLI._build_messages")
+    @patch("yaicli.printer.Printer.display_stream")
+    def test_handle_llm_response_chat_mode_uses_configured_tool_defaults(
+        self, mock_display_stream, mock_build_messages, cli_with_mocks
+    ):
+        """Test chat mode passes configured tool defaults through to the client."""
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
+
+        mock_build_messages.return_value = []
+        mock_display_stream.return_value = ("Test response", None)
+
+        with patch("yaicli.cli.cfg") as mock_cfg:
+            mock_cfg.__getitem__.side_effect = lambda key: {
+                "STREAM": False,
+                "ENABLE_FUNCTIONS": False,
+                "ENABLE_MCP": True,
+            }[key]
+            mock_response = MagicMock()
+            mock_response.__iter__.return_value = [MagicMock(content="Test response", tool_call=None)]
+            cli.client.completion_with_tools.return_value = mock_response
+
+            cli._handle_llm_response("Test input")
+
+        call_kwargs = cli.client.completion_with_tools.call_args.kwargs
+        assert call_kwargs["tool_policy"] == ToolPolicy(enable_functions=False, enable_mcp=True)
 
     @patch("yaicli.cli.CLI._build_messages")
     @patch("yaicli.printer.Printer.display_stream")

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from yaicli.llms.providers.gemini_provider import GeminiProvider
-from yaicli.schemas import ChatMessage, ToolCall
+from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
 from yaicli.tools.function import wrap_gemini_function
 
 
@@ -121,6 +121,28 @@ class TestGeminiProvider:
             assert call_args["seed"] == mock_config["SEED"]
             assert call_args["thinking_config"] == mock_thinking_config.return_value
             assert call_args["http_options"] == mock_http_options.return_value
+
+    @patch("yaicli.llms.providers.gemini_provider.types.HttpOptions")
+    @patch("yaicli.llms.providers.gemini_provider.types.ThinkingConfig")
+    @patch("yaicli.llms.providers.gemini_provider.types.GenerateContentConfig")
+    @patch("yaicli.tools.function.get_functions_gemini_format")
+    def test_get_chat_config_request_tool_policy_disables_tools(
+        self, mock_get_functions, mock_gen_config, mock_thinking_config, mock_http_options, mock_config
+    ):
+        """Test request-scoped policy omits Gemini tool configuration."""
+        mock_http_options.return_value = MagicMock()
+        mock_thinking_config.return_value = MagicMock()
+        mock_gen_config.return_value = MagicMock()
+        mock_get_functions.return_value = [MagicMock()]
+        mock_config["ENABLE_MCP"] = True
+
+        with patch("google.genai.Client"):
+            provider = GeminiProvider(config=mock_config)
+            provider.get_chat_config(tool_policy=ToolPolicy(False, False))
+
+            call_args = mock_gen_config.call_args.kwargs
+            assert "tools" not in call_args
+            assert "automatic_function_calling" not in call_args
 
     @patch("yaicli.llms.providers.gemini_provider.types.HttpOptions")
     @patch("yaicli.llms.providers.gemini_provider.types.ThinkingConfig")
@@ -586,7 +608,9 @@ class TestGeminiProvider:
             assert json.loads(responses[0].tool_call.arguments) == {"city": "Beijing"}
 
     @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
-    def test_normal_response_function_call_empty_name_skipped(self, mock_get_functions, mock_config, mock_gemini_client):
+    def test_normal_response_function_call_empty_name_skipped(
+        self, mock_get_functions, mock_config, mock_gemini_client
+    ):
         """Test that function call parts with empty name are skipped"""
         mock_get_functions.return_value = []
 

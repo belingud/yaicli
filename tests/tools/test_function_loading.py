@@ -221,7 +221,6 @@ class TestReinstallFunctions:
             patch("yaicli.functions.console", mock_console),
         ):
             # Call the inner function directly (unwrapped from @option_callback)
-            from yaicli.functions import reinstall_functions
 
             # option_callback wraps it; call inner logic by simulating
             cur_dir = Path(__file__).resolve().parent.parent.parent / "yaicli" / "functions"
@@ -246,7 +245,7 @@ class TestReinstallFunctions:
         (functions_dir / "my_custom.py").write_text(custom_content)
 
         buildin_dir = Path(__file__).resolve().parent.parent.parent / "yaicli" / "functions" / "buildin"
-        buildin_names = {p.name for p in buildin_dir.glob("*.py")}
+        {p.name for p in buildin_dir.glob("*.py")}
 
         # Simulate reinstall - only copy builtin names
         for p in buildin_dir.glob("*.py"):

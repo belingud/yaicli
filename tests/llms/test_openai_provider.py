@@ -4,7 +4,7 @@ import pytest
 
 from yaicli.exceptions import ProviderError
 from yaicli.llms.providers.openai_provider import OpenAIAzure, OpenAIProvider
-from yaicli.schemas import ChatMessage, ToolCall
+from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
 
 
 class TestOpenAIProvider:
@@ -222,6 +222,36 @@ class TestOpenAIProvider:
             assert responses[0].tool_call.id == "call_123"
             assert responses[0].tool_call.name == "get_weather"
             assert responses[0].tool_call.arguments == '{"location": "New York"}'
+
+    @patch("yaicli.llms.providers.openai_provider.get_openai_mcp_tools")
+    @patch("yaicli.tools.get_openai_schemas")
+    def test_completion_request_tool_policy_disables_all_tools(
+        self, mock_get_schemas, mock_get_mcp_tools, mock_config, mock_openai_client
+    ):
+        """Test request-scoped policy suppresses function and MCP tools for a single call."""
+        mock_config["ENABLE_MCP"] = True
+        mock_get_schemas.return_value = [{"type": "function", "function": {"name": "get_weather"}}]
+        mock_get_mcp_tools.return_value = [{"type": "function", "function": {"name": "_mcp__clock"}}]
+
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = "ls -la"
+        mock_message.reasoning_content = None
+        mock_choice.message = mock_message
+        mock_choice.finish_reason = "stop"
+        mock_response.choices = [mock_choice]
+        mock_openai_client.chat.completions.create.return_value = mock_response
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+
+            messages = [ChatMessage(role="user", content="List files")]
+            list(provider.completion(messages, stream=False, tool_policy=ToolPolicy(False, False)))
+
+            call_kwargs = mock_openai_client.chat.completions.create.call_args.kwargs
+            assert "tools" not in call_kwargs
 
     @patch("yaicli.tools.get_openai_schemas")
     def test_completion_with_reasoning_content(self, mock_get_schemas, mock_config, mock_openai_client):

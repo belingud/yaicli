@@ -10,7 +10,7 @@ from yaicli.tools.mcp import get_mcp_manager
 
 from ...config import cfg
 from ...console import get_console
-from ...schemas import ChatMessage, LLMResponse, ToolCall
+from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools.function import get_functions_gemini_format
 from ..provider import Provider
 
@@ -38,7 +38,8 @@ class GeminiProvider(Provider):
             "api_key": self.config["API_KEY"],
         }
 
-    def get_chat_config(self):
+    def get_chat_config(self, tool_policy: ToolPolicy | None = None):
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
         http_options_map = {
             "timeout": self.config["TIMEOUT"] * 1000,  # Timeout for the request in milliseconds.
             "headers": {**self.config["EXTRA_HEADERS"], "X-Client": self.APP_NAME, "Referer": self.APP_REFERER},
@@ -70,8 +71,8 @@ class GeminiProvider(Provider):
         if self.config.get("THINKING_BUDGET"):
             thinking_config_map["thinking_budget"] = int(self.config["THINKING_BUDGET"])
         config_map["thinking_config"] = types.ThinkingConfig(**thinking_config_map)
-        if self.enable_function or self.enable_mcp:
-            config_map["tools"] = self.gen_gemini_functions()
+        if effective_tool_policy.enable_functions or effective_tool_policy.enable_mcp:
+            config_map["tools"] = self.gen_gemini_functions(tool_policy=effective_tool_policy)
             config_map["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(disable=True)
 
         # Apply exclude params filtering
@@ -115,9 +116,7 @@ class GeminiProvider(Provider):
                     types.Content(
                         role="user",
                         parts=[
-                            types.Part.from_function_response(
-                                name=msg.name or "", response={"result": msg.content}
-                            )
+                            types.Part.from_function_response(name=msg.name or "", response={"result": msg.content})
                         ],
                     )
                 )
@@ -149,16 +148,17 @@ class GeminiProvider(Provider):
             return "model"
         return role
 
-    def gen_gemini_functions(self) -> List[Callable[..., Any]]:
+    def gen_gemini_functions(self, tool_policy: ToolPolicy | None = None) -> List[Callable[..., Any]]:
         """Wrap Gemini functions from OpenAI functions for automatic function calling"""
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
         funcs = []
 
         # Add regular functions
-        if self.enable_function:
+        if effective_tool_policy.enable_functions:
             funcs.extend(get_functions_gemini_format())
 
         # Add MCP functions if enabled
-        if self.enable_mcp:
+        if effective_tool_policy.enable_mcp:
             try:
                 mcp_tools = get_mcp_manager().to_gemini_tools()
                 funcs.extend(mcp_tools)
@@ -170,6 +170,7 @@ class GeminiProvider(Provider):
         self,
         messages: List[ChatMessage],
         stream: bool = False,
+        tool_policy: ToolPolicy | None = None,
     ) -> Generator[LLMResponse, None, None]:
         """
         Send completion request to Gemini and return responses.
@@ -189,7 +190,7 @@ class GeminiProvider(Provider):
         if self.verbose:
             self.console.print("Messages:")
             self.console.print(gemini_messages)
-        chat_config = self.get_chat_config()
+        chat_config = self.get_chat_config(tool_policy=tool_policy)
         chat_config.system_instruction = messages[0].content
         chat = self.client.chats.create(model=self.config["MODEL"], history=gemini_messages, config=chat_config)  # type: ignore
         message = messages[-1].content

@@ -76,9 +76,7 @@ class TestMinimaxProvider:
         assert "reasoning_details" not in converted[0]
         # Assistant message should have reasoning_details
         assert "reasoning_details" in converted[1]
-        assert converted[1]["reasoning_details"] == [
-            {"type": "reasoning.text", "text": "This is my thinking process"}
-        ]
+        assert converted[1]["reasoning_details"] == [{"type": "reasoning.text", "text": "This is my thinking process"}]
 
     def test_convert_messages_without_reasoning(self, provider):
         """Test that message conversion works without reasoning content"""

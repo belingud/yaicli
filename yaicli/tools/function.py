@@ -80,9 +80,7 @@ def get_func_name_map() -> dict[str, Function]:
         spec.loader.exec_module(module)  # type: ignore
 
         if not hasattr(module.Function, "openai_schema") or not hasattr(module.Function, "anthropic_schema"):
-            raise TypeError(
-                f"Function {module_name} must be a subclass of yaicli.function_schema.OpenAISchema"
-            )
+            raise TypeError(f"Function {module_name} must be a subclass of yaicli.function_schema.OpenAISchema")
         if not hasattr(module.Function, "execute"):
             raise TypeError(f"Function {module_name} must have an 'execute' classmethod")
 
