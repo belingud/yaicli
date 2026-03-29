@@ -15,7 +15,7 @@ from mistralai.utils.eventstreaming import EventStream
 from ...config import cfg
 from ...console import get_console
 from ...exceptions import MCPToolsError
-from ...schemas import ChatMessage, LLMResponse, ToolCall
+from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_mcp_tools, get_openai_schemas
 from ...utils import gen_tool_call_id
 from ..provider import Provider
@@ -57,7 +57,7 @@ class MistralProvider(Provider):
             client_params["server"] = self.config["SERVER"]
         return client_params
 
-    def get_completion_params(self) -> Dict[str, Any]:
+    def get_completion_params(self, tool_policy: Optional[ToolPolicy] = None) -> Dict[str, Any]:
         """Get completion parameters for Mistral
 
         Returns:
@@ -77,10 +77,11 @@ class MistralProvider(Provider):
         }
         if self.config["EXTRA_HEADERS"]:
             params["http_headers"] = {**self.config["EXTRA_HEADERS"], **params["http_headers"]}
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
         tools = []
-        if self.enable_functions:
+        if effective_tool_policy.enable_functions:
             tools.extend(get_openai_schemas())
-        if self.enable_mcp:
+        if effective_tool_policy.enable_mcp:
             try:
                 tools.extend(get_openai_mcp_tools())
             except MCPToolsError as e:
@@ -100,7 +101,12 @@ class MistralProvider(Provider):
 
         return params
 
-    def completion(self, messages: List[ChatMessage], stream: bool = False) -> Generator[LLMResponse, None, None]:
+    def completion(
+        self,
+        messages: List[ChatMessage],
+        stream: bool = False,
+        tool_policy: Optional[ToolPolicy] = None,
+    ) -> Generator[LLMResponse, None, None]:
         """Completion method for Mistral
 
         Args:
@@ -113,7 +119,7 @@ class MistralProvider(Provider):
             self.console.print("Messages:")
             self.console.print(mistral_messages)
 
-        params = self.get_completion_params()
+        params = self.get_completion_params(tool_policy=tool_policy)
         params["messages"] = mistral_messages
 
         if stream:

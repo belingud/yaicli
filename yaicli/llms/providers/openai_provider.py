@@ -11,7 +11,7 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from ...config import cfg
 from ...console import get_console
 from ...exceptions import MCPToolsError, ProviderError
-from ...schemas import ChatMessage, LLMResponse, ToolCall
+from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_mcp_tools, get_openai_schemas
 from ..provider import Provider
 
@@ -80,7 +80,7 @@ class OpenAIProvider(Provider):
         """
         return self.COMPLETION_PARAMS_KEYS.copy()
 
-    def get_completion_params(self) -> Dict[str, Any]:
+    def get_completion_params(self, tool_policy: Optional[ToolPolicy] = None) -> Dict[str, Any]:
         """
         Get the completion parameters based on config and parameter mapping.
 
@@ -103,19 +103,20 @@ class OpenAIProvider(Provider):
 
         return completion_params
 
-    def get_tools(self) -> List[dict]:
+    def get_tools(self, tool_policy: Optional[ToolPolicy] = None) -> List[dict]:
         """
         Get the tools for the completion request.
 
         Returns:
             List[dict]: List of tool objects to use in the completion request.
         """
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
         tools = []
-        if self.enable_function:
+        if effective_tool_policy.enable_functions:
             tools.extend(get_openai_schemas())
 
         # Add MCP tools if enabled
-        if self.enable_mcp:
+        if effective_tool_policy.enable_mcp:
             try:
                 mcp_tools = get_openai_mcp_tools()
             except (ValueError, FileNotFoundError, MCPToolsError) as e:
@@ -128,6 +129,7 @@ class OpenAIProvider(Provider):
         self,
         messages: List[ChatMessage],
         stream: bool = False,
+        tool_policy: Optional[ToolPolicy] = None,
     ) -> Generator[LLMResponse, None, None]:
         """
             Send completion request to OpenAI and return responses.
@@ -145,9 +147,9 @@ class OpenAIProvider(Provider):
         """
         openai_messages = self._convert_messages(messages)
 
-        params = self.completion_params.copy()
+        params = self.get_completion_params(tool_policy=tool_policy)
         params["messages"] = openai_messages
-        tools = self.get_tools()
+        tools = self.get_tools(tool_policy=tool_policy)
         if tools:
             params["tools"] = tools
         if self.verbose:

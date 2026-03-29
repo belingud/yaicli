@@ -7,7 +7,7 @@ from ollama import ChatResponse
 
 from ...config import cfg
 from ...console import get_console
-from ...schemas import ChatMessage, LLMResponse, ToolCall
+from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_schemas
 from ...utils import str2bool
 from ..provider import Provider
@@ -83,8 +83,10 @@ class OllamaProvider(Provider):
         self,
         messages: List[ChatMessage],
         stream: bool = False,
+        tool_policy: ToolPolicy | None = None,
     ) -> Generator[LLMResponse, None, None]:
         """Send messages to Ollama and get response"""
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
         # Convert message format
         ollama_messages = self._convert_messages(messages)
         if self.verbose:
@@ -117,7 +119,7 @@ class OllamaProvider(Provider):
         }
 
         # Add tools if enabled
-        if self.enable_function:
+        if effective_tool_policy.enable_functions:
             params["tools"] = get_openai_schemas()
 
         if self.verbose:
@@ -126,16 +128,20 @@ class OllamaProvider(Provider):
         try:
             if stream:
                 response_generator = self.client.chat(**params)
-                yield from self._handle_stream_response(response_generator)
+                yield from self._handle_stream_response(response_generator, effective_tool_policy.enable_functions)
             else:
                 response = self.client.chat(**params)
-                yield from self._handle_normal_response(response)
+                yield from self._handle_normal_response(response, effective_tool_policy.enable_functions)
 
         except Exception as e:
             self.console.print(f"Ollama API error: {e}", style="red")
             yield LLMResponse(content=f"Error calling Ollama API: {str(e)}")
 
-    def _handle_normal_response(self, response: ChatResponse) -> Generator[LLMResponse, None, None]:
+    def _handle_normal_response(
+        self,
+        response: ChatResponse,
+        tool_calls_enabled: bool,
+    ) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response"""
         content = response.message.content or ""
         reasoning = response.message.thinking or ""
@@ -144,7 +150,7 @@ class OllamaProvider(Provider):
         tool_call = None
         tool_calls = response.message.tool_calls or []
 
-        if tool_calls and self.enable_function:
+        if tool_calls and tool_calls_enabled:
             # Get the first tool call
             tc = tool_calls[0]
             function_data = tc.get("function", {})
@@ -162,7 +168,11 @@ class OllamaProvider(Provider):
 
         yield LLMResponse(content=content, reasoning=reasoning, tool_call=tool_call)
 
-    def _handle_stream_response(self, response_generator) -> Generator[LLMResponse, None, None]:
+    def _handle_stream_response(
+        self,
+        response_generator,
+        tool_calls_enabled: bool,
+    ) -> Generator[LLMResponse, None, None]:
         """Handle streaming response"""
         accumulated_content = ""
         tool_call = None
@@ -179,7 +189,7 @@ class OllamaProvider(Provider):
 
             # Check for tool calls in the chunk
             tool_calls = message.tool_calls or []
-            if tool_calls and self.enable_function:
+            if tool_calls and tool_calls_enabled:
                 # Only handle the first tool call for now
                 tc = tool_calls[0]
                 function_data = tc.get("function", {})

@@ -406,10 +406,6 @@ def main(
         print("Warning: --role is ignored when --shell or --code is used.")
         role = DefaultRoleNames.DEFAULT
 
-    # Disable function calling in shell mode — shell mode only needs command generation
-    if shell:
-        cfg["ENABLE_FUNCTIONS"] = False
-
     from yaicli.cli import CLI
 
     role = CLI.evaluate_role_name(code, shell, role)

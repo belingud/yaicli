@@ -45,7 +45,7 @@ from .history import LimitedFileHistory
 from .llms import LLMClient
 from .printer import Printer
 from .role import Role, RoleManager, role_mgr
-from .schemas import ChatMessage, ImageData
+from .schemas import ChatMessage, ImageData, ToolPolicy
 from .utils import detect_os, detect_shell, filter_command
 
 
@@ -144,8 +144,6 @@ class CLI:
     def set_role(self, role_name: str) -> None:
         self.role_name = role_name
         self.role = self.role_manager.get_role(role_name)
-        if role_name in (DefaultRoleNames.CODER, DefaultRoleNames.SHELL):
-            cfg["ENABLE_FUNCTIONS"] = False
         if role_name == DefaultRoleNames.CODER:
             self.printer = Printer(content_markdown=False)
         elif role_name == DefaultRoleNames.SHELL:
@@ -306,6 +304,12 @@ class CLI:
         messages.append(user_msg)
         return messages
 
+    def _get_tool_policy(self) -> ToolPolicy:
+        """Resolve the effective tool policy for the current request."""
+        if self.current_mode == EXEC_MODE:
+            return ToolPolicy(enable_functions=False, enable_mcp=False)
+        return ToolPolicy(enable_functions=cfg["ENABLE_FUNCTIONS"], enable_mcp=cfg["ENABLE_MCP"])
+
     def _handle_llm_response(
         self, user_input: str, images: Optional[List[ImageData]] = None
     ) -> tuple[Optional[str], list[ChatMessage]]:
@@ -324,7 +328,11 @@ class CLI:
         if self.role.name != DefaultRoleNames.CODER:
             self.console.print("Assistant:", style="bold green")
         try:
-            response_iterator = self.client.completion_with_tools(messages, stream=cfg["STREAM"])
+            response_iterator = self.client.completion_with_tools(
+                messages,
+                stream=cfg["STREAM"],
+                tool_policy=self._get_tool_policy(),
+            )
 
             content, _ = self.printer.display_stream(response_iterator)
 
@@ -512,7 +520,9 @@ class CLI:
 
         self.console.print("\nExiting YAICLI... Goodbye!", style="bold green")
 
-    def _run_once(self, user_input: str, shell: bool = False, code: bool = False, images: Optional[List[ImageData]] = None) -> None:
+    def _run_once(
+        self, user_input: str, shell: bool = False, code: bool = False, images: Optional[List[ImageData]] = None
+    ) -> None:
         """Handle default mode"""
         self.set_role(self.evaluate_role_name(code, shell, self.init_role))
         self._process_user_input(user_input, images=images)

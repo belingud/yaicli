@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from yaicli.llms.providers.ollama_provider import OllamaProvider
-from yaicli.schemas import ChatMessage, LLMResponse, ToolCall
+from yaicli.schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 
 
 class TestOllamaProvider:
@@ -139,6 +139,28 @@ class TestOllamaProvider:
                 assert responses[0].content == "Test response"
 
     @patch("yaicli.tools.get_openai_schemas")
+    def test_completion_request_tool_policy_disables_tools(self, mock_get_schemas, mock_config, mock_client):
+        """Test request-scoped policy suppresses Ollama tools for a single request."""
+        mock_get_schemas.return_value = [{"type": "function", "function": {"name": "test_func"}}]
+
+        mock_response = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = "Test response"
+        mock_message.thinking = None
+        mock_message.tool_calls = None
+        mock_response.message = mock_message
+        mock_client.chat.return_value = mock_response
+
+        provider = OllamaProvider(config=mock_config)
+
+        with patch.object(provider, "_handle_normal_response", return_value=[LLMResponse(content="Test response")]):
+            messages = [ChatMessage(role="user", content="Hello")]
+            list(provider.completion(messages, stream=False, tool_policy=ToolPolicy(False, False)))
+
+        call_kwargs = mock_client.chat.call_args.kwargs
+        assert "tools" not in call_kwargs
+
+    @patch("yaicli.tools.get_openai_schemas")
     def test_completion_with_tool_call(self, mock_get_schemas, mock_config, mock_client):
         """Test completion with tool call response"""
         # Setup mock tools
@@ -203,7 +225,7 @@ class TestOllamaProvider:
         mock_message.tool_calls = None
         mock_response.message = mock_message
 
-        responses = list(provider._handle_normal_response(mock_response))
+        responses = list(provider._handle_normal_response(mock_response, tool_calls_enabled=True))
         assert len(responses) == 1
         assert responses[0].content == "Hello, world!"
         assert responses[0].reasoning == "Thinking process"
@@ -218,12 +240,15 @@ class TestOllamaProvider:
         mock_message.tool_calls = [mock_tool_call]
         mock_response.message = mock_message
 
-        responses = list(provider._handle_normal_response(mock_response))
+        responses = list(provider._handle_normal_response(mock_response, tool_calls_enabled=True))
         assert len(responses) == 1
         assert responses[0].content == "I'll check that"
         assert responses[0].tool_call is not None
         assert responses[0].tool_call.name == "get_weather"
         assert responses[0].tool_call.arguments == '{"location": "New York"}'
+
+        responses = list(provider._handle_normal_response(mock_response, tool_calls_enabled=False))
+        assert responses[0].tool_call is None
 
     @patch("yaicli.tools.get_openai_schemas")
     def test_handle_stream_response(self, mock_get_schemas, mock_config):
@@ -249,7 +274,7 @@ class TestOllamaProvider:
         chunk3.message.tool_calls = [tool_call]
 
         # Process events
-        responses = list(provider._handle_stream_response([chunk1, chunk2, chunk3]))
+        responses = list(provider._handle_stream_response([chunk1, chunk2, chunk3], tool_calls_enabled=True))
 
         # We should have 3 content chunks and 1 tool call
         assert len(responses) == 4

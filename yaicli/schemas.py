@@ -33,6 +33,14 @@ class ToolCall:
     arguments: str
 
 
+@dataclass(frozen=True)
+class ToolPolicy:
+    """Per-request tool availability policy."""
+
+    enable_functions: bool
+    enable_mcp: bool
+
+
 @dataclass
 class LLMResponse:
     """Data structure for llm response with reasoning and content"""

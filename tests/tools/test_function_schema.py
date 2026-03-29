@@ -1,9 +1,4 @@
-import shutil
-import textwrap
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 from pydantic import Field
 
 from yaicli.function_schema import OpenAISchema, classproperty

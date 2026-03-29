@@ -1,9 +1,9 @@
 import importlib
 import warnings
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generator, List
+from typing import Any, Dict, Generator, List, Optional
 
-from ..schemas import ChatMessage, LLMResponse
+from ..schemas import ChatMessage, LLMResponse, ToolPolicy
 from ..utils import option_callback
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -20,6 +20,7 @@ class Provider(ABC):
         self,
         messages: List[ChatMessage],
         stream: bool = False,
+        tool_policy: Optional[ToolPolicy] = None,
     ) -> Generator[LLMResponse, None, None]:
         """
         Send a completion request to the LLM provider
@@ -37,6 +38,26 @@ class Provider(ABC):
     def detect_tool_role(self) -> str:
         """Return the role that should be used for tool responses"""
         pass
+
+    def get_default_tool_policy(self) -> ToolPolicy:
+        """Return the provider's default tool policy derived from config/capabilities."""
+        enable_functions = getattr(
+            self,
+            "enable_function",
+            getattr(self, "enable_functions", self.config.get("ENABLE_FUNCTIONS", False)),
+        )
+        enable_mcp = getattr(self, "enable_mcp", self.config.get("ENABLE_MCP", False))
+        return ToolPolicy(enable_functions=bool(enable_functions), enable_mcp=bool(enable_mcp))
+
+    def resolve_tool_policy(self, tool_policy: Optional[ToolPolicy] = None) -> ToolPolicy:
+        """Resolve the effective tool policy for the current request."""
+        default_policy = self.get_default_tool_policy()
+        if tool_policy is None:
+            return default_policy
+        return ToolPolicy(
+            enable_functions=default_policy.enable_functions and tool_policy.enable_functions,
+            enable_mcp=default_policy.enable_mcp and tool_policy.enable_mcp,
+        )
 
     def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """Convert a list of ChatMessage objects to a list of OpenAI message format.
