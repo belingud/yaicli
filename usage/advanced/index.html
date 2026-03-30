@@ -653,6 +653,75 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#image-input-vision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image Input (Vision)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Image Input (Vision)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Images
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#url-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      URL Images
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple Images
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image-only-invocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image-Only Invocation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provider-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      Provider Compatibility
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#custom-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       Custom Configuration
@@ -1788,6 +1857,75 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#image-input-vision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image Input (Vision)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Image Input (Vision)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Images
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#url-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      URL Images
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple Images
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image-only-invocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image-Only Invocation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provider-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      Provider Compatibility
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#custom-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       Custom Configuration
@@ -1908,6 +2046,67 @@ ai<span class="w"> </span><span class="s1">&#39;check the current dir total size
 ai<span class="w"> </span><span class="s1">&#39;What is the latest exchange rate between BTC and USD?&#39;</span><span class="w"> </span>--enable-mcp
 </code></pre></div>
 <p>Configure MCP tools in <code>~/.config/yaicli/mcp.json</code>.</p>
+<h2 id="image-input-vision">Image Input (Vision)<a class="headerlink" href="#image-input-vision" title="Permanent link">&para;</a></h2>
+<p>YAICLI supports sending images to vision-capable models (GPT-5.2, Claude 3, Gemini, Llama 3.2 Vision, etc.) using the <code>--image</code> / <code>-i</code> option.</p>
+<h3 id="local-images">Local Images<a class="headerlink" href="#local-images" title="Permanent link">&para;</a></h3>
+<p>Pass a local image file path. The image will be validated and base64-encoded before sending:</p>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg<span class="w"> </span><span class="s2">&quot;What is in this image?&quot;</span>
+ai<span class="w"> </span>-i<span class="w"> </span>screenshot.png<span class="w"> </span><span class="s2">&quot;Describe the UI layout&quot;</span>
+</code></pre></div>
+<p>Supported formats: JPEG (<code>.jpg</code>, <code>.jpeg</code>), PNG (<code>.png</code>), GIF (<code>.gif</code>), WebP (<code>.webp</code>).</p>
+<h3 id="url-images">URL Images<a class="headerlink" href="#url-images" title="Permanent link">&para;</a></h3>
+<p>Pass an image URL to send it directly to the provider:</p>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--image<span class="w"> </span>https://example.com/diagram.png<span class="w"> </span><span class="s2">&quot;Explain this architecture&quot;</span>
+</code></pre></div>
+<h3 id="multiple-images">Multiple Images<a class="headerlink" href="#multiple-images" title="Permanent link">&para;</a></h3>
+<p>Use <code>-i</code> multiple times to send multiple images in one request:</p>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>-i<span class="w"> </span>before.png<span class="w"> </span>-i<span class="w"> </span>after.png<span class="w"> </span><span class="s2">&quot;What changed between these two screenshots?&quot;</span>
+</code></pre></div>
+<h3 id="image-only-invocation">Image-Only Invocation<a class="headerlink" href="#image-only-invocation" title="Permanent link">&para;</a></h3>
+<p>You can send an image without a text prompt:</p>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg
+</code></pre></div>
+<h3 id="provider-compatibility">Provider Compatibility<a class="headerlink" href="#provider-compatibility" title="Permanent link">&para;</a></h3>
+<p>Image input is automatically formatted for each provider family:</p>
+<table>
+<thead>
+<tr>
+<th>Provider Family</th>
+<th>Providers</th>
+<th>Image Format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenAI-compatible</td>
+<td>OpenAI, DeepSeek, Groq, Mistral, OpenRouter, etc. (~25)</td>
+<td><code>content</code> array with <code>image_url</code> blocks</td>
+</tr>
+<tr>
+<td>Anthropic</td>
+<td>Anthropic, Anthropic Bedrock, Anthropic Vertex</td>
+<td><code>content</code> array with <code>image</code> + <code>source</code> blocks</td>
+</tr>
+<tr>
+<td>Gemini</td>
+<td>Gemini, Vertex AI</td>
+<td><code>Part.from_bytes()</code> / <code>Part.from_uri()</code></td>
+</tr>
+<tr>
+<td>Ollama</td>
+<td>Ollama</td>
+<td>Separate <code>images</code> array (base64 only)</td>
+</tr>
+</tbody>
+</table>
+<p>Providers without vision support (Cohere, HuggingFace, ChatGLM, ModelScope) will show a warning and send text-only messages.</p>
+<h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Image input is supported in <strong>single-shot mode only</strong>, not in interactive <code>--chat</code> mode</li>
+<li>No client-side file size limit; the provider API enforces its own limits</li>
+<li>Ollama may not support URL images; use local files instead</li>
+<li>No automatic image resizing or optimization</li>
+</ul>
 <h2 id="custom-configuration">Custom Configuration<a class="headerlink" href="#custom-configuration" title="Permanent link">&para;</a></h2>
 <h3 id="llm-provider-configuration">LLM Provider Configuration<a class="headerlink" href="#llm-provider-configuration" title="Permanent link">&para;</a></h3>
 <p>YAICLI works with many LLM providers. Configure your preferred provider in the config file:</p>
@@ -1915,7 +2114,7 @@ ai<span class="w"> </span><span class="s1">&#39;What is the latest exchange rate
 <span class="na">PROVIDER</span><span class="o">=</span><span class="s">openai</span><span class="w">  </span><span class="c1"># or cohere, gemini, ollama, etc.</span>
 <span class="na">BASE_URL</span><span class="o">=</span><span class="w">        </span><span class="c1"># leave empty for default provider URL</span>
 <span class="na">API_KEY</span><span class="o">=</span><span class="s">your_api_key_here</span>
-<span class="na">MODEL</span><span class="o">=</span><span class="s">gpt-4o</span>
+<span class="na">MODEL</span><span class="o">=</span><span class="s">gpt-5.2</span>
 </code></pre></div>
 <h3 id="syntax-highlighting-themes">Syntax Highlighting Themes<a class="headerlink" href="#syntax-highlighting-themes" title="Permanent link">&para;</a></h3>
 <p>Change the code highlighting theme:</p>

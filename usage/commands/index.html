@@ -522,6 +522,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#image-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image Options
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1872,6 +1881,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#image-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image Options
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2197,6 +2215,23 @@
 </tr>
 </tbody>
 </table>
+<h3 id="image-options">Image Options<a class="headerlink" href="#image-options" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Short</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--image</code></td>
+<td><code>-i</code></td>
+<td>Image file path or URL to include with the prompt. Can be specified multiple times.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="common-command-examples">Common Command Examples<a class="headerlink" href="#common-command-examples" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Get a quick answer</span>
 ai<span class="w"> </span><span class="s2">&quot;What is the capital of France?&quot;</span>
@@ -2227,6 +2262,18 @@ ai<span class="w"> </span>--role<span class="w"> </span><span class="s2">&quot;S
 
 <span class="c1"># Show verbose output for debugging</span>
 ai<span class="w"> </span>--verbose<span class="w"> </span><span class="s2">&quot;Test query&quot;</span>
+
+<span class="c1"># Send an image to a vision model</span>
+ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg<span class="w"> </span><span class="s2">&quot;What is in this image?&quot;</span>
+
+<span class="c1"># Send multiple images for comparison</span>
+ai<span class="w"> </span>-i<span class="w"> </span>img1.png<span class="w"> </span>-i<span class="w"> </span>img2.png<span class="w"> </span><span class="s2">&quot;Compare these screenshots&quot;</span>
+
+<span class="c1"># Send an image URL</span>
+ai<span class="w"> </span>--image<span class="w"> </span>https://example.com/photo.jpg<span class="w"> </span><span class="s2">&quot;Describe this&quot;</span>
+
+<span class="c1"># Image-only (no text prompt)</span>
+ai<span class="w"> </span>--image<span class="w"> </span>diagram.png
 </code></pre></div>
 <h2 id="interactive-mode-commands">Interactive Mode Commands<a class="headerlink" href="#interactive-mode-commands" title="Permanent link">&para;</a></h2>
 <p>When in interactive chat or shell mode, you can use these special commands:</p>

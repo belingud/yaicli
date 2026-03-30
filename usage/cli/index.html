@@ -647,6 +647,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#image-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image Input
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1887,6 +1896,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#image-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image Input
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1938,7 +1956,7 @@
 <td>Exit the application</td>
 </tr>
 <tr>
-<td><code>Tab</code></td>
+<td><code>Shift+Tab</code></td>
 <td>Toggle between Chat/Execute modes</td>
 </tr>
 <tr>
@@ -2141,6 +2159,16 @@
 </code></pre></div>
 <h3 id="combined-input">Combined Input<a class="headerlink" href="#combined-input" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>cat<span class="w"> </span>data.csv<span class="w"> </span><span class="p">|</span><span class="w"> </span>ai<span class="w"> </span><span class="s2">&quot;Convert this CSV to JSON&quot;</span>
+</code></pre></div>
+<h3 id="image-input">Image Input<a class="headerlink" href="#image-input" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Local image file</span>
+ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg<span class="w"> </span><span class="s2">&quot;What is in this image?&quot;</span>
+
+<span class="c1"># Multiple images</span>
+ai<span class="w"> </span>-i<span class="w"> </span>img1.png<span class="w"> </span>-i<span class="w"> </span>img2.png<span class="w"> </span><span class="s2">&quot;Compare these&quot;</span>
+
+<span class="c1"># Image URL</span>
+ai<span class="w"> </span>--image<span class="w"> </span>https://example.com/photo.jpg<span class="w"> </span><span class="s2">&quot;Describe this&quot;</span>
 </code></pre></div>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>

@@ -572,9 +572,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-tab-key" class="md-nav__link">
+  <a href="#using-shifttab-key" class="md-nav__link">
     <span class="md-ellipsis">
-      Using Tab Key
+      Using Shift+Tab Key
     </span>
   </a>
   
@@ -1856,9 +1856,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-tab-key" class="md-nav__link">
+  <a href="#using-shifttab-key" class="md-nav__link">
     <span class="md-ellipsis">
-      Using Tab Key
+      Using Shift+Tab Key
     </span>
   </a>
   
@@ -1994,10 +1994,12 @@
 <p><strong>Features:</strong>
 - Direct answers to questions
 - Support for piped input
+- Image input support via <code>--image</code> / <code>-i</code>
 - Fast responses with minimal overhead</p>
 <p><strong>Best for:</strong>
 - One-off questions
 - Quick information lookups
+- Image analysis with vision models
 - Script integration</p>
 <h2 id="switching-between-modes">Switching Between Modes<a class="headerlink" href="#switching-between-modes" title="Permanent link">&para;</a></h2>
 <h3 id="command-line-switches">Command Line Switches<a class="headerlink" href="#command-line-switches" title="Permanent link">&para;</a></h3>
@@ -2010,11 +2012,14 @@ ai<span class="w"> </span>--shell<span class="w"> </span><span class="s2">&quot;
 
 <span class="c1"># Quick query (default mode)</span>
 ai<span class="w"> </span><span class="s2">&quot;What is the capital of France?&quot;</span>
+
+<span class="c1"># Quick query with image input</span>
+ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg<span class="w"> </span><span class="s2">&quot;What is in this image?&quot;</span>
 </code></pre></div>
 <h3 id="interactive-mode-switching">Interactive Mode Switching<a class="headerlink" href="#interactive-mode-switching" title="Permanent link">&para;</a></h3>
 <p>When in interactive mode (chat or execute), you can switch modes in several ways:</p>
-<h4 id="using-tab-key">Using Tab Key<a class="headerlink" href="#using-tab-key" title="Permanent link">&para;</a></h4>
-<p>Press the <code>Tab</code> key to toggle between Chat and Execute modes.</p>
+<h4 id="using-shifttab-key">Using Shift+Tab Key<a class="headerlink" href="#using-shifttab-key" title="Permanent link">&para;</a></h4>
+<p>Press the <code>Shift+Tab</code> key to toggle between Chat and Execute modes.</p>
 <h4 id="using-commands">Using Commands<a class="headerlink" href="#using-commands" title="Permanent link">&para;</a></h4>
 <p>Type <code>/mode</code> followed by the mode name:</p>
 <div class="highlight"><pre><span></span><code>/mode chat   # Switch to chat mode
