@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from yaicli.llms.providers.anthropic_provider import AnthropicProvider
-from yaicli.schemas import ChatMessage
+from yaicli.schemas import ChatMessage, ToolPolicy
 
 
 class TestAnthropicProvider:
@@ -199,6 +199,80 @@ class TestAnthropicProvider:
             assert responses[0].tool_call.id == "tool_1"
             assert responses[0].tool_call.name == "get_weather"
             assert "New York" in responses[0].tool_call.arguments
+        finally:
+            AnthropicProvider.CLIENT_CLS = real_cls
+
+    @patch("yaicli.llms.providers.anthropic_provider.Anthropic")
+    @patch("yaicli.tools.get_anthropic_mcp_tools", return_value=[{"name": "_mcp__clock"}])
+    @patch("yaicli.tools.get_anthropic_schemas", return_value=[{"name": "test_function"}])
+    def test_request_tool_policy_disables_tools(
+        self, mock_get_schemas, mock_get_mcp_tools, mock_anthropic_cls, mock_config
+    ):
+        """Test request-scoped policy omits Anthropic tools and tool choice."""
+        real_cls = AnthropicProvider.CLIENT_CLS
+        try:
+            mock_config["ENABLE_MCP"] = True
+            AnthropicProvider.CLIENT_CLS = mock_anthropic_cls
+
+            mock_client = MagicMock()
+            mock_anthropic_cls.return_value = mock_client
+
+            mock_text_block = MagicMock()
+            mock_text_block.type = "text"
+            mock_text_block.text = "ls -la"
+
+            mock_response = MagicMock()
+            mock_response.content = [mock_text_block]
+            mock_response.stop_reason = "stop"
+            mock_client.messages.create.return_value = mock_response
+
+            provider = AnthropicProvider(config=mock_config)
+            messages = [ChatMessage(role="user", content="List files")]
+            list(provider.completion(messages, tool_policy=ToolPolicy(False, False)))
+
+            call_kwargs = mock_client.messages.create.call_args.kwargs
+            assert "tools" not in call_kwargs
+            assert "tool_choice" not in call_kwargs
+        finally:
+            AnthropicProvider.CLIENT_CLS = real_cls
+
+    @patch("yaicli.llms.providers.anthropic_provider.Anthropic")
+    @patch("yaicli.tools.get_anthropic_schemas", return_value=[{"name": "test_function"}])
+    def test_completion_with_thinking_blocks(self, mock_get_schemas, mock_anthropic_cls, mock_config):
+        """Test completion with thinking blocks (reasoning content)"""
+        real_cls = AnthropicProvider.CLIENT_CLS
+        try:
+            AnthropicProvider.CLIENT_CLS = mock_anthropic_cls
+
+            # Set up mock client
+            mock_client = MagicMock()
+            mock_anthropic_cls.return_value = mock_client
+
+            # Create thinking block
+            mock_thinking_block = MagicMock()
+            mock_thinking_block.type = "thinking"
+            mock_thinking_block.thinking = "Let me analyze this step by step..."
+
+            # Create text block
+            mock_text_block = MagicMock()
+            mock_text_block.type = "text"
+            mock_text_block.text = "Here's my analysis: The answer is 42."
+
+            mock_response = MagicMock()
+            mock_response.content = [mock_thinking_block, mock_text_block]
+            mock_response.stop_reason = "stop"
+
+            mock_client.messages.create.return_value = mock_response
+
+            provider = AnthropicProvider(config=mock_config)
+            messages = [ChatMessage(role="user", content="What's the answer to life, universe, and everything?")]
+            responses = list(provider.completion(messages))
+
+            # Verify response includes reasoning content
+            assert len(responses) == 1
+            assert responses[0].content == "Here's my analysis: The answer is 42."
+            assert responses[0].reasoning == "Let me analyze this step by step..."
+            assert responses[0].finish_reason == "stop"
         finally:
             AnthropicProvider.CLIENT_CLS = real_cls
 

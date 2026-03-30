@@ -11,7 +11,7 @@ These shortcuts work in all interactive modes:
 | Shortcut             | Description                       |
 | -------------------- | --------------------------------- |
 | `Ctrl+C` or `Ctrl+D` | Exit the application              |
-| `Tab`                | Toggle between Chat/Execute modes |
+| `Shift+Tab`          | Toggle between Chat/Execute modes |
 | `Ctrl+R`             | Search command history            |
 | `↑/↓`                | Navigate through command history  |
 | `Ctrl+L`             | Clear the screen                  |
@@ -127,6 +127,19 @@ cat error.log | ai "Explain these errors"
 
 ```bash
 cat data.csv | ai "Convert this CSV to JSON"
+```
+
+### Image Input
+
+```bash
+# Local image file
+ai --image photo.jpg "What is in this image?"
+
+# Multiple images
+ai -i img1.png -i img2.png "Compare these"
+
+# Image URL
+ai --image https://example.com/photo.jpg "Describe this"
 ```
 
 ## Next Steps

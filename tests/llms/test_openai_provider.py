@@ -4,7 +4,7 @@ import pytest
 
 from yaicli.exceptions import ProviderError
 from yaicli.llms.providers.openai_provider import OpenAIAzure, OpenAIProvider
-from yaicli.schemas import ChatMessage, ToolCall
+from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
 
 
 class TestOpenAIProvider:
@@ -223,6 +223,36 @@ class TestOpenAIProvider:
             assert responses[0].tool_call.name == "get_weather"
             assert responses[0].tool_call.arguments == '{"location": "New York"}'
 
+    @patch("yaicli.llms.providers.openai_provider.get_openai_mcp_tools")
+    @patch("yaicli.tools.get_openai_schemas")
+    def test_completion_request_tool_policy_disables_all_tools(
+        self, mock_get_schemas, mock_get_mcp_tools, mock_config, mock_openai_client
+    ):
+        """Test request-scoped policy suppresses function and MCP tools for a single call."""
+        mock_config["ENABLE_MCP"] = True
+        mock_get_schemas.return_value = [{"type": "function", "function": {"name": "get_weather"}}]
+        mock_get_mcp_tools.return_value = [{"type": "function", "function": {"name": "_mcp__clock"}}]
+
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = "ls -la"
+        mock_message.reasoning_content = None
+        mock_choice.message = mock_message
+        mock_choice.finish_reason = "stop"
+        mock_response.choices = [mock_choice]
+        mock_openai_client.chat.completions.create.return_value = mock_response
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+
+            messages = [ChatMessage(role="user", content="List files")]
+            list(provider.completion(messages, stream=False, tool_policy=ToolPolicy(False, False)))
+
+            call_kwargs = mock_openai_client.chat.completions.create.call_args.kwargs
+            assert "tools" not in call_kwargs
+
     @patch("yaicli.tools.get_openai_schemas")
     def test_completion_with_reasoning_content(self, mock_get_schemas, mock_config, mock_openai_client):
         """Test completion with reasoning content"""
@@ -258,6 +288,56 @@ class TestOpenAIProvider:
             assert responses[0].content == "Final answer"
             assert responses[0].reasoning == "This is my reasoning"
             assert responses[0].finish_reason == "stop"
+
+    @patch("yaicli.tools.get_openai_schemas")
+    def test_completion_with_reasoning_content_in_delta(self, mock_get_schemas, mock_config, mock_openai_client):
+        """Test completion with reasoning content in delta (streaming)"""
+        # Setup mock schemas
+        mock_get_schemas.return_value = [{"type": "function", "function": {"name": "test_func"}}]
+
+        # Create provider with mocked OpenAI
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+
+            # Mock streaming response chunks with reasoning content
+            chunk1 = MagicMock()
+            chunk1.choices = [MagicMock()]
+            chunk1.choices[0].delta = MagicMock()
+            chunk1.choices[0].delta.content = "Let me think"
+            chunk1.choices[0].delta.model_extra = {"reasoning_content": "This is my thought process"}
+            chunk1.choices[0].finish_reason = None
+
+            chunk2 = MagicMock()
+            chunk2.choices = [MagicMock()]
+            chunk2.choices[0].delta = MagicMock()
+            chunk2.choices[0].delta.content = " about this."
+            chunk2.choices[0].delta.model_extra = {"reasoning": "More reasoning"}
+            chunk2.choices[0].finish_reason = None
+
+            chunk3 = MagicMock()
+            chunk3.choices = [MagicMock()]
+            chunk3.choices[0].delta = MagicMock()
+            chunk3.choices[0].delta.content = "Final answer."
+            chunk3.choices[0].delta.model_extra = None
+            chunk3.choices[0].finish_reason = "stop"
+
+            mock_openai_client.chat.completions.create.return_value = [chunk1, chunk2, chunk3]
+
+            messages = [ChatMessage(role="user", content="A complex question")]
+            responses = list(provider.completion(messages, stream=True))
+
+            # Verify responses
+            assert len(responses) == 3
+            assert responses[0].content == "Let me think"
+            assert responses[0].reasoning == "This is my thought process"
+
+            assert responses[1].content == " about this."
+            assert responses[1].reasoning == "More reasoning"
+
+            assert responses[2].content == "Final answer."
+            assert responses[2].reasoning is None  # No reasoning in last chunk
+            assert responses[2].finish_reason == "stop"
 
     def test_detect_tool_role(self, mock_config):
         """Test detect_tool_role method"""

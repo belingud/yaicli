@@ -1,7 +1,8 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from cerebras.cloud.sdk import Cerebras
 
+from ...schemas import ToolPolicy
 from .openai_provider import OpenAIProvider
 
 
@@ -25,8 +26,8 @@ class CerebrasProvider(OpenAIProvider):
         client_params["warm_tcp_connection"] = False
         return client_params
 
-    def get_tools(self) -> List[dict]:
-        tools = super().get_tools()
+    def get_tools(self, tool_policy: Optional[ToolPolicy] = None) -> List[dict]:
+        tools = super().get_tools(tool_policy=tool_policy)
         for i in tools:
             if "function" not in i:
                 continue

@@ -8,9 +8,35 @@ from ..console import get_console
 from ..exceptions import MCPToolsError
 from ..schemas import ToolCall
 from .function import get_function, list_functions
-from .mcp import MCP_TOOL_NAME_PREFIX, get_mcp, get_mcp_manager, parse_mcp_tool_name
+
+# Lazy import MCP-related items to improve startup time
+# These constants are safe to define without importing fastmcp
+MCP_TOOL_NAME_PREFIX = "_mcp__"
+
+
+def parse_mcp_tool_name(name: str) -> str:
+    """Parse MCP tool name - remove the prefix _mcp__ from the tool name."""
+    return name.removeprefix(MCP_TOOL_NAME_PREFIX)
+
+
+def get_mcp_manager():
+    """Lazy import and return MCP manager"""
+    from .mcp import get_mcp_manager as _get_mcp_manager
+
+    return _get_mcp_manager()
+
+
+def get_mcp(name: str):
+    """Lazy import and get MCP tool"""
+    from .mcp import get_mcp as _get_mcp
+
+    return _get_mcp(name)
+
 
 console = get_console()
+
+_openai_schemas_cache: List[Dict[str, Any]] | None = None
+_anthropic_schemas_cache: List[Dict[str, Any]] | None = None
 
 
 def get_openai_schemas() -> List[Dict[str, Any]]:
@@ -19,6 +45,9 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
     Returns:
         List of function schemas in OpenAI format
     """
+    global _openai_schemas_cache
+    if _openai_schemas_cache is not None:
+        return _openai_schemas_cache
     transformed_schemas = []
     for function in list_functions():
         schema = {
@@ -26,6 +55,7 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
             "function": function.func_cls.openai_schema,
         }
         transformed_schemas.append(schema)
+    _openai_schemas_cache = transformed_schemas
     return transformed_schemas
 
 
@@ -35,9 +65,13 @@ def get_anthropic_schemas() -> List[Dict[str, Any]]:
     Returns:
         List of function schemas in Anthropic format
     """
+    global _anthropic_schemas_cache
+    if _anthropic_schemas_cache is not None:
+        return _anthropic_schemas_cache
     transformed_schemas = []
     for function in list_functions():
         transformed_schemas.append(function.func_cls.anthropic_schema)
+    _anthropic_schemas_cache = transformed_schemas
     return transformed_schemas
 
 

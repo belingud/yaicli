@@ -80,6 +80,12 @@ Here's a comprehensive list of all available options:
 | `--show-mcp-output` / `--hide-mcp-output` | Show/hide MCP output | show |
 | `--list-mcp` | List all available MCP | |
 
+### Image Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--image` | `-i` | Image file path or URL to include with the prompt. Can be specified multiple times. |
+
 ## Common Command Examples
 
 ```bash
@@ -112,6 +118,18 @@ ai --role "SQL Expert" "Optimize this query"
 
 # Show verbose output for debugging
 ai --verbose "Test query"
+
+# Send an image to a vision model
+ai --image photo.jpg "What is in this image?"
+
+# Send multiple images for comparison
+ai -i img1.png -i img2.png "Compare these screenshots"
+
+# Send an image URL
+ai --image https://example.com/photo.jpg "Describe this"
+
+# Image-only (no text prompt)
+ai --image diagram.png
 ```
 
 ## Interactive Mode Commands

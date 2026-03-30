@@ -167,7 +167,7 @@ class TestMCP:
 
 class TestMCPClient:
     @patch("yaicli.tools.mcp.MCPConfig.from_file")
-    @patch("yaicli.tools.mcp.Client")
+    @patch("fastmcp.client.Client")
     def test_singleton(self, mock_client_class, mock_from_file):
         """Test MCPClient is a thread-safe singleton."""
         # Setup mock config
@@ -189,7 +189,7 @@ class TestMCPClient:
 
     @patch("yaicli.tools.mcp.get_or_create_event_loop")
     @patch("yaicli.tools.mcp.MCPConfig.from_file")
-    @patch("yaicli.tools.mcp.Client")
+    @patch("fastmcp.client.Client")
     def test_ping(self, mock_client_class, mock_from_file, mock_get_loop):
         """Test MCPClient.ping method."""
         # Setup mocks
@@ -211,7 +211,7 @@ class TestMCPClient:
 
     @patch("yaicli.tools.mcp.get_or_create_event_loop")
     @patch("yaicli.tools.mcp.MCPConfig.from_file")
-    @patch("yaicli.tools.mcp.Client")
+    @patch("fastmcp.client.Client")
     def test_list_tools(self, mock_client_class, mock_from_file, mock_get_loop):
         """Test MCPClient.list_tools method."""
         # Setup mocks
@@ -247,7 +247,7 @@ class TestMCPClient:
 
     @patch("yaicli.tools.mcp.get_or_create_event_loop")
     @patch("yaicli.tools.mcp.MCPConfig.from_file")
-    @patch("yaicli.tools.mcp.Client")
+    @patch("fastmcp.client.Client")
     def test_call_tool(self, mock_client_class, mock_from_file, mock_get_loop):
         """Test MCPClient.call_tool method."""
         # Setup mocks
@@ -269,7 +269,7 @@ class TestMCPClient:
         mock_loop.run_until_complete.assert_called_once()
 
     @patch("yaicli.tools.mcp.MCPConfig.from_file")
-    @patch("yaicli.tools.mcp.Client")
+    @patch("fastmcp.client.Client")
     def test_tools_property(self, mock_client_class, mock_from_file):
         """Test MCPClient.tools property."""
         # Setup mocks
@@ -299,7 +299,7 @@ class TestMCPClient:
         client.list_tools.assert_not_called()
 
     @patch("yaicli.tools.mcp.MCPConfig.from_file")
-    @patch("yaicli.tools.mcp.Client")
+    @patch("fastmcp.client.Client")
     def test_tools_map_property(self, mock_client_class, mock_from_file):
         """Test MCPClient.tools_map property."""
         # Setup mocks
@@ -324,7 +324,7 @@ class TestMCPClient:
         assert result["_mcp__tool1"].description == "Tool 1"
 
     @patch("yaicli.tools.mcp.MCPConfig.from_file")
-    @patch("yaicli.tools.mcp.Client")
+    @patch("fastmcp.client.Client")
     def test_get_tool(self, mock_client_class, mock_from_file):
         """Test MCPClient.get_tool method."""
         # Create client

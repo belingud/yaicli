@@ -1,6 +1,6 @@
 [project]
 name = "yaicli"
-version = "0.9.0"
+version = "0.15.1"
 description = "A simple CLI tool to interact with LLM"
 authors = [{ name = "belingud", email = "im.victor@qq.com" }]
 readme = "README.md"
@@ -53,12 +53,13 @@ keywords = [
     "ollama",
 ]
 dependencies = [
+    "anthropic[bedrock,vertex]>=0.57.1",
     "click>=8.1.8",
     "ddgs>=9.6.1",
     "distro>=1.9.0",
     "fastmcp>=2.10.1",
+    "docstring-parser>=0.16",
     "httpx>=0.28.1",
-    "instructor>=1.7.9",
     "json-repair>=0.44.1",
     "openai>=1.76.0",
     "prompt-toolkit>=3.0.50",
@@ -84,7 +85,6 @@ all = [
     "google-genai>=1.20.0",
     "huggingface-hub>=0.33.0",
     "mistralai>=1.8.2",
-    "anthropic[bedrock,vertex]>=0.57.1",
     "cerebras-cloud-sdk>=1.35.0",
     "fireworks-ai>=0.15.15",
 ]
@@ -94,7 +94,6 @@ cohere = ["cohere>=5.15.0"]
 gemini = ["google-genai>=1.20.0"]
 huggingface = ["huggingface-hub>=0.33.0"]
 mistral = ["mistralai>=1.8.2"]
-anthropic = ["anthropic[bedrock,vertex]>=0.57.1"]
 cerebras = ["cerebras-cloud-sdk>=1.35.0"]
 fireworks = ["fireworks-ai>=0.15.15"]
 

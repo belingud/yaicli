@@ -12,7 +12,7 @@
 ![Pepy Total Downloads](https://img.shields.io/pepy/dt/yaicli?style=for-the-badge&logo=python)
 
 YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (
-LLMs) like GPT-4o directly to your terminal. Interact with AI through multiple modes: have natural conversations,
+LLMs) like GPT-5 directly to your terminal. Interact with AI through multiple modes: have natural conversations,
 generate and execute shell commands, or get quick answers without leaving your workflow.
 
 **Supports both standard and deep reasoning models across all major LLM providers.**
@@ -23,7 +23,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 > YAICLI is actively developed. While core functionality is stable, some features may evolve in future releases.
 
 > We support MCP since v0.7.0!
-> 
+>
 > We support Function Call since v0.5.0!
 
 ## ✨ Key Features
@@ -39,6 +39,13 @@ generate and execute shell commands, or get quick answers without leaving your w
 - **Auto-detection**: Identifies your shell (bash/zsh/PowerShell/CMD) and OS
 - **Safe Command Execution**: Verification before running any command
 - **Flexible Input**: Pipe content directly (`cat log.txt | ai "analyze this"`)
+
+### 🖼️ Image Input (Vision)
+
+- **Local Images**: Pass local image files with `--image/-i` (JPEG, PNG, GIF, WebP)
+- **URL Images**: Pass image URLs directly to vision-capable models
+- **Multi-Image**: Specify `--image` multiple times for comparison tasks
+- **30+ Providers**: Automatic format conversion for OpenAI, Anthropic, Gemini, Ollama families
 
 ### 🔌 Universal LLM Compatibility
 
@@ -130,6 +137,8 @@ pip install .
 - Gemini
 - Groq
 - Huggingface
+- Longcat
+- Longcat Anthropic Format
 - Minimax
 - Mistral
 - ModelScope
@@ -167,7 +176,7 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `PROVIDER`             | LLM provider (openai, claude, cohere, etc.) | `openai`                 | `YAI_PROVIDER`             |
 | `BASE_URL`             | API endpoint URL                            | -                        | `YAI_BASE_URL`             |
 | `API_KEY`              | Your API key                                | -                        | `YAI_API_KEY`              |
-| `MODEL`                | LLM model to use                            | `gpt-4o`                 | `YAI_MODEL`                |
+| `MODEL`                | LLM model to use                            | `gpt-5.2`                | `YAI_MODEL`                |
 | `DEFAULT_ROLE`         | Default role                                | `DEFAULT`                | `YAI_DEFAULT_ROLE`         |
 | `SHELL_NAME`           | Shell type                                  | `auto`                   | `YAI_SHELL_NAME`           |
 | `OS_NAME`              | Operating system                            | `auto`                   | `YAI_OS_NAME`              |
@@ -194,7 +203,6 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
 | `SHOW_MCP_OUTPUT`      | Show MCP output when calling mcp            | `true`                   | `YAI_SHOW_MCP_OUTPUT`      |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
-
 
 ### LLM Provider Configuration
 
@@ -230,13 +238,13 @@ MODEL=command-r-plus
 
 #### Openai
 
-Yaicli use `openai` as provider as default provider, `gpt-4o` as default model, you can add your api key to use as it is.
+Yaicli use `openai` as provider as default provider, `gpt-5.2` as default model, you can add your api key to use as it is.
 
 ```ini
 PROVIDER=openai
 BASE_URL=
 API_KEY=
-MODEL=gpt-4o
+MODEL=gpt-5.2
 ```
 
 Extra params:
@@ -254,7 +262,7 @@ See official for more details: https://platform.openai.com/docs/guides/reasoning
 PROVIDER=openai-azure
 BASE_URL=
 API_KEY=
-MODEL=gpt-4o
+MODEL=gpt-5.2
 ```
 
 Support config keys:
@@ -288,7 +296,7 @@ API_KEY=
 MODEL=claude-sonnet-4-20250514
 ```
 
-If you want to access **Anthropic bedrock**, you need to set `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SESSION_TOKEN` and `AWS_REGION` 
+If you want to access **Anthropic bedrock**, you need to set `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SESSION_TOKEN` and `AWS_REGION`
 in config or environment variables.
 
 ```ini
@@ -388,6 +396,15 @@ API_KEY=
 MODEL=llama-3.3-70b-versatile
 ```
 
+#### LongCat
+
+```ini
+PROVIDER=longcat
+API_KEY=
+MODEL=LongCat-Flash-Chat
+BASE_URL=https://api.longcat.chat/openai
+```
+
 #### XAI
 
 ```ini
@@ -395,6 +412,23 @@ PROVIDER=xai
 API_KEY=
 MODEL=grok-3
 ```
+
+#### Minimax
+
+```ini
+PROVIDER=minimax
+API_KEY=
+MODEL=MiniMax-M2.1
+```
+
+Extra params:
+
+```ini
+# Enable/disable interleaved thinking (default: true)
+MINIMAX_REASONING_SPLIT=true
+```
+
+MiniMax-M2.1 supports **Interleaved Thinking** - the model can reason before each tool use. When enabled, reasoning content is preserved in conversation history and displayed alongside responses.
 
 #### Chatglm
 
@@ -648,7 +682,6 @@ APP_SECRET=
 MODEL=4.0Ultra
 ```
 
-
 ## 🚀 Usage
 
 ### Quick Start
@@ -670,6 +703,15 @@ ai --code "Write a Python function to sort a list"
 cat app.py | ai "Explain what this code does"
 # or use @
 ai '@Justfile What does this file do'
+
+# Send an image to a vision model
+ai --image photo.jpg "What is in this image?"
+
+# Send multiple images
+ai -i img1.png -i img2.png "Compare these two screenshots"
+
+# Send an image URL
+ai --image https://example.com/photo.jpg "Describe this"
 
 # Debug with verbose mode
 ai --verbose "Explain quantum computing"
@@ -697,7 +739,7 @@ ai --verbose "Explain quantum computing"
 
 **Keyboard Shortcuts**
 
-- `Tab` - Toggle between Chat/Execute modes
+- `Shift+Tab` - Toggle between Chat/Execute modes
 - `Ctrl+C` or `Ctrl+D` - Exit
 - `Ctrl+R` - Search history
 - `↑/↓` - Navigate through history
@@ -770,7 +812,7 @@ Chat title: hello
 
 Welcome to YAICLI!
 Current: Persistent Session: hello
-Press TAB to switch mode
+Press Shift+Tab to switch mode
 /clear             : Clear chat history
 /his               : Show chat history
 /list              : List saved chats
@@ -788,6 +830,38 @@ Chat History:
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 >
 ```
+
+### Image Input
+
+Send images to vision-capable models (GPT-5.2, Claude 4.5, Gemini, Llama 4 Vision, etc.) directly from the CLI.
+
+**Local image file**
+
+```bash
+ai --image photo.jpg "What is in this image?"
+```
+
+**Multiple images**
+
+```bash
+ai -i screenshot1.png -i screenshot2.png "Compare these two UIs"
+```
+
+**Image URL**
+
+```bash
+ai --image https://example.com/diagram.png "Explain this architecture diagram"
+```
+
+**Image without text prompt**
+
+```bash
+ai --image photo.jpg
+```
+
+Supported formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), GIF (`.gif`), WebP (`.webp`).
+
+> **Note**: Image input is currently supported in single-shot mode only, not in interactive `--chat` mode. Providers without vision support (Cohere, HuggingFace, ChatGLM, ModelScope) will receive a warning and the images will be stripped.
 
 ### Input Methods
 
@@ -916,7 +990,7 @@ Starting a temporary chat session (will not be saved automatically)
 
 Welcome to YAICLI!
 Current: Temporary Session (use /save to make persistent)
-Press TAB to switch mode
+Press Shift+Tab to switch mode
 /clear             : Clear chat history
 /his               : Show chat history
 /list              : List saved chats
@@ -1069,29 +1143,28 @@ Assistant:
 │ rates between Bitcoin and US Dollars using exchange-rates.org, which aggregates …"                                        │
 │   },                                                                                                                      │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-Here are some current exchange rates for Bitcoin (BTC) to US Dollar (USD):                                                   
+Here are some current exchange rates for Bitcoin (BTC) to US Dollar (USD):
 
- 1 Exchange-Rates.org:                                                                                                       
-   ₿1 Bitcoin = 💵107,304 US Dollars (as of June 27, 2025, 03:00 AM UTC).                                                    
-   Link                                                                                                                      
- 2 BTC.CurrencyRate.Today:                                                                                                   
-   Live Bitcoin to US Dollars exchange rate.                                                                                 
-   Link                                                                                                                      
- 3 Xe.com:                                                                                                                   
-   Latest conversion rate and information about Bitcoin to US Dollars.                                                       
-   Link                                                                                                                      
- 4 BestExchangeRates.com:                                                                                                    
-   Current BTC to USD market data, including charts and historic rates.                                                      
-   Link                                                                                                                      
- 5 Investing.com:                                                                                                            
-   Bitcoin price analysis and live BTC to USD updates.                                                                       
-   Link                                                                                                                      
+ 1 Exchange-Rates.org:
+   ₿1 Bitcoin = 💵107,304 US Dollars (as of June 27, 2025, 03:00 AM UTC).
+   Link
+ 2 BTC.CurrencyRate.Today:
+   Live Bitcoin to US Dollars exchange rate.
+   Link
+ 3 Xe.com:
+   Latest conversion rate and information about Bitcoin to US Dollars.
+   Link
+ 4 BestExchangeRates.com:
+   Current BTC to USD market data, including charts and historic rates.
+   Link
+ 5 Investing.com:
+   Bitcoin price analysis and live BTC to USD updates.
+   Link
 
-For the most accurate and up-to-date rate, I recommend checking one of these sources directly.                               
+For the most accurate and up-to-date rate, I recommend checking one of these sources directly.
 ```
 
 ![mcp](artwork/mcp_example.png)
-
 
 ## 💻 Technical Details
 

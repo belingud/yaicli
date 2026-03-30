@@ -3,6 +3,15 @@ from typing import List, Optional
 
 
 @dataclass
+class ImageData:
+    """Image data for multimodal messages"""
+
+    data: str  # base64 string (local) or URL string (remote)
+    media_type: str  # MIME type: "image/jpeg", "image/png", etc.
+    is_url: bool  # True → data is a URL; False → data is base64
+
+
+@dataclass
 class ChatMessage:
     """Chat message class"""
 
@@ -11,6 +20,8 @@ class ChatMessage:
     name: Optional[str] = None
     tool_call_id: Optional[str] = None
     tool_calls: List["ToolCall"] = field(default_factory=list)
+    reasoning: Optional[str] = None  # Save reasoning content for interleaved thinking
+    images: List[ImageData] = field(default_factory=list)
 
 
 @dataclass
@@ -20,6 +31,14 @@ class ToolCall:
     id: str
     name: str
     arguments: str
+
+
+@dataclass(frozen=True)
+class ToolPolicy:
+    """Per-request tool availability policy."""
+
+    enable_functions: bool
+    enable_mcp: bool
 
 
 @dataclass

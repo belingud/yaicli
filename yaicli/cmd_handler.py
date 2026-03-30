@@ -1,7 +1,7 @@
 """Command handler for processing special commands in YAICLI."""
 
-import subprocess
 import shlex
+import subprocess
 from typing import Union
 
 from rich.markdown import Markdown

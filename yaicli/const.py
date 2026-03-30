@@ -51,7 +51,7 @@ MCP_JSON_PATH = CONFIG_PATH.parent / "mcp.json"
 DEFAULT_CODE_THEME = "monokai"
 DEFAULT_PROVIDER = "openai"
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
-DEFAULT_MODEL = "gpt-4o"
+DEFAULT_MODEL = "gpt-5.2"
 DEFAULT_SHELL_NAME = "auto"
 DEFAULT_ROLE = "DEFAULT"
 DEFAULT_OS_NAME = "auto"
@@ -80,17 +80,20 @@ DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
 DEFAULT_MAX_TOOL_CALL_DEPTH: int = 8
 DEFAULT_EXCLUDE_PARAMS: str = ""  # Empty by default
 
+# Providers known to not support vision/image input
+NO_VISION_PROVIDERS = {"cohere", "cohere-bedrock", "cohere-sagemaker", "huggingface", "chatglm", "modelscope"}
+
 
 SHELL_PROMPT = """You are YAICLI, a shell command generator.
-The context conversation may contain other types of messages, 
+The context conversation may contain other types of messages,
 but you should only respond with a single valid {_shell} shell command for {_os}.
 Do not include any explanations, comments, or formatting — only the command as plain text, avoiding Markdown formatting.
 """
 
 DEFAULT_PROMPT = """
-You are YAICLI, a system management and programing assistant, 
-You are managing {_os} operating system with {_shell} shell. 
-Your responses should be concise and use Markdown format (but dont't use ```markdown), 
+You are YAICLI, a system management and programing assistant,
+You are managing {_os} operating system with {_shell} shell.
+Your responses should be concise and use Markdown format (but dont't use ```markdown),
 unless the user explicitly requests more details.
 """
 
@@ -167,6 +170,12 @@ DEFAULT_CONFIG_MAP = {
     "SHOW_MCP_OUTPUT": {"value": DEFAULT_SHOW_MCP_OUTPUT, "env_key": "YAI_SHOW_MCP_OUTPUT", "type": bool},
     "MAX_TOOL_CALL_DEPTH": {"value": DEFAULT_MAX_TOOL_CALL_DEPTH, "env_key": "YAI_MAX_TOOL_CALL_DEPTH", "type": int},
     "EXCLUDE_PARAMS": {"value": DEFAULT_EXCLUDE_PARAMS, "env_key": "YAI_EXCLUDE_PARAMS", "type": str},
+    # MiniMax specific settings
+    "MINIMAX_REASONING_SPLIT": {
+        "value": True,
+        "env_key": "YAI_MINIMAX_REASONING_SPLIT",
+        "type": bool,
+    },
 }
 
 DEFAULT_CONFIG_INI = f"""[core]

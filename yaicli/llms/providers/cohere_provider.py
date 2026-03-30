@@ -15,7 +15,7 @@ from cohere.types.tool_call_v2function import ToolCallV2Function
 
 from ...config import cfg
 from ...console import get_console
-from ...schemas import ChatMessage, LLMResponse, ToolCall
+from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_schemas
 from ..provider import Provider
 
@@ -115,14 +115,15 @@ class CohereProvider(Provider):
 
         return converted_messages
 
-    def _prepare_tools(self) -> Optional[List[Dict[str, Any]]]:
+    def _prepare_tools(self, tool_policy: Optional[ToolPolicy] = None) -> Optional[List[Dict[str, Any]]]:
         """
         Prepare tools for Cohere API if enabled
 
         Returns:
             List of tool definitions or None if disabled
         """
-        if not self.config.get("ENABLE_FUNCTIONS", False):
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
+        if not effective_tool_policy.enable_functions:
             return None
 
         tools = get_openai_schemas()
@@ -219,7 +220,11 @@ class CohereProvider(Provider):
                 )
 
     def completion(
-        self, messages: List[ChatMessage], stream: bool = False, **kwargs
+        self,
+        messages: List[ChatMessage],
+        stream: bool = False,
+        tool_policy: Optional[ToolPolicy] = None,
+        **kwargs,
     ) -> Generator[LLMResponse, None, None]:
         """
         Get completion from Cohere models
@@ -241,7 +246,7 @@ class CohereProvider(Provider):
         if self.verbose:
             self.console.print("Messages:")
             self.console.print(cohere_messages)
-        tools = self._prepare_tools()
+        tools = self._prepare_tools(tool_policy=tool_policy)
 
         # Common request parameters
         request_params = {

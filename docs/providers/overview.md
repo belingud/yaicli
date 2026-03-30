@@ -27,11 +27,12 @@ YAICLI currently integrates with the following LLM providers:
 
 ### Multi-Provider & Aggregation
 
-| Provider    | Description                        | Default Base URL               | API Documentation                                 |
-| ----------- | ---------------------------------- | ------------------------------ | ------------------------------------------------- |
-| OpenRouter  | Unified API for multiple providers | `https://openrouter.ai/api/v1` | [Docs](https://openrouter.ai/docs)                |
-| Together    | Open-source model platform         | `https://api.together.xyz/v1`  | [Docs](https://docs.together.ai/)                 |
-| HuggingFace | Open-source model hub              | -                              | [Docs](https://huggingface.co/docs/inference-api) |
+| Provider    | Description                        | Default Base URL                  | API Documentation                                 |
+| ----------- | ---------------------------------- | --------------------------------- | ------------------------------------------------- |
+| OpenRouter  | Unified API for multiple providers | `https://openrouter.ai/api/v1`    | [Docs](https://openrouter.ai/docs)                |
+| Together    | Open-source model platform         | `https://api.together.xyz/v1`     | [Docs](https://docs.together.ai/)                 |
+| HuggingFace | Open-source model hub              | -                                 | [Docs](https://huggingface.co/docs/inference-api) |
+| LongCat     | OpenAI-compatible API provider     | `https://api.longcat.chat/openai` | [Docs](https://docs.longcat.chat)                 |
 
 ### Cloud Platform Integration
 
@@ -65,37 +66,38 @@ YAICLI currently integrates with the following LLM providers:
 
 | Provider           | Streaming | Function Calling | MCP Support |
 | ------------------ | --------- | ---------------- | ----------- |
-| OpenAI             | ✅         | ✅                | ✅           |
-| Anthropic (Claude) | ✅         | ✅                | ✅           |
-| Google Gemini      | ✅         | ✅                | ✅           |
-| Cohere             | ✅         | ✅                | ✅           |
-| Mistral            | ✅         | ✅                | ✅           |
-| Groq               | ✅         | ✅                | ✅           |
-| Cerebras           | ✅         | ✅                | ✅           |
-| NVIDIA NIM         | ✅         | ✅                | ✅           |
-| SambaNova          | ✅         | ✅                | ✅           |
-| OpenRouter         | ✅         | ✅                | ✅           |
-| Together           | ✅         | ✅                | ✅           |
-| HuggingFace        | ✅         | ✅                | ✅           |
-| Vertex AI          | ✅         | ✅                | ✅           |
-| DeepSeek           | ✅         | ✅                | ✅           |
-| XAI (Grok)         | ✅         | ✅                | ✅           |
-| Yi (01.AI)         | ✅         | ✅                | ✅           |
-| Doubao             | ✅         | ✅                | ✅           |
-| ChatGLM            | ✅         | ✅                | ✅           |
-| Ollama             | ✅         | ✅                | ✅           |
+| OpenAI             | ✅        | ✅               | ✅          |
+| Anthropic (Claude) | ✅        | ✅               | ✅          |
+| Google Gemini      | ✅        | ✅               | ✅          |
+| Cohere             | ✅        | ✅               | ✅          |
+| Mistral            | ✅        | ✅               | ✅          |
+| Groq               | ✅        | ✅               | ✅          |
+| Cerebras           | ✅        | ✅               | ✅          |
+| NVIDIA NIM         | ✅        | ✅               | ✅          |
+| SambaNova          | ✅        | ✅               | ✅          |
+| OpenRouter         | ✅        | ✅               | ✅          |
+| Together           | ✅        | ✅               | ✅          |
+| HuggingFace        | ✅        | ✅               | ✅          |
+| Vertex AI          | ✅        | ✅               | ✅          |
+| DeepSeek           | ✅        | ✅               | ✅          |
+| XAI (Grok)         | ✅        | ✅               | ✅          |
+| Yi (01.AI)         | ✅        | ✅               | ✅          |
+| Doubao             | ✅        | ✅               | ✅          |
+| ChatGLM            | ✅        | ✅               | ✅          |
+| LongCat            | ✅        | ✅               | ✅          |
+| Ollama             | ✅        | ✅               | ✅          |
 
 ### Performance Characteristics
 
-| Provider  | Speed | Cost | Context    | Special Features      |
-| --------- | ----- | ---- | ---------- | --------------------- |
-| Groq      | 🔥🔥🔥   | 💰💰   | Standard   | Ultra-fast inference  |
-| Cerebras  | 🔥🔥🔥   | 💰💰💰  | Standard   | Hardware acceleration |
-| OpenAI    | 🔥🔥    | 💰💰💰  | Large      | Industry standard     |
-| Anthropic | 🔥🔥    | 💰💰💰  | Very Large | Safety-focused        |
-| Ollama    | 🔥     | Free | Varies     | Local, private        |
-| DeepSeek  | 🔥🔥    | 💰    | Large      | Code specialist       |
-| Together  | 🔥🔥    | 💰    | Standard   | Open source focus     |
+| Provider  | Speed  | Cost   | Context    | Special Features      |
+| --------- | ------ | ------ | ---------- | --------------------- |
+| Groq      | 🔥🔥🔥 | 💰💰   | Standard   | Ultra-fast inference  |
+| Cerebras  | 🔥🔥🔥 | 💰💰💰 | Standard   | Hardware acceleration |
+| OpenAI    | 🔥🔥   | 💰💰💰 | Large      | Industry standard     |
+| Anthropic | 🔥🔥   | 💰💰💰 | Very Large | Safety-focused        |
+| Ollama    | 🔥     | Free   | Varies     | Local, private        |
+| DeepSeek  | 🔥🔥   | 💰     | Large      | Code specialist       |
+| Together  | 🔥🔥   | 💰     | Standard   | Open source focus     |
 
 **Legend:** 🔥 = Speed level, 💰 = Cost level
 
@@ -116,6 +118,7 @@ pip install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,anthropic]'
 For detailed configuration options for each provider, refer to the provider-specific pages:
 
 ### Major Cloud Providers
+
 - [OpenAI](openai.md)
 - [Anthropic (Claude)](anthropic.md)
 - [Google Gemini](gemini.md)
@@ -130,22 +133,27 @@ For detailed configuration options for each provider, refer to the provider-spec
 - [Minimax](minimax.md)
 
 ### High-Performance Inference
+
 - [Groq](groq.md)
 - [Cerebras](cerebras.md)
 - [NVIDIA NIM](nvidia.md)
 - [SambaNova](sambanova.md)
 
 ### Multi-Provider & Aggregation
+
 - [OpenRouter](openrouter.md)
 - [Together](together.md)
 - [HuggingFace](huggingface.md)
+- [LongCat](longcat.md)
 - [ModelScope](modelscope.md)
 - [Bailian](bailian.md)
 
 ### Cloud Platform Integration
+
 - [Vertex AI](vertexai.md)
 
 ### Local & Self-Hosted
+
 - [Ollama](ollama.md)
 
 ## Using Custom OpenAI-Compatible Endpoints

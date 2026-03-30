@@ -4,7 +4,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-from instructor import OpenAISchema
+from yaicli.function_schema import OpenAISchema
 from pydantic import Field
 
 

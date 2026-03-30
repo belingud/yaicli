@@ -241,6 +241,8 @@ class TestProviderFactory:
             "bailian",
             "bailian-intl",
             "spark",
+            "longcat",
+            "longcat-anthropic",
             "together",
             "anthropic",
             "anthropic-bedrock",

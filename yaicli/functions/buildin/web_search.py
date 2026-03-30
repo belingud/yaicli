@@ -1,6 +1,6 @@
 import json
 
-from instructor import OpenAISchema
+from yaicli.function_schema import OpenAISchema
 from pydantic import Field
 
 

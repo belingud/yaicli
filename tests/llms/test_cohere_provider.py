@@ -7,7 +7,7 @@ from yaicli.llms.providers.cohere_provider import (
     CohereProvider,
     CohereSagemakerProvider,
 )
-from yaicli.schemas import ChatMessage, LLMResponse, ToolCall
+from yaicli.schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 
 
 class TestCohereProvider:
@@ -117,6 +117,15 @@ class TestCohereProvider:
                 with patch.object(provider, "_prepare_tools", return_value=None):
                     tools = provider._prepare_tools()
                     assert tools is None
+
+    @patch("yaicli.tools.get_openai_schemas")
+    def test_prepare_tools_request_tool_policy_disables_functions(self, mock_get_schemas, mock_config, mock_client):
+        """Test request-scoped policy suppresses Cohere tools for a single request."""
+        mock_get_schemas.return_value = [{"type": "function", "function": {"name": "test_func"}}]
+
+        with patch.object(CohereProvider, "create_client", return_value=mock_client):
+            provider = CohereProvider(config=mock_config)
+            assert provider._prepare_tools(tool_policy=ToolPolicy(False, False)) is None
 
     @patch("yaicli.tools.get_openai_schemas")
     def test_completion_non_streaming(self, mock_get_schemas, mock_config, mock_client):

@@ -4,7 +4,7 @@ import time
 import traceback
 from os import devnull
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import typer
 from prompt_toolkit import PromptSession, prompt
@@ -35,6 +35,7 @@ from .const import (
     DEFAULT_SHELL_NAME,
     EXEC_MODE,
     HISTORY_FILE,
+    NO_VISION_PROVIDERS,
     TEMP_MODE,
     DefaultRoleNames,
 )
@@ -44,7 +45,7 @@ from .history import LimitedFileHistory
 from .llms import LLMClient
 from .printer import Printer
 from .role import Role, RoleManager, role_mgr
-from .schemas import ChatMessage
+from .schemas import ChatMessage, ImageData, ToolPolicy
 from .utils import detect_os, detect_shell, filter_command
 
 
@@ -143,8 +144,6 @@ class CLI:
     def set_role(self, role_name: str) -> None:
         self.role_name = role_name
         self.role = self.role_manager.get_role(role_name)
-        if role_name in (DefaultRoleNames.CODER, DefaultRoleNames.SHELL):
-            cfg["ENABLE_FUNCTIONS"] = False
         if role_name == DefaultRoleNames.CODER:
             self.printer = Printer(content_markdown=False)
         elif role_name == DefaultRoleNames.SHELL:
@@ -272,7 +271,7 @@ class CLI:
         """Handle special command return: True-continue loop, False-exit loop, str-non-special command"""
         return self.cmd_handler.handle_command(user_input)
 
-    def _build_messages(self, user_input: str) -> list[ChatMessage]:
+    def _build_messages(self, user_input: str, images: Optional[List[ImageData]] = None) -> list[ChatMessage]:
         """Build message list for LLM API with @ file references expanded."""
         # Create the message list with system prompt
         messages = [ChatMessage(role="system", content=self.role.prompt)]
@@ -283,7 +282,7 @@ class CLI:
             messages.extend(context_msgs)
 
         # Parse and add temporary @ file references
-        at_refs_content, cleaned_input = self.context_manager.parse_at_references(user_input)
+        at_refs_content, cleaned_input, at_images = self.context_manager.parse_at_references(user_input)
         if at_refs_content:
             messages.append(ChatMessage(role="system", content=at_refs_content))
 
@@ -291,26 +290,49 @@ class CLI:
         for msg in self.chat.history:
             messages.append(msg)
 
-        # Add user input (with @ references cleaned up)
-        messages.append(ChatMessage(role="user", content=cleaned_input))
+        # Add user input (with @ references cleaned up) and images
+        effective_images = list(images or []) + at_images
+        if effective_images:
+            provider = cfg.get("PROVIDER", "").lower()
+            if provider in NO_VISION_PROVIDERS:
+                self.console.print(
+                    f"Warning: Provider '{provider}' does not support image input. Images will be ignored.",
+                    style="yellow",
+                )
+                effective_images = []
+        user_msg = ChatMessage(role="user", content=cleaned_input, images=effective_images)
+        messages.append(user_msg)
         return messages
 
-    def _handle_llm_response(self, user_input: str) -> tuple[Optional[str], list[ChatMessage]]:
+    def _get_tool_policy(self) -> ToolPolicy:
+        """Resolve the effective tool policy for the current request."""
+        if self.current_mode == EXEC_MODE:
+            return ToolPolicy(enable_functions=False, enable_mcp=False)
+        return ToolPolicy(enable_functions=cfg["ENABLE_FUNCTIONS"], enable_mcp=cfg["ENABLE_MCP"])
+
+    def _handle_llm_response(
+        self, user_input: str, images: Optional[List[ImageData]] = None
+    ) -> tuple[Optional[str], list[ChatMessage]]:
         """Get response from API (streaming or normal) and print it.
         Returns the full content string or None if an error occurred.
 
         Args:
             user_input (str): The user's input text.
+            images: Optional list of ImageData for multimodal input.
 
         Returns:
             Optional[str]: The assistant's response content or None if an error occurred.
             list[ChatMessage]: The updated message history.
         """
-        messages = self._build_messages(user_input)
+        messages = self._build_messages(user_input, images=images)
         if self.role.name != DefaultRoleNames.CODER:
             self.console.print("Assistant:", style="bold green")
         try:
-            response_iterator = self.client.completion_with_tools(messages, stream=cfg["STREAM"])
+            response_iterator = self.client.completion_with_tools(
+                messages,
+                stream=cfg["STREAM"],
+                tool_policy=self._get_tool_policy(),
+            )
 
             content, _ = self.printer.display_stream(response_iterator)
 
@@ -322,11 +344,11 @@ class CLI:
                 traceback.print_exc()
             return None, messages
 
-    def _process_user_input(self, user_input: str) -> bool:
+    def _process_user_input(self, user_input: str, images: Optional[List[ImageData]] = None) -> bool:
         """Process user input: get response, print, update history, maybe execute.
         Returns True to continue REPL, False to exit on critical error.
         """
-        content, updated_messages = self._handle_llm_response(user_input)
+        content, updated_messages = self._handle_llm_response(user_input, images=images)
 
         if content is None and not any(msg.tool_calls for msg in updated_messages):
             return True
@@ -401,16 +423,15 @@ class CLI:
                 completer=AtPathCompleter(),
                 complete_while_typing=True,  # Enable auto-completion for @ trigger
                 complete_in_thread=True,  # Don't block on completion
-                bottom_toolbar=" [Ctrl+T] Switch Mode ",
             )
         except Exception as e:
             self.console.print(f"Error initializing prompt session history: {e}", style="red")
             self.session = PromptSession(key_bindings=self.bindings)
 
     def _setup_key_bindings(self) -> None:
-        """Setup keyboard shortcuts with Ctrl+T for mode switching."""
+        """Setup keyboard shortcuts with Shift+Tab for mode switching."""
 
-        @self.bindings.add("c-t")  # Ctrl+T to switch mode
+        @self.bindings.add("s-tab")  # Shift+Tab to switch mode
         def _(event: KeyPressEvent) -> None:
             """Switch between chat and exec mode."""
             self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
@@ -440,7 +461,7 @@ class CLI:
         self.print_help()
 
     def print_help(self):
-        self.console.print("Press [bold yellow]Ctrl+T[/bold yellow] to switch mode")
+        self.console.print("Press [bold yellow]Shift+Tab[/bold yellow] to switch mode")
         help_cmd = "|".join(CMD_HELP)
         self.console.print(f"{help_cmd:<19}: Show help message")
         self.console.print(f"{CMD_CLEAR:<19}: Clear chat history")
@@ -499,12 +520,21 @@ class CLI:
 
         self.console.print("\nExiting YAICLI... Goodbye!", style="bold green")
 
-    def _run_once(self, user_input: str, shell: bool = False, code: bool = False) -> None:
+    def _run_once(
+        self, user_input: str, shell: bool = False, code: bool = False, images: Optional[List[ImageData]] = None
+    ) -> None:
         """Handle default mode"""
         self.set_role(self.evaluate_role_name(code, shell, self.init_role))
-        self._process_user_input(user_input)
+        self._process_user_input(user_input, images=images)
 
-    def run(self, chat: bool = False, shell: bool = False, code: bool = False, user_input: Optional[str] = None):
+    def run(
+        self,
+        chat: bool = False,
+        shell: bool = False,
+        code: bool = False,
+        user_input: Optional[str] = None,
+        images: Optional[List[ImageData]] = None,
+    ):
         if not user_input and not chat:
             self.console.print("No input provided.", style="bold red")
             raise typer.Abort()
@@ -520,7 +550,7 @@ class CLI:
             self._run_repl()
         else:
             # Run in single-use mode
-            self._run_once(user_input or "", shell=shell, code=code)
+            self._run_once(user_input or "", shell=shell, code=code, images=images)
 
     def _create_client(self):
         """Create an LLM client instance based on configuration"""

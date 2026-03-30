@@ -1,5 +1,6 @@
 import sys
-from typing import Annotated, Any, Optional
+from importlib.metadata import version as pkg_version
+from typing import Annotated, Any, List, Optional
 
 import typer
 
@@ -7,7 +8,7 @@ from .chat import FileChatManager
 from .config import cfg
 from .const import DEFAULT_CONFIG_INI, DefaultRoleNames, JustifyEnum
 from .exceptions import YaicliError
-from .functions import install_functions, print_functions, print_mcp
+from .functions import install_functions, print_functions, print_mcp, reinstall_functions
 from .llms.provider import ProviderFactory
 from .role import RoleManager
 
@@ -18,6 +19,12 @@ app = typer.Typer(
     pretty_exceptions_enable=False,  # Let the CLI handle errors gracefully
     rich_markup_mode="rich",  # Render rich text in help messages
 )
+
+
+def version_callback(value: bool):
+    if value:
+        typer.echo(f"yaicli {pkg_version('yaicli')}")
+        raise typer.Exit()
 
 
 def override_config(
@@ -163,6 +170,16 @@ class CodeOptions:
 
 
 class OtherOptions:
+    version = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show version and exit.",
+        rich_help_panel="Other Options",
+        callback=version_callback,
+        is_eager=True,
+    )
+
     verbose = typer.Option(
         False,
         "--verbose",
@@ -231,6 +248,16 @@ class MCPOptions:
     )
 
 
+class ImageOptions:
+    image = typer.Option(
+        None,
+        "--image",
+        "-i",
+        help="Image file path or URL to include with the prompt. Can be specified multiple times.",
+        rich_help_panel="Image Options",
+    )
+
+
 class FunctionOptions:
     install_functions = typer.Option(
         False,
@@ -246,6 +273,14 @@ class FunctionOptions:
         help="List all available functions.",
         rich_help_panel="Function Options",
         callback=print_functions,
+    )
+
+    reinstall_functions = typer.Option(
+        False,
+        "--reinstall-functions",
+        help="Reinstall builtin functions (overwrites existing builtin files, preserves custom ones).",
+        rich_help_panel="Function Options",
+        callback=reinstall_functions,
     )
 
     enable_functions = typer.Option(
@@ -293,6 +328,7 @@ def main(
     # ------------------- Code Options -------------------
     code: bool = CodeOptions.code,
     # ------------------- Other Options -------------------
+    version: Optional[bool] = OtherOptions.version,  # noqa: F841
     verbose: bool = OtherOptions.verbose,
     template: bool = OtherOptions.template,
     list_providers: bool = OtherOptions.list_providers,  # noqa: F841
@@ -300,6 +336,7 @@ def main(
     justify: JustifyEnum = OtherOptions.justify,  # noqa: F841
     # ------------------- Function Options -------------------
     install_functions: bool = FunctionOptions.install_functions,  # noqa: F841
+    reinstall_functions: bool = FunctionOptions.reinstall_functions,  # noqa: F841
     list_functions: bool = FunctionOptions.list_functions,  # noqa: F841
     enable_functions: bool = FunctionOptions.enable_functions,  # noqa: F841
     show_function_output: bool = FunctionOptions.show_function_output,  # noqa: F841
@@ -307,6 +344,8 @@ def main(
     enable_mcp: bool = MCPOptions.enable_mcp,  # noqa: F841
     show_mcp_output: bool = MCPOptions.show_mcp_output,  # noqa: F841
     list_mcp: bool = MCPOptions.list_mcp,  # noqa: F841
+    # ------------------- Image Options -------------------
+    image: Optional[List[str]] = ImageOptions.image,
 ):
     """YAICLI: Your AI assistant in the command line.
 
@@ -342,6 +381,26 @@ def main(
         print(ctx.get_help())
         return
 
+    # Process image arguments
+    image_data_list = []
+    if image:
+        from .image import process_image_source
+
+        for img_source in image:
+            try:
+                image_data_list.append(process_image_source(img_source))
+            except typer.BadParameter as e:
+                print(f"Error: {e}")
+                raise typer.Exit(1)
+
+    # Allow image-only invocation (no text prompt)
+    if image_data_list and not final_prompt and not chat:
+        final_prompt = ""
+
+    if not any([final_prompt is not None, chat]):
+        print(ctx.get_help())
+        return
+
     # # Use build-in role for --shell or --code mode
     if role and role != DefaultRoleNames.DEFAULT and (shell or code):
         print("Warning: --role is ignored when --shell or --code is used.")
@@ -360,6 +419,7 @@ def main(
             shell=shell,
             code=code,
             user_input=final_prompt,
+            images=image_data_list,
         )
     except YaicliError as e:
         typer.echo(f"YAICLI Error: {e}")

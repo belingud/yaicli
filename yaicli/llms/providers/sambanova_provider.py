@@ -1,6 +1,7 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from ...const import DEFAULT_TEMPERATURE
+from ...schemas import ToolPolicy
 from .openai_provider import OpenAIProvider
 
 
@@ -26,7 +27,7 @@ class SambanovaProvider(OpenAIProvider):
         "extra_body": "EXTRA_BODY",
     }
 
-    def get_completion_params(self) -> Dict[str, Any]:
+    def get_completion_params(self, tool_policy: Optional[ToolPolicy] = None) -> Dict[str, Any]:
         """
         Get completion parameters with Sambanova-specific adjustments.
         Validate temperature range and check for function call compatibility.
@@ -34,7 +35,8 @@ class SambanovaProvider(OpenAIProvider):
         Returns:
             Dict[str, Any]: Parameters for completion API call
         """
-        params = super().get_completion_params()
+        params = super().get_completion_params(tool_policy=tool_policy)
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
 
         # Validate temperature
         if params.get("temperature") is not None and (params["temperature"] < 0 or params["temperature"] > 1):
@@ -42,7 +44,7 @@ class SambanovaProvider(OpenAIProvider):
             params["temperature"] = DEFAULT_TEMPERATURE
 
         # Check function call compatibility
-        if self.enable_function and self.config["MODEL"] not in self.SUPPORT_FUNCTION_CALL_MOELS:
+        if effective_tool_policy.enable_functions and self.config["MODEL"] not in self.SUPPORT_FUNCTION_CALL_MOELS:
             self.console.print(
                 f"Sambanova supports function call models: {', '.join(self.SUPPORT_FUNCTION_CALL_MOELS)}",
                 style="yellow",

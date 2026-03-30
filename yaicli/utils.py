@@ -148,11 +148,13 @@ def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
         # Try to get the current running event loop
         return asyncio.get_running_loop()
     except RuntimeError:
-        # No running event loop, get or create event loop
+        # No running event loop, try to get the current loop first
+        # (for compatibility with environments that pre-set one).
         try:
             return asyncio.get_event_loop()
         except RuntimeError:
-            # Create a new event loop and set it as the current thread's event loop
+            # No current loop available (e.g. Python 3.14+ behavior),
+            # create and register a new loop for this thread.
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             return loop
