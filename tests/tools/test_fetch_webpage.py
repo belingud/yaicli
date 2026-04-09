@@ -4,6 +4,8 @@ from unittest.mock import Mock, patch
 
 from yaicli.functions.buildin.fetch_webpage import Function
 
+TRAFILATURA_FALLBACK = "Failed to import trafilatura. Falling back to httpx."
+
 
 class TestFetchWebpage:
     def test_get_random_user_agent(self):
@@ -28,8 +30,9 @@ class TestFetchWebpage:
         headers = Function._get_default_headers(custom_ua)
         assert headers["User-Agent"] == custom_ua
 
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
-    def test_execute_success(self, mock_client_class):
+    def test_execute_success(self, mock_client_class, _mock_trafilatura):
         """Test successful webpage fetch."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -46,8 +49,9 @@ class TestFetchWebpage:
         assert result == "<html>Test content</html>"
         mock_client.get.assert_called_once()
 
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
-    def test_execute_with_custom_timeout(self, mock_client_class):
+    def test_execute_with_custom_timeout(self, mock_client_class, _mock_trafilatura):
         """Test execute with custom timeout."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -64,8 +68,9 @@ class TestFetchWebpage:
         call_kwargs = mock_client_class.call_args[1]
         assert call_kwargs["timeout"] == 60
 
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
-    def test_execute_with_max_retries(self, mock_client_class):
+    def test_execute_with_max_retries(self, mock_client_class, _mock_trafilatura):
         """Test execute with custom max_retries."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -81,8 +86,9 @@ class TestFetchWebpage:
 
         assert result == "<html>Test content</html>"
 
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
-    def test_execute_http_error(self, mock_client_class):
+    def test_execute_http_error(self, mock_client_class, _mock_trafilatura):
         """Test execute with HTTP error status."""
         mock_response = Mock()
         mock_response.status_code = 404
@@ -99,9 +105,10 @@ class TestFetchWebpage:
         assert "Failed to fetch" in result
         assert "404" in result
 
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
     @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
-    def test_execute_retry_on_timeout(self, mock_sleep, mock_client_class):
+    def test_execute_retry_on_timeout(self, mock_sleep, mock_client_class, _mock_trafilatura):
         """Test that execute retries on timeout."""
         import httpx
 
@@ -117,9 +124,10 @@ class TestFetchWebpage:
         assert "Timeout error" in result
         assert mock_client.get.call_count == 2
 
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
     @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
-    def test_execute_retry_on_ssl_error(self, mock_sleep, mock_client_class):
+    def test_execute_retry_on_ssl_error(self, mock_sleep, mock_client_class, _mock_trafilatura):
         """Test that execute retries on SSL error and disables SSL verification."""
         import httpx
 
@@ -134,8 +142,9 @@ class TestFetchWebpage:
         assert "Failed to fetch" in result
         assert "Connection error" in result
 
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
-    def test_execute_with_verify_ssl_false(self, mock_client_class):
+    def test_execute_with_verify_ssl_false(self, mock_client_class, _mock_trafilatura):
         """Test execute with verify_ssl=False."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -152,8 +161,9 @@ class TestFetchWebpage:
         call_kwargs = mock_client_class.call_args[1]
         assert call_kwargs["verify"] is False
 
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
-    def test_execute_with_follow_redirects_false(self, mock_client_class):
+    def test_execute_with_follow_redirects_false(self, mock_client_class, _mock_trafilatura):
         """Test execute with follow_redirects=False."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -184,15 +194,25 @@ class TestFetchWebpage:
 
         mock_import.side_effect = import_side_effect
 
-        result = Function.execute("https://example.com", use_trafilatura=True)
+        result = Function.execute("https://example.com")
 
         assert result == "Extracted content"
         mock_trafilatura.fetch_url.assert_called_once()
         mock_trafilatura.extract.assert_called_once()
 
     @patch("builtins.__import__")
-    def test_fetch_with_trafilatura_not_installed(self, mock_import):
-        """Test that trafilatura fallback works when not installed."""
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_fetch_with_trafilatura_not_installed(self, mock_client_class, mock_import):
+        """Test that httpx fallback works when trafilatura is not installed."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = "<html>Test content</html>"
+
+        mock_client = Mock()
+        mock_client.get.return_value = mock_response
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
+        mock_client_class.return_value = mock_client
 
         def import_side_effect(name, *args, **kwargs):
             if name == "trafilatura":
@@ -201,10 +221,10 @@ class TestFetchWebpage:
 
         mock_import.side_effect = import_side_effect
 
-        result = Function.execute("https://example.com", use_trafilatura=True)
+        result = Function.execute("https://example.com")
 
-        assert "trafilatura is not installed" in result
-        assert "Falling back to httpx" in result
+        assert result == "<html>Test content</html>"
+        mock_client.get.assert_called_once()
 
     @patch("builtins.__import__")
     @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
@@ -221,7 +241,7 @@ class TestFetchWebpage:
 
         mock_import.side_effect = import_side_effect
 
-        result = Function.execute("https://example.com", use_trafilatura=True, max_retries=2)
+        result = Function.execute("https://example.com", max_retries=2)
 
         assert result == "Extracted content"
         assert mock_trafilatura.fetch_url.call_count == 2

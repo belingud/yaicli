@@ -20,10 +20,6 @@ class Function(OpenAISchema):
         default=3,
         description="Maximum number of retries on failure (default: 3).",
     )
-    use_trafilatura: bool = Field(
-        default=False,
-        description="Use trafilatura to extract main content (better for JS-rendered sites) (default: False).",
-    )
     verify_ssl: bool = Field(
         default=True,
         description="Verify SSL certificates (default: True).",
@@ -134,7 +130,6 @@ class Function(OpenAISchema):
         url: str,
         timeout: int = 30,
         max_retries: int = 3,
-        use_trafilatura: bool = False,
         verify_ssl: bool = True,
         follow_redirects: bool = True,
         user_agent: Optional[str] = None,
@@ -145,15 +140,16 @@ class Function(OpenAISchema):
         """execute the function"""
         headers = cls._get_default_headers(user_agent, language, referer, url)
 
-        if use_trafilatura:
-            return cls._fetch_with_trafilatura(
-                url=url,
-                timeout=timeout,
-                max_retries=max_retries,
-                verify_ssl=verify_ssl,
-                follow_redirects=follow_redirects,
-                headers=headers,
-            )
+        result = cls._fetch_with_trafilatura(
+            url=url,
+            timeout=timeout,
+            max_retries=max_retries,
+            verify_ssl=verify_ssl,
+            follow_redirects=follow_redirects,
+            headers=headers,
+        )
+        if not result.startswith("Failed"):
+            return result
 
         return cls._fetch_with_httpx(
             url=url,
@@ -233,17 +229,13 @@ class Function(OpenAISchema):
         try:
             import trafilatura
         except ImportError:
-            return "trafilatura is not installed. Falling back to httpx."
+            return "Failed to import trafilatura. Falling back to httpx."
 
         last_error = None
 
         for attempt in range(max_retries):
             try:
-                downloaded = trafilatura.fetch_url(
-                    url,
-                    no_ssl=not verify_ssl,
-                    timeout=timeout,
-                )
+                downloaded = trafilatura.fetch_url(url, no_ssl=not verify_ssl)
 
                 if downloaded:
                     content = trafilatura.extract(downloaded)
