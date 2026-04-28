@@ -1,7 +1,8 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from volcenginesdkarkruntime import Ark
 
+from ...schemas import ToolPolicy
 from .openai_provider import OpenAIProvider
 
 
@@ -26,7 +27,7 @@ class DoubaoProvider(OpenAIProvider):
             client_params["region"] = self.config["REGION"]
         return client_params
 
-    def get_completion_params(self) -> Dict[str, Any]:
+    def get_completion_params(self, tool_policy: Optional[ToolPolicy] = None) -> Dict[str, Any]:
         params = {
             "model": self.config["MODEL"],
             "temperature": self.config["TEMPERATURE"],

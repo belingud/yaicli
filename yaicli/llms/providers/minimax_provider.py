@@ -3,7 +3,7 @@ from typing import Any, Dict, Generator, List, Optional
 from openai._streaming import Stream
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
-from ...schemas import ChatMessage, LLMResponse, ToolCall
+from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from .openai_provider import OpenAIProvider
 
 
@@ -21,9 +21,9 @@ class MinimaxProvider(OpenAIProvider):
         "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
-    def get_completion_params(self) -> Dict[str, Any]:
+    def get_completion_params(self, tool_policy: Optional[ToolPolicy] = None) -> Dict[str, Any]:
         """Get completion params with reasoning_split enabled by default."""
-        params = super().get_completion_params()
+        params = super().get_completion_params(tool_policy=tool_policy)
 
         # Ensure extra_body exists and enable reasoning_split
         extra_body = params.get("extra_body", {}) or {}

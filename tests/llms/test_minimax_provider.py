@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from yaicli.llms.providers.minimax_provider import MinimaxProvider
-from yaicli.schemas import ChatMessage, ToolCall
+from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
 
 
 class TestMinimaxProvider:
@@ -36,6 +36,13 @@ class TestMinimaxProvider:
         params = provider.get_completion_params()
 
         assert "extra_body" in params
+        assert params["extra_body"]["reasoning_split"] is True
+
+    def test_get_completion_params_accepts_tool_policy(self, provider):
+        """Test get_completion_params accepts request-scoped tool policy."""
+        params = provider.get_completion_params(tool_policy=ToolPolicy(False, False))
+
+        assert params["model"] == provider.config["MODEL"]
         assert params["extra_body"]["reasoning_split"] is True
 
     def test_reasoning_split_respects_config(self, mock_config):
