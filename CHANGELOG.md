@@ -1,5 +1,23 @@
 
 ---
+## [0.15.2](https://github.com/belingud/yaicli/compare/v0.15.1..v0.15.2) - 2026-04-28
+
+### 🐛 Bug Fixes
+
+- fix: add tool_policy parameter to completion params - ([a47d619](https://github.com/belingud/yaicli/commit/a47d619ee7dfa5de2e4e2e30ab74cc385149608f)) - Belingud
+- fix: fall back to httpx when trafilatura extraction fails - ([1bdd254](https://github.com/belingud/yaicli/commit/1bdd2549b3ec86ecb0aec16b922fbbac2de629cd)) - Belingud
+
+
+---
+## [0.15.2](https://github.com/belingud/yaicli/compare/v0.15.1..v0.15.2) - 2026-04-28
+
+### 🐛 Bug Fixes
+
+- fix: add tool_policy parameter to completion params - ([a47d619](https://github.com/belingud/yaicli/commit/a47d619ee7dfa5de2e4e2e30ab74cc385149608f)) - Belingud
+- fix: fall back to httpx when trafilatura extraction fails - ([1bdd254](https://github.com/belingud/yaicli/commit/1bdd2549b3ec86ecb0aec16b922fbbac2de629cd)) - Belingud
+
+
+---
 ## [0.15.0](https://github.com/belingud/yaicli/compare/v0.14.2..v0.15.0) - 2026-03-24
 
 ### ⛰️  Features
