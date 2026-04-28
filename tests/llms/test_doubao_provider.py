@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from yaicli.llms.providers.doubao_provider import DoubaoProvider
+from yaicli.schemas import ToolPolicy
 
 
 class TestDoubaoProvider:
@@ -100,3 +101,14 @@ class TestDoubaoProvider:
             # Verify completion parameters
             assert provider.completion_params["model"] == minimal_config["MODEL"]
             assert "extra_body" not in provider.completion_params
+
+    def test_get_completion_params_accepts_tool_policy(self, mock_config):
+        """Test get_completion_params accepts request-scoped tool policy."""
+        mock_client = MagicMock()
+
+        with patch.object(DoubaoProvider, "CLIENT_CLS") as mock_cls:
+            mock_cls.return_value = mock_client
+            provider = DoubaoProvider(config=mock_config)
+            params = provider.get_completion_params(tool_policy=ToolPolicy(False, False))
+
+            assert params["model"] == mock_config["MODEL"]

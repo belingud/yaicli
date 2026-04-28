@@ -13,6 +13,7 @@ from yaicli.llms.providers.siliconflow_provider import SiliconFlowProvider
 from yaicli.llms.providers.together_provider import TogetherProvider
 from yaicli.llms.providers.xai_provider import XaiProvider
 from yaicli.llms.providers.yi_provider import YiProvider
+from yaicli.schemas import ToolPolicy
 
 
 class TestYiProvider:
@@ -153,6 +154,16 @@ class TestGroqProvider:
             mock_console.print.assert_called_once_with(
                 "Groq does not support N parameter, setting N to 1 as Groq default", style="yellow"
             )
+
+    def test_get_completion_params_accepts_tool_policy(self, mock_config):
+        """Test get_completion_params accepts request-scoped tool policy."""
+        mock_config["EXTRA_BODY"] = None
+
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = GroqProvider(config=mock_config)
+            params = provider.get_completion_params(tool_policy=ToolPolicy(False, False))
+
+            assert params["model"] == mock_config["MODEL"]
 
 
 class TestInfiniAIProvider:
