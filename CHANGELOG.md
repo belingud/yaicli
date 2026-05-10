@@ -1,5 +1,17 @@
 
 ---
+## [0.16.0](https://github.com/belingud/yaicli/compare/v0.15.2..v0.16.0) - 2026-05-10
+
+### ⛰️  Features
+
+- feat: support DeepSeek thinking mode - ([2980316](https://github.com/belingud/yaicli/commit/2980316e9ee2a0a9521113c07d3742ffdc03bb99)) - Belingud
+
+### 📚 Documentation
+
+- docs: update changelog for v0.5.2 release - ([4e96660](https://github.com/belingud/yaicli/commit/4e96660fc222e9a71281125c0a311ac91396b276)) - Belingud
+
+
+---
 ## [0.15.2](https://github.com/belingud/yaicli/compare/v0.15.1..v0.15.2) - 2026-04-28
 
 ### 🐛 Bug Fixes
