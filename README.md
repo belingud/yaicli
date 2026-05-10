@@ -328,6 +328,27 @@ API_KEY=
 MODEL=deepseek-chat
 ```
 
+Thinking mode can be controlled with the existing `EXTRA_BODY` and `REASONING_EFFORT` settings. DeepSeek enables
+thinking by default for supported thinking models, so this is only needed when you want to be explicit or set effort:
+
+```ini
+PROVIDER=deepseek
+API_KEY=
+MODEL=deepseek-v4-pro
+REASONING_EFFORT=high
+EXTRA_BODY={"thinking":{"type":"enabled"}}
+```
+
+To disable thinking mode:
+
+```ini
+EXTRA_BODY={"thinking":{"type":"disabled"}}
+```
+
+When thinking mode is enabled, DeepSeek returns `reasoning_content`, which YAICLI displays as reasoning output and
+preserves during live tool-call conversations. DeepSeek ignores `temperature`, `top_p`, `presence_penalty`, and
+`frequency_penalty` while thinking is enabled.
+
 #### OpenRouter
 
 ```ini
