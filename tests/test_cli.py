@@ -903,3 +903,338 @@ class TestSystemPrompt:
         # Should be different from chat mode prompt
         assert "EXCLUSIVELY" in expected_prompt
         assert "Shell Command Generator" in expected_prompt
+
+
+class TestCLICoverage:
+    """Cover remaining CLI branches not exercised elsewhere."""
+
+    def test_set_role_coder_disables_markdown(self, cli_with_mocks):
+        cli_with_mocks.set_role(DefaultRoleNames.CODER)
+        assert cli_with_mocks.printer.content_markdown is False
+
+    def test_evaluate_role_name_code(self):
+        assert CLI.evaluate_role_name(code=True) == DefaultRoleNames.CODER
+
+    def test_evaluate_role_name_default(self):
+        assert CLI.evaluate_role_name() == DefaultRoleNames.DEFAULT
+
+    def test_check_history_len_trims_with_verbose(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage
+
+        cli_with_mocks.verbose = True
+        cli_with_mocks.interactive_round = 2  # target_len = 4
+        cli_with_mocks.chat.history = [ChatMessage(role="user", content=str(i)) for i in range(6)]
+        cli_with_mocks._check_history_len()
+        assert len(cli_with_mocks.chat.history) == 4
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("trimmed" in t.lower() for t in printed)
+
+    def test_save_chat_error_handled(self, cli_with_mocks):
+        from unittest.mock import MagicMock
+
+        from yaicli.exceptions import ChatSaveError
+
+        cli_with_mocks.chat.history = [MagicMock()]
+        cli_with_mocks.chat_manager.save_chat.side_effect = ChatSaveError("boom")
+        cli_with_mocks._save_chat("T")
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("Failed to save chat" in t for t in printed)
+
+    def test_list_chats_without_date(self, cli_with_mocks):
+        from unittest.mock import MagicMock
+
+        chat = MagicMock()
+        chat.idx = "1"
+        chat.title = "T"
+        chat.date = ""
+        cli_with_mocks.chat_manager.list_chats.return_value = [chat]
+        cli_with_mocks._list_chats()
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("T" in t for t in printed)
+
+    def test_refresh_chats(self, cli_with_mocks):
+        cli_with_mocks._refresh_chats()
+        cli_with_mocks.chat_manager.refresh_chats.assert_called_once()
+
+    def test_load_chat_by_index_not_found(self, cli_with_mocks):
+        cli_with_mocks.chat_manager.validate_chat_index.return_value = True
+        cli_with_mocks.chat_manager.load_chat_by_index.return_value = None
+        assert cli_with_mocks._load_chat_by_index("1") is False
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("not found" in t for t in printed)
+
+    def test_delete_chat_by_index_invalid(self, cli_with_mocks):
+        cli_with_mocks.chat_manager.validate_chat_index.return_value = False
+        assert cli_with_mocks._delete_chat_by_index("999") is False
+
+    def test_delete_chat_by_index_not_found(self, cli_with_mocks):
+        cli_with_mocks.chat_manager.validate_chat_index.return_value = True
+        cli_with_mocks.chat_manager.load_chat_by_index.return_value = None
+        assert cli_with_mocks._delete_chat_by_index("1") is False
+
+    def test_delete_chat_by_index_no_path(self, cli_with_mocks):
+        from unittest.mock import MagicMock
+
+        chat = MagicMock()
+        chat.path = None
+        chat.title = "T"
+        cli_with_mocks.chat_manager.validate_chat_index.return_value = True
+        cli_with_mocks.chat_manager.load_chat_by_index.return_value = chat
+        assert cli_with_mocks._delete_chat_by_index("1") is False
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("no associated file" in t for t in printed)
+
+    def test_delete_chat_by_index_delete_fails(self, cli_with_mocks):
+        from unittest.mock import MagicMock
+
+        chat = MagicMock()
+        chat.path = Path("/tmp/x.json")
+        chat.title = "T"
+        cli_with_mocks.chat_manager.validate_chat_index.return_value = True
+        cli_with_mocks.chat_manager.load_chat_by_index.return_value = chat
+        cli_with_mocks.chat_manager.delete_chat.return_value = False
+        assert cli_with_mocks._delete_chat_by_index("1") is False
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("Failed to delete" in t for t in printed)
+
+    def test_delete_chat_by_index_success(self, cli_with_mocks):
+        from unittest.mock import MagicMock
+
+        chat = MagicMock()
+        chat.path = Path("/tmp/x.json")
+        chat.title = "T"
+        cli_with_mocks.chat_manager.validate_chat_index.return_value = True
+        cli_with_mocks.chat_manager.load_chat_by_index.return_value = chat
+        cli_with_mocks.chat_manager.delete_chat.return_value = True
+        assert cli_with_mocks._delete_chat_by_index("1") is True
+
+    def test_build_messages_with_context_and_at_refs(self, cli_with_mocks):
+        from unittest.mock import MagicMock
+
+        from yaicli.schemas import ChatMessage
+
+        cli_with_mocks.context_manager = MagicMock()
+        cli_with_mocks.context_manager.get_context_messages.return_value = [
+            ChatMessage(role="system", content="ctx")
+        ]
+        cli_with_mocks.context_manager.parse_at_references.return_value = ("at refs", "cleaned", [])
+        messages = cli_with_mocks._build_messages("hello @f.txt")
+        contents = [m.content for m in messages]
+        assert "ctx" in contents
+        assert "at refs" in contents
+
+    def test_handle_llm_response_error_verbose(self, cli_with_mocks):
+        from unittest.mock import MagicMock, patch
+
+        cli_with_mocks.verbose = True
+        cli_with_mocks.context_manager = MagicMock()
+        cli_with_mocks.context_manager.get_context_messages.return_value = []
+        cli_with_mocks.context_manager.parse_at_references.return_value = ("", "hi", [])
+        cli_with_mocks.client.completion_with_tools.side_effect = RuntimeError("boom")
+        with patch("yaicli.cli.traceback.print_exc") as mock_tb:
+            content, _ = cli_with_mocks._handle_llm_response("hi")
+        assert content is None
+        mock_tb.assert_called_once()
+
+    def test_process_user_input_exec_mode_executes(self, cli_with_mocks):
+        from unittest.mock import MagicMock, patch
+
+        cli_with_mocks.current_mode = EXEC_MODE
+        cli_with_mocks.printer = MagicMock()
+        cli_with_mocks.printer.display_stream.return_value = ("ls -la", "")
+        cli_with_mocks.context_manager = MagicMock()
+        cli_with_mocks.context_manager.get_context_messages.return_value = []
+        cli_with_mocks.context_manager.parse_at_references.return_value = ("", "ls", [])
+        with (
+            patch("yaicli.cli.filter_command", return_value="ls -la"),
+            patch("yaicli.cli.Prompt.ask", return_value="n"),
+        ):
+            assert cli_with_mocks._process_user_input("ls") is True
+
+    def test_confirm_and_execute_edit_changed(self, cli_with_mocks):
+        from unittest.mock import patch
+
+        with (
+            patch("yaicli.cli.filter_command", return_value="ls"),
+            patch("yaicli.cli.Prompt.ask", return_value="e"),
+            patch("yaicli.cli.prompt", return_value="ls -la"),
+            patch("yaicli.cli.subprocess.call") as mock_call,
+        ):
+            cli_with_mocks._confirm_and_execute("ls")
+            mock_call.assert_called_once_with("ls -la", shell=True)
+
+    def test_confirm_and_execute_edit_unchanged(self, cli_with_mocks):
+        from unittest.mock import patch
+
+        with (
+            patch("yaicli.cli.filter_command", return_value="ls"),
+            patch("yaicli.cli.Prompt.ask", return_value="e"),
+            patch("yaicli.cli.prompt", return_value="ls"),
+            patch("yaicli.cli.subprocess.call") as mock_call,
+        ):
+            cli_with_mocks._confirm_and_execute("ls")
+            mock_call.assert_called_once_with("ls", shell=True)
+
+    def test_confirm_and_execute_edit_empty_cancels(self, cli_with_mocks):
+        from unittest.mock import patch
+
+        with (
+            patch("yaicli.cli.filter_command", return_value="ls"),
+            patch("yaicli.cli.Prompt.ask", return_value="e"),
+            patch("yaicli.cli.prompt", return_value="  "),
+            patch("yaicli.cli.subprocess.call") as mock_call,
+        ):
+            cli_with_mocks._confirm_and_execute("ls")
+            mock_call.assert_not_called()
+
+    def test_confirm_and_execute_edit_eoferror(self, cli_with_mocks):
+        from unittest.mock import patch
+
+        with (
+            patch("yaicli.cli.filter_command", return_value="ls"),
+            patch("yaicli.cli.Prompt.ask", return_value="e"),
+            patch("yaicli.cli.prompt", side_effect=EOFError),
+            patch("yaicli.cli.subprocess.call") as mock_call,
+        ):
+            cli_with_mocks._confirm_and_execute("ls")
+            mock_call.assert_not_called()
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("Edit cancelled" in t for t in printed)
+
+    def test_confirm_and_execute_subprocess_error(self, cli_with_mocks):
+        from unittest.mock import patch
+
+        with (
+            patch("yaicli.cli.filter_command", return_value="ls"),
+            patch("yaicli.cli.Prompt.ask", return_value="y"),
+            patch("yaicli.cli.subprocess.call", side_effect=OSError("boom")),
+        ):
+            cli_with_mocks._confirm_and_execute("ls")
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("Failed to execute command" in t for t in printed)
+
+    def test_confirm_and_execute_empty_command(self, cli_with_mocks):
+        from unittest.mock import patch
+
+        with patch("yaicli.cli.filter_command", return_value=""):
+            cli_with_mocks._confirm_and_execute("garbage")
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("No command generated" in t for t in printed)
+
+    def test_prepare_chat_loop_session_error_falls_back(self, cli_with_mocks):
+        from unittest.mock import MagicMock, patch
+
+        with (
+            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+            patch("yaicli.cli.PromptSession", side_effect=[Exception("boom"), MagicMock()]),
+        ):
+            cli_with_mocks.prepare_chat_loop()
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("Error initializing prompt session" in t for t in printed)
+
+    def test_setup_key_bindings_toggles_mode(self, cli_with_mocks):
+        from unittest.mock import MagicMock
+
+        cli_with_mocks.current_mode = CHAT_MODE
+        cli_with_mocks._setup_key_bindings()
+        binding = cli_with_mocks.bindings.bindings[-1]
+        binding.handler(MagicMock())
+        assert cli_with_mocks.current_mode == EXEC_MODE
+
+    def test_print_welcome_persistent_session(self, cli_with_mocks):
+        cli_with_mocks.is_temp_session = False
+        cli_with_mocks.chat.title = "MyChat"
+        cli_with_mocks._print_welcome_message()
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
+        assert any("Persistent Session" in t for t in printed)
+
+    def test_run_repl_empty_then_command_then_exit(self, cli_with_mocks):
+        from unittest.mock import MagicMock, patch
+
+        mock_session = MagicMock()
+        mock_session.prompt.side_effect = ["", "/help", "/exit"]
+        with (
+            patch("yaicli.cli.PromptSession", return_value=mock_session),
+            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+            patch("yaicli.cli.AtPathCompleter"),
+            patch("yaicli.cli.LimitedFileHistory"),
+        ):
+            cli_with_mocks._run_repl()
+
+    def test_run_repl_process_input_and_keyboard_interrupt(self, cli_with_mocks):
+        from unittest.mock import MagicMock, patch
+
+        mock_session = MagicMock()
+        mock_session.prompt.side_effect = ["hello", EOFError()]
+        cli_with_mocks.client.completion_with_tools.side_effect = KeyboardInterrupt
+        with (
+            patch("yaicli.cli.PromptSession", return_value=mock_session),
+            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+            patch("yaicli.cli.AtPathCompleter"),
+            patch("yaicli.cli.LimitedFileHistory"),
+        ):
+            cli_with_mocks._run_repl()
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
+        assert any("KeyboardInterrupt" in t for t in printed)
+
+    def test_run_repl_autosave_on_exit(self, cli_with_mocks):
+        from unittest.mock import MagicMock, patch
+
+        mock_session = MagicMock()
+        mock_session.prompt.side_effect = EOFError()
+        cli_with_mocks.is_temp_session = False
+        cli_with_mocks.chat.history = [MagicMock()]
+        cli_with_mocks.chat.title = "T"
+        with (
+            patch("yaicli.cli.PromptSession", return_value=mock_session),
+            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+            patch("yaicli.cli.AtPathCompleter"),
+            patch("yaicli.cli.LimitedFileHistory"),
+        ):
+            cli_with_mocks._run_repl()
+        cli_with_mocks.chat_manager.save_chat.assert_called()
+
+    def test_create_client_yaicli_error_aborts(self, cli_with_mocks):
+        from unittest.mock import patch
+
+        from yaicli.exceptions import YaicliError
+
+        with (
+            patch("yaicli.cli.LLMClient", side_effect=YaicliError("boom")),
+            patch("yaicli.cli.ToolApprovalManager"),
+        ):
+            with pytest.raises(typer.Abort):
+                cli_with_mocks._create_client()
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
+        assert any("Error creating client" in t for t in printed)
+
+    def test_evaluate_role_name_explicit_role(self):
+        assert CLI.evaluate_role_name(role="custom-role") == "custom-role"
+
+    def test_process_user_input_no_content_returns_true(self, cli_with_mocks):
+        from unittest.mock import patch
+
+        with patch.object(CLI, "_handle_llm_response", return_value=(None, [])):
+            assert cli_with_mocks._process_user_input("hi") is True
+
+    def test_build_messages_images_no_vision_provider(self, cli_with_mocks):
+        from unittest.mock import MagicMock, patch
+
+        from yaicli.const import NO_VISION_PROVIDERS
+        from yaicli.schemas import ImageData
+
+        if not NO_VISION_PROVIDERS:
+            pytest.skip("No no-vision providers configured")
+
+        cli_with_mocks.context_manager = MagicMock()
+        cli_with_mocks.context_manager.get_context_messages.return_value = []
+        cli_with_mocks.context_manager.parse_at_references.return_value = ("", "hi", [])
+        no_vision = next(iter(NO_VISION_PROVIDERS))
+        img = ImageData(data="x", media_type="image/png", is_url=False)
+        with patch("yaicli.cli.cfg") as mock_cfg:
+            mock_cfg.get.side_effect = lambda k, d=None: no_vision if k == "PROVIDER" else d
+            messages = cli_with_mocks._build_messages("hi", images=[img])
+
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
+        assert any("does not support image" in t for t in printed)
+        assert messages[-1].images == []

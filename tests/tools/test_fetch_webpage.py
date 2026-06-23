@@ -1,5 +1,7 @@
 """Test fetch_webpage function."""
 
+import httpx
+import pytest
 from unittest.mock import Mock, patch
 
 from yaicli.functions.buildin.fetch_webpage import Function
@@ -245,3 +247,98 @@ class TestFetchWebpage:
 
         assert result == "Extracted content"
         assert mock_trafilatura.fetch_url.call_count == 2
+
+
+class TestFetchWebpageCoverage:
+    """Cover remaining branches in fetch_webpage."""
+
+    def test_default_headers_with_referer(self):
+        headers = Function._get_default_headers(referer="http://ref.example")
+        assert headers["Referer"] == "http://ref.example"
+
+    def test_accept_language_explicit(self):
+        assert Function._get_accept_language("en-US") == "en-US"
+
+    @pytest.mark.parametrize(
+        "url,expected",
+        [
+            ("http://site.cn", "zh-CN"),
+            ("http://site.jp", "ja-JP"),
+            ("http://site.kr", "ko-KR"),
+            ("http://site.de", "de-DE"),
+            ("http://site.fr", "fr-FR"),
+            ("http://site.es", "es-ES"),
+        ],
+    )
+    def test_accept_language_by_tld(self, url, expected):
+        assert expected in Function._get_accept_language("auto", url)
+
+    def test_accept_language_default_fallback(self):
+        assert "zh-CN" in Function._get_accept_language("auto", "http://site.io")
+
+    def _make_client(self, response=None, side_effect=None):
+        client = Mock()
+        if side_effect is not None:
+            client.get.side_effect = side_effect
+        else:
+            client.get.return_value = response
+        client.__enter__ = Mock(return_value=client)
+        client.__exit__ = Mock(return_value=False)
+        return client
+
+    @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
+    def test_httpx_redirect_status_exhausts(self, _sleep):
+        resp = Mock()
+        resp.status_code = 301
+        client = self._make_client(response=resp)
+        with patch("yaicli.functions.buildin.fetch_webpage.httpx.Client", return_value=client):
+            result = Function._fetch_with_httpx(
+                url="http://x", timeout=1, max_retries=2, verify_ssl=True, follow_redirects=True, headers={}
+            )
+        assert "Failed to fetch" in result
+
+    def test_httpx_non_200_returns_failed(self):
+        resp = Mock()
+        resp.status_code = 404
+        resp.reason_phrase = "Not Found"
+        client = self._make_client(response=resp)
+        with patch("yaicli.functions.buildin.fetch_webpage.httpx.Client", return_value=client):
+            result = Function._fetch_with_httpx(
+                url="http://x", timeout=1, max_retries=1, verify_ssl=True, follow_redirects=True, headers={}
+            )
+        assert "HTTP 404" in result
+
+    @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
+    def test_httpx_status_error_exhausts(self, _sleep):
+        client = self._make_client(side_effect=httpx.HTTPStatusError("err", request=Mock(), response=Mock()))
+        with patch("yaicli.functions.buildin.fetch_webpage.httpx.Client", return_value=client):
+            result = Function._fetch_with_httpx(
+                url="http://x", timeout=1, max_retries=2, verify_ssl=True, follow_redirects=True, headers={}
+            )
+        assert "Failed to fetch" in result
+
+    @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
+    def test_httpx_unexpected_error_exhausts(self, _sleep):
+        client = self._make_client(side_effect=ValueError("boom"))
+        with patch("yaicli.functions.buildin.fetch_webpage.httpx.Client", return_value=client):
+            result = Function._fetch_with_httpx(
+                url="http://x", timeout=1, max_retries=2, verify_ssl=True, follow_redirects=True, headers={}
+            )
+        assert "Failed to fetch" in result
+
+    @patch("builtins.__import__")
+    @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
+    def test_trafilatura_exception_exhausts(self, _sleep, mock_import):
+        mock_traf = Mock()
+        mock_traf.fetch_url.side_effect = ValueError("boom")
+
+        def import_side_effect(name, *args, **kwargs):
+            if name == "trafilatura":
+                return mock_traf
+            return __import__(name, *args, **kwargs)
+
+        mock_import.side_effect = import_side_effect
+        result = Function._fetch_with_trafilatura(
+            url="http://x", timeout=1, max_retries=2, verify_ssl=True, follow_redirects=True, headers={}
+        )
+        assert "Failed to extract content" in result
