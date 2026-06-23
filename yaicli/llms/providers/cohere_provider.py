@@ -304,6 +304,9 @@ class CohereBadrockProvider(CohereProvider):
 
     def create_client(self):
         """Create Bedrock client with AWS credentials"""
+        # Bedrock/Sagemaker authenticate via AWS credentials; the Cohere ``api_key`` added
+        # by the base __init__ is not a valid argument for these clients, so drop it.
+        self.client_params.pop("api_key", None)
         for k, p in self.CLIENT_KEYS:
             v = self.config.get(k, None)
             if v is None:
