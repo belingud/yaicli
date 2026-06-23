@@ -67,6 +67,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 
 - **Function Calling**: Enable function/MCP calling in API requests
 - **Function Output**: Show the output of functions/MCP
+- **Tool Confirmation**: Confirm each tool call before execution — allow once, for the session, permanently, or deny
 
 ![What is life](artwork/reasoning_example.png)
 
@@ -1091,6 +1092,24 @@ $ ai --code "write a fib generator" --model deepseek-r1
 To use function call, you need to install default functions by `ai --install-functions`.
 After that, you can check the functions by `ai --list-functions`.
 You can also define your own functions by adding them to the config folder in `~/.config/yaicli/functions/` (`C:\Users\<user>\.config\yaicli\functions` on Windows).
+
+By default YAICLI asks for confirmation before running each tool call:
+
+```
+╭─ Confirm tool call ──────────────────────────────╮
+│ execute_shell_command({"shell_command": "du -sh ."}) │
+╰──────────────────────────────────────────────────╯
+Execute tool? [y]once, [a]session, [A]always, [n]o:
+```
+
+| Key | Meaning |
+|-----|---------|
+| `y` | Allow this call only |
+| `a` | Allow for the rest of this session |
+| `A` | Always allow (saved to `~/.config/yaicli/tool_permissions.json`) |
+| `n` | Deny — the model is informed and can adapt |
+
+To disable confirmation and restore silent execution: set `TOOL_CONFIRM=false` in `config.ini` or `YAI_TOOL_CONFIRM=false` in your environment.
 
 ```shell
 ❯ ai --list-functions

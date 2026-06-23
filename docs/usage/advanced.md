@@ -74,6 +74,41 @@ ai 'check the current dir total size' --enable-functions
 
 You can also define custom functions by adding them to `~/.config/yaicli/functions/`.
 
+### Tool Execution Confirmation
+
+By default YAICLI asks for confirmation before running each tool call:
+
+```
+╭─ Confirm tool call ─────────────────────────────────────╮
+│ execute_shell_command({"shell_command": "du -sh ."})    │
+╰─────────────────────────────────────────────────────────╯
+Execute tool? [y]once, [a]session, [A]always, [n]o:
+```
+
+| Key | Meaning |
+|-----|---------|
+| `y` | Allow this call only |
+| `a` | Allow for the rest of this session |
+| `A` | Always allow — saved to `~/.config/yaicli/tool_permissions.json` |
+| `n` | Deny — the model receives a refusal result and can adapt |
+
+Pressing Ctrl-C or sending EOF at the prompt is treated as a denial.
+
+In non-interactive sessions (piped stdin / no TTY), tools already in the persistent allowlist run automatically; all others are denied with a hint.
+
+To disable confirmation and restore silent execution:
+
+```ini
+# config.ini
+TOOL_CONFIRM=false
+```
+
+or:
+
+```bash
+export YAI_TOOL_CONFIRM=false
+```
+
 ## MCP (Machine Comprehension Protocol)
 
 MCP allows AI models to use external tools:

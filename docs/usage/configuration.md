@@ -89,6 +89,9 @@ SHOW_FUNCTION_OUTPUT=true
 # MCP settings
 ENABLE_MCP=false
 SHOW_MCP_OUTPUT=false
+
+# Tool confirmation (set to false to restore silent execution)
+TOOL_CONFIRM=true
 ```
 
 ## Configuration Options Reference
@@ -124,6 +127,7 @@ SHOW_MCP_OUTPUT=false
 | `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
 | `SHOW_MCP_OUTPUT`      | Show MCP output                             | `true`                   | `YAI_SHOW_MCP_OUTPUT`      |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
+| `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
 
 
 ## Syntax Highlighting Themes
