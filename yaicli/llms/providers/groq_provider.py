@@ -1,5 +1,6 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
+from ...schemas import ToolPolicy
 from .openai_provider import OpenAIProvider
 
 
@@ -18,7 +19,7 @@ class GroqProvider(OpenAIProvider):
         "frequency_penalty": "FREQUENCY_PENALTY",
     }
 
-    def get_completion_params(self) -> Dict[str, Any]:
+    def get_completion_params(self, tool_policy: Optional[ToolPolicy] = None) -> Dict[str, Any]:
         """
         Get completion parameters with Groq-specific adjustments.
         Enforce N=1 as Groq doesn't support multiple completions.
@@ -26,7 +27,7 @@ class GroqProvider(OpenAIProvider):
         Returns:
             Dict[str, Any]: Parameters for completion API call
         """
-        params = super().get_completion_params()
+        params = super().get_completion_params(tool_policy=tool_policy)
         if self.config["EXTRA_BODY"] and "N" in self.config["EXTRA_BODY"] and self.config["EXTRA_BODY"]["N"] != 1:
             self.console.print("Groq does not support N parameter, setting N to 1 as Groq default", style="yellow")
             params["extra_body"]["N"] = 1

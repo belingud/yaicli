@@ -2,8 +2,9 @@ from typing import Generator, List, Optional, Union
 
 from ..config import cfg
 from ..console import get_console
-from ..schemas import ChatMessage, LLMResponse, RefreshLive, ToolCall, ToolPolicy
+from ..schemas import ChatMessage, ConfirmToolCall, LLMResponse, RefreshLive, ToolCall, ToolConfirmDecision, ToolPolicy
 from ..tools import execute_tool_call
+from ..tools.approval import ToolApprovalManager
 from ..tools.mcp import MCP_TOOL_NAME_PREFIX
 from .provider import ProviderFactory
 
@@ -18,13 +19,25 @@ class LLMClient:
     3. Handling conversation flow with tools
     """
 
-    __slots__ = ("config", "verbose", "console", "enable_function", "enable_mcp", "max_tool_call_depth", "provider")
+    __slots__ = (
+        "config",
+        "verbose",
+        "console",
+        "enable_function",
+        "enable_mcp",
+        "max_tool_call_depth",
+        "provider",
+        "approval",
+        "interactive",
+    )
 
     def __init__(
         self,
         provider_name: str,
         config: dict = cfg,
         verbose: bool = False,
+        approval: Optional[ToolApprovalManager] = None,
+        interactive: bool = True,
         **kwargs,
     ):
         """
@@ -34,12 +47,16 @@ class LLMClient:
             provider_name: Name of the provider to use, default to openai if not known
             config: Configuration dictionary
             verbose: Whether to enable verbose logging
+            approval: Tool approval manager (created if not provided)
+            interactive: Whether the session can prompt the user (TTY available)
         """
         self.config = config
         self.verbose = verbose
         self.console = get_console()
         self.enable_function = self.config["ENABLE_FUNCTIONS"]
         self.enable_mcp = self.config["ENABLE_MCP"]
+        self.approval = approval or ToolApprovalManager()
+        self.interactive = interactive
 
         # Use provided provider or create one
         if provider_name not in ProviderFactory.providers_map:
@@ -55,7 +72,7 @@ class LLMClient:
         stream: bool = False,
         recursion_depth: int = 0,
         tool_policy: Optional[ToolPolicy] = None,
-    ) -> Generator[Union[LLMResponse, RefreshLive], None, None]:
+    ) -> Generator[Union[LLMResponse, RefreshLive, ConfirmToolCall], Optional[ToolConfirmDecision], None]:
         """
         Get completion from provider with tool calling support
 
@@ -143,8 +160,13 @@ class LLMClient:
         stream: bool,
         recursion_depth: int,
         tool_policy: ToolPolicy,
-    ) -> Generator[Union[LLMResponse, RefreshLive], None, None]:
-        """Execute tool calls and continue the conversation"""
+    ) -> Generator[Union[LLMResponse, RefreshLive, ConfirmToolCall], Optional[ToolConfirmDecision], None]:
+        """Execute tool calls and continue the conversation.
+
+        Each tool call passes through the execution-confirmation gate before it runs
+        (unless TOOL_CONFIRM is disabled or the tool is already approved). Denied calls
+        still receive a matching tool result so the provider request stays valid.
+        """
         # Signal that new content is coming
         yield RefreshLive()
 
@@ -152,9 +174,55 @@ class LLMClient:
 
         # Execute each tool call and add results to messages
         tool_role = self.provider.detect_tool_role()
+        confirm_enabled = self.config["TOOL_CONFIRM"]
 
         for tool_call in tool_calls:
-            function_result, _ = execute_tool_call(tool_call)
+            # Capture the gate-time name: MCP names keep the _mcp__ prefix here,
+            # but execute_tool_call strips it in place at execution time.
+            gate_name = tool_call.name
+            decision = ToolConfirmDecision.ONCE
+            prompted = False
+
+            if confirm_enabled and not self.approval.is_allowed(gate_name):
+                if not self.interactive:
+                    # No TTY to prompt on: deny and tell the user how to proceed.
+                    self.console.print(
+                        f"Tool '{gate_name}' requires confirmation but the session is non-interactive; denying. "
+                        f"Pre-approve it in {self.approval.permissions_path} or set TOOL_CONFIRM=false.",
+                        style="yellow",
+                    )
+                    decision = ToolConfirmDecision.DENY
+                else:
+                    decision = (yield ConfirmToolCall(tool_call)) or ToolConfirmDecision.DENY
+                    prompted = True
+                    if decision == ToolConfirmDecision.SESSION:
+                        self.approval.allow_session(gate_name)
+                    elif decision == ToolConfirmDecision.PERSIST:
+                        try:
+                            self.approval.allow_persist(gate_name)
+                        except OSError:
+                            # Persisting failed (e.g., disk/permission); keep it for the session.
+                            self.approval.allow_session(gate_name)
+                            self.console.print(
+                                f"Could not persist approval for '{gate_name}'; allowed for this session only.",
+                                style="yellow",
+                            )
+
+            if decision == ToolConfirmDecision.DENY:
+                messages.append(
+                    ChatMessage(
+                        role=tool_role,
+                        content="The user declined to execute this tool.",
+                        # De-prefix MCP names to match the executed path (execute_tool_call
+                        # strips the prefix), so the result name is consistent either way.
+                        name=gate_name.removeprefix(MCP_TOOL_NAME_PREFIX),
+                        tool_call_id=tool_call.id,
+                    )
+                )
+                continue
+
+            # Avoid double-printing the call: the prompt already showed it when we prompted.
+            function_result, _ = execute_tool_call(tool_call, announce=not prompted)
 
             messages.append(
                 ChatMessage(

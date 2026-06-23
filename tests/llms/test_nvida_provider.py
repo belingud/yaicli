@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from yaicli.llms.providers.nvida_provider import NvidiaProvider
+from yaicli.schemas import ToolPolicy
 
 
 class TestNvidiaProvider:
@@ -48,6 +49,13 @@ class TestNvidiaProvider:
             provider = NvidiaProvider(config=mock_config)
             params = provider.get_completion_params()
             assert "extra_body" not in params
+
+    def test_get_completion_params_accepts_tool_policy(self, mock_config):
+        """Test get_completion_params accepts request-scoped tool policy."""
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = NvidiaProvider(config=mock_config)
+            params = provider.get_completion_params(tool_policy=ToolPolicy(False, False))
+            assert params["model"] == mock_config["MODEL"]
 
     def test_get_completion_params_with_extra_body(self, mock_config):
         """Test that chat_template_kwargs is added to extra_body"""

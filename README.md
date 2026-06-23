@@ -67,6 +67,7 @@ generate and execute shell commands, or get quick answers without leaving your w
 
 - **Function Calling**: Enable function/MCP calling in API requests
 - **Function Output**: Show the output of functions/MCP
+- **Tool Confirmation**: Confirm each tool call before execution — allow once, for the session, permanently, or deny
 
 ![What is life](artwork/reasoning_example.png)
 
@@ -203,6 +204,13 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
 | `SHOW_MCP_OUTPUT`      | Show MCP output when calling mcp            | `true`                   | `YAI_SHOW_MCP_OUTPUT`      |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
+| `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
+
+> **Tool execution confirmation:** With `TOOL_CONFIRM` enabled (the default), YAICLI asks before running each
+> tool/function call. At the prompt you can allow it once, allow it for the rest of the session, allow it permanently,
+> or deny it. Permanent approvals are stored per tool name in `~/.config/yaicli/tool_permissions.json`. Set
+> `TOOL_CONFIRM=false` (or `YAI_TOOL_CONFIRM=false`) to run tool calls silently, as in previous versions. In
+> non-interactive sessions (e.g. piped input) only tools already in the permissions file run; others are denied.
 
 ### LLM Provider Configuration
 
@@ -327,6 +335,27 @@ PROVIDER=deepseek
 API_KEY=
 MODEL=deepseek-chat
 ```
+
+Thinking mode can be controlled with the existing `EXTRA_BODY` and `REASONING_EFFORT` settings. DeepSeek enables
+thinking by default for supported thinking models, so this is only needed when you want to be explicit or set effort:
+
+```ini
+PROVIDER=deepseek
+API_KEY=
+MODEL=deepseek-v4-pro
+REASONING_EFFORT=high
+EXTRA_BODY={"thinking":{"type":"enabled"}}
+```
+
+To disable thinking mode:
+
+```ini
+EXTRA_BODY={"thinking":{"type":"disabled"}}
+```
+
+When thinking mode is enabled, DeepSeek returns `reasoning_content`, which YAICLI displays as reasoning output and
+preserves during live tool-call conversations. DeepSeek ignores `temperature`, `top_p`, `presence_penalty`, and
+`frequency_penalty` while thinking is enabled.
 
 #### OpenRouter
 
@@ -1063,6 +1092,24 @@ $ ai --code "write a fib generator" --model deepseek-r1
 To use function call, you need to install default functions by `ai --install-functions`.
 After that, you can check the functions by `ai --list-functions`.
 You can also define your own functions by adding them to the config folder in `~/.config/yaicli/functions/` (`C:\Users\<user>\.config\yaicli\functions` on Windows).
+
+By default YAICLI asks for confirmation before running each tool call:
+
+```
+╭─ Confirm tool call ──────────────────────────────╮
+│ execute_shell_command({"shell_command": "du -sh ."}) │
+╰──────────────────────────────────────────────────╯
+Execute tool? [y]once, [a]session, [A]always, [n]o:
+```
+
+| Key | Meaning |
+|-----|---------|
+| `y` | Allow this call only |
+| `a` | Allow for the rest of this session |
+| `A` | Always allow (saved to `~/.config/yaicli/tool_permissions.json`) |
+| `n` | Deny — the model is informed and can adapt |
+
+To disable confirmation and restore silent execution: set `TOOL_CONFIRM=false` in `config.ini` or `YAI_TOOL_CONFIRM=false` in your environment.
 
 ```shell
 ❯ ai --list-functions

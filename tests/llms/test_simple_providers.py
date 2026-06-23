@@ -13,6 +13,7 @@ from yaicli.llms.providers.siliconflow_provider import SiliconFlowProvider
 from yaicli.llms.providers.together_provider import TogetherProvider
 from yaicli.llms.providers.xai_provider import XaiProvider
 from yaicli.llms.providers.yi_provider import YiProvider
+from yaicli.schemas import ToolPolicy
 
 
 class TestYiProvider:
@@ -153,6 +154,78 @@ class TestGroqProvider:
             mock_console.print.assert_called_once_with(
                 "Groq does not support N parameter, setting N to 1 as Groq default", style="yellow"
             )
+
+    def test_get_completion_params_accepts_tool_policy(self, mock_config):
+        """Test get_completion_params accepts request-scoped tool policy."""
+        mock_config["EXTRA_BODY"] = None
+
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = GroqProvider(config=mock_config)
+            params = provider.get_completion_params(tool_policy=ToolPolicy(False, False))
+
+            assert params["model"] == mock_config["MODEL"]
+
+    def test_reasoning_effort_invalid_value_reset_to_default(self, mock_config):
+        """Test invalid reasoning_effort is reset to default with warning"""
+        mock_config["EXTRA_BODY"] = None
+        mock_config["REASONING_EFFORT"] = "high"
+        mock_config["MODEL"] = "qwen3-model"
+        mock_console = MagicMock()
+
+        with (
+            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
+            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+        ):
+            provider = GroqProvider(config=mock_config)
+            params = provider.get_completion_params()
+
+            assert params["reasoning_effort"] == "default"
+            mock_console.print.assert_any_call(
+                "Groq only supports null or default for reasoning_effort, setting to default", style="yellow"
+            )
+
+    def test_reasoning_effort_non_qwen3_model_set_to_none(self, mock_config):
+        """Test reasoning_effort on non-qwen3 model is set to None with warning"""
+        mock_config["EXTRA_BODY"] = None
+        mock_config["REASONING_EFFORT"] = "default"
+        mock_config["MODEL"] = "llama3-model"
+        mock_console = MagicMock()
+
+        with (
+            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
+            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+        ):
+            provider = GroqProvider(config=mock_config)
+            params = provider.get_completion_params()
+
+            assert params["reasoning_effort"] is None
+            mock_console.print.assert_any_call(
+                "Groq only supports reasoning_effort for qwen3, setting to null", style="yellow"
+            )
+
+    def test_reasoning_effort_null_string_converted_to_none(self, mock_config):
+        """Test reasoning_effort='null' is converted to None"""
+        mock_config["EXTRA_BODY"] = None
+        mock_config["REASONING_EFFORT"] = "null"
+
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = GroqProvider(config=mock_config)
+            params = provider.get_completion_params()
+
+            assert params["reasoning_effort"] is None
+
+    def test_reasoning_effort_null_on_qwen3_converted_to_none(self, mock_config):
+        """Test reasoning_effort='null' on qwen3 model is converted to None"""
+        mock_config["EXTRA_BODY"] = None
+        mock_config["REASONING_EFFORT"] = "null"
+        mock_config["MODEL"] = "qwen3-70b"
+
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = GroqProvider(config=mock_config)
+            params = provider.get_completion_params()
+
+            # Should hit the final 'null' -> None conversion
+            assert params["reasoning_effort"] is None
 
 
 class TestInfiniAIProvider:

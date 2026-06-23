@@ -3,8 +3,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from yaicli.llms.providers.anthropic_provider import AnthropicProvider
-from yaicli.schemas import ChatMessage, ToolPolicy
+from yaicli.exceptions import ConfigMissingError, MCPToolsError
+from yaicli.llms.providers.anthropic_provider import (
+    AnthropicBedrockProvider,
+    AnthropicProvider,
+    AnthropicVertexProvider,
+)
+from yaicli.schemas import ChatMessage, ImageData, ToolPolicy
 
 
 class TestAnthropicProvider:
@@ -324,3 +329,326 @@ class TestAnthropicProvider:
             assert converted[2]["content"][0]["type"] == "tool_result"
             assert converted[2]["content"][0]["tool_use_id"] == "tool_1"
             assert converted[2]["content"][0]["content"] == "15 degrees"
+
+
+class TestAnthropicProviderCoverage:
+    """Additional tests covering uncovered branches in anthropic_provider."""
+
+    @pytest.fixture
+    def mock_config(self):
+        return {
+            "API_KEY": "fake_api_key",
+            "BASE_URL": "https://api.anthropic.com",
+            "MODEL": "claude-3-sonnet-20240229",
+            "TEMPERATURE": 0.7,
+            "TOP_P": 1.0,
+            "MAX_TOKENS": 1000,
+            "TIMEOUT": 60,
+            "EXTRA_HEADERS": None,
+            "EXTRA_BODY": None,
+            "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
+        }
+
+    def _make_text_response(self):
+        block = MagicMock()
+        block.type = "text"
+        block.text = "ok"
+        resp = MagicMock()
+        resp.content = [block]
+        resp.stop_reason = "stop"
+        return resp
+
+    def test_init_missing_api_key_raises(self, mock_config):
+        """__init__ raises ValueError when API_KEY is missing."""
+        mock_config["API_KEY"] = ""
+        with pytest.raises(ValueError, match="API_KEY is required"):
+            AnthropicProvider(config=mock_config)
+
+    def test_get_client_params_merges_extra_headers(self, mock_config):
+        """EXTRA_HEADERS are merged into default_headers, with timeout and base_url applied."""
+        mock_config["EXTRA_HEADERS"] = {"X-Custom": "abc"}
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config)
+        params = provider.get_client_params()
+        assert params["default_headers"]["X-Custom"] == "abc"
+        assert params["timeout"] == 60
+        assert params["base_url"] == "https://api.anthropic.com"
+
+    def test_completion_extracts_system_prompt(self, mock_config):
+        """System message is extracted into params['system'] and removed from messages."""
+        mock_config["ENABLE_FUNCTIONS"] = False
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config)
+            provider.client.messages.create.return_value = self._make_text_response()
+            messages = [
+                ChatMessage(role="system", content="You are helpful"),
+                ChatMessage(role="user", content="hi"),
+            ]
+            list(provider.completion(messages))
+
+        call_kwargs = provider.client.messages.create.call_args.kwargs
+        assert call_kwargs["system"] == "You are helpful"
+        roles = [m["role"] for m in call_kwargs["messages"]]
+        assert "system" not in roles
+
+    def test_completion_schemas_import_error(self, mock_config):
+        """ImportError while loading function schemas is caught and reported."""
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config)
+            provider.client.messages.create.return_value = self._make_text_response()
+            mock_console = MagicMock()
+            provider.console = mock_console
+            with patch("yaicli.tools.get_anthropic_schemas", side_effect=ImportError):
+                list(provider.completion([ChatMessage(role="user", content="hi")]))
+
+        printed = [str(c.args[0]) for c in mock_console.print.call_args_list]
+        assert any("Function tools not available" in t for t in printed)
+
+    def test_completion_with_mcp_tools(self, mock_config):
+        """MCP tools are appended when enable_mcp is set."""
+        mock_config["ENABLE_MCP"] = True
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config)
+            provider.client.messages.create.return_value = self._make_text_response()
+            with (
+                patch("yaicli.tools.get_anthropic_schemas", return_value=[{"name": "fn"}]),
+                patch("yaicli.tools.get_anthropic_mcp_tools", return_value=[{"name": "mcp_fn"}]),
+            ):
+                list(provider.completion([ChatMessage(role="user", content="hi")]))
+
+        call_kwargs = provider.client.messages.create.call_args.kwargs
+        tool_names = [t["name"] for t in call_kwargs["tools"]]
+        assert "mcp_fn" in tool_names
+
+    def test_completion_mcp_tools_error(self, mock_config):
+        """Errors loading MCP tools are caught and reported."""
+        mock_config["ENABLE_MCP"] = True
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config)
+            provider.client.messages.create.return_value = self._make_text_response()
+            mock_console = MagicMock()
+            provider.console = mock_console
+            with (
+                patch("yaicli.tools.get_anthropic_schemas", return_value=[]),
+                patch("yaicli.tools.get_anthropic_mcp_tools", side_effect=MCPToolsError("boom")),
+            ):
+                list(provider.completion([ChatMessage(role="user", content="hi")]))
+
+        printed = [str(c.args[0]) for c in mock_console.print.call_args_list]
+        assert any("Failed to load MCP tools" in t for t in printed)
+
+    def test_completion_verbose_prints(self, mock_config):
+        """verbose=True prints system prompt, messages, tools, tool choice and extra body."""
+        mock_config["EXTRA_BODY"] = {"foo": "bar"}
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config, verbose=True)
+            provider.client.messages.create.return_value = self._make_text_response()
+            mock_console = MagicMock()
+            provider.console = mock_console
+            with patch("yaicli.tools.get_anthropic_schemas", return_value=[{"name": "fn"}]):
+                messages = [
+                    ChatMessage(role="system", content="sys"),
+                    ChatMessage(role="user", content="hi"),
+                ]
+                list(provider.completion(messages))
+
+        printed = [str(c.args[0]) for c in mock_console.print.call_args_list]
+        assert any("System prompt:" in t for t in printed)
+        assert any("Tools:" in t for t in printed)
+        assert any("Extra body:" in t for t in printed)
+
+    def test_completion_api_error_raises(self, mock_config):
+        """API errors are printed and re-raised."""
+        mock_config["ENABLE_FUNCTIONS"] = False
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config)
+            provider.client.messages.create.side_effect = RuntimeError("api down")
+            mock_console = MagicMock()
+            provider.console = mock_console
+            with pytest.raises(RuntimeError, match="api down"):
+                list(provider.completion([ChatMessage(role="user", content="hi")]))
+
+        printed = [str(c.args[0]) for c in mock_console.print.call_args_list]
+        assert any("Error:" in t for t in printed)
+
+    def test_normal_response_empty_content(self, mock_config):
+        """_handle_normal_response yields a serialized dump when content is empty."""
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config)
+
+        resp = MagicMock()
+        resp.content = []
+        resp.model_dump.return_value = {"id": "msg_1"}
+        responses = list(provider._handle_normal_response(resp))
+
+        assert len(responses) == 1
+        assert responses[0].finish_reason == "stop"
+        assert "msg_1" in responses[0].content
+
+    def test_stream_tool_use_full_flow(self, mock_config):
+        """Streaming tool_use: message_start, block_start, partial_json deltas, stop, message_delta, message_stop."""
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config)
+
+        c_start = MagicMock()
+        c_start.type = "message_start"
+
+        c_block_start = MagicMock()
+        c_block_start.type = "content_block_start"
+        c_block_start.content_block.type = "tool_use"
+        c_block_start.content_block.id = "tool_1"
+        c_block_start.content_block.name = "get_weather"
+
+        c_delta1 = MagicMock()
+        c_delta1.type = "content_block_delta"
+        c_delta1.delta = MagicMock(spec=["partial_json"])
+        c_delta1.delta.partial_json = '{"location":'
+
+        c_delta2 = MagicMock()
+        c_delta2.type = "content_block_delta"
+        c_delta2.delta = MagicMock(spec=["partial_json"])
+        c_delta2.delta.partial_json = ' "NYC"}'
+
+        c_block_stop = MagicMock()
+        c_block_stop.type = "content_block_stop"
+
+        c_msg_delta = MagicMock()
+        c_msg_delta.type = "message_delta"
+        c_msg_delta.delta = MagicMock(spec=["stop_reason"])
+        c_msg_delta.delta.stop_reason = "tool_use"
+
+        c_msg_stop = MagicMock()
+        c_msg_stop.type = "message_stop"
+
+        chunks = [c_start, c_block_start, c_delta1, c_delta2, c_block_stop, c_msg_delta, c_msg_stop]
+        responses = list(provider._handle_stream_response(chunks))
+
+        tool_responses = [r for r in responses if r.tool_call is not None]
+        assert tool_responses
+        tc = tool_responses[0].tool_call
+        assert tc.id == "tool_1"
+        assert tc.name == "get_weather"
+        assert "NYC" in tc.arguments
+
+        reasons = [r.finish_reason for r in responses]
+        assert "tool_use" in reasons
+        assert "stop" in reasons
+
+    def test_convert_messages_with_images(self, mock_config):
+        """_convert_messages encodes url and base64 images plus a trailing text block."""
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config)
+
+        messages = [
+            ChatMessage(
+                role="user",
+                content="describe these",
+                images=[
+                    ImageData(data="https://example.com/a.png", media_type="image/png", is_url=True),
+                    ImageData(data="b64data", media_type="image/jpeg", is_url=False),
+                ],
+            )
+        ]
+        converted = provider._convert_messages(messages)
+
+        content = converted[0]["content"]
+        assert content[0] == {"type": "image", "source": {"type": "url", "url": "https://example.com/a.png"}}
+        assert content[1]["source"]["type"] == "base64"
+        assert content[1]["source"]["media_type"] == "image/jpeg"
+        assert content[1]["source"]["data"] == "b64data"
+        assert content[-1] == {"type": "text", "text": "describe these"}
+
+
+class TestAnthropicBedrockProvider:
+    """Tests for AnthropicBedrockProvider.get_client_params."""
+
+    @pytest.fixture
+    def bedrock_config(self):
+        return {
+            "API_KEY": "fake",
+            "BASE_URL": None,
+            "MODEL": "claude-3",
+            "TIMEOUT": 60,
+            "EXTRA_HEADERS": None,
+            "EXTRA_BODY": None,
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+            "AWS_ACCESS_KEY_ID": "akid",
+            "AWS_SECRET_ACCESS_KEY": "secret",
+            "AWS_SESSION_TOKEN": "token",
+            "AWS_REGION": "us-east-1",
+        }
+
+    def test_get_client_params_from_config(self, bedrock_config):
+        """AWS credentials from config are mapped into client params."""
+        with patch.object(AnthropicBedrockProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicBedrockProvider(config=bedrock_config)
+            params = provider.get_client_params()
+
+        assert params["aws_access_key"] == "akid"
+        assert params["aws_secret_key"] == "secret"
+        assert params["aws_session_token"] == "token"
+        assert params["aws_region"] == "us-east-1"
+
+    def test_missing_aws_credential_raises(self, bedrock_config, monkeypatch):
+        """Missing AWS credential (absent from config and env) raises ConfigMissingError."""
+        bedrock_config.pop("AWS_REGION")
+        monkeypatch.delenv("AWS_REGION", raising=False)
+        with patch.object(AnthropicBedrockProvider, "CLIENT_CLS", MagicMock()):
+            with pytest.raises(ConfigMissingError, match="AWS_REGION"):
+                AnthropicBedrockProvider(config=bedrock_config)
+
+    def test_missing_aws_credential_from_env(self, bedrock_config, monkeypatch):
+        """A missing config credential is filled from the environment."""
+        bedrock_config.pop("AWS_SESSION_TOKEN")
+        monkeypatch.setenv("AWS_SESSION_TOKEN", "env-token")
+        with patch.object(AnthropicBedrockProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicBedrockProvider(config=bedrock_config)
+
+        assert provider.config["AWS_SESSION_TOKEN"] == "env-token"
+
+
+class TestAnthropicVertexProvider:
+    """Tests for AnthropicVertexProvider.get_client_params."""
+
+    @pytest.fixture
+    def vertex_config(self):
+        return {
+            "API_KEY": "fake",
+            "BASE_URL": None,
+            "MODEL": "claude-3",
+            "TIMEOUT": 60,
+            "EXTRA_HEADERS": None,
+            "EXTRA_BODY": None,
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+            "PROJECT_ID": "my-project",
+            "CLOUD_ML_REGION": "us-central1",
+        }
+
+    def test_get_client_params_from_config(self, vertex_config):
+        """PROJECT_ID and CLOUD_ML_REGION from config are mapped into client params."""
+        with patch.object(AnthropicVertexProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicVertexProvider(config=vertex_config)
+            params = provider.get_client_params()
+
+        assert params["project_id"] == "my-project"
+        assert params["region"] == "us-central1"
+
+    def test_missing_project_id_raises(self, vertex_config, monkeypatch):
+        """Missing PROJECT_ID (absent from config and env) raises ConfigMissingError."""
+        vertex_config.pop("PROJECT_ID")
+        monkeypatch.delenv("PROJECT_ID", raising=False)
+        with patch.object(AnthropicVertexProvider, "CLIENT_CLS", MagicMock()):
+            with pytest.raises(ConfigMissingError, match="PROJECT_ID"):
+                AnthropicVertexProvider(config=vertex_config)
+
+    def test_missing_region_from_env(self, vertex_config, monkeypatch):
+        """A missing CLOUD_ML_REGION is filled from the environment."""
+        vertex_config.pop("CLOUD_ML_REGION")
+        monkeypatch.setenv("CLOUD_ML_REGION", "europe-west1")
+        with patch.object(AnthropicVertexProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicVertexProvider(config=vertex_config)
+
+        assert provider.config["CLOUD_ML_REGION"] == "europe-west1"

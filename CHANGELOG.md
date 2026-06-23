@@ -1,5 +1,87 @@
 
 ---
+## [0.17.0](https://github.com/belingud/yaicli/compare/v0.16.0..v0.17.0) - 2026-06-23
+
+### ⛰️  Features
+
+- feat!: confirm tool calls before execution
+
+Add a confirmation gate before each tool/function call with four outcomes:
+allow once, allow for the session, allow permanently, or deny. Approvals
+are keyed by tool name (MCP prefix preserved); permanent approvals persist
+to ~/.config/yaicli/tool_permissions.json via an atomic write. Denied calls
+return a matched tool result so the provider request stays valid, and
+non-interactive sessions deny unapproved tools instead of blocking.
+
+Also stream reasoning as append-only text rather than re-rendering it in the
+live region, fixing duplicated 'Thinking:' frames after large tool output.
+
+BREAKING CHANGE: tool calls now require confirmation by default. Set
+TOOL_CONFIRM=false (env YAI_TOOL_CONFIRM=false) to restore silent execution. - ([7cc64f0](https://github.com/belingud/yaicli/commit/7cc64f02978b50594fda319f4648f725c4d88094)) - Belingud
+
+### 🐛 Bug Fixes
+
+- fix: drop api_key for Cohere
+  Bedrock/Sagemaker clients
+
+Bedrock and Sagemaker authenticate via AWS credentials; the Cohere api_key injected by the base initializer is not a valid argument for those
+  clients and caused client creation to fail. - ([9b77aa1](https://github.com/belingud/yaicli/commit/9b77aa103cd3a351e7dc4004e33673d11e6a979e)) - Belingud
+
+### 📚 Documentation
+
+- docs: update CHANGELOG for v0.16.0 release - ([1a0dfd6](https://github.com/belingud/yaicli/commit/1a0dfd62992c5bcd3e10c01f3c8e882abba95f7b)) - Belingud
+
+### 🧪 Testing
+
+- test: expand coverage across CLI, context, tools, and providers
+
+Add tests for functions init, render, and tools init modules, and extend
+anthropic, longcat, chat manage, CLI, command handler, context, fetch
+webpage, and fs file operation test suites. - ([8fe3871](https://github.com/belingud/yaicli/commit/8fe387105c33e8fec3adfc939168fa87c87c1105)) - Belingud
+- test: expand provider test coverage
+
+Add tests for openai-compatible, sambanova, and targon providers, and extend ai21, cohere, minimax, and simple provider test suites. - ([14b38cb](https://github.com/belingud/yaicli/commit/14b38cb3e30597e602bfdd0eb3f49815c7734fe0)) - Belingud
+
+
+---
+## [Unreleased]
+
+### ⛰️  Features
+
+- feat!: confirm tool/function calls before execution — allow once, allow for the session, allow permanently, or deny. **BREAKING:** tool calls now require confirmation by default; set `TOOL_CONFIRM=false` (env `YAI_TOOL_CONFIRM=false`) to restore the previous silent execution. Permanent approvals are stored per tool name in `~/.config/yaicli/tool_permissions.json`.
+
+
+---
+## [0.16.0](https://github.com/belingud/yaicli/compare/v0.15.2..v0.16.0) - 2026-05-10
+
+### ⛰️  Features
+
+- feat: support DeepSeek thinking mode - ([2980316](https://github.com/belingud/yaicli/commit/2980316e9ee2a0a9521113c07d3742ffdc03bb99)) - Belingud
+
+### 📚 Documentation
+
+- docs: update changelog for v0.5.2 release - ([4e96660](https://github.com/belingud/yaicli/commit/4e96660fc222e9a71281125c0a311ac91396b276)) - Belingud
+
+
+---
+## [0.15.2](https://github.com/belingud/yaicli/compare/v0.15.1..v0.15.2) - 2026-04-28
+
+### 🐛 Bug Fixes
+
+- fix: add tool_policy parameter to completion params - ([a47d619](https://github.com/belingud/yaicli/commit/a47d619ee7dfa5de2e4e2e30ab74cc385149608f)) - Belingud
+- fix: fall back to httpx when trafilatura extraction fails - ([1bdd254](https://github.com/belingud/yaicli/commit/1bdd2549b3ec86ecb0aec16b922fbbac2de629cd)) - Belingud
+
+
+---
+## [0.15.2](https://github.com/belingud/yaicli/compare/v0.15.1..v0.15.2) - 2026-04-28
+
+### 🐛 Bug Fixes
+
+- fix: add tool_policy parameter to completion params - ([a47d619](https://github.com/belingud/yaicli/commit/a47d619ee7dfa5de2e4e2e30ab74cc385149608f)) - Belingud
+- fix: fall back to httpx when trafilatura extraction fails - ([1bdd254](https://github.com/belingud/yaicli/commit/1bdd2549b3ec86ecb0aec16b922fbbac2de629cd)) - Belingud
+
+
+---
 ## [0.15.0](https://github.com/belingud/yaicli/compare/v0.14.2..v0.15.0) - 2026-03-24
 
 ### ⛰️  Features

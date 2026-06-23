@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from yaicli.llms.providers.minimax_provider import MinimaxProvider
-from yaicli.schemas import ChatMessage, ToolCall
+from yaicli.schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 
 
 class TestMinimaxProvider:
@@ -36,6 +36,13 @@ class TestMinimaxProvider:
         params = provider.get_completion_params()
 
         assert "extra_body" in params
+        assert params["extra_body"]["reasoning_split"] is True
+
+    def test_get_completion_params_accepts_tool_policy(self, provider):
+        """Test get_completion_params accepts request-scoped tool policy."""
+        params = provider.get_completion_params(tool_policy=ToolPolicy(False, False))
+
+        assert params["model"] == provider.config["MODEL"]
         assert params["extra_body"]["reasoning_split"] is True
 
     def test_reasoning_split_respects_config(self, mock_config):
@@ -194,3 +201,182 @@ class TestMinimaxProvider:
         }
 
         assert provider.COMPLETION_PARAMS_KEYS == expected_keys
+
+    def test_convert_messages_with_name_field(self, provider):
+        """Test message conversion with name field"""
+        messages = [ChatMessage(role="user", content="Hello", name="test_user")]
+
+        converted = provider._convert_messages(messages)
+
+        assert converted[0]["name"] == "test_user"
+
+    def test_convert_messages_with_tool_role(self, provider):
+        """Test message conversion with tool role and tool_call_id"""
+        messages = [ChatMessage(role="tool", content="result", tool_call_id="call_123")]
+
+        converted = provider._convert_messages(messages)
+
+        assert converted[0]["role"] == "tool"
+        assert converted[0]["tool_call_id"] == "call_123"
+
+    def test_get_reasoning_content_with_non_dict_delta(self, provider):
+        """Test _get_reasoning_content converts non-dict delta"""
+        # Create a mock object that behaves like a dict when converted
+        class MockDelta:
+            def __init__(self, data):
+                self._data = data
+
+            def __iter__(self):
+                return iter(self._data.items())
+
+        mock_delta = MockDelta({"reasoning_details": [{"text": "thinking"}]})
+        reasoning = provider._get_reasoning_content(mock_delta)
+
+        # Should handle the conversion gracefully
+        assert reasoning == "thinking"
+
+    def test_handle_stream_response(self, provider):
+        """Test streaming response handling"""
+        # Create mock chunks
+        chunk1 = MagicMock()
+        choice1 = MagicMock()
+        delta1 = MagicMock()
+        delta1.content = "Hello"
+        delta1.model_extra = None
+        delta1.tool_calls = None
+        choice1.delta = delta1
+        choice1.finish_reason = None
+        chunk1.choices = [choice1]
+
+        chunk2 = MagicMock()
+        choice2 = MagicMock()
+        delta2 = MagicMock()
+        delta2.content = " world"
+        delta2.model_extra = None
+        delta2.tool_calls = None
+        choice2.delta = delta2
+        choice2.finish_reason = "stop"
+        chunk2.choices = [choice2]
+
+        responses = list(provider._handle_stream_response([chunk1, chunk2]))
+
+        assert len(responses) == 2
+        assert responses[0].content == "Hello"
+        assert responses[1].content == " world"
+        assert responses[1].finish_reason == "stop"
+
+    def test_handle_stream_response_with_reasoning(self, provider):
+        """Test streaming response with reasoning_details"""
+        chunk = MagicMock()
+        choice = MagicMock()
+        delta = MagicMock()
+        delta.content = "answer"
+        delta.model_extra = {"reasoning_details": [{"text": "thinking"}]}
+        delta.tool_calls = None
+        choice.delta = delta
+        choice.finish_reason = "stop"
+        chunk.choices = [choice]
+
+        responses = list(provider._handle_stream_response([chunk]))
+
+        assert responses[0].reasoning == "thinking"
+        assert responses[0].content == "answer"
+
+    def test_handle_stream_response_empty_first_chunk(self, provider):
+        """Test streaming with empty first chunk"""
+        chunk1 = MagicMock()
+        chunk1.choices = []
+
+        chunk2 = MagicMock()
+        choice2 = MagicMock()
+        delta2 = MagicMock()
+        delta2.content = "ok"
+        delta2.model_extra = None
+        delta2.tool_calls = None
+        choice2.delta = delta2
+        choice2.finish_reason = "stop"
+        chunk2.choices = [choice2]
+
+        responses = list(provider._handle_stream_response([chunk1, chunk2]))
+
+        # First empty chunk is skipped
+        assert len(responses) == 1
+        assert responses[0].content == "ok"
+
+    def test_handle_stream_response_first_chunk_error(self, provider):
+        """Test streaming with first chunk error response"""
+        chunk1 = MagicMock()
+        chunk1.choices = []
+
+        chunk2 = MagicMock()
+        choice2 = MagicMock()
+        delta2 = MagicMock()
+        delta2.content = "ok"
+        delta2.model_extra = None
+        delta2.tool_calls = None
+        choice2.delta = delta2
+        choice2.finish_reason = "stop"
+        chunk2.choices = [choice2]
+
+        with patch.object(provider, "_first_chunk_error", return_value=LLMResponse(content="error", finish_reason="stop")):
+            responses = list(provider._handle_stream_response([chunk1, chunk2]))
+
+        # Should yield the error response first
+        assert responses[0].content == "error"
+        assert responses[1].content == "ok"
+
+    def test_handle_stream_response_mid_empty_chunk(self, provider):
+        """Test streaming with empty chunk in the middle"""
+        chunk1 = MagicMock()
+        choice1 = MagicMock()
+        delta1 = MagicMock()
+        delta1.content = "a"
+        delta1.model_extra = None
+        delta1.tool_calls = None
+        choice1.delta = delta1
+        choice1.finish_reason = None
+        chunk1.choices = [choice1]
+
+        chunk2 = MagicMock()
+        chunk2.choices = []  # Empty chunk
+
+        chunk3 = MagicMock()
+        choice3 = MagicMock()
+        delta3 = MagicMock()
+        delta3.content = "b"
+        delta3.model_extra = None
+        delta3.tool_calls = None
+        choice3.delta = delta3
+        choice3.finish_reason = "stop"
+        chunk3.choices = [choice3]
+
+        responses = list(provider._handle_stream_response([chunk1, chunk2, chunk3]))
+
+        # Middle empty chunk should be skipped
+        assert len(responses) == 2
+        assert responses[0].content == "a"
+        assert responses[1].content == "b"
+
+    def test_handle_stream_response_with_tool_call(self, provider):
+        """Test streaming response with tool call"""
+        chunk = MagicMock()
+        choice = MagicMock()
+        delta = MagicMock()
+        delta.content = ""
+        delta.model_extra = None
+
+        mock_tool = MagicMock()
+        mock_tool.id = "call_123"
+        mock_tool.function.name = "test_func"
+        mock_tool.function.arguments = '{"key": "val"}'
+        delta.tool_calls = [mock_tool]
+
+        choice.delta = delta
+        choice.finish_reason = "tool_calls"
+        chunk.choices = [choice]
+
+        responses = list(provider._handle_stream_response([chunk]))
+
+        assert responses[0].tool_call is not None
+        assert responses[0].tool_call.id == "call_123"
+        assert responses[0].finish_reason == "tool_calls"
