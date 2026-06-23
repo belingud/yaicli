@@ -1,13 +1,15 @@
 from dataclasses import dataclass, field
-from typing import Iterator, List, Tuple, Union
+from typing import Generator, Iterator, List, Optional, Tuple, Union
 
 from rich.console import Group, RenderableType
 from rich.live import Live
+from rich.panel import Panel
+from rich.prompt import Prompt
 
 from .config import Config, get_config
 from .console import YaiConsole, get_console
 from .render import Markdown, plain_formatter
-from .schemas import LLMResponse, RefreshLive
+from .schemas import ConfirmToolCall, LLMResponse, RefreshLive, ToolConfirmDecision
 
 
 @dataclass
@@ -169,8 +171,14 @@ class Printer:
         return full_content, full_reasoning
 
     def _create_and_start_live(self) -> Live:
-        """Create and start a new Live instance."""
-        live = Live(console=self.console)
+        """Create and start a new Live instance.
+
+        auto_refresh is disabled so all drawing happens synchronously on the main
+        thread (via explicit refresh on each update). This avoids the background
+        refresh thread racing with direct console prints (e.g., large tool-output
+        panels), which otherwise leaves duplicated/misaligned frames behind.
+        """
+        live = Live(console=self.console, auto_refresh=False)
         live.start()
         return live
 
@@ -179,21 +187,126 @@ class Printer:
         if live.is_started:
             live.stop()
 
-    def display_stream(self, stream_iterator: Iterator[Union["LLMResponse", RefreshLive]]) -> tuple[str, str]:
-        """Process and display LLMContent stream, including reasoning and content parts."""
+    def _confirm_tool_call(self, tool_call) -> ToolConfirmDecision:
+        """Prompt the user to confirm a pending tool call.
+
+        Returns a ToolConfirmDecision. Interruptions (Ctrl-C / EOF) are treated as deny
+        so they never propagate as an unhandled error through the stream pump.
+        """
+        self.console.print(
+            Panel(
+                f"{tool_call.name}({tool_call.arguments})",
+                title="Confirm tool call",
+                title_align="left",
+                border_style="bold magenta",
+                expand=False,
+            )
+        )
+        choice_map = {
+            "y": ToolConfirmDecision.ONCE,
+            "a": ToolConfirmDecision.SESSION,
+            "A": ToolConfirmDecision.PERSIST,
+            "n": ToolConfirmDecision.DENY,
+        }
+        try:
+            choice = Prompt.ask(
+                r"Execute tool? \[y]once, \[a]session, \[A]always, \[n]o",
+                choices=list(choice_map.keys()),
+                default="y",
+                case_sensitive=True,
+                show_choices=False,
+                console=self.console,
+            )
+        except (KeyboardInterrupt, EOFError):
+            self.console.print("\nTool call denied.", style="yellow")
+            return ToolConfirmDecision.DENY
+        return choice_map[choice]
+
+    def _emit_reasoning(
+        self, full_reasoning: str, printed_len: int, header_shown: bool, *, flush: bool
+    ) -> Tuple[int, bool]:
+        """Stream newly-arrived reasoning as append-only text.
+
+        Reasoning is printed rather than re-rendered in the live region, so a tall
+        reasoning block never sits in a live that cannot be overwritten cleanly when it
+        overflows the screen. Without ``flush`` only whole lines are emitted; the partial
+        trailing line is buffered until its newline (or a flush) arrives.
+
+        Returns the updated (printed_len, header_shown).
+        """
+        if not self.show_reasoning:
+            return len(full_reasoning), header_shown
+        pending = full_reasoning[printed_len:]
+        if not pending:
+            return printed_len, header_shown
+        if flush:
+            emitted = len(pending)
+        else:
+            nl = pending.rfind("\n")
+            if nl == -1:
+                return printed_len, header_shown  # no complete line yet; keep buffering
+            pending = pending[: nl + 1]
+            emitted = len(pending)
+        text = pending.strip("\n")
+        if text:
+            if not header_shown:
+                self.console.print("Thinking:")
+                header_shown = True
+            prefixed = self._REASONING_PREFIX + text.replace("\n", f"\n{self._REASONING_PREFIX}")
+            # markup/highlight off: reasoning is arbitrary model text, not Rich markup.
+            self.console.print(prefixed, style="dim", markup=False, highlight=False)
+        return printed_len + emitted, header_shown
+
+    def display_stream(
+        self,
+        stream_iterator: Generator[
+            Union["LLMResponse", RefreshLive, ConfirmToolCall], Optional[ToolConfirmDecision], None
+        ],
+    ) -> tuple[str, str]:
+        """Process and display an LLM stream.
+
+        Reasoning is streamed as append-only text; only the content is rendered in the
+        live region. Driven with next()/send() so a ConfirmToolCall signal can pause the
+        live, prompt the user, and resume the generator with the user's decision.
+        """
         self._reset_state()
         full_content = full_reasoning = ""
+        printed_reasoning = 0
+        reasoning_header_shown = False
         live = self._create_and_start_live()
+        send_value: Optional[ToolConfirmDecision] = None
 
         try:
-            for chunk in stream_iterator:
+            while True:
+                try:
+                    if send_value is None:
+                        chunk = next(stream_iterator)
+                    else:
+                        chunk = stream_iterator.send(send_value)
+                        send_value = None
+                except StopIteration:
+                    break
+
+                if isinstance(chunk, ConfirmToolCall):
+                    # Pause the live region so the prompt does not fight its refresh.
+                    self._safe_stop_live(live)
+                    send_value = self._confirm_tool_call(chunk.tool_call)
+                    # Fresh live for subsequent tool output / streaming.
+                    live = self._create_and_start_live()
+                    continue
+
                 if isinstance(chunk, RefreshLive):
-                    # Gracefully transition to new live session
+                    # Flush buffered reasoning, then transition to a new live session.
+                    printed_reasoning, reasoning_header_shown = self._emit_reasoning(
+                        full_reasoning, printed_reasoning, reasoning_header_shown, flush=True
+                    )
                     self._safe_stop_live(live)
                     live = self._create_and_start_live()
 
                     # Reset state for next completion
                     full_content = full_reasoning = ""
+                    printed_reasoning = 0
+                    reasoning_header_shown = False
                     self._reset_state()
                     continue
 
@@ -202,14 +315,25 @@ class Printer:
                     chunk.content or "", chunk.reasoning or "", full_content, full_reasoning
                 )
 
-                # Update display
-                formatted_display = self._format_display_text(full_content, full_reasoning)
-                live.update(formatted_display)
+                if full_content:
+                    # Content has started: flush any remaining reasoning above it, then
+                    # render the content in the live region.
+                    printed_reasoning, reasoning_header_shown = self._emit_reasoning(
+                        full_reasoning, printed_reasoning, reasoning_header_shown, flush=True
+                    )
+                    live.update(self._format_display_text(full_content, ""), refresh=True)
+                else:
+                    # Reasoning only so far: stream it append-only (whole lines).
+                    printed_reasoning, reasoning_header_shown = self._emit_reasoning(
+                        full_reasoning, printed_reasoning, reasoning_header_shown, flush=False
+                    )
 
         except Exception as e:
             self._safe_stop_live(live)
             raise e from None
         finally:
+            # Flush any trailing reasoning that never received a newline.
+            self._emit_reasoning(full_reasoning, printed_reasoning, reasoning_header_shown, flush=True)
             self._safe_stop_live(live)
 
         return full_content, full_reasoning

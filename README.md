@@ -203,6 +203,13 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
 | `SHOW_MCP_OUTPUT`      | Show MCP output when calling mcp            | `true`                   | `YAI_SHOW_MCP_OUTPUT`      |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
+| `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
+
+> **Tool execution confirmation:** With `TOOL_CONFIRM` enabled (the default), YAICLI asks before running each
+> tool/function call. At the prompt you can allow it once, allow it for the rest of the session, allow it permanently,
+> or deny it. Permanent approvals are stored per tool name in `~/.config/yaicli/tool_permissions.json`. Set
+> `TOOL_CONFIRM=false` (or `YAI_TOOL_CONFIRM=false`) to run tool calls silently, as in previous versions. In
+> non-interactive sessions (e.g. piped input) only tools already in the permissions file run; others are denied.
 
 ### LLM Provider Configuration
 

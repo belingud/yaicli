@@ -107,11 +107,13 @@ def get_anthropic_mcp_tools() -> list[dict[str, Any]]:
         raise MCPToolsError(f"Error getting MCP tools for Anthropic: {e}") from e
 
 
-def execute_tool_call(tool_call: ToolCall) -> Tuple[str, bool]:
+def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, bool]:
     """Execute a tool call and return the result
 
     Args:
         tool_call: The tool call to execute
+        announce: Whether to print the "@... call" line. Set False when the call was
+            already shown to the user (e.g., by a confirmation prompt) to avoid duplication.
 
     Returns:
         Tuple[str, bool]: (result text, success flag)
@@ -127,7 +129,8 @@ def execute_tool_call(tool_call: ToolCall) -> Tuple[str, bool]:
         show_output = cfg["SHOW_MCP_OUTPUT"]
         _type = "mcp"
 
-    console.print(f"@{_type.title()} call: {tool_call.name}({tool_call.arguments})", style="blue")
+    if announce:
+        console.print(f"@{_type.title()} call: {tool_call.name}({tool_call.arguments})", style="blue")
     # 1. Get the tool
     try:
         tool = get_tool_func(tool_call.name)

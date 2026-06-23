@@ -46,6 +46,7 @@ from .llms import LLMClient
 from .printer import Printer
 from .role import Role, RoleManager, role_mgr
 from .schemas import ChatMessage, ImageData, ToolPolicy
+from .tools.approval import ToolApprovalManager
 from .utils import detect_os, detect_shell, filter_command
 
 
@@ -555,7 +556,13 @@ class CLI:
     def _create_client(self):
         """Create an LLM client instance based on configuration"""
         try:
-            return LLMClient(provider_name=cfg["PROVIDER"].lower(), verbose=self.verbose, config=cfg)
+            return LLMClient(
+                provider_name=cfg["PROVIDER"].lower(),
+                verbose=self.verbose,
+                config=cfg,
+                approval=ToolApprovalManager(),
+                interactive=sys.stdin.isatty(),
+            )
         except YaicliError as e:
             self.console.print(f"Error creating client: {e}", style="red")
             raise typer.Abort()
