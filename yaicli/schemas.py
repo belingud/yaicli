@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from .const import StrEnum
+
 
 @dataclass
 class ImageData:
@@ -57,3 +59,24 @@ class RefreshLive:
 
 class StopLive:
     """Stop live display"""
+
+
+@dataclass
+class ConfirmToolCall:
+    """Control signal: ask the user to confirm a tool call before execution.
+
+    Yielded out of the tool-execution loop so the display layer can pause the
+    live region, prompt the user, and resume the generator with a
+    ToolConfirmDecision via ``generator.send(...)``.
+    """
+
+    tool_call: ToolCall
+
+
+class ToolConfirmDecision(StrEnum):  # type: ignore
+    """User decision for a pending tool call confirmation."""
+
+    ONCE = "once"  # Execute this call only
+    SESSION = "session"  # Execute and stop asking for this tool this session
+    PERSIST = "persist"  # Execute and persist approval across runs
+    DENY = "deny"  # Do not execute; return a refusal result to the model

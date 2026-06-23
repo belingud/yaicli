@@ -1,3 +1,4 @@
+import json
 import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -372,3 +373,185 @@ class TestFileChatManager:
             # Test that ChatDeleteError is raised when OS prevents file deletion
             with pytest.raises(ChatDeleteError):
                 chat_manager._delete_existing_chat_with_title(chats[0].title)
+
+
+class TestChatModel:
+    """Tests for the Chat dataclass: serialization and file I/O."""
+
+    def test_from_dict_builds_chat_with_history(self):
+        data = {
+            "idx": "1",
+            "title": "T",
+            "date": "2024-01-01T00:00:00",
+            "history": [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "yo"}],
+        }
+        chat = Chat.from_dict(data)
+        assert chat.idx == "1"
+        assert chat.title == "T"
+        assert len(chat.history) == 2
+        assert chat.history[0].content == "hi"
+
+    def test_load_returns_false_without_path(self):
+        assert Chat(title="x").load() is False
+
+    def test_load_reads_history_from_file(self, tmp_path):
+        f = tmp_path / "c.json"
+        f.write_text(json.dumps({"title": "T", "date": "d", "history": [{"role": "user", "content": "hi"}]}))
+        chat = Chat(path=f)
+        assert chat.load() is True
+        assert chat.title == "T"
+        assert chat.history[0].content == "hi"
+
+    def test_load_invalid_json_raises(self, tmp_path):
+        f = tmp_path / "c.json"
+        f.write_text("not json")
+        chat = Chat(path=f)
+        with pytest.raises(ChatLoadError):
+            chat.load()
+
+    def test_save_sets_date_when_empty(self, tmp_path):
+        chat = Chat(title="T", date="")
+        chat.add_message("user", "hi")
+        assert chat.save(tmp_path) is True
+        assert chat.date  # populated during save
+        assert chat.path is not None
+
+    def test_save_raises_on_write_error(self, tmp_path):
+        chat = Chat(title="T")
+        chat.add_message("user", "hi")
+        with patch("builtins.open", side_effect=OSError("disk full")):
+            with pytest.raises(ChatSaveError):
+                chat.save(tmp_path)
+
+
+class TestFileChatManagerCoverage:
+    """Additional coverage for FileChatManager branches."""
+
+    def test_post_init_converts_str_path_and_creates_dir(self, tmp_path):
+        sub = tmp_path / "newdir"
+        mgr = FileChatManager(chat_dir=str(sub))
+        assert isinstance(mgr.chat_dir, Path)
+        assert mgr.chat_dir.exists()
+
+    def test_load_chats_parse_error_raises(self, chat_manager):
+        (chat_manager.chat_dir / "20230101-120000-title-X.json").write_text("{}")
+        chat_manager._chats_map = None
+        with patch.object(FileChatManager, "_parse_filename", side_effect=ValueError("boom")):
+            with pytest.raises(ChatLoadError):
+                chat_manager._load_chats()
+
+    def test_new_chat(self, chat_manager):
+        chat = chat_manager.new_chat(title="Fresh")
+        assert chat.title == "Fresh"
+        assert chat_manager.current_chat is chat
+
+    def test_save_chat_uses_current_chat(self, chat_manager):
+        chat = chat_manager.new_chat(title="Cur")
+        chat.add_message("user", "hi")
+        chat_manager.current_chat = chat
+        assert chat_manager.save_chat() == "Cur"
+
+    def test_save_chat_no_chat_raises(self, chat_manager):
+        chat_manager.current_chat = None
+        with pytest.raises(ChatSaveError, match="No chat found"):
+            chat_manager.save_chat()
+
+    def test_delete_existing_chat_empty_title_is_noop(self, chat_manager):
+        chat_manager._delete_existing_chat_with_title("")  # should not raise
+
+    def test_cleanup_old_chats_swallows_unlink_error(self, chat_manager):
+        chat_manager.max_saved_chats = 1
+        (chat_manager.chat_dir / "20230101-120000-title-A.json").write_text("{}")
+        time.sleep(0.01)
+        (chat_manager.chat_dir / "20230102-120000-title-B.json").write_text("{}")
+        with patch.object(Path, "unlink", side_effect=OSError("denied")):
+            chat_manager._cleanup_old_chats()  # error is swallowed
+
+    def test_load_chat_not_exists_returns_empty(self, chat_manager):
+        chat = chat_manager.load_chat("nonexistent_id")
+        assert chat.idx == "nonexistent_id"
+        assert not chat.history
+
+    def test_load_chat_reads_file(self, chat_manager):
+        cid = "myid"
+        data = {"title": "T", "date": "d", "history": [{"role": "user", "content": "hi"}]}
+        (chat_manager.chat_dir / f"{cid}.json").write_text(json.dumps(data))
+        chat = chat_manager.load_chat(cid)
+        assert chat.title == "T"
+        assert chat.history[0].content == "hi"
+        assert chat_manager.current_chat is chat
+
+    def test_load_chat_by_index_path_none_returns_chat(self, chat_manager):
+        chat = Chat(idx="1", title="NoPath", path=None)
+        chat_manager._chats_map = {"index": {"1": chat}, "title": {"NoPath": chat}}
+        assert chat_manager.load_chat_by_index("1") is chat
+
+    def test_load_chat_by_title_path_none_returns_chat(self, chat_manager):
+        chat = Chat(idx="1", title="NoPath", path=None)
+        chat_manager._chats_map = {"index": {"1": chat}, "title": {"NoPath": chat}}
+        assert chat_manager.load_chat_by_title("NoPath") is chat
+
+    def test_delete_chat_not_exists_returns_false(self, chat_manager):
+        assert chat_manager.delete_chat(chat_manager.chat_dir / "ghost.json") is False
+
+    def test_delete_chat_clears_current_chat(self, chat_manager):
+        chat = Chat(title="Del")
+        chat.add_message("user", "hi")
+        chat_manager.save_chat(chat)
+        chat_manager.current_chat = chat
+        assert chat_manager.delete_chat(chat.path) is True
+        assert chat_manager.current_chat is None
+
+    def test_delete_chat_error_raises(self, chat_manager):
+        f = chat_manager.chat_dir / "x.json"
+        f.write_text("{}")
+        with patch.object(Path, "unlink", side_effect=OSError("denied")):
+            with pytest.raises(ChatDeleteError):
+                chat_manager.delete_chat(f)
+
+    def test_delete_chat_by_index_path_none_returns_false(self, chat_manager):
+        chat = Chat(idx="1", title="X", path=None)
+        chat_manager._chats_map = {"index": {"1": chat}, "title": {"X": chat}}
+        assert chat_manager.delete_chat_by_index("1") is False
+
+    def test_delete_chat_by_index_success(self, chat_manager):
+        chat = Chat(title="ByIdx")
+        chat.add_message("user", "hi")
+        chat_manager.save_chat(chat)
+        idx = chat_manager.list_chats()[0].idx
+        assert chat_manager.delete_chat_by_index(idx) is True
+
+    def test_print_chats_empty(self, chat_manager):
+        chat_manager._chats_map = {"index": {}, "title": {}}
+        chat_manager.print_chats()  # prints "No saved chats found"
+
+    def test_print_chats_with_entries(self, chat_manager):
+        empty_date = Chat(idx="1", title="P", date="", path=None)
+        iso_date = Chat(idx="2", title="Q", date="2023-01-01T12:00:00", path=None)
+        chat_manager._chats_map = {
+            "index": {"1": empty_date, "2": iso_date},
+            "title": {"P": empty_date, "Q": iso_date},
+        }
+        chat_manager.print_chats()  # builds table over both date branches
+
+
+class TestPrintListOption:
+    """Tests for the print_list_option typer callback."""
+
+    def test_falsy_value_returns_without_exit(self):
+        assert FileChatManager.print_list_option(False) is False
+
+    def test_no_chats(self):
+        import typer
+
+        with patch("yaicli.chat.FileChatManager.list_chats", return_value=[]):
+            with pytest.raises(typer.Exit):
+                FileChatManager.print_list_option(True)
+
+    def test_with_chats(self):
+        import typer
+
+        chat = Chat(idx="1", title="L", date="2023-01-01T12:00:00")
+        with patch("yaicli.chat.FileChatManager.list_chats", return_value=[chat]):
+            with pytest.raises(typer.Exit):
+                FileChatManager.print_list_option(True)

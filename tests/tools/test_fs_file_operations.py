@@ -314,3 +314,153 @@ class TestFSFileOperations:
 
         assert result_dict["success"] is False
         assert "Unknown operation" in result_dict["error"]
+
+
+class TestFSFileOpsCoverage:
+    """Cover error-handling branches in fs_file_operations."""
+
+    def test_execute_top_level_exception(self, tmp_path):
+        from unittest.mock import patch
+
+        with patch("yaicli.functions.buildin.fs_file_operations.Path", side_effect=RuntimeError("boom")):
+            result = Function.execute("exists", str(tmp_path / "x"))
+        assert "boom" in json.loads(result)["error"]
+
+    def test_create_directory_permission_error(self, tmp_path):
+        from unittest.mock import patch
+
+        target = tmp_path / "newdir"
+        with patch("pathlib.Path.mkdir", side_effect=PermissionError):
+            result = Function.execute("create_dir", str(target))
+        assert "Permission denied" in json.loads(result)["error"]
+
+    def test_create_directory_generic_error(self, tmp_path):
+        from unittest.mock import patch
+
+        target = tmp_path / "newdir"
+        with patch("pathlib.Path.mkdir", side_effect=OSError("disk full")):
+            result = Function.execute("create_dir", str(target))
+        assert "disk full" in json.loads(result)["error"]
+
+    def test_delete_neither_file_nor_dir(self, tmp_path):
+        import os
+        import sys
+
+        if sys.platform == "win32":
+            import pytest
+
+            pytest.skip("mkfifo unsupported")
+        fifo = tmp_path / "fifo"
+        os.mkfifo(str(fifo))
+        result = Function.execute("delete", str(fifo))
+        assert "neither a file nor a directory" in json.loads(result)["error"]
+
+    def test_delete_permission_error(self, tmp_path):
+        from unittest.mock import patch
+
+        f = tmp_path / "f.txt"
+        f.write_text("x")
+        with patch("pathlib.Path.unlink", side_effect=PermissionError):
+            result = Function.execute("delete", str(f))
+        assert "Permission denied" in json.loads(result)["error"]
+
+    def test_delete_generic_error(self, tmp_path):
+        from unittest.mock import patch
+
+        f = tmp_path / "f.txt"
+        f.write_text("x")
+        with patch("pathlib.Path.unlink", side_effect=OSError("busy")):
+            result = Function.execute("delete", str(f))
+        assert "busy" in json.loads(result)["error"]
+
+    def test_move_permission_error(self, tmp_path):
+        from unittest.mock import patch
+
+        src = tmp_path / "s.txt"
+        src.write_text("x")
+        with patch("yaicli.functions.buildin.fs_file_operations.shutil.move", side_effect=PermissionError):
+            result = Function.execute("move", str(src), str(tmp_path / "d.txt"))
+        assert "Permission denied" in json.loads(result)["error"]
+
+    def test_move_generic_error(self, tmp_path):
+        from unittest.mock import patch
+
+        src = tmp_path / "s.txt"
+        src.write_text("x")
+        with patch("yaicli.functions.buildin.fs_file_operations.shutil.move", side_effect=OSError("xdev")):
+            result = Function.execute("move", str(src), str(tmp_path / "d.txt"))
+        assert "xdev" in json.loads(result)["error"]
+
+    def test_copy_source_neither_file_nor_dir(self, tmp_path):
+        import os
+        import sys
+
+        if sys.platform == "win32":
+            import pytest
+
+            pytest.skip("mkfifo unsupported")
+        fifo = tmp_path / "fifo"
+        os.mkfifo(str(fifo))
+        result = Function.execute("copy", str(fifo), str(tmp_path / "d"))
+        assert "neither a file nor a directory" in json.loads(result)["error"]
+
+    def test_copy_permission_error(self, tmp_path):
+        from unittest.mock import patch
+
+        src = tmp_path / "s.txt"
+        src.write_text("x")
+        with patch("yaicli.functions.buildin.fs_file_operations.shutil.copy2", side_effect=PermissionError):
+            result = Function.execute("copy", str(src), str(tmp_path / "d.txt"))
+        assert "Permission denied" in json.loads(result)["error"]
+
+    def test_copy_generic_error(self, tmp_path):
+        from unittest.mock import patch
+
+        src = tmp_path / "s.txt"
+        src.write_text("x")
+        with patch("yaicli.functions.buildin.fs_file_operations.shutil.copy2", side_effect=OSError("nospace")):
+            result = Function.execute("copy", str(src), str(tmp_path / "d.txt"))
+        assert "nospace" in json.loads(result)["error"]
+
+    def test_exists_other_type(self, tmp_path):
+        import os
+        import sys
+
+        if sys.platform == "win32":
+            import pytest
+
+            pytest.skip("mkfifo unsupported")
+        fifo = tmp_path / "fifo"
+        os.mkfifo(str(fifo))
+        data = json.loads(Function.execute("exists", str(fifo)))
+        assert data["exists"] is True
+        assert data["type"] == "other"
+
+    def test_get_info_dir_iterdir_permission(self, tmp_path):
+        from unittest.mock import patch
+
+        d = tmp_path / "d"
+        d.mkdir()
+        with patch("pathlib.Path.iterdir", side_effect=PermissionError):
+            result = Function.execute("get_info", str(d))
+        data = json.loads(result)
+        assert data["success"] is True
+        assert data["info"]["item_count"] is None
+
+    def test_get_info_permission_error(self):
+        from unittest.mock import MagicMock
+
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.stat.side_effect = PermissionError
+        result = Function._get_info(mock_path)
+        assert "Permission denied" in json.loads(result)["error"]
+
+    def test_get_info_generic_error(self):
+        from unittest.mock import MagicMock
+
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.stat.side_effect = OSError("io")
+        result = Function._get_info(mock_path)
+        assert "io" in json.loads(result)["error"]

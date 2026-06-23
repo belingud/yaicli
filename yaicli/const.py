@@ -46,6 +46,7 @@ CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
 ROLES_DIR = CONFIG_PATH.parent / "roles"
 FUNCTIONS_DIR = CONFIG_PATH.parent / "functions"
 MCP_JSON_PATH = CONFIG_PATH.parent / "mcp.json"
+TOOL_PERMISSIONS_PATH = CONFIG_PATH.parent / "tool_permissions.json"
 
 # Default configuration values
 DEFAULT_CODE_THEME = "monokai"
@@ -78,6 +79,7 @@ DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium", "default", "
 DEFAULT_ENABLE_MCP: BOOL_STR = "false"
 DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
 DEFAULT_MAX_TOOL_CALL_DEPTH: int = 8
+DEFAULT_TOOL_CONFIRM: BOOL_STR = "true"
 DEFAULT_EXCLUDE_PARAMS: str = ""  # Empty by default
 
 # Providers known to not support vision/image input
@@ -169,6 +171,7 @@ DEFAULT_CONFIG_MAP = {
     "ENABLE_MCP": {"value": DEFAULT_ENABLE_MCP, "env_key": "YAI_ENABLE_MCP", "type": bool},
     "SHOW_MCP_OUTPUT": {"value": DEFAULT_SHOW_MCP_OUTPUT, "env_key": "YAI_SHOW_MCP_OUTPUT", "type": bool},
     "MAX_TOOL_CALL_DEPTH": {"value": DEFAULT_MAX_TOOL_CALL_DEPTH, "env_key": "YAI_MAX_TOOL_CALL_DEPTH", "type": int},
+    "TOOL_CONFIRM": {"value": DEFAULT_TOOL_CONFIRM, "env_key": "YAI_TOOL_CONFIRM", "type": bool},
     "EXCLUDE_PARAMS": {"value": DEFAULT_EXCLUDE_PARAMS, "env_key": "YAI_EXCLUDE_PARAMS", "type": str},
     # MiniMax specific settings
     "MINIMAX_REASONING_SPLIT": {
@@ -239,6 +242,11 @@ SHOW_MCP_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_MCP_OUTPUT"]["value"]}
 
 # Maximum number of tool calls to make in a single request
 MAX_TOOL_CALL_DEPTH={DEFAULT_CONFIG_MAP["MAX_TOOL_CALL_DEPTH"]["value"]}
+
+# Ask for confirmation before executing each tool/function call.
+# Set to false to execute tool calls silently (previous behavior).
+# Tools permanently allowed are stored in tool_permissions.json next to this file.
+TOOL_CONFIRM={DEFAULT_CONFIG_MAP["TOOL_CONFIRM"]["value"]}
 
 # Comma-separated list of API parameters to exclude from requests
 # Example: temperature,top_p,frequency_penalty

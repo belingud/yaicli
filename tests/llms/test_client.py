@@ -53,6 +53,9 @@ class TestLLMClient:
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
             "MAX_TOOL_CALL_DEPTH": 5,
+            # These tests exercise the silent tool-execution path; confirmation has
+            # its own coverage in tests/llms/test_tool_confirmation.py.
+            "TOOL_CONFIRM": False,
         }
 
     @patch("yaicli.llms.provider.ProviderFactory.create_provider")

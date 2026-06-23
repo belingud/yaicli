@@ -1,5 +1,13 @@
 
 ---
+## [Unreleased]
+
+### ⛰️  Features
+
+- feat!: confirm tool/function calls before execution — allow once, allow for the session, allow permanently, or deny. **BREAKING:** tool calls now require confirmation by default; set `TOOL_CONFIRM=false` (env `YAI_TOOL_CONFIRM=false`) to restore the previous silent execution. Permanent approvals are stored per tool name in `~/.config/yaicli/tool_permissions.json`.
+
+
+---
 ## [0.16.0](https://github.com/belingud/yaicli/compare/v0.15.2..v0.16.0) - 2026-05-10
 
 ### ⛰️  Features

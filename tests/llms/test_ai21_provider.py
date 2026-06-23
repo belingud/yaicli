@@ -112,3 +112,56 @@ class TestAI21Provider:
             assert responses[0].tool_call.id == "tc_123"
             assert responses[0].tool_call.name == "get_weather"
             assert responses[0].tool_call.arguments == '{"location": "New York"}'
+
+    def test_process_tool_call_chunk_first_chunk(self, mock_config):
+        """Test _process_tool_call_chunk when processing the first chunk"""
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = AI21Provider(config=mock_config)
+
+            # Create mock tool call for first chunk
+            mock_tool = MagicMock()
+            mock_tool.id = "call_abc123"
+            mock_tool.function.name = "test_function"
+            mock_tool.function.arguments = "{}"
+
+            result = provider._process_tool_call_chunk([mock_tool], existing_tool_call=None)
+
+            assert result.id == "call_abc123"
+            assert result.name == "test_function"
+            assert result.arguments == "{}"
+
+    def test_process_tool_call_chunk_update_existing(self, mock_config):
+        """Test _process_tool_call_chunk when updating an existing tool call"""
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = AI21Provider(config=mock_config)
+
+            # Create existing tool call
+            existing = ToolCall(id="call_abc123", name="test_function", arguments='{"key": "old"}')
+
+            # Create mock tool call with new arguments
+            mock_tool = MagicMock()
+            mock_tool.id = None  # Subsequent chunks typically don't repeat the id
+            mock_tool.function.name = None
+            mock_tool.function.arguments = '{"key": "new"}'
+
+            result = provider._process_tool_call_chunk([mock_tool], existing_tool_call=existing)
+
+            assert result.id == "call_abc123"
+            assert result.name == "test_function"
+            assert result.arguments == '{"key": "new"}'
+
+    def test_process_tool_call_chunk_empty_new_arguments(self, mock_config):
+        """Test _process_tool_call_chunk when new arguments are empty"""
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = AI21Provider(config=mock_config)
+
+            existing = ToolCall(id="call_xyz", name="fn", arguments='{"existing": "data"}')
+
+            # Mock tool call with empty/missing arguments
+            mock_tool = MagicMock()
+            mock_tool.function.arguments = ""
+
+            result = provider._process_tool_call_chunk([mock_tool], existing_tool_call=existing)
+
+            # Should keep existing arguments when new ones are empty
+            assert result.arguments == '{"existing": "data"}'

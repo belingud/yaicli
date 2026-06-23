@@ -195,3 +195,113 @@ class TestCmdHandler:
         """Test handling non-special command."""
         result = cmd_handler.handle_command("hello world")
         assert result == "hello world"  # Should return the original input
+
+
+class TestHandleAddContext:
+    """Tests for handle_add_context."""
+
+    def test_shlex_error(self, cmd_handler):
+        result = cmd_handler.handle_add_context('/add "unclosed')
+        assert result is True
+        printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
+        assert any("Error parsing command" in t for t in printed)
+        cmd_handler.cli.context_manager.add.assert_not_called()
+
+    def test_missing_path(self, cmd_handler):
+        result = cmd_handler.handle_add_context("/add")
+        assert result is True
+        printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
+        assert any("Usage:" in t for t in printed)
+        cmd_handler.cli.context_manager.add.assert_not_called()
+
+    def test_add_path_not_verbose(self, cmd_handler):
+        cmd_handler.cli.verbose = False
+        result = cmd_handler.handle_add_context("/add myfile.txt")
+        assert result is True
+        cmd_handler.cli.context_manager.add.assert_called_once_with("myfile.txt")
+
+    def test_add_path_with_at_and_verbose(self, cmd_handler):
+        cmd_handler.cli.verbose = True
+        result = cmd_handler.handle_add_context("/add @myfile.txt")
+        assert result is True
+        cmd_handler.cli.context_manager.add.assert_called_once_with("myfile.txt")
+        printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
+        assert any("Adding context" in t for t in printed)
+
+
+class TestHandleContext:
+    """Tests for handle_context subcommands."""
+
+    def test_shlex_error(self, cmd_handler):
+        result = cmd_handler.handle_context('/context "unclosed')
+        assert result is True
+        printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
+        assert any("Error parsing command" in t for t in printed)
+
+    def test_no_subcommand_defaults_to_list(self, cmd_handler):
+        result = cmd_handler.handle_context("/context")
+        assert result is True
+        cmd_handler.cli.context_manager.list_items.assert_called_once()
+
+    def test_list(self, cmd_handler):
+        result = cmd_handler.handle_context("/context list")
+        assert result is True
+        cmd_handler.cli.context_manager.list_items.assert_called_once()
+
+    def test_clear(self, cmd_handler):
+        result = cmd_handler.handle_context("/context clear")
+        assert result is True
+        cmd_handler.cli.context_manager.clear.assert_called_once()
+
+    def test_add_missing_path(self, cmd_handler):
+        result = cmd_handler.handle_context("/context add")
+        assert result is True
+        printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
+        assert any("Usage: /context add" in t for t in printed)
+        cmd_handler.cli.context_manager.add.assert_not_called()
+
+    def test_add_with_at_prefix(self, cmd_handler):
+        result = cmd_handler.handle_context("/context add @f.txt")
+        assert result is True
+        cmd_handler.cli.context_manager.add.assert_called_once_with("f.txt")
+
+    def test_remove_missing_path(self, cmd_handler):
+        result = cmd_handler.handle_context("/context remove")
+        assert result is True
+        printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
+        assert any("Usage: /context remove" in t for t in printed)
+        cmd_handler.cli.context_manager.remove.assert_not_called()
+
+    def test_remove_path(self, cmd_handler):
+        result = cmd_handler.handle_context("/context remove f.txt")
+        assert result is True
+        cmd_handler.cli.context_manager.remove.assert_called_once_with("f.txt")
+
+    def test_remove_alias_rm(self, cmd_handler):
+        result = cmd_handler.handle_context("/context rm f.txt")
+        assert result is True
+        cmd_handler.cli.context_manager.remove.assert_called_once_with("f.txt")
+
+    def test_unknown_subcommand(self, cmd_handler):
+        result = cmd_handler.handle_context("/context bogus")
+        assert result is True
+        printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
+        assert any("Unknown sub-command" in t for t in printed)
+
+
+class TestHandleHistoryToolCalls:
+    """Test history rendering for assistant messages carrying tool calls."""
+
+    def test_history_with_tool_calls(self, cmd_handler):
+        tool_call = MagicMock()
+        tool_call.name = "get_weather"
+        tool_call.arguments = '{"city": "NYC"}'
+        assistant_msg = MagicMock(role="assistant", content="Let me check", tool_calls=[tool_call])
+        cmd_handler.cli.chat.history = [assistant_msg]
+
+        with patch("yaicli.cmd_handler.cfg", {"CODE_THEME": "monokai"}):
+            result = cmd_handler.handle_history()
+
+        assert result is True
+        printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
+        assert any("Assistant:" in t for t in printed)

@@ -1,3 +1,6 @@
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from yaicli.context import ContextManager
@@ -259,3 +262,134 @@ def test_parse_at_references_unreadable_image(context_manager, temp_workspace):
         if sys.platform != "win32":
             img.chmod(0o644)
         os.chdir(original_cwd)
+
+
+def test_get_context_messages_empty(context_manager):
+    """get_context_messages returns an empty list when there is no context."""
+    assert context_manager.get_context_messages() == []
+
+
+def test_add_already_in_context(context_manager, temp_workspace):
+    """Adding the same path twice reports it is already present."""
+    file_path = temp_workspace / "file1.txt"
+    assert context_manager.add(str(file_path)) is True
+    assert context_manager.add(str(file_path)) is True
+    assert len(context_manager.items) == 1
+
+
+def test_add_unsupported_path_type(context_manager, tmp_path):
+    """A path that exists but is neither file nor dir (FIFO) is unsupported."""
+    import os
+    import sys
+
+    if sys.platform == "win32":
+        pytest.skip("mkfifo not supported on Windows")
+    fifo = tmp_path / "myfifo"
+    os.mkfifo(str(fifo))
+    assert context_manager.add(str(fifo)) is False
+
+
+def test_remove_multiple_matches(context_manager, temp_workspace):
+    """Removing an ambiguous partial name reports multiple matches and aborts."""
+    context_manager.add(str(temp_workspace / "file1.txt"))
+    context_manager.add(str(temp_workspace / "file2.py"))
+    assert context_manager.remove("file") is False
+    assert len(context_manager.items) == 2
+
+
+def test_remove_not_found(context_manager, temp_workspace):
+    """Removing a name that matches nothing returns False."""
+    context_manager.add(str(temp_workspace / "file1.txt"))
+    assert context_manager.remove("nonexistent.xyz") is False
+
+
+def test_list_items_empty(context_manager):
+    """list_items prints an empty notice when there are no items."""
+    with patch("yaicli.context.console", MagicMock()) as console:
+        context_manager.list_items()
+    printed = [str(c.args[0]) for c in console.print.call_args_list]
+    assert any("Context is empty" in t for t in printed)
+
+
+def test_list_items_outside_cwd(context_manager, temp_workspace):
+    """list_items renders items whose path is not relative to cwd (ValueError branch)."""
+    context_manager.add(str(temp_workspace / "file1.txt"))
+    context_manager.list_items()
+    assert len(context_manager.items) == 1
+
+
+def test_list_items_relative_path(context_manager, tmp_path, monkeypatch):
+    """When an item lives under cwd, list_items shows it as a relative path."""
+    monkeypatch.chdir(tmp_path)
+    f = tmp_path / "rel.txt"
+    f.write_text("x")
+    context_manager.add(str(f))
+    context_manager.list_items()
+    assert len(context_manager.items) == 1
+
+
+def test_read_file_binary_omitted(context_manager, tmp_path):
+    """_read_file returns a placeholder for known binary suffixes."""
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_bytes(b"%PDF-1.4")
+    assert context_manager._read_file(Path(str(pdf))) == "[Binary file omitted]"
+
+
+def test_read_file_too_large(context_manager, tmp_path):
+    """_read_file omits files larger than 1MB."""
+    big = tmp_path / "big.txt"
+    big.write_text("a" * 1_000_001)
+    result = context_manager._read_file(Path(str(big)))
+    assert "File too large" in result
+
+
+def test_read_file_error(context_manager, tmp_path):
+    """_read_file catches read errors and returns an error string."""
+    target = tmp_path / "ghost.txt"
+    target.write_text("x")
+    with patch("builtins.open", side_effect=OSError("boom")):
+        result = context_manager._read_file(Path(str(target)))
+    assert "Error reading file" in result
+
+
+def test_read_dir_recursive_depth_limit(context_manager, tmp_path):
+    """Recursion stops immediately when current_depth exceeds max_depth."""
+    content = []
+    context_manager._read_dir_recursive(Path(str(tmp_path)), content, current_depth=3, max_depth=2)
+    assert content == []
+
+
+def test_read_dir_recursive_skips_hidden_and_ignored(context_manager, tmp_path):
+    """Hidden files and default-ignored directories are skipped while reading."""
+    (tmp_path / "visible.txt").write_text("hi")
+    (tmp_path / ".hidden.txt").write_text("secret")
+    ignored = tmp_path / "__pycache__"
+    ignored.mkdir()
+    (ignored / "cache.py").write_text("x")
+
+    content = []
+    context_manager._read_dir_recursive(Path(str(tmp_path)), content, 0, 2)
+    joined = "\n".join(content)
+    assert "visible.txt" in joined
+    assert ".hidden.txt" not in joined
+    assert "cache.py" not in joined
+
+
+def test_read_dir_recursive_scan_error(context_manager):
+    """An error while scanning a directory is caught and reported."""
+    bad_dir = MagicMock(spec=Path)
+    bad_dir.iterdir.side_effect = PermissionError("denied")
+    content = []
+    context_manager._read_dir_recursive(bad_dir, content, 0, 2)  # should not raise
+    assert content == []
+
+
+def test_parse_at_references_outer_exception(context_manager, tmp_path, monkeypatch):
+    """An unexpected error while processing a reference is caught by the outer try."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "f.txt").write_text("x")
+    with patch.object(context_manager, "_read_file", side_effect=RuntimeError("boom")):
+        at_content, cleaned, images = context_manager.parse_at_references("Check @f.txt")
+    # Reference left intact because processing raised before the replacement
+    assert "@f.txt" in cleaned
+    assert images == []

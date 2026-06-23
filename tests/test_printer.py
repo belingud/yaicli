@@ -1,10 +1,11 @@
 import unittest
+from io import StringIO
 from unittest.mock import MagicMock, patch
 
-from rich.console import Group
+from rich.console import Console, Group
 
 from yaicli.printer import Printer
-from yaicli.schemas import ChatMessage
+from yaicli.schemas import ConfirmToolCall, LLMResponse, RefreshLive, ToolCall, ToolConfirmDecision
 
 
 class TestPrinter(unittest.TestCase):
@@ -33,6 +34,51 @@ class TestPrinter(unittest.TestCase):
         self.assertEqual(self.printer.show_reasoning, True)
         self.assertTrue(self.printer.content_markdown)
         self.assertFalse(self.printer.in_reasoning)
+
+    def test_confirm_tool_call_maps_choices(self):
+        """Each keypress maps to the matching ToolConfirmDecision."""
+        tc = ToolCall(id="c1", name="get_weather", arguments="{}")
+        cases = {
+            "y": ToolConfirmDecision.ONCE,
+            "a": ToolConfirmDecision.SESSION,
+            "A": ToolConfirmDecision.PERSIST,
+            "n": ToolConfirmDecision.DENY,
+        }
+        for key, expected in cases.items():
+            with patch("yaicli.printer.Prompt.ask", return_value=key):
+                self.assertEqual(self.printer._confirm_tool_call(tc), expected)
+
+    def test_confirm_tool_call_keyboard_interrupt_denies(self):
+        """Ctrl-C at the prompt is treated as deny, not propagated."""
+        tc = ToolCall(id="c1", name="get_weather", arguments="{}")
+        with patch("yaicli.printer.Prompt.ask", side_effect=KeyboardInterrupt):
+            self.assertEqual(self.printer._confirm_tool_call(tc), ToolConfirmDecision.DENY)
+
+    def test_confirm_tool_call_eof_denies(self):
+        """EOF (no input stream) at the prompt is treated as deny."""
+        tc = ToolCall(id="c1", name="get_weather", arguments="{}")
+        with patch("yaicli.printer.Prompt.ask", side_effect=EOFError):
+            self.assertEqual(self.printer._confirm_tool_call(tc), ToolConfirmDecision.DENY)
+
+    def test_display_stream_streams_reasoning_once(self):
+        """Reasoning is emitted append-only (header once, no per-frame re-render)."""
+        buf = StringIO()
+        console = Console(file=buf, force_terminal=False, width=80)
+        printer = Printer(console=console)
+        printer.show_reasoning = True
+
+        def gen():
+            yield LLMResponse(reasoning="line one\n")
+            yield LLMResponse(reasoning="line two\n")
+            yield LLMResponse(content="The answer")
+
+        printer.display_stream(gen())
+        out = buf.getvalue()
+        # Header printed exactly once, both reasoning lines present, content rendered.
+        self.assertEqual(out.count("Thinking:"), 1)
+        self.assertIn("line one", out)
+        self.assertIn("line two", out)
+        self.assertIn("The answer", out)
 
     def test_reset_state(self):
         """Test _reset_state method properly resets printer state."""
@@ -136,93 +182,119 @@ class TestPrinter(unittest.TestCase):
         self.printer.content_formatter.assert_called_once()
         self.printer.reasoning_formatter.assert_called_once()
 
-    def test_display_normal(self):
-        """Test display_normal method with LLMContent."""
-        # Create mock messages list
-        messages = []
+    def test_process_chunk_in_reasoning_appends_content(self):
+        """When in reasoning mode, chunk content is appended to reasoning, not content."""
+        self.printer.in_reasoning = True
+        content, reasoning = self.printer._process_chunk("more thinking", "", "", "existing ")
+        self.assertEqual(content, "")
+        self.assertEqual(reasoning, "existing more thinking")
 
-        # Create a simplified version of display_normal for testing
-        def mock_display_normal(iterator, msgs):
-            # Simulate what display_normal does without LLMContent dependency
-            self.printer._reset_state()
-            full_content = "Hello World"
-            full_reasoning = "thinking"
+    def test_format_display_text_empty_returns_empty_string(self):
+        """No content and no reasoning yields an empty string."""
+        result = self.printer._format_display_text("", "")
+        self.assertEqual(result, "")
 
-            # Add messages that would normally be added
-            msgs.append(ChatMessage(role="assistant", content="Hello "))
-            msgs.append(ChatMessage(role="assistant", content="Hello World"))
+    def test_display_normal_real(self):
+        """display_normal renders reasoning then content and returns accumulated text."""
+        buf = StringIO()
+        console = Console(file=buf, force_terminal=False, width=80)
+        printer = Printer(console=console)
+        printer.show_reasoning = True
 
-            return full_content, full_reasoning
+        def gen():
+            yield LLMResponse(reasoning="thinking process")
+            yield LLMResponse(content="final answer")
 
-        # Replace the method temporarily
-        original_display_normal = self.printer.display_normal
-        self.printer.display_normal = mock_display_normal
+        content, reasoning = printer.display_normal(gen())
+        self.assertIn("final answer", content)
+        self.assertIn("thinking process", reasoning)
+        out = buf.getvalue()
+        self.assertIn("Thinking:", out)
+        self.assertIn("final answer", out)
 
-        try:
-            # Call our simplified version
-            result_content, result_reasoning = self.printer.display_normal(None, messages)
+    def test_display_normal_skips_non_llmresponse(self):
+        """display_normal ignores non-LLMResponse items in the iterator."""
+        buf = StringIO()
+        console = Console(file=buf, force_terminal=False, width=80)
+        printer = Printer(console=console)
 
-            # Verify results
-            self.assertEqual(result_content, "Hello World")
-            self.assertEqual(result_reasoning, "thinking")
-        finally:
-            # Restore original method
-            self.printer.display_normal = original_display_normal
+        def gen():
+            yield RefreshLive()
+            yield LLMResponse(content="answer")
+
+        content, _ = printer.display_normal(gen())
+        self.assertIn("answer", content)
+
+    def test_emit_reasoning_disabled(self):
+        """_emit_reasoning returns immediately when reasoning display is off."""
+        self.printer.show_reasoning = False
+        printed_len, header = self.printer._emit_reasoning("some reasoning", 0, False, flush=True)
+        self.assertEqual(printed_len, len("some reasoning"))
+        self.assertFalse(header)
+
+    def test_emit_reasoning_buffers_incomplete_line(self):
+        """Without flush and no newline, _emit_reasoning buffers and returns unchanged."""
+        self.printer.show_reasoning = True
+        printed_len, header = self.printer._emit_reasoning("partial line", 0, False, flush=False)
+        self.assertEqual(printed_len, 0)
+        self.assertFalse(header)
 
     @patch("yaicli.printer.Live")
-    def test_display_stream(self, mock_live):
-        """Test display_stream method with LLMContent."""
-        # Create mock messages list
-        messages = []
+    def test_display_stream_confirm_tool_call(self, mock_live):
+        """A ConfirmToolCall pauses the live, prompts, and resumes with the decision."""
+        mock_live.return_value = MagicMock()
+        printer = Printer()
+        printer.console = MagicMock()
+        printer.show_reasoning = True
 
-        # Setup mock Live instance
-        mock_live_instance = MagicMock()
-        mock_live.return_value = mock_live_instance
+        tc = ToolCall(id="c1", name="fn", arguments="{}")
+        received = []
 
-        # Create a simplified version of display_stream for testing
-        def mock_display_stream(iterator, msgs):
-            # Simulate what display_stream does without LLMContent dependency
-            self.printer._reset_state()
+        def gen():
+            decision = yield ConfirmToolCall(tool_call=tc)
+            received.append(decision)
+            yield LLMResponse(content="done")
 
-            # Start live display
-            live = mock_live_instance
-            live.start()
+        with patch.object(printer, "_confirm_tool_call", return_value=ToolConfirmDecision.ONCE):
+            printer.display_stream(gen())
 
-            # Process chunks and update display
-            full_content = "World"
-            full_reasoning = ""
+        self.assertEqual(received, [ToolConfirmDecision.ONCE])
 
-            # Update display
-            formatted_display = self.printer._format_display_text(full_content, full_reasoning)
-            live.update(formatted_display)
+    @patch("yaicli.printer.Live")
+    def test_display_stream_refresh_live_resets(self, mock_live):
+        """A RefreshLive flushes reasoning, restarts the live, and resets accumulators."""
+        mock_live.return_value = MagicMock()
+        printer = Printer()
+        printer.console = MagicMock()
+        printer.show_reasoning = True
 
-            # Add messages that would normally be added
-            msgs.append(ChatMessage(role="assistant", content="Hello "))
-            msgs.append(ChatMessage(role="assistant", content="World"))
+        def gen():
+            yield LLMResponse(reasoning="first thinking\n")
+            yield RefreshLive()
+            yield LLMResponse(content="second answer")
 
-            # Stop live display
-            live.stop()
+        content, _ = printer.display_stream(gen())
+        self.assertIn("second answer", content)
 
-            return full_content, full_reasoning
+    def test_emit_reasoning_flush_emits_partial_line(self):
+        """With flush, _emit_reasoning emits buffered text even without a trailing newline."""
+        self.printer.show_reasoning = True
+        self.printer.console = MagicMock()
+        printed_len, header = self.printer._emit_reasoning("partial no newline", 0, False, flush=True)
+        self.assertEqual(printed_len, len("partial no newline"))
+        self.assertTrue(header)
+        self.printer.console.print.assert_any_call("Thinking:")
 
-        # Replace the method temporarily
-        original_display_stream = self.printer.display_stream
-        self.printer.display_stream = mock_display_stream
+    @patch("yaicli.printer.Live")
+    def test_display_stream_propagates_error(self, mock_live):
+        """An error raised while processing a chunk stops the live and propagates."""
+        mock_live.return_value = MagicMock()
+        printer = Printer()
+        printer.console = MagicMock()
 
-        try:
-            # Call our simplified version
-            result_content, result_reasoning = self.printer.display_stream(None, messages)
+        def gen():
+            yield LLMResponse(content="x")
 
-            # Verify Live methods were called
-            mock_live_instance.start.assert_called()
-            mock_live_instance.update.assert_called()
-            mock_live_instance.stop.assert_called()
-
-            # Verify time.sleep was called
-            # We're not calling time.sleep in our mock implementation
-
-            # Verify messages were appended
-            self.assertEqual(len(messages), 2)
-        finally:
-            # Restore original method
-            self.printer.display_stream = original_display_stream
+        with patch.object(printer, "_process_chunk", side_effect=RuntimeError("boom")):
+            with self.assertRaises(RuntimeError):
+                printer.display_stream(gen())
