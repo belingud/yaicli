@@ -641,6 +641,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Function Calling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-execution-confirmation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool Execution Confirmation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1845,6 +1860,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Function Calling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-execution-confirmation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool Execution Confirmation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2040,6 +2070,48 @@ ai<span class="w"> </span>--list-functions
 ai<span class="w"> </span><span class="s1">&#39;check the current dir total size&#39;</span><span class="w"> </span>--enable-functions
 </code></pre></div>
 <p>You can also define custom functions by adding them to <code>~/.config/yaicli/functions/</code>.</p>
+<h3 id="tool-execution-confirmation">Tool Execution Confirmation<a class="headerlink" href="#tool-execution-confirmation" title="Permanent link">&para;</a></h3>
+<p>By default YAICLI asks for confirmation before running each tool call:</p>
+<div class="highlight"><pre><span></span><code>╭─ Confirm tool call ─────────────────────────────────────╮
+│ execute_shell_command({&quot;shell_command&quot;: &quot;du -sh .&quot;})    │
+╰─────────────────────────────────────────────────────────╯
+Execute tool? [y]once, [a]session, [A]always, [n]o:
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>y</code></td>
+<td>Allow this call only</td>
+</tr>
+<tr>
+<td><code>a</code></td>
+<td>Allow for the rest of this session</td>
+</tr>
+<tr>
+<td><code>A</code></td>
+<td>Always allow — saved to <code>~/.config/yaicli/tool_permissions.json</code></td>
+</tr>
+<tr>
+<td><code>n</code></td>
+<td>Deny — the model receives a refusal result and can adapt</td>
+</tr>
+</tbody>
+</table>
+<p>Pressing Ctrl-C or sending EOF at the prompt is treated as a denial.</p>
+<p>In non-interactive sessions (piped stdin / no TTY), tools already in the persistent allowlist run automatically; all others are denied with a hint.</p>
+<p>To disable confirmation and restore silent execution:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># config.ini</span>
+<span class="na">TOOL_CONFIRM</span><span class="o">=</span><span class="s">false</span>
+</code></pre></div>
+<p>or:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">YAI_TOOL_CONFIRM</span><span class="o">=</span><span class="nb">false</span>
+</code></pre></div>
 <h2 id="mcp-machine-comprehension-protocol">MCP (Machine Comprehension Protocol)<a class="headerlink" href="#mcp-machine-comprehension-protocol" title="Permanent link">&para;</a></h2>
 <p>MCP allows AI models to use external tools:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Enable MCP in queries</span>

@@ -882,6 +882,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#thinking-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Thinking Mode
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1668,6 +1683,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#thinking-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Thinking Mode
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1725,6 +1755,17 @@
 <span class="na">TEMPERATURE</span><span class="o">=</span><span class="s">0.3</span>
 <span class="na">MAX_TOKENS</span><span class="o">=</span><span class="s">1024</span>
 </code></pre></div>
+<h3 id="thinking-mode">Thinking Mode<a class="headerlink" href="#thinking-mode" title="Permanent link">&para;</a></h3>
+<p>DeepSeek thinking mode can be controlled with the existing <code>EXTRA_BODY</code> and <code>REASONING_EFFORT</code> settings:</p>
+<div class="highlight"><pre><span></span><code><span class="na">PROVIDER</span><span class="o">=</span><span class="s">deepseek</span>
+<span class="na">API_KEY</span><span class="o">=</span><span class="s">sk-your-deepseek-api-key</span>
+<span class="na">MODEL</span><span class="o">=</span><span class="s">deepseek-v4-pro</span>
+<span class="na">REASONING_EFFORT</span><span class="o">=</span><span class="s">high</span>
+<span class="na">EXTRA_BODY={&quot;thinking&quot;:{&quot;type&quot;</span><span class="o">:</span><span class="s">&quot;enabled&quot;</span><span class="na">}}</span>
+</code></pre></div>
+<p>To explicitly disable thinking mode:</p>
+<div class="highlight"><pre><span></span><code><span class="na">EXTRA_BODY={&quot;thinking&quot;:{&quot;type&quot;</span><span class="o">:</span><span class="s">&quot;disabled&quot;</span><span class="na">}}</span>
+</code></pre></div>
 <h2 id="key-parameters">Key Parameters<a class="headerlink" href="#key-parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1775,6 +1816,11 @@
 <td>Additional request parameters</td>
 <td><code>{}</code></td>
 </tr>
+<tr>
+<td><code>REASONING_EFFORT</code></td>
+<td>Thinking effort (<code>high</code> or <code>max</code> for DeepSeek thinking models)</td>
+<td>-</td>
+</tr>
 </tbody>
 </table>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
@@ -1790,6 +1836,9 @@
 <ul>
 <li>Uses OpenAI-compatible client implementation</li>
 <li>Supports standard OpenAI API features</li>
+<li>Thinking mode returns <code>reasoning_content</code>, which YAICLI displays as reasoning output</li>
+<li>In thinking mode, DeepSeek ignores <code>temperature</code>, <code>top_p</code>, <code>presence_penalty</code>, and <code>frequency_penalty</code></li>
+<li>Live tool-call conversations preserve DeepSeek <code>reasoning_content</code> for follow-up requests; saved chat files do not yet persist full reasoning/tool metadata for exact replay after reload</li>
 <li>Designed for coding and reasoning tasks</li>
 <li>Cost-effective alternative to other providers</li>
 </ul>

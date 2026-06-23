@@ -1933,6 +1933,9 @@
 <span class="c1"># MCP settings</span>
 <span class="na">ENABLE_MCP</span><span class="o">=</span><span class="s">false</span>
 <span class="na">SHOW_MCP_OUTPUT</span><span class="o">=</span><span class="s">false</span>
+
+<span class="c1"># Tool confirmation (set to false to restore silent execution)</span>
+<span class="na">TOOL_CONFIRM</span><span class="o">=</span><span class="s">true</span>
 </code></pre></div>
 <h2 id="configuration-options-reference">Configuration Options Reference<a class="headerlink" href="#configuration-options-reference" title="Permanent link">&para;</a></h2>
 <table>
@@ -2118,6 +2121,12 @@
 <td>Max tool calls in one request</td>
 <td><code>8</code></td>
 <td><code>YAI_MAX_TOOL_CALL_DEPTH</code></td>
+</tr>
+<tr>
+<td><code>TOOL_CONFIRM</code></td>
+<td>Confirm each tool call before running it</td>
+<td><code>true</code></td>
+<td><code>YAI_TOOL_CONFIRM</code></td>
 </tr>
 </tbody>
 </table>
