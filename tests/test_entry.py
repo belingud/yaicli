@@ -1,9 +1,11 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from yaicli.const import DefaultRoleNames
+from yaicli.schemas import ImageData
 
 # Assuming your typer app object is named 'app' in yaicli.entry
 from yaicli.entry import DEFAULT_CONFIG_INI, app
@@ -177,3 +179,86 @@ class TestTyperApp:
 
             # The only expectation we have is that the test itself completes without raising errors
             assert True
+
+
+class TestImageOptions:
+    """Regression tests for `--image/-i` handling.
+
+    D4: an image-only invocation must not abort in `CLI.run()`; entry sends a
+    minimal non-empty prompt so the image is actually submitted.
+    """
+
+    def test_image_only_sends_minimal_prompt(self, mock_cli_class, mock_cli_instance):
+        """A single image without a prompt reaches CLI.run with a minimal prompt."""
+        image = ImageData(data="base64data", media_type="image/png", is_url=False)
+        mock_cli_class.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
+
+        with patch("yaicli.image.process_image_source", return_value=image) as mock_process:
+            result = runner.invoke(app, ["--image", "photo.png"])
+
+        assert result.exit_code == 0
+        mock_process.assert_called_once_with("photo.png")
+        mock_cli_instance.run.assert_called_once_with(
+            chat=False,
+            shell=False,
+            code=False,
+            user_input="Describe the image.",
+            images=[image],
+        )
+
+    def test_multiple_images_send_plural_prompt(self, mock_cli_class, mock_cli_instance):
+        """Several images without a prompt use the plural minimal prompt."""
+        first = ImageData(data="first", media_type="image/png", is_url=False)
+        second = ImageData(data="second", media_type="image/jpeg", is_url=False)
+        mock_cli_class.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
+
+        with patch("yaicli.image.process_image_source", side_effect=[first, second]) as mock_process:
+            result = runner.invoke(app, ["--image", "a.png", "--image", "b.jpg"])
+
+        assert result.exit_code == 0
+        assert mock_process.call_count == 2
+        mock_cli_instance.run.assert_called_once_with(
+            chat=False,
+            shell=False,
+            code=False,
+            user_input="Describe these images.",
+            images=[first, second],
+        )
+
+    def test_image_with_explicit_prompt_keeps_prompt(self, mock_cli_class, mock_cli_instance):
+        """An explicit prompt wins over the image-only minimal prompt."""
+        image = ImageData(data="base64data", media_type="image/png", is_url=False)
+        mock_cli_class.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
+
+        with patch("yaicli.image.process_image_source", return_value=image):
+            result = runner.invoke(app, ["--image", "photo.png", "What is in it?"])
+
+        assert result.exit_code == 0
+        mock_cli_instance.run.assert_called_once_with(
+            chat=False,
+            shell=False,
+            code=False,
+            user_input="What is in it?",
+            images=[image],
+        )
+
+    def test_invalid_image_exits_before_cli_is_built(self, mock_cli_class):
+        """Bad image sources keep the existing error + exit(1) path."""
+        with patch(
+            "yaicli.image.process_image_source",
+            side_effect=typer.BadParameter("Image file not found: missing.png"),
+        ):
+            result = runner.invoke(app, ["--image", "missing.png"])
+
+        assert result.exit_code == 1
+        assert "Image file not found: missing.png" in result.stdout
+        mock_cli_class.assert_not_called()
+
+    def test_no_prompt_no_image_still_prints_help(self, mock_cli_class):
+        """The empty-invocation help path is unchanged."""
+        with patch("sys.stdin.isatty", return_value=True):
+            result = runner.invoke(app)
+
+        assert result.exit_code == 0
+        assert "Usage:" in result.stdout
+        mock_cli_class.assert_not_called()

@@ -377,7 +377,7 @@ def main(
         if chat:
             print("Warning: --chat is ignored when stdin was redirected.")
             chat = False
-    if not any([final_prompt, chat]):
+    if not any([final_prompt, chat, image]):
         print(ctx.get_help())
         return
 
@@ -393,9 +393,10 @@ def main(
                 print(f"Error: {e}")
                 raise typer.Exit(1)
 
-    # Allow image-only invocation (no text prompt)
+    # Allow image-only invocation (no text prompt). CLI.run() aborts on a falsy prompt,
+    # so send a minimal non-empty prompt along with the images.
     if image_data_list and not final_prompt and not chat:
-        final_prompt = ""
+        final_prompt = "Describe the image." if len(image_data_list) == 1 else "Describe these images."
 
     if not any([final_prompt is not None, chat]):
         print(ctx.get_help())
