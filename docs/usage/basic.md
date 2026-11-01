@@ -53,6 +53,9 @@ ai --image https://example.com/diagram.png "Explain this diagram"
 ai --image photo.jpg
 ```
 
+When you omit the prompt, YAICLI sends a minimal prompt (`Describe the image.`,
+or `Describe these images.` for several images) together with the image.
+
 Supported formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), GIF (`.gif`), WebP (`.webp`).
 
 > **Note**: Image input works in single-shot mode only (not `--chat`). Providers without vision support will show a warning and ignore the images.

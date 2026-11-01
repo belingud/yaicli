@@ -198,7 +198,7 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `JUSTIFY`              | Text alignment                              | `default`                | `YAI_JUSTIFY`              |
 | `CHAT_HISTORY_DIR`     | Chat history directory                      | `<tempdir>/yaicli/chats` | `YAI_CHAT_HISTORY_DIR`     |
 | `MAX_SAVED_CHATS`      | Max saved chats                             | `20`                     | `YAI_MAX_SAVED_CHATS`      |
-| `ROLE_MODIFY_WARNING`  | Warn user when modifying role               | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
+| `ROLE_MODIFY_WARNING`  | Warn when modifying built-in roles          | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
 | `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
 | `SHOW_FUNCTION_OUTPUT` | Show function output when calling function  | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
 | `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
@@ -888,6 +888,9 @@ ai --image https://example.com/diagram.png "Explain this architecture diagram"
 ai --image photo.jpg
 ```
 
+When no prompt is given, YAICLI sends a minimal prompt (`Describe the image.`, or
+`Describe these images.` for multiple images) with the image.
+
 Supported formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), GIF (`.gif`), WebP (`.webp`).
 
 > **Note**: Image input is currently supported in single-shot mode only, not in interactive `--chat` mode. Providers without vision support (Cohere, HuggingFace, ChatGLM, ModelScope) will receive a warning and the images will be stripped.
@@ -1100,6 +1103,12 @@ The built-in `fs_read_file` function accepts a list of file paths, so several fi
 ```
 
 A single path string is still accepted for backward compatibility. Run `ai --reinstall-functions` to refresh the built-in function definitions after an upgrade.
+
+The built-in `fs_read_image` accepts an `image_paths` list the same way:
+
+```json
+{"image_paths": ["before.png", "after.png"]}
+```
 
 By default YAICLI asks for confirmation before running each tool call:
 

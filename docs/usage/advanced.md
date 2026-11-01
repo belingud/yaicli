@@ -88,6 +88,18 @@ functions are copied to `~/.config/yaicli/functions/` on first install, so run
 `ai --reinstall-functions` after upgrading to pick up the latest built-in
 function definitions.
 
+### Reading Multiple Images in One Call
+
+The built-in `fs_read_image` function follows the same list-based contract, so
+several images can be read and base64-encoded in one tool call:
+
+```json
+{"image_paths": ["artwork/before.png", "artwork/after.png"]}
+```
+
+A single path string is still accepted for backward compatibility. The same
+`ai --reinstall-functions` rule applies after upgrading.
+
 ### Tool Execution Confirmation
 
 By default YAICLI asks for confirmation before running each tool call:
@@ -172,6 +184,10 @@ You can send an image without a text prompt:
 ```bash
 ai --image photo.jpg
 ```
+
+When no text prompt is given, YAICLI sends a minimal prompt (`Describe the image.`,
+or `Describe these images.` for multiple images) so providers always receive a
+valid user message.
 
 ### Provider Compatibility
 
