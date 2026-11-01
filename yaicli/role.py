@@ -79,8 +79,25 @@ class RoleManager:
             raise ValueError(f"Role '{name}' does not exist.")
         return self.roles[name]
 
+    def _warn_builtin_role_modification(self, name: str) -> None:
+        """Warn when a built-in role is about to be modified, if enabled.
+
+        Custom (user) roles never trigger this warning. The check is gated by
+        the ``ROLE_MODIFY_WARNING`` config value (default: enabled).
+        """
+        if name not in DEFAULT_ROLES:
+            return
+        if not cfg.get("ROLE_MODIFY_WARNING", True):
+            return
+
+        self.console.print(
+            f"Warning: modifying built-in role '{name}'. Set ROLE_MODIFY_WARNING=false to disable this warning.",
+            style="yellow",
+        )
+
     def create_role(self, name: str, description: str) -> Role:
         """Create and save a new role"""
+        self._warn_builtin_role_modification(name)
         role = Role(name=name, prompt=description)
         self.roles[name] = role
 
@@ -93,6 +110,7 @@ class RoleManager:
 
     def delete_role(self, name: str) -> bool:
         """Delete a role"""
+        self._warn_builtin_role_modification(name)
 
         # Delete role file
         role_path = self.roles_dir / f"{name}.json"
@@ -120,20 +138,6 @@ class RoleManager:
                 }
             )
         return roles_list
-
-    def print_roles(self) -> None:
-        """Print all role information"""
-        table = Table("Name", "Description", "Temperature", "Top-P", title="Available Roles")
-
-        for role in self.list_roles():
-            table.add_row(
-                role.name,
-                role.prompt,
-                str(role.temperature),
-                str(role.top_p),
-            )
-
-        self.console.print(table)
 
     @classmethod
     @option_callback

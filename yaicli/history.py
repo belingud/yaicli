@@ -8,6 +8,9 @@ class LimitedFileHistory(FileHistory):
 
     This class extends the FileHistory class from prompt_toolkit.history.
     It adds a limit to the number of entries in the history file.
+
+    A non-positive ``max_entries`` disables history saving completely
+    (the documented ``MAX_HISTORY=0`` behaviour).
     """
 
     def __init__(self, filename: _StrOrBytesPath, max_entries: int = 500, trim_every: int = 2):
@@ -15,7 +18,7 @@ class LimitedFileHistory(FileHistory):
 
         Args:
             filename: Path to the history file
-            max_entries: Maximum number of entries to keep
+            max_entries: Maximum number of entries to keep; <= 0 disables saving
             trim_every: Trim history every `trim_every` appends
 
         Examples:
@@ -32,8 +35,13 @@ class LimitedFileHistory(FileHistory):
     def store_string(self, string: str) -> None:
         """Store a string in the history file.
 
-        Call the original method to deposit a new record.
+        Call the original method to deposit a new record. A non-positive
+        ``max_entries`` limit disables saving, so nothing is written and the
+        trim counter is not advanced.
         """
+        if self.max_entries <= 0:
+            return
+
         super().store_string(string)
 
         self._append_count += 1
@@ -42,8 +50,16 @@ class LimitedFileHistory(FileHistory):
             self._append_count = 0
 
     def _trim_history(self):
-        """Trim the history file to the specified maximum number of entries."""
+        """Trim the history file to the specified maximum number of entries.
+
+        With a non-positive ``max_entries`` no records are kept at all.
+        """
         if not exists(self.filename):
+            return
+
+        if self.max_entries <= 0:
+            with open(self.filename, "w", encoding="utf-8"):
+                pass
             return
 
         with open(self.filename, "r", encoding="utf-8") as f:

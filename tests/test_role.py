@@ -5,6 +5,7 @@ import pytest
 import typer
 from pytest import raises
 
+from yaicli.config import cfg
 from yaicli.const import DEFAULT_ROLES
 from yaicli.role import Role, RoleManager
 
@@ -198,16 +199,61 @@ class TestRoleManager:
         assert "test_role1" in role_names
         assert "test_role2" in role_names
 
-    @patch("yaicli.role.get_console")
-    def test_print_roles(self, mock_get_console, mock_roles_dir, mock_console):
-        """Test printing role information"""
-        mock_get_console.return_value = mock_console
+    @staticmethod
+    def _printed_messages(console):
+        """Return the first positional argument of every console.print call."""
+        return [str(call.args[0]) for call in console.print.call_args_list if call.args]
 
-        # Directly patch print_roles method instead of calling actual implementation
-        with patch.object(RoleManager, "print_roles") as mock_print_roles:
+    @patch("yaicli.role.get_console")
+    def test_builtin_role_modification_warns(self, mock_get_console, mock_roles_dir, mock_console):
+        """create_role/delete_role warn when a built-in role is modified."""
+        mock_get_console.return_value = mock_console
+        manager = RoleManager(roles_dir=mock_roles_dir, console=mock_console)
+        builtin_name = next(iter(DEFAULT_ROLES))
+
+        manager.create_role(builtin_name, "Overridden built-in prompt")
+        manager.delete_role(builtin_name)
+
+        warnings = self._printed_messages(mock_console)
+        assert len(warnings) == 2
+        assert all(builtin_name in message and "built-in role" in message for message in warnings)
+        assert all(call.kwargs.get("style") == "yellow" for call in mock_console.print.call_args_list)
+
+    @patch("yaicli.role.get_console")
+    def test_builtin_role_warning_defaults_to_enabled(self, mock_get_console, mock_roles_dir, mock_console):
+        """A missing ROLE_MODIFY_WARNING key defaults to warning enabled."""
+        mock_get_console.return_value = mock_console
+        config_without_flag = {key: value for key, value in cfg.items() if key != "ROLE_MODIFY_WARNING"}
+        with patch("yaicli.role.cfg", config_without_flag):
             manager = RoleManager(roles_dir=mock_roles_dir, console=mock_console)
-            manager.print_roles()
-            mock_print_roles.assert_called_once()
+            builtin_name = next(iter(DEFAULT_ROLES))
+            manager.create_role(builtin_name, "Overridden built-in prompt")
+
+        warnings = self._printed_messages(mock_console)
+        assert any(builtin_name in message and "built-in role" in message for message in warnings)
+
+    @patch("yaicli.role.get_console")
+    def test_builtin_role_modification_silent_when_disabled(self, mock_get_console, mock_roles_dir, mock_console):
+        """ROLE_MODIFY_WARNING=false suppresses the built-in role warning."""
+        mock_get_console.return_value = mock_console
+        with patch("yaicli.role.cfg", {**cfg, "ROLE_MODIFY_WARNING": False}):
+            manager = RoleManager(roles_dir=mock_roles_dir, console=mock_console)
+            builtin_name = next(iter(DEFAULT_ROLES))
+            manager.create_role(builtin_name, "Overridden built-in prompt")
+            manager.delete_role(builtin_name)
+
+        mock_console.print.assert_not_called()
+
+    @patch("yaicli.role.get_console")
+    def test_custom_role_modification_does_not_warn(self, mock_get_console, mock_roles_dir, mock_console):
+        """Custom roles never trigger the built-in role warning."""
+        mock_get_console.return_value = mock_console
+        manager = RoleManager(roles_dir=mock_roles_dir, console=mock_console)
+
+        manager.create_role("custom_role", "Custom prompt")
+        manager.delete_role("custom_role")
+
+        mock_console.print.assert_not_called()
 
     def test_print_list_option(self, tmp_path):
         """Test the print_list_option class method"""

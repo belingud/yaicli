@@ -134,3 +134,22 @@ class TestLimitedFileHistory:
         # Verify loading strings
         loaded_strings = list(history.load_history_strings())
         assert loaded_strings == ["line4\nline5\nline6", "line3"]
+
+    @pytest.mark.parametrize("max_entries", [0, -1])
+    def test_non_positive_limit_writes_nothing(self, history_file, max_entries):
+        """A non-positive max_entries disables history saving completely (MAX_HISTORY=0)."""
+        history = LimitedFileHistory(str(history_file), max_entries=max_entries)
+
+        history.append_string("command1")
+        history.append_string("command2")
+
+        assert not history_file.exists()
+
+    def test_non_positive_limit_trim_keeps_nothing(self, history_file):
+        """Trimming under a non-positive limit discards pre-existing records."""
+        history_file.write_text("# 1678886400\n+old command\n")
+        history = LimitedFileHistory(str(history_file), max_entries=0)
+
+        history._trim_history()
+
+        assert history_file.read_text() == ""

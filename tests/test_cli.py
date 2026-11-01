@@ -841,6 +841,23 @@ class TestKeyBindingsAndSetup:
         # Verify key bindings were set up
         mock_setup_bindings.assert_called_once()
 
+    @patch("yaicli.cli.LimitedFileHistory")
+    @patch("yaicli.cli.PromptSession")
+    @patch("yaicli.cli.HISTORY_FILE")
+    def test_prepare_chat_loop_uses_max_history(
+        self, mock_history_file, mock_prompt_session, mock_limited_history, cli_with_mocks
+    ):
+        """Prompt history is bounded by cfg["MAX_HISTORY"], not INTERACTIVE_ROUND."""
+        cli = cli_with_mocks
+        with (
+            patch("yaicli.cli.CLI._setup_key_bindings"),
+            patch("yaicli.cli.cfg", {**cfg, "MAX_HISTORY": 17}),
+        ):
+            cli.prepare_chat_loop()
+
+        mock_limited_history.assert_called_once_with(mock_history_file, max_entries=17)
+        assert cli.interactive_round == cfg["INTERACTIVE_ROUND"]
+
     @patch("yaicli.cli.CLI._setup_key_bindings")
     @patch("pathlib.Path.touch")  # Mock the Path.touch method
     def test_prepare_chat_loop_error(self, mock_touch, mock_setup_bindings, cli_with_mocks):

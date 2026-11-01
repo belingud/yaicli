@@ -418,7 +418,7 @@ class CLI:
         try:
             self.session = PromptSession(
                 key_bindings=self.bindings,
-                history=LimitedFileHistory(HISTORY_FILE, max_entries=self.interactive_round),
+                history=LimitedFileHistory(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"]),
                 auto_suggest=AutoSuggestFromHistory() if cfg.get("AUTO_SUGGEST", True) else None,
                 enable_history_search=True,
                 completer=AtPathCompleter(),
