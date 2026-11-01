@@ -41,3 +41,25 @@ Installed Trellis 0.6.17 for Claude Code and DeepSeek Harness (dsh), then comple
 ### Next Steps
 
 - Commit/verify the archive+journal commits and push master when ready.
+
+
+## Session 2: Fix bootstrap-known defects
+<!-- trellis-session: v=2 fp=c0b9be5da42d7b20 -->
+
+**Date**: 2026-11-01
+**Task**: Fix bootstrap-known defects
+**Branch**: `master`
+
+### Summary
+
+Fixed the seven defects recorded during the Trellis spec bootstrap: first-run config parse + YAI_PROVIDER (097b6b4), MAX_HISTORY/ROLE_MODIFY_WARNING wiring + dead print_roles removal (defdf80), structured FileReadResult context reads (8703514), image-only minimal prompt (c6df177), array-first fs_read_image schema (92a4d05), docs (37d46a7). Full suite 1055 passed + 1 environmental sandbox failure; independent verifier PASS on D1-D7. Commits 097b6b4..2011b37.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2011b37` | chore(trellis): record fixed bootstrap defects in spec and task |
+
+### Status
+
+[OK] **Completed**
