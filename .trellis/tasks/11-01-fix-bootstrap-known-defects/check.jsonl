@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/py/index.md", "reason": "Architecture/dependency rules to check against"}
+{"file": ".trellis/spec/py/config-and-context.md", "reason": "Config/role/context behaviour to verify"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "CLI/history/image behaviour to verify"}
+{"file": ".trellis/spec/py/function-tool-guidelines.md", "reason": "Function schema contract to verify"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "Quality gate and test conventions"}

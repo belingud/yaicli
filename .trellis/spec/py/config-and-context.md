@@ -15,24 +15,28 @@ else (roles, context, chat sessions, printer, CLI) imports `cfg` and reads upper
   then type-converts. `cfg = get_config()` is a `@lru_cache(1)` singleton (`get_config()` calls `sys.exit()` on
   `ConfigError`): **import `cfg`**, never construct `Config()` in feature code.
 - `DEFAULT_CONFIG_MAP` (`const.py`) entries have exactly `value`, `env_key` (`YAI_<KEY>`), `type`
-  (`bool`/`int`/`float`/`str`/`dict`). The env layer only iterates this map, so an absent key has **no env
-  override** — currently true for `PROVIDER` (see gaps).
+  (`bool`/`int`/`float`/`str`/`dict`). The env layer only iterates this map, so a key absent from the map has
+  **no env override** (the historical `YAI_PROVIDER` bug — `PROVIDER` now lives in the map).
 - Config file: `CONFIG_PATH = ~/.config/yaicli/config.ini`, single `[core]`, keys **case-sensitive uppercase**
   (`CasePreservingConfigParser.optionxform` is identity). A file without `[core]` is ignored; keys not in
-  `DEFAULT_CONFIG_MAP` pass through unchanged (providers rely on this for `PROVIDER`); a missing file is created
-  from `DEFAULT_CONFIG_INI`.
+  `DEFAULT_CONFIG_MAP` pass through unchanged; a missing file is created from `DEFAULT_CONFIG_INI` **and
+  parsed in the same `_load_from_file()` call**.
 - Type conversion (`_convert_value`): `bool` via `utils.str2bool` (`y/yes/t/true/on/1` + inverse, else
   `ValueError`), `dict` via `json.loads` (this makes `EXTRA_HEADERS`/`EXTRA_BODY` dicts), numeric via
   `int()`/`float()`. Invalid values warn and fall back to the typed default, never the raw string
-  (`tests/test_config.py::test_type_conversion_errors`).
+  (`tests/test_config.py::test_type_conversion_errors`). Empty file/env values count as "unset" and also
+  fall back to the typed default (`EXTRA_HEADERS`/`EXTRA_BODY` → `{}`, `REASONING_EFFORT` → `None`), so
+  the parsed `DEFAULT_CONFIG_INI` template does not leak `""` into typed consumers
+  (`tests/test_config.py::test_empty_template_values_fall_back_to_typed_defaults`).
 - `EXTRA_HEADERS`/`EXTRA_BODY` are consumed by providers, never config: `openai_provider.py:68` /
   `anthropic_provider.py:61-62` merge headers, and provider `COMPLETION_PARAMS_KEYS` maps `"extra_body": "EXTRA_BODY"`
   (`openai_provider.py:31`). Invalid JSON → warning + `{}`; providers guard with `if self.config["EXTRA_HEADERS"]:`.
-- Known gaps (verified): `PROVIDER` is not in `DEFAULT_CONFIG_MAP`, so it exists only when the file is *parsed*.
-  On fresh `HOME`, `_load_from_file()` writes `DEFAULT_CONFIG_INI` and returns without parsing, so the first run
-  raises `KeyError: 'PROVIDER'` in `CLI._create_client()`; `YAI_PROVIDER` is unread too. Fix both together.
-- `MAX_HISTORY`/`ROLE_MODIFY_WARNING` are declared in the map/template but never read: prompt history is bounded
-  by `INTERACTIVE_ROUND`, and the role-modification warning is not implemented.
+- First-run contract: `PROVIDER` is in `DEFAULT_CONFIG_MAP` (`value=DEFAULT_PROVIDER`,
+  `env_key=YAI_PROVIDER`, type `str`), and `_load_from_file()` parses the template it just wrote for a
+  missing file. A fresh `HOME` therefore has `cfg["PROVIDER"]` without raising `KeyError: 'PROVIDER'`,
+  and `YAI_PROVIDER` overrides file/default values.
+- `MAX_HISTORY` bounds the prompt history file (see Prompt History below) and `ROLE_MODIFY_WARNING` gates
+  the built-in-role warning in `role.py`; both are real consumers now, not dead keys.
 
 ## Adding or Changing a Config Key
 
@@ -65,7 +69,7 @@ else (roles, context, chat sessions, printer, CLI) imports `cfg` and reads upper
 - `StrEnum` has a Python 3.10 fallback (`class StrEnum(str, Enum)`); use it for new enums, never import `enum.StrEnum`.
 - `DEFAULT_ROLES` seeds role JSON files; `DEFAULT_CONFIG_INI` must stay in sync with `DEFAULT_CONFIG_MAP`
   (template-only keys are invisible to env/type conversion; map-only keys are not written for new users).
-- Provider/mode/command constants (`CMD_*`, `EXEC_MODE`/`CHAT_MODE`/`TEMP_MODE`/`CODE_MODE`, `NO_VISION_PROVIDERS`) are
+- Provider/mode/command constants (`CMD_*`, `EXEC_MODE`/`CHAT_MODE`/`TEMP_MODE`, `NO_VISION_PROVIDERS`) are
   string-or-tuple values shared with `cmd_handler.py`/`completer.py`/tests (most are strings; `CMD_HELP` and
   `CMD_CONTEXT` are tuples and `cmd_handler` branches on the type) — change them together.
 
@@ -80,9 +84,12 @@ else (roles, context, chat sessions, printer, CLI) imports `cfg` and reads upper
   `--delete-role`, `--list-roles`, `--show-role`); `RoleManager.check_id_ok` is a plain `@classmethod`
   used as the `--role` validator callback. The `@option_callback` methods run before `CLI` exists and exit
   via `typer.Exit`; they use the class-level `console`/`roles_dir`, which tests monkeypatch.
-- `role_mgr = RoleManager()` is a module-level singleton imported by `cli.py`; `print_roles()` is dead code indexing
-  `list_roles()` dicts with attribute access — use `--list-roles`. Add a built-in role by extending `DEFAULT_ROLES`
-  with `{"name": ..., "prompt": ...}`; existing installs get the JSON on next start via `_ensure_roles_dir()`.
+- `role_mgr = RoleManager()` is a module-level singleton imported by `cli.py`; there is no `print_roles()` —
+  listing/readout goes through `--list-roles` (`print_list_option`) and `--show-role`. Add a built-in role by
+  extending `DEFAULT_ROLES` with `{"name": ..., "prompt": ...}`; existing installs get the JSON on next start
+  via `_ensure_roles_dir()`.
+- `create_role()`/`delete_role()` warn (yellow) when the target name is a built-in (`DEFAULT_ROLES`) role and
+  `cfg.get("ROLE_MODIFY_WARNING", True)` is truthy; custom roles never warn (`tests/test_role.py`).
 
 ## Context (`context.py`)
 
@@ -95,15 +102,16 @@ Two mechanisms share one manager (`ctx_mgr` global), and `CLI._build_messages()`
 - **Temporary** (`@path`): `parse_at_references(text)` returns `(system_message, cleaned_text, images)`; the regex
   accepts quoted (`@"my file.txt"`) and unquoted paths, each hit resolved from cwd and **replaced in the prompt** by
   `'<filename>'`. Text files are inlined; image suffixes become `ImageData` via `encode_local_image`; failures warn.
-- Limits in `_read_file()`: binary suffixes (`{.png,.jpg,.pdf,.zip,.pyc,...}`) → `"[Binary file omitted]"`, file >
-  `1_000_000` bytes → `"[File too large: ... - omitted]"`, else `utf-8` with `errors="replace"`. Directory scans
-  (`_read_dir_recursive`) stop at depth 2, skip dotfiles and `default_ignores` (`.git`, `__pycache__`, `.venv`,
-  `node_modules`, ...); there is **no total-size cap** for directories.
-- Sentinel contract: `_read_file()` returns strings starting with `[` to mean "not usable" and `parse_at_references()`
-  treats any `content.strip()` starting with `[` as an error: it prints a yellow warning (embedding the real
-  text in the warning) and skips it, so real text starting with `[` (JSON arrays, `[link](...)`) is
-  warned-and-dropped after leading whitespace is stripped. Prefer a structured return over new `[...]`
-  messages if you touch this.
+- `_read_file()` returns `FileReadResult(content, error)` (`ok` property): binary suffixes, files >
+  `1_000_000` bytes and I/O failures set `error` to the display text (`[Binary file omitted]`,
+  `[File too large: ... - omitted]`, `[Error reading file: ...]`) and leave `content=None`; success returns
+  the decoded text (`utf-8` with `errors="replace"`). Directory scans (`_read_dir_recursive`) stop at
+  depth 2, skip dotfiles and `default_ignores` (`.git`, `__pycache__`, `.venv`, `node_modules`, ...), skip
+  error results, and have **no total-size cap**.
+- `parse_at_references()` includes any successful content regardless of its first character (files whose
+  content starts with `[` are no longer dropped) and warns/replaces the `@ref` only when `error` is set;
+  `get_context_messages()` skips unreadable persistent items instead of embedding a placeholder. Do not
+  reintroduce string sentinels — `FileReadResult` status is the only source of truth.
 - Tests (`tests/test_context.py`) use `tmp_path`, `monkeypatch.chdir` for relative `@` refs, `os.mkfifo` for the
   unsupported-type branch, and patch `yaicli.context.console` for output assertions.
 
@@ -111,9 +119,12 @@ Two mechanisms share one manager (`ctx_mgr` global), and `CLI._build_messages()`
 
 `LimitedFileHistory(FileHistory)` writes to `HISTORY_FILE` (`~/.yaicli_history`) and trims every `trim_every`
 appends (default 2) to the newest `max_entries` prompt-toolkit records (`# timestamp` header + `+line` lines).
-`CLI.prepare_chat_loop()` passes `max_entries=self.interactive_round`; `MAX_HISTORY` config is not used here.
-`tests/test_history.py` asserts record counting, reverse-chronological load and multi-line trimming — keep the
-`# ` / `+` file format if you change trimming.
+`CLI.prepare_chat_loop()` passes `max_entries=cfg["MAX_HISTORY"]`; a non-positive limit disables saving
+(`store_string` no-ops; the `_trim_history()` guard also clears the file if trimming is forced directly).
+The documented `MAX_HISTORY=0` semantics live in `docs/advanced/history.md` (the configuration table only
+lists the key). `INTERACTIVE_ROUND` does not bound this file — it only bounds the in-conversation chat
+messages. `tests/test_history.py` asserts record counting, reverse-chronological load, multi-line trimming
+and the zero-limit behaviour — keep the `# ` / `+` file format if you change trimming.
 
 ## Schemas (`schemas.py`) — Cross-Layer Contracts
 
@@ -143,11 +154,11 @@ uv run pytest tests/test_config.py tests/test_context.py tests/test_role.py test
 ```
 
 `tests/conftest.py` is session-scoped/autouse: `patched_config_path` patches
-`yaicli.config.CONFIG_PATH`, `setup_test_environment` sets `YAI_API_KEY`/`YAI_MODEL`, `mock_console` is a
-`MagicMock`. Caveat: the module-level `cfg` singleton is created at import, **before** the `CONFIG_PATH`
-patch applies, and `YAI_PROVIDER` (set by conftest) is not read by the current map — tests needing a
-provider patch `yaicli.cli.cfg` explicitly (`tests/test_cli.py:347`, `tests/test_image.py:420`); the
-`cli_with_mocks` helper in `tests/test_cli.py` instead injects a mock client.
+`yaicli.config.CONFIG_PATH`, `setup_test_environment` sets `YAI_API_KEY`/`YAI_MODEL` (and `YAI_PROVIDER`,
+which the map now reads), `mock_console` is a `MagicMock`. Caveat: the module-level `cfg` singleton is
+created at import, **before** the `CONFIG_PATH` patch applies, so tests needing a provider patch
+`yaicli.cli.cfg` explicitly (`tests/test_cli.py:347`, `tests/test_image.py:420`); the `cli_with_mocks`
+helper in `tests/test_cli.py` instead injects a mock client.
 
 ## Rules
 

@@ -62,24 +62,32 @@ layer set was **reshaped**, not filled:
 
 ---
 
-## Known defects documented (not fixed here — bootstrap documents reality)
+## Known defects documented by bootstrap — FIXED (2026-11-01)
 
-These were found while writing the specs and are recorded there as current state:
+These were found while writing the specs and recorded as "current state". All seven were fixed by
+the follow-up task `.trellis/tasks/archive/2026-11/11-01-fix-bootstrap-known-defects/`:
 
-- First run with an empty config directory crashes: `PROVIDER` is not in
-  `DEFAULT_CONFIG_MAP`, `Config._load_from_file()` writes the default ini and
-  returns without parsing it, so `CLI()` raises `KeyError: 'PROVIDER'`; `YAI_PROVIDER`
-  is likewise never read (reproduced with an empty `HOME`).
-- `const.CODE_MODE` is defined but never dispatched; "code mode" is the CODER role.
-- `MAX_HISTORY` and `ROLE_MODIFY_WARNING` are declared in `DEFAULT_CONFIG_MAP`/the
-  default ini but no code reads them.
-- An `--image`-only invocation builds an empty user prompt and aborts in `CLI.run()`.
-- `ContextManager` uses a `"[...]"`-prefixed string as its "unavailable" sentinel, so
-  real text files whose path/content starts with `[` can be silently dropped.
-- `RoleManager.print_roles()` is unwired/broken code (attribute access on a dict).
-- `functions/buildin/fs_read_image.py` still uses `Union[str, List[str]]` for
-  `image_paths` — the same schema shape recently fixed for `fs_read_file`
-  (commit `0d2d943`); migrate when that function is touched.
+- First run with an empty config directory crashed: `PROVIDER` was not in `DEFAULT_CONFIG_MAP`,
+  `Config._load_from_file()` wrote the default ini and returned without parsing it, so `CLI()`
+  raised `KeyError: 'PROVIDER'`; `YAI_PROVIDER` was likewise never read. **Fixed in `097b6b4`**
+  (PROVIDER in the map, created template parsed, empty values fall back to typed defaults).
+- `const.CODE_MODE` was defined but never dispatched; "code mode" is the CODER role.
+  **Removed in `097b6b4`.**
+- `MAX_HISTORY` and `ROLE_MODIFY_WARNING` were declared in `DEFAULT_CONFIG_MAP`/the default ini
+  but no code read them. **Wired in `defdf80`.**
+- An `--image`-only invocation built an empty user prompt and aborted in `CLI.run()`.
+  **Fixed in `c6df177`** (entry sends a minimal prompt).
+- `ContextManager` used a `"[...]"`-prefixed string as its "unavailable" sentinel, so real text
+  files whose path/content starts with `[` could be silently dropped. **Replaced by the
+  structured `FileReadResult` in `8703514`.**
+- `RoleManager.print_roles()` was unwired/broken code (attribute access on a dict).
+  **Removed in `defdf80`.**
+- `functions/buildin/fs_read_image.py` used `Union[str, List[str]]` for `image_paths` — the same
+  schema shape fixed for `fs_read_file` in `0d2d943`. **Migrated to the array-first contract in
+  `92a4d05`.**
+
+The follow-up task's PRD records the acceptance tests and verification evidence; the specs under
+`.trellis/spec/py/` were updated to the fixed behaviour.
 
 ---
 

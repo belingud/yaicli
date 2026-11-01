@@ -41,7 +41,7 @@ Module map:
 | Module | Owns |
 | --- | --- |
 | `yaicli/entry.py` | Typer app, CLI options, `--list-*`/`--install-functions` callbacks, top-level error handling. Imports `CLI` lazily inside `main()` (line ~409) so `--help` and simple flags stay fast. |
-| `yaicli/cli.py` | `CLI` orchestrator: runtime mode dispatch (`TEMP_MODE`/`CHAT_MODE`/`EXEC_MODE`; `const.CODE_MODE` exists but is not dispatched — "code mode" is the CODER role + plaintext printer), REPL loop, role/session/history wiring, tool-call confirmation `generator.send()` plumbing. |
+| `yaicli/cli.py` | `CLI` orchestrator: runtime mode dispatch (`TEMP_MODE`/`CHAT_MODE`/`EXEC_MODE`; `--code` is the CODER role + plaintext printer, not a runtime mode), REPL loop, role/session/history wiring, tool-call confirmation `generator.send()` plumbing. |
 | `yaicli/chat.py` | `Chat` message model + `FileChatManager` (save/load/list/delete chat files). |
 | `yaicli/cmd_handler.py` | `CmdHandler` for slash commands (`/clear`, `/mode`, `/add`, `/context`, `/save`, ...). |
 | `yaicli/completer.py` | prompt_toolkit completer for `/` commands and `@` paths. |

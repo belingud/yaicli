@@ -21,9 +21,11 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 - Print-and-exit flags (`--version`, `--list-roles`, `--list-chats`, ...) use `@option_callback`
   (`yaicli/utils.py`), which runs the callback then raises `typer.Exit`; never construct `CLI` for them.
 - `main()` input order: `--template` prints `DEFAULT_CONFIG_INI`; non-TTY stdin is read and prepended
-  (`f"{stdin}\n\n{prompt}"`) and forces `--chat=False` with a warning; empty prompt + no chat prints
-  `ctx.get_help()`; `--image` sources go through `process_image_source` (`typer.BadParameter` → exit 1);
-  `--role` is ignored with a warning for `--shell`/`--code`.
+  (`f"{stdin}\n\n{prompt}"`) and forces `--chat=False` with a warning; empty prompt + no chat + no
+  `--image` prints `ctx.get_help()`; `--image` sources go through `process_image_source`
+  (`typer.BadParameter` → exit 1) and an image-only invocation gets a minimal prompt
+  (`Describe the image.` / `Describe these images.` for several); `--role` is ignored with a warning for
+  `--shell`/`--code`.
 - Only here are exceptions turned into user text: `YaicliError` → `YAICLI Error: ...`,
   `typer.Abort`/`typer.Exit` swallowed, other `Exception` → `Unknown error: ...`; `tests/test_entry.py`
   drives it with `typer.testing.CliRunner` + `patch("yaicli.cli.CLI", ...)`.
@@ -31,15 +33,16 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 ## Runtime Modes & Dispatch (`cli.py`)
 
 - Runtime modes are three strings: `TEMP_MODE` (default single-shot), `CHAT_MODE` (REPL), `EXEC_MODE`
-  (generate-then-confirm shell command). `const.CODE_MODE = "code"` exists but is **unused**: code mode is
-  the `CODER` role plus `Printer(content_markdown=False)`, not a `current_mode`. A fourth mode requires
-  updating `get_prompt_tokens()`, `_get_tool_policy()`, `CmdHandler` and prompt-session setup.
+  (generate-then-confirm shell command). There is no code runtime mode: `--code` selects the `CODER` role
+  plus `Printer(content_markdown=False)` through `evaluate_role_name`, not a `current_mode`. A fourth mode
+  requires updating `get_prompt_tokens()`, `_get_tool_policy()`, `CmdHandler` and prompt-session setup.
 - `CLI.evaluate_role_name(code, shell, role)` (`cli.py:154`) is the only precedence rule: `code` > `shell`
   > explicit `role` > `DEFAULT`. `set_role()` applies side effects: `CODER` → plaintext `Printer`, `SHELL`
   → `current_mode = EXEC_MODE`.
 - `CLI.run()`: `chat=True` loads a session by `user_input` title then calls `_run_repl()`; otherwise
   `_run_once()` = `set_role(...)` + `_process_user_input()`. Empty `user_input` with `chat=False` raises
-  `typer.Abort` (see the image-only gap below).
+  `typer.Abort`; `entry.main` makes sure image-only calls pass a non-empty prompt, so this only fires for
+  direct `CLI.run` callers.
 - DI seam: `CLI(verbose, role, chat_manager, role_manager, context_manager, client)`, defaulting to the
   singletons `chat_mgr`/`role_mgr`/`ctx_mgr`; tests pass `MagicMock`s and overwrite `cli.console`/`cli.session`.
   `__init__` resolves "auto" `OS_NAME`/`SHELL_NAME` via `detect_os`/`detect_shell`; `--verbose` masks `API_KEY`.
@@ -52,14 +55,15 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 - Images: repeatable `--image/-i` is processed in `entry.main` by `process_image_source()` (http(s) URL →
   `ImageData(is_url=True)`; local path → `validate_local_image()` then base64, `typer.BadParameter` → exit
   1). `@image.png` becomes `ImageData` via `ContextManager.parse_at_references()` instead of text.
-  Known gap: entry allows image-only invocation but `CLI.run()` aborts on empty `user_input`; if you fix
-  one side, fix both.
+  Image-only invocations are handled in `entry.main`, which substitutes `Describe the image.` /
+  `Describe these images.` so `CLI.run()` never receives an empty prompt.
 - `_get_tool_policy()` (`cli.py:308`) is the single `ToolPolicy` source: `EXEC_MODE` disables functions
   **and** MCP; else pass `cfg["ENABLE_FUNCTIONS"]`/`cfg["ENABLE_MCP"]`. The client intersects it with the
   provider default (`Provider.resolve_tool_policy`), so disable tools here, never ad hoc.
 - After each turn `_process_user_input()` rebuilds `chat.history` from the client-returned messages
   **filtering out every `role == "system"`**, then `_check_history_len()` trims to `INTERACTIVE_ROUND * 2`
-  messages (not `MAX_HISTORY`). `tests/test_cli.py::TestMessageFiltering` locks the filtering in.
+  messages. `INTERACTIVE_ROUND` is the in-conversation budget only; the prompt-history file is bounded by
+  `MAX_HISTORY` (below). `tests/test_cli.py::TestMessageFiltering` locks the filtering in.
 - `_confirm_and_execute()` is the only exec-mode execution path: `filter_command()` strips markdown fences,
   a `Panel` titled "Suggest Command" is shown, `Prompt.ask` offers `y/n/e`, `e` edits via
   `prompt_toolkit.prompt` (EOF cancels), and only then `subprocess.call(cmd, shell=True)`.
@@ -68,9 +72,11 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 
 - `prepare_chat_loop()` sets `CHAT_MODE`, installs Shift+Tab (`s-tab`) chat/exec toggling in
   `_setup_key_bindings()`, touches `HISTORY_FILE`, then builds `PromptSession` with
-  `LimitedFileHistory(HISTORY_FILE, max_entries=self.interactive_round)`, `AutoSuggestFromHistory()` when
-  `cfg["AUTO_SUGGEST"]`, `AtPathCompleter()`, `complete_while_typing=True`; on failure it falls back to
-  `PromptSession(key_bindings=...)` and prints `Error initializing prompt session history: {e}`.
+  `LimitedFileHistory(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"])` (a non-positive `MAX_HISTORY`
+  disables history saving), `AutoSuggestFromHistory()` when `cfg["AUTO_SUGGEST"]`, `AtPathCompleter()`,
+  `complete_while_typing=True`; on failure it falls back to `PromptSession(key_bindings=...)` and prints
+  `Error initializing prompt session history: {e}`. `INTERACTIVE_ROUND` is unrelated: it only bounds the
+  chat messages kept by `_check_history_len()` (`* 2`).
 - `_run_repl()` loop: separator → `session.prompt(self.get_prompt_tokens)` → strip → skip blank →
   `_handle_special_commands()` (tri-state `False`=exit, `True`=handled, `str`=prompt) →
   `_process_user_input()`. `KeyboardInterrupt` during a turn is printed and continues; at the prompt it

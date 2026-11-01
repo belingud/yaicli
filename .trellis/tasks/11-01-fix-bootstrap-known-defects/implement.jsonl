@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/py/index.md", "reason": "Package architecture, dependency rules and where-new-code-goes"}
+{"file": ".trellis/spec/py/config-and-context.md", "reason": "Config layering, role system, context manager and history rules"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "CLI modes, REPL/history setup and image input rules"}
+{"file": ".trellis/spec/py/function-tool-guidelines.md", "reason": "Builtin function schema contract and tool-call tests"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "Test layout, fixtures and quality gate"}

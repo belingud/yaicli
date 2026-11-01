@@ -61,7 +61,9 @@ else:
 
 Guards: `tests/tools/test_fs_read_file.py::TestFSReadFileSchema` asserts `type == "array"`,
 `items == {"type": "string"}`, no `anyOf`; `::TestFSReadFileGeminiSchema` asserts `ARRAY`/`STRING`
-and `any_of is None`. `fs_read_image.py` still advertises a Union — migrate it, do not copy it.
+and `any_of is None`. `fs_read_image.py` follows the same array-first contract now
+(`image_paths: List[str]`, legacy `str`/`tuple` normalized in `execute`) with matching guards in
+`tests/tools/test_fs_read_image.py::TestFSReadImageSchema` / `::TestFSReadImageGeminiSchema`.
 
 ## Built-in Function Contract (`yaicli/functions/buildin/`)
 

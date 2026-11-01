@@ -131,6 +131,7 @@
     ".trellis/scripts/hooks/linear_sync.py": "e09cc4ce4699aada908808718698f33f705a3edf55c4dcf8f777ad892f80ca79",
     ".trellis/scripts/init_developer.py": "f9e6c0d882406e81c8cd6b1c5abb204b0befc0069ff89cf650cd536a80f8c60e",
     ".trellis/scripts/task.py": "b415e0a2dbc9e8cba1ada0c7997999aaaaea0eec96d3419db640830e88e84cfe",
-    ".trellis/workflow.md": "eb4508a4f6792f3d53705c1f9e7d21807dabd774543bd7b01f56372a704f6ad0"
+    ".trellis/workflow.md": "eb4508a4f6792f3d53705c1f9e7d21807dabd774543bd7b01f56372a704f6ad0",
+    "AGENTS.md": "5b9dd86af18114e709037f39f84480f9fc1f66111a5d0a3b909a0633aa9b7868"
   }
 }
