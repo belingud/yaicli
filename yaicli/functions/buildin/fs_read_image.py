@@ -1,7 +1,7 @@
 import base64
 import json
 from pathlib import Path
-from typing import List, Union
+from typing import List
 
 from yaicli.function_schema import OpenAISchema
 from pydantic import Field
@@ -9,15 +9,16 @@ from pydantic import Field
 
 class Function(OpenAISchema):
     """
-    Read one or multiple image files and return base64 encoded data as JSON.
+    Read one or multiple image files in a single call and return base64 encoded data as JSON.
     """
 
-    image_paths: Union[str, List[str]] = Field(
+    image_paths: List[str] = Field(
         ...,
-        json_schema_extra={
-            "example": "/path/to/image.png",
-        },
-        description="Image path(s) to read. Can be a single path string or a list of paths.",
+        examples=[["/path/to/image1.png", "/path/to/image2.png"]],
+        description=(
+            "Image paths to read. Pass a list of paths to read several images in a single call; "
+            "a single path string is also accepted for backward compatibility."
+        ),
     )
     max_bytes: int = Field(
         default=5 * 1024 * 1024,
@@ -31,19 +32,34 @@ class Function(OpenAISchema):
         title = "fs_read_image"
 
     @classmethod
-    def execute(cls, image_paths: Union[str, List[str]], max_bytes: int = 5 * 1024 * 1024) -> str:
+    def execute(cls, image_paths: List[str], max_bytes: int = 5 * 1024 * 1024) -> str:
         """
-        Read one or multiple image files and return base64 encoded data as JSON.
+        Read one or multiple image files in a single call and return base64 encoded data as JSON.
 
         Args:
-            image_paths: Single image path or list of image paths.
+            image_paths: List of image paths to read in a single call. A single path
+                string is also accepted for backward compatibility.
             max_bytes: Maximum allowed file size per image in bytes.
 
         Returns:
             str: JSON string with image data.
         """
-        # Normalize to list
-        paths_list = [image_paths] if isinstance(image_paths, str) else image_paths
+        # Normalize to a list of paths. The model-facing schema advertises an array,
+        # but old tool calls may still pass a single path string (or a tuple).
+        if isinstance(image_paths, str):
+            paths_list = [image_paths]
+        elif isinstance(image_paths, (list, tuple)):
+            paths_list = list(image_paths)
+        else:
+            return json.dumps(
+                {
+                    "error": (
+                        "image_paths must be a list of image paths (a single path string is also accepted), "
+                        f"got {type(image_paths).__name__}"
+                    )
+                },
+                ensure_ascii=False,
+            )
 
         if not paths_list:
             return json.dumps({"error": "No image paths provided"}, ensure_ascii=False)
