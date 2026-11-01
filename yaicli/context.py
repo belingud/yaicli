@@ -12,6 +12,25 @@ console = get_console()
 
 
 @dataclass
+class FileReadResult:
+    """Structured result of reading a file for context.
+
+    Exactly one side is meaningful: ``content`` holds real file text when the read
+    succeeded, ``error`` holds a human-readable reason when the file cannot be
+    embedded (binary suffix, too large, unreadable). Callers decide whether to show
+    the error; no caller interprets the text itself as a status marker.
+    """
+
+    content: Optional[str] = None
+    error: Optional[str] = None
+
+    @property
+    def ok(self) -> bool:
+        """True when the file was read and can be embedded as text."""
+        return self.content is not None
+
+
+@dataclass
 class ContextItem:
     """Item in the context (file or directory)"""
 
@@ -139,9 +158,11 @@ class ContextManager:
         for item in self.items.values():
             path = Path(item.path)
             if item.type == "file":
-                content = self._read_file(path)
-                if content is not None:
-                    context_content.append(f"## File: {path.name}\nPath: {path}\n```\n{content}\n```\n")
+                result = self._read_file(path)
+                if result.ok:
+                    context_content.append(f"## File: {path.name}\nPath: {path}\n```\n{result.content}\n```\n")
+                else:
+                    console.print(f"Cannot include context file {path}: {result.error}", style="yellow")
             elif item.type == "dir":
                 # For directories, valid recursively (with limit)
                 # For now, let's just go 2 levels deep to avoid massive context
@@ -203,14 +224,13 @@ class ContextManager:
                             console.print(f"Warning: Could not process image @{path_str}: {e}", style="yellow")
                             cleaned_text = cleaned_text.replace(full_match, f"'{path.name}'")
                     else:
-                        content = self._read_file(path)
-                        # Check if content is valid text (not an error/warning message starting with [)
-                        if content and not content.strip().startswith("["):
-                            file_contents.append(f"\n## File: {path.name}\nPath: {path}\n```\n{content}\n```\n")
+                        result = self._read_file(path)
+                        if result.ok:
+                            file_contents.append(f"\n## File: {path.name}\nPath: {path}\n```\n{result.content}\n```\n")
                             cleaned_text = cleaned_text.replace(full_match, f"'{path.name}'")
                         else:
                             # File exists but has issues (binary, too large, error)
-                            console.print(f"Warning: Cannot include @{path_str}: {content}", style="yellow")
+                            console.print(f"Warning: Cannot include @{path_str}: {result.error}", style="yellow")
                             cleaned_text = cleaned_text.replace(full_match, f"'{path.name}'")
             except Exception as e:
                 console.print(f"Warning: Could not read @{path_str}: {e}", style="yellow")
@@ -219,8 +239,13 @@ class ContextManager:
             return "\n".join(file_contents), cleaned_text, at_images
         return "", cleaned_text, at_images
 
-    def _read_file(self, path: Path) -> Optional[str]:
-        """Safely read file content"""
+    def _read_file(self, path: Path) -> FileReadResult:
+        """Safely read file content.
+
+        Returns a :class:`FileReadResult`: ``content`` on success, otherwise
+        ``error`` with the reason the file cannot be embedded (binary suffix, too
+        large, or an I/O failure).
+        """
         try:
             # Skip binary files roughly
             # This is a simple check, could be improved
@@ -237,17 +262,17 @@ class ContextManager:
                 ".gz",
                 ".pyc",
             }:
-                return "[Binary file omitted]"
+                return FileReadResult(error="[Binary file omitted]")
 
             # Skip if file is too large (e.g. > 1MB)
             if path.stat().st_size > 1_000_000:
-                return f"[File too large: {path.stat().st_size} bytes - omitted]"
+                return FileReadResult(error=f"[File too large: {path.stat().st_size} bytes - omitted]")
 
             with open(path, "r", encoding="utf-8", errors="replace") as f:
-                return f.read()
+                return FileReadResult(content=f.read())
         except Exception as e:
             console.print(f"Error reading file {path}: {e}", style="red")
-            return f"[Error reading file: {e}]"
+            return FileReadResult(error=f"[Error reading file: {e}]")
 
     def _read_dir_recursive(self, dir_path: Path, content_list: List[str], current_depth: int, max_depth: int):
         """Recursively read directory content"""
@@ -262,9 +287,9 @@ class ContextManager:
                     continue
 
                 if child.is_file():
-                    file_content = self._read_file(child)
-                    if file_content:
-                        content_list.append(f"## File: {child.name}\nPath: {child}\n```\n{file_content}\n```\n")
+                    result = self._read_file(child)
+                    if result.ok:
+                        content_list.append(f"## File: {child.name}\nPath: {child}\n```\n{result.content}\n```\n")
                 elif child.is_dir():
                     self._read_dir_recursive(child, content_list, current_depth + 1, max_depth)
         except Exception as e:

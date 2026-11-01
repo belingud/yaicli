@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from yaicli.context import ContextManager
+from yaicli.context import ContextManager, FileReadResult
 
 
 @pytest.fixture
@@ -328,28 +328,156 @@ def test_list_items_relative_path(context_manager, tmp_path, monkeypatch):
     assert len(context_manager.items) == 1
 
 
+def test_read_file_success_returns_real_content(context_manager, tmp_path):
+    """A successful read puts untouched text in content (even "[...]" content)."""
+    data = tmp_path / "data.json"
+    data.write_text("[1, 2, 3]")
+
+    result = context_manager._read_file(Path(str(data)))
+
+    assert isinstance(result, FileReadResult)
+    assert result.ok is True
+    assert result.error is None
+    assert result.content == "[1, 2, 3]"
+
+
 def test_read_file_binary_omitted(context_manager, tmp_path):
-    """_read_file returns a placeholder for known binary suffixes."""
+    """_read_file reports known binary suffixes via the error field."""
     pdf = tmp_path / "doc.pdf"
     pdf.write_bytes(b"%PDF-1.4")
-    assert context_manager._read_file(Path(str(pdf))) == "[Binary file omitted]"
+
+    result = context_manager._read_file(Path(str(pdf)))
+
+    assert result.ok is False
+    assert result.content is None
+    assert result.error == "[Binary file omitted]"
 
 
 def test_read_file_too_large(context_manager, tmp_path):
-    """_read_file omits files larger than 1MB."""
+    """_read_file omits files larger than 1MB via the error field."""
     big = tmp_path / "big.txt"
     big.write_text("a" * 1_000_001)
+
     result = context_manager._read_file(Path(str(big)))
-    assert "File too large" in result
+
+    assert result.ok is False
+    assert result.content is None
+    assert "File too large" in result.error
 
 
 def test_read_file_error(context_manager, tmp_path):
-    """_read_file catches read errors and returns an error string."""
+    """_read_file catches read errors and reports them via the error field."""
     target = tmp_path / "ghost.txt"
     target.write_text("x")
     with patch("builtins.open", side_effect=OSError("boom")):
         result = context_manager._read_file(Path(str(target)))
-    assert "Error reading file" in result
+    assert result.ok is False
+    assert result.content is None
+    assert "Error reading file" in result.error
+
+
+def test_parse_at_references_includes_content_starting_with_bracket(context_manager, tmp_path, monkeypatch):
+    """Real text starting with "[" is content, not a failure sentinel (D5)."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data.json").write_text("[1, 2, 3]")
+
+    at_content, cleaned_input, at_images = context_manager.parse_at_references("Check @data.json")
+
+    assert "## File: data.json" in at_content
+    assert "[1, 2, 3]" in at_content
+    assert "'data.json'" in cleaned_input
+    assert at_images == []
+
+
+def test_directory_context_includes_content_starting_with_bracket(context_manager, tmp_path):
+    """Directory context embeds real "["-prefixed text instead of dropping it."""
+    (tmp_path / "data.json").write_text("[1, 2, 3]")
+    (tmp_path / "notes.md").write_text("[link](https://example.com)")
+    context_manager.add(str(tmp_path))
+
+    messages = context_manager.get_context_messages()
+
+    assert len(messages) == 1
+    assert "[1, 2, 3]" in messages[0].content
+    assert "[link](https://example.com)" in messages[0].content
+
+
+def test_parse_at_references_omits_binary_with_warning(context_manager, tmp_path, monkeypatch):
+    """Binary references still warn and contribute no content."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "doc.pdf").write_bytes(b"%PDF-1.4")
+
+    with patch("yaicli.context.console", MagicMock()) as mock_console:
+        at_content, cleaned_input, at_images = context_manager.parse_at_references("Check @doc.pdf")
+
+    assert at_content == ""
+    assert "'doc.pdf'" in cleaned_input
+    assert at_images == []
+    printed = [str(call.args[0]) for call in mock_console.print.call_args_list]
+    assert any("Cannot include @doc.pdf" in text for text in printed)
+
+
+def test_parse_at_references_omits_too_large_with_warning(context_manager, tmp_path, monkeypatch):
+    """Too-large references still warn and contribute no content."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "big.txt").write_text("a" * 1_000_001)
+
+    with patch("yaicli.context.console", MagicMock()) as mock_console:
+        at_content, cleaned_input, _ = context_manager.parse_at_references("Check @big.txt")
+
+    assert at_content == ""
+    assert "'big.txt'" in cleaned_input
+    printed = [str(call.args[0]) for call in mock_console.print.call_args_list]
+    assert any("Cannot include @big.txt" in text for text in printed)
+
+
+def test_parse_at_references_omits_read_error_with_warning(context_manager, tmp_path, monkeypatch):
+    """A failed read warns and contributes no content."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "ghost.txt").write_text("x")
+
+    with (
+        patch("yaicli.context.console", MagicMock()) as mock_console,
+        patch("builtins.open", side_effect=OSError("boom")),
+    ):
+        at_content, cleaned_input, _ = context_manager.parse_at_references("Check @ghost.txt")
+
+    assert at_content == ""
+    assert "'ghost.txt'" in cleaned_input
+    printed = [str(call.args[0]) for call in mock_console.print.call_args_list]
+    assert any("Cannot include @ghost.txt" in text for text in printed)
+
+
+def test_read_dir_recursive_skips_unreadable_files(context_manager, tmp_path):
+    """Directory context never embeds binary/too-large placeholders."""
+    (tmp_path / "good.txt").write_text("good content")
+    (tmp_path / "image.png").write_bytes(b"\x89PNG")
+    (tmp_path / "big.txt").write_text("a" * 1_000_001)
+
+    content = []
+    context_manager._read_dir_recursive(Path(str(tmp_path)), content, 0, 2)
+    joined = "\n".join(content)
+
+    assert "good content" in joined
+    assert "image.png" not in joined
+    assert "big.txt" not in joined
+    assert "Binary file omitted" not in joined
+    assert "File too large" not in joined
+
+
+def test_get_context_messages_skips_explicit_unreadable_file(context_manager, tmp_path):
+    """An explicitly added binary file is reported, not embedded as placeholder text."""
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_bytes(b"%PDF-1.4")
+    context_manager.add(str(pdf))
+
+    with patch("yaicli.context.console", MagicMock()) as mock_console:
+        messages = context_manager.get_context_messages()
+
+    assert "doc.pdf" not in messages[0].content
+    assert "Binary file omitted" not in messages[0].content
+    printed = [str(call.args[0]) for call in mock_console.print.call_args_list]
+    assert any("Cannot include context file" in text for text in printed)
 
 
 def test_read_dir_recursive_depth_limit(context_manager, tmp_path):
