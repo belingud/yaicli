@@ -95,18 +95,23 @@ class Config(dict):
     def _load_from_file(self) -> None:
         """Load configuration from the config file.
 
-        Creates default config file if it doesn't exist.
+        Creates the default config file if it doesn't exist, then parses it so a first
+        run exposes the same keys/values as subsequent runs (e.g. PROVIDER).
         """
-        if not CONFIG_PATH.exists():
-            self.console.print("Creating default configuration file.", style="bold yellow", justify=self["JUSTIFY"])
-            CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                f.write(DEFAULT_CONFIG_INI)
-            return
-
         config_parser = CasePreservingConfigParser()
         try:
-            config_parser.read(CONFIG_PATH, encoding="utf-8")
+            if CONFIG_PATH.exists():
+                config_parser.read(CONFIG_PATH, encoding="utf-8")
+            else:
+                self.console.print(
+                    "Creating default configuration file.", style="bold yellow", justify=self["JUSTIFY"]
+                )
+                CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+                with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                    f.write(DEFAULT_CONFIG_INI)
+                # Parse the content just written instead of returning early: the shared
+                # parsing path below is what makes template keys (e.g. PROVIDER) visible.
+                config_parser.read_string(DEFAULT_CONFIG_INI, source=str(CONFIG_PATH))
         except configparser.DuplicateOptionError as e:
             self.console.print(f"[red]Error:[/red] {e}", justify=self["JUSTIFY"])
             raise ConfigError(str(e)) from None
@@ -148,7 +153,11 @@ class Config(dict):
         Returns:
             The converted value or the default value if conversion fails
         """
-        if raw_value is None:
+        # Empty file/env values mean "unset": fall back to the typed map default so a
+        # config.ini template with `EXTRA_HEADERS=` / `REASONING_EFFORT=` resolves to
+        # {} / None on every run (including the first run, which now parses the
+        # template it just wrote) instead of leaking raw "" into typed consumers.
+        if raw_value is None or raw_value == "":
             raw_value = DEFAULT_CONFIG_MAP[key]["value"]
 
         try:
@@ -195,8 +204,11 @@ class Config(dict):
             target_type = config_info["type"]
             raw_value = self[key]
 
-            # Skip conversion if already correct type (optimization for common case)
-            if isinstance(raw_value, target_type):
+            # Skip conversion if already correct type (optimization for common case).
+            # Empty strings are the exception: they mean "unset" and must still go
+            # through _convert_value so typed defaults (e.g. None for REASONING_EFFORT,
+            # {} for EXTRA_HEADERS) are restored instead of leaking "".
+            if isinstance(raw_value, target_type) and raw_value != "":
                 continue
 
             # Convert the value

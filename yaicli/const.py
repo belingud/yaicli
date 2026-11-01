@@ -39,7 +39,6 @@ CMD_HELP = ("/help", "?")
 EXEC_MODE = "exec"
 CHAT_MODE = "chat"
 TEMP_MODE = "temp"
-CODE_MODE = "code"
 
 HISTORY_FILE = Path("~/.yaicli_history").expanduser()
 CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
@@ -128,6 +127,7 @@ DEFAULT_ROLES: dict[str, dict[str, Any]] = {
 # - type: the type of the configuration option, dict -> json, bool -> boolstr
 DEFAULT_CONFIG_MAP = {
     # Core API settings
+    "PROVIDER": {"value": DEFAULT_PROVIDER, "env_key": "YAI_PROVIDER", "type": str},
     "BASE_URL": {"value": "", "env_key": "YAI_BASE_URL", "type": str},
     "API_KEY": {"value": "", "env_key": "YAI_API_KEY", "type": str},
     "MODEL": {"value": DEFAULT_MODEL, "env_key": "YAI_MODEL", "type": str},

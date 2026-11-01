@@ -2,7 +2,9 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
+import yaicli.config
 from yaicli.config import DEFAULT_CONFIG_MAP, Config
+from yaicli.const import DEFAULT_CONFIG_INI, DEFAULT_PROVIDER
 
 
 # Mock console fixture
@@ -42,6 +44,13 @@ def get_typed_defaults():
 TYPED_DEFAULTS = get_typed_defaults()
 
 
+def test_dead_code_mode_constant_removed():
+    """Runtime modes are TEMP/CHAT/EXEC only; the dead const.CODE_MODE was removed (D2)."""
+    from yaicli import const
+
+    assert not hasattr(const, "CODE_MODE")
+
+
 class TestConfig:
     def test_init_with_defaults(self, mock_console):
         """Test that Config initializes with default values when no config file or env vars exist"""
@@ -53,10 +62,96 @@ class TestConfig:
         ):  # Patch at module level
             config = Config(mock_console)
 
-            # Check all default values are set with proper types
+            # Check all default values are set with proper types. The first run writes
+            # DEFAULT_CONFIG_INI and parses it (D1 fix); empty template values must fall
+            # back to the typed map default rather than leaking "".
             for key, expected_value in TYPED_DEFAULTS.items():
                 assert config[key] == expected_value
                 assert isinstance(config[key], type(expected_value))
+
+    def test_first_run_creates_and_parses_default_config(self, mock_console, tmp_path):
+        """A first run with no config file must not crash and must parse the created file (D1)."""
+        config_file = tmp_path / ".config" / "yaicli" / "config.ini"
+        with (
+            patch.object(yaicli.config, "CONFIG_PATH", config_file),
+            patch("yaicli.config.getenv", return_value=None),
+        ):
+            config = Config(mock_console)
+            config_from_existing_file = Config(mock_console)
+            written = config_file.read_text(encoding="utf-8")
+
+        # No KeyError: PROVIDER is present from the default map and the parsed template.
+        assert config["PROVIDER"] == "openai"
+        assert config["PROVIDER"] == DEFAULT_PROVIDER
+
+        # The template is written to disk unchanged (--template output depends on the text).
+        assert written == DEFAULT_CONFIG_INI
+        assert "PROVIDER=openai" in written
+
+        # Every DEFAULT_CONFIG_MAP key keeps its typed default after a first run: the
+        # template's empty values fall back to the map default (D1).
+        for key, expected_value in TYPED_DEFAULTS.items():
+            assert config[key] == expected_value
+            assert isinstance(config[key], type(expected_value))
+
+        # A later run parses the existing file and yields the very same configuration.
+        assert config_from_existing_file == config
+
+    def test_empty_template_values_fall_back_to_typed_defaults(self, mock_console):
+        """Empty file values mean "unset": dict/None-typed keys use their typed defaults (D1)."""
+        mock_config_content = """[core]
+EXTRA_HEADERS=
+EXTRA_BODY=
+REASONING_EFFORT=
+"""
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data=mock_config_content)),
+            patch("yaicli.config.getenv", return_value=None),
+        ):
+            config = Config(mock_console)
+
+        assert config["EXTRA_HEADERS"] == {}
+        assert config["EXTRA_BODY"] == {}
+        assert config["REASONING_EFFORT"] is None
+
+    def test_provider_env_override(self, mock_console, tmp_path):
+        """YAI_PROVIDER must be read from the environment and win over the config file."""
+        config_file = tmp_path / "config.ini"
+
+        def mock_getenv(key, default=None):
+            return {"YAI_PROVIDER": "anthropic"}.get(key, default)
+
+        with (
+            patch.object(yaicli.config, "CONFIG_PATH", config_file),
+            patch("yaicli.config.getenv", side_effect=mock_getenv),
+        ):
+            config = Config(mock_console)
+
+        assert config["PROVIDER"] == "anthropic"
+        # The created file keeps the default provider; only the env layer overrides it.
+        assert "PROVIDER=openai" in config_file.read_text(encoding="utf-8")
+
+    def test_first_run_parses_created_file(self, mock_console, tmp_path):
+        """The file written on a first run must be parsed, not merely left as defaults (D1)."""
+        custom_ini = """[core]
+PROVIDER=ollama
+CUSTOM_FILE_ONLY_KEY=parsed-from-created-file
+"""
+        config_file = tmp_path / "config.ini"
+        with (
+            patch.object(yaicli.config, "CONFIG_PATH", config_file),
+            patch.object(yaicli.config, "DEFAULT_CONFIG_INI", custom_ini),
+            patch("yaicli.config.getenv", return_value=None),
+        ):
+            config = Config(mock_console)
+            written = config_file.read_text(encoding="utf-8")
+
+        # The custom template really is what got written to the new file...
+        assert written.startswith(custom_ini)
+        # ...and parsing it is reflected in the config instead of being skipped.
+        assert config["PROVIDER"] == "ollama"
+        assert config["CUSTOM_FILE_ONLY_KEY"] == "parsed-from-created-file"
 
     def test_load_from_file(self, mock_console):
         """Test loading configuration from file"""
