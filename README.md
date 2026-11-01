@@ -1093,6 +1093,14 @@ To use function call, you need to install default functions by `ai --install-fun
 After that, you can check the functions by `ai --list-functions`.
 You can also define your own functions by adding them to the config folder in `~/.config/yaicli/functions/` (`C:\Users\<user>\.config\yaicli\functions` on Windows).
 
+The built-in `fs_read_file` function accepts a list of file paths, so several files can be read in a single tool call:
+
+```json
+{"file_paths": ["src/main.py", "src/config.py"]}
+```
+
+A single path string is still accepted for backward compatibility. Run `ai --reinstall-functions` to refresh the built-in function definitions after an upgrade.
+
 By default YAICLI asks for confirmation before running each tool call:
 
 ```

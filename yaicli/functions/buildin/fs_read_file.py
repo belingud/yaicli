@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List, Union
+from typing import List
 
 from yaicli.function_schema import OpenAISchema
 from pydantic import Field
@@ -8,15 +8,16 @@ from pydantic import Field
 
 class Function(OpenAISchema):
     """
-    Read one or multiple files and return their contents as JSON.
+    Read one or more files in a single call and return their contents as JSON.
     """
 
-    file_paths: Union[str, List[str]] = Field(
+    file_paths: List[str] = Field(
         ...,
-        json_schema_extra={
-            "example": "/path/to/file.txt",
-        },
-        description="File path(s) to read. Can be a single path string or a list of paths.",
+        examples=[["/path/to/file1.txt", "/path/to/file2.txt"]],
+        description=(
+            "File paths to read. Pass a list of paths to read several files in a single call; "
+            "a single path string is also accepted for backward compatibility."
+        ),
     )
     encoding: str = Field(
         default="utf-8",
@@ -30,19 +31,34 @@ class Function(OpenAISchema):
         title = "fs_read_file"
 
     @classmethod
-    def execute(cls, file_paths: Union[str, List[str]], encoding: str = "utf-8") -> str:
+    def execute(cls, file_paths: List[str], encoding: str = "utf-8") -> str:
         """
-        Read one or multiple files and return their contents as JSON.
+        Read one or more files in a single call and return their contents as JSON.
 
         Args:
-            file_paths: Single file path or list of file paths to read.
+            file_paths: List of file paths to read in a single call. A single path
+                string is also accepted for backward compatibility.
             encoding: File encoding (default: utf-8).
 
         Returns:
             str: JSON string with file contents or error information.
         """
-        # Normalize to list
-        paths_list = [file_paths] if isinstance(file_paths, str) else file_paths
+        # Normalize to a list of paths. The model-facing schema advertises an array,
+        # but old tool calls may still pass a single path string (or a tuple).
+        if isinstance(file_paths, str):
+            paths_list = [file_paths]
+        elif isinstance(file_paths, (list, tuple)):
+            paths_list = list(file_paths)
+        else:
+            return json.dumps(
+                {
+                    "error": (
+                        "file_paths must be a list of file paths (a single path string is also accepted), "
+                        f"got {type(file_paths).__name__}"
+                    )
+                },
+                ensure_ascii=False,
+            )
 
         if not paths_list:
             return json.dumps({"error": "No file paths provided"}, ensure_ascii=False)

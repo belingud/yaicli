@@ -74,6 +74,20 @@ ai 'check the current dir total size' --enable-functions
 
 You can also define custom functions by adding them to `~/.config/yaicli/functions/`.
 
+### Reading Multiple Files in One Call
+
+The built-in `fs_read_file` function accepts a list of file paths, so several
+files can be read with a single tool call instead of one call per file:
+
+```json
+{"file_paths": ["src/main.py", "src/config.py"], "encoding": "utf-8"}
+```
+
+A single path string is still accepted for backward compatibility. Built-in
+functions are copied to `~/.config/yaicli/functions/` on first install, so run
+`ai --reinstall-functions` after upgrading to pick up the latest built-in
+function definitions.
+
 ### Tool Execution Confirmation
 
 By default YAICLI asks for confirmation before running each tool call:
