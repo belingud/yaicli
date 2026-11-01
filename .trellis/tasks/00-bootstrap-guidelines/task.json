@@ -1,0 +1,29 @@
+{
+  "id": "00-bootstrap-guidelines",
+  "name": "00-bootstrap-guidelines",
+  "title": "Bootstrap Guidelines",
+  "description": "Fill in project development guidelines for AI agents",
+  "status": "in_progress",
+  "dev_type": "docs",
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "belingud",
+  "assignee": "belingud",
+  "createdAt": "2026-11-01",
+  "completedAt": null,
+  "branch": "master",
+  "base_branch": null,
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/spec/py/",
+    ".trellis/spec/repo/"
+  ],
+  "notes": "Bootstrap spec completed 2026-11-01: backend/ scaffolding replaced by py/ (6 files) and repo/ (2 files) layers grounded in the real Python CLI codebase. Documented known defects: first-run PROVIDER KeyError, unused CODE_MODE, dead MAX_HISTORY/ROLE_MODIFY_WARNING, --image-only abort, context '[' sentinel, role.print_roles, fs_read_image Union schema debt.",
+  "meta": {}
+}
