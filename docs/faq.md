@@ -182,12 +182,14 @@ ai --install-functions
 
 ### How do I create custom functions?
 
-Add your function definitions to:
-```
-~/.config/yaicli/functions/
-```
+Add your function definitions to `~/.config/yaicli/functions/`; each file must define a
+`Function(OpenAISchema)` class with a classmethod `execute`. Restart `ai` afterwards.
 
-See the [Usage Configuration Guide](usage/configuration.md#function-settings) for details on function configuration.
+If you recently upgraded YAICLI, run `ai --reinstall-functions` so the built-in function
+definitions match the new version (custom files are preserved).
+
+See [Advanced Usage — Function Calling](usage/advanced.md#function-calling) for the complete
+install/update/custom-function guide.
 
 ### How do I use MCP (Multi-provider Chain Protocol)?
 

@@ -1092,96 +1092,23 @@ $ ai --code "write a fib generator" --model deepseek-r1
 
 ### Function Call
 
-To use function call, you need to install default functions by `ai --install-functions`.
-After that, you can check the functions by `ai --list-functions`.
-You can also define your own functions by adding them to the config folder in `~/.config/yaicli/functions/` (`C:\Users\<user>\.config\yaicli\functions` on Windows).
+Function calling lets the model run local tools such as file readers, `web_search`, and
+`execute_shell_command`. Built-in definitions ship with the package and must be installed
+once, then refreshed after every upgrade:
 
-The built-in `fs_read_file` function accepts a list of file paths, so several files can be read in a single tool call:
-
-```json
-{"file_paths": ["src/main.py", "src/config.py"]}
+```bash
+ai --install-functions      # first-time install (existing files are skipped)
+ai --list-functions         # show installed functions
+ai --reinstall-functions    # after upgrading: refresh built-in definitions (custom files kept)
 ```
 
-A single path string is still accepted for backward compatibility. Run `ai --reinstall-functions` to refresh the built-in function definitions after an upgrade.
+Function calling is enabled by default (`ENABLE_FUNCTIONS`); use `--enable-functions` /
+`--disable-functions` to toggle it per run, and `--hide-function-output` to hide tool output.
+Every tool call asks for confirmation by default (`TOOL_CONFIRM`; allow once, for the session,
+permanently, or deny). Custom functions live in `~/.config/yaicli/functions/`.
 
-The built-in `fs_read_image` accepts an `image_paths` list the same way:
-
-```json
-{"image_paths": ["before.png", "after.png"]}
-```
-
-By default YAICLI asks for confirmation before running each tool call:
-
-```
-╭─ Confirm tool call ──────────────────────────────╮
-│ execute_shell_command({"shell_command": "du -sh ."}) │
-╰──────────────────────────────────────────────────╯
-Execute tool? [y]once, [a]session, [A]always, [n]o:
-```
-
-| Key | Meaning |
-|-----|---------|
-| `y` | Allow this call only |
-| `a` | Allow for the rest of this session |
-| `A` | Always allow (saved to `~/.config/yaicli/tool_permissions.json`) |
-| `n` | Deny — the model is informed and can adapt |
-
-To disable confirmation and restore silent execution: set `TOOL_CONFIRM=false` in `config.ini` or `YAI_TOOL_CONFIRM=false` in your environment.
-
-```shell
-❯ ai --list-functions
-/Users/xxx/.config/yaicli/functions/fs_file_operations.py
-/Users/xxx/.config/yaicli/functions/fs_list_directory.py
-/Users/xxx/.config/yaicli/functions/fs_read_file.py
-/Users/xxx/.config/yaicli/functions/fs_write_file.py
-/Users/xxx/.config/yaicli/functions/fs_search_files.py
-/Users/xxx/.config/yaicli/functions/fetch_webpage.py
-/Users/xxx/.config/yaicli/functions/get_weather.py
-/Users/xxx/.config/yaicli/functions/fs_edit_file.py
-/Users/xxx/.config/yaicli/functions/fs_get_filesystem_info.py
-/Users/xxx/.config/yaicli/functions/web_search.py
-/Users/xxx/.config/yaicli/functions/fs_read_image.py
-/Users/xxx/.config/yaicli/functions/execute_shell_command.py
-```
-
-`--enable-functions` option is corresponds to the configuration key `ENABLE_FUNCTIONS`.
-
-```shell
-ai 'check the current dir total size' --enable-functions
-Assistant:
-Thinking:
-
-▌ Okay, the user wants to check the current directory's total size. Hmm, how do I do that in macOS with zsh?
-▌ I remember that the command to get disk usage is usually 'du'. But wait, the default 'du' might not give the total size of the
-▌ current directory directly. Let me think. Oh right, if I use 'du -sh' with the current directory, that should give the total size
-▌ in human-readable format.
-▌ Wait, but sometimes the -s option summarizes the directory. So 'du -sh .' would calculate the total size of the current directory
-▌ and its subdirectories. That should work. Let me confirm the syntax. Yeah, 'du -sh .' is the right command here.
-▌ The user is using zsh, but the 'du' command is standard, so it should be available. I need to execute this shell command. The
-▌ function provided is execute_shell_command, so I'll call that with the shell command 'du -sh .' as the argument.
-▌ I should make sure the parameters are correctly formatted. The function requires a shell_command string. Alright, that's all.
-▌ Let's generate the tool call.
-
-{"index":0,"finish_reason":"tool_calls","delta":{"role":"assistant","content":null,"audio":null,"tool_calls":[{"id":"call_202505141526
-36cc3f776ae8f14b56_0","index":0,"type":"function","function":{"name":"execute_shell_command","arguments":"{"shell_command": "du -sh
-."}","outputs":null},"code_interpreter":null,"retrieval":null,"drawing_tool":null,"web_browser":null,"search_intent":null,"search_resu
-lt":null}],"tool_call_id":null,"attachments":null,"metadata":null}}
-@Function call: execute_shell_command({"shell_command": "du -sh ."})
-╭─ Function output ─────╮
-│ Exit code: 0, Output: │
-│ 156M    .             │
-│                       │
-╰───────────────────────╯
-Thinking:
-
-▌ Okay, the user asked to check the current directory's total size. I used the 'du -sh .' command, which stands for disk usage,
-▌ summarize, and current directory. The output was "156M". So I need to present this in a concise way.
-▌ First, confirm the command was executed. Then, report the result clearly. Since the user didn't ask for extra details, keep it
-▌ simple. Just state the total size as 156MB. Maybe mention the command used for transparency. Alright, that should cover it without
-▌ overcomplicating.
-
-Current directory size: 156M (using du -sh .).
-```
+See [Advanced Usage — Function Calling](docs/usage/advanced.md#function-calling) for the full
+install/update/custom-function guide, built-in safety contracts, and the confirmation protocol.
 
 ### MCP
 

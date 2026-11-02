@@ -67,10 +67,14 @@ Here's a comprehensive list of all available options:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--install-functions` | Install default functions | |
-| `--list-functions` | List all available functions | |
-| `--enable-functions` / `--disable-functions` | Enable/disable function calling | disabled |
+| `--install-functions` | Install built-in functions (files that already exist are skipped) | |
+| `--reinstall-functions` | Overwrite built-in function files with the current version; custom files are kept | |
+| `--list-functions` | List installed functions | |
+| `--enable-functions` / `--disable-functions` | Enable/disable function calling in API requests | enabled |
 | `--show-function-output` / `--hide-function-output` | Show/hide function output | show |
+
+See [Advanced Usage — Function Calling](advanced.md#function-calling) for installing,
+updating after an upgrade, writing custom functions, and the confirmation protocol.
 
 ### MCP Options
 
