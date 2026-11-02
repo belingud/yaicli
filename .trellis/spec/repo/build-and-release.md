@@ -75,15 +75,16 @@ There is no version constant in the package (`yaicli/__init__.py` is empty); `--
 - Observed release order in history: `Bump version: 0.16.0 → 0.17.0` (the tagged commit) →
   `docs: update CHANGELOG for v0.17.0 release` → docs commit(s). The tag therefore points at the
   bump commit, not at the changelog commit.
-- `docs/changelog.md` is a stale copy (stops around v0.7.8) and is **not** auto-synced; treat
-  `CHANGELOG.md` as the source of truth unless you deliberately refresh the docs page.
+- `docs/changelog.md` is synced from `CHANGELOG.md` at release time (`cp CHANGELOG.md docs/changelog.md`);
+  `CHANGELOG.md` remains the source of truth. Keep the two in sync whenever you regenerate the changelog.
+  (v0.18.0 release: synced after `git cliff -l --prepend CHANGELOG.md`.)
 
 ## CI (`.github/workflows/`)
 
 **`publish.yml`** — runs on tags matching `v*`:
 
 1. checkout, Python 3.11, `pip install hatchling`
-2. `python -m hatchling build`
+2. `python -m hatchling build` (`hatchling` >= 1.19 ships `__main__.py`; v0.18.0 publish run succeeded)
 3. `pypa/gh-action-pypi-publish@release/v1` with `secrets.PYPI_API_TOKEN` (token-based publishing,
    not PyPI trusted publishing)
 
@@ -96,6 +97,8 @@ So publishing a release means pushing the `vX.Y.Z` tag created by `bump2version`
 3. `uv run mkdocs gh-deploy --force --clean` with `GITHUB_TOKEN`
 
 Consequence: docs never deploy from a feature branch; merge/copy the docs commit onto `docs` and push.
+If the remote `docs` branch diverged (it accumulates deploy/merge commits), fast-forward it by
+force-with-lease after a fetch: `git push --force-with-lease origin master:docs` (v0.18.0 used this).
 
 ## Docs Site (`mkdocs.yml` + `docs/`)
 
@@ -124,5 +127,6 @@ env_list = py310, py311, py312, py313
 3. `uv run bump2version patch|minor|major` — commits `Bump version: X.Y.Z → A.B.C` and tags `vA.B.C`.
 4. `just changelog` and commit the regenerated `CHANGELOG.md` as `docs: update CHANGELOG for vA.B.C release`.
 5. Push `master` **and** the tag: `git push origin master --tags` — the tag push triggers `publish.yml`.
-6. If docs changed, push the docs branch (`git push origin master:docs` or merge) to trigger
-   `deploy-docs.yml`.
+6. If docs changed, push the docs branch to trigger `deploy-docs.yml`: `git push origin master:docs`
+   (or `git push --force-with-lease origin master:docs` when the remote `docs` branch has diverged).
+7. Sync the docs changelog page before pushing docs: `cp CHANGELOG.md docs/changelog.md`.
