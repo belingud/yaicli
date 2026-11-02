@@ -53,6 +53,7 @@ from .utils import detect_os, detect_shell, filter_command
 class CLI:
     __slots__ = (
         "verbose",
+        "had_error",
         "init_role",
         "role_name",
         "console",
@@ -84,6 +85,9 @@ class CLI:
         client=None,
     ):
         self.verbose: bool = verbose
+        # Set when a handled LLM/API failure occurs; single-shot mode turns it into
+        # a non-zero process exit (the REPL only prints and continues).
+        self.had_error: bool = False
         # --role can specify a role when enter interactive chat
         # TAB will switch between role and shell
         self.init_role: str = role
@@ -340,6 +344,7 @@ class CLI:
             # The 'messages' list is modified by the client in-place
             return content, messages
         except Exception as e:
+            self.had_error = True
             self.console.print(f"Error processing LLM response: {e}", style="red")
             if self.verbose:
                 traceback.print_exc()

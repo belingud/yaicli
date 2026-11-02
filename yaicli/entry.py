@@ -1,4 +1,5 @@
 import sys
+import traceback
 from importlib.metadata import version as pkg_version
 from typing import Annotated, Any, List, Optional
 
@@ -422,12 +423,26 @@ def main(
             user_input=final_prompt,
             images=image_data_list,
         )
+        # A handled LLM/API failure in single-shot mode must surface as a non-zero
+        # exit code. The interactive REPL keeps its error-tolerant behaviour and
+        # still exits 0 on Ctrl+D, so the flag is only consulted for non-chat runs.
+        if not chat and getattr(cli, "had_error", False) is True:
+            raise typer.Exit(code=1)
+    except typer.Exit:
+        # Explicit exit requests (including the one raised above) keep their code.
+        raise
     except YaicliError as e:
         typer.echo(f"YAICLI Error: {e}")
-    except (typer.Abort, typer.Exit):
-        pass
+        raise typer.Exit(code=1)
+    except typer.Abort:
+        # Abort is a non-zero outcome (e.g. no input, client creation failed);
+        # let typer/click handle it instead of swallowing it as a success.
+        raise
     except Exception as e:
         typer.echo(f"Unknown error: {e}")
+        if verbose:
+            traceback.print_exc()
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

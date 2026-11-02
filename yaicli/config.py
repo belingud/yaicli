@@ -221,7 +221,9 @@ def get_config() -> Config:
     try:
         return Config()
     except ConfigError:
-        sys.exit()
+        # Configuration errors must produce a non-zero process status. This can run
+        # at import time (cfg = get_config() below), before the CLI can report it.
+        sys.exit(1)
 
 
 cfg = get_config()

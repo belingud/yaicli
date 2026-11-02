@@ -170,6 +170,9 @@ class OpenAIProvider(Provider):
             except Exception:
                 body = e.response.text
             self.console.print(f"Error Response: {body}")
+            # Do not swallow API errors: callers (and the process exit code) need to
+            # know the request failed. The REPL catches this and keeps the session.
+            raise ProviderError(f"OpenAI API error: {body}") from e
 
     def _handle_normal_response(self, response: ChatCompletion) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response"""
