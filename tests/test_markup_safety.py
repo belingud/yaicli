@@ -5,6 +5,7 @@ tool announce/output rendering, control-character stripping, and the REPL
 per-turn exception guard.
 """
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,6 +20,7 @@ from yaicli.cli import CLI
 from yaicli.cmd_handler import CmdHandler
 from yaicli.console import escape_markup, safe_text, strip_control_chars, untrusted_text
 from yaicli.printer import Printer
+from yaicli.role import RoleManager
 from yaicli.schemas import ChatMessage, ToolCall
 from yaicli.tools import execute_tool_call
 
@@ -266,3 +268,111 @@ class TestReplExceptionGuard:
 
         printed = [str(c.args[0]) for c in cli.console.print.call_args_list if c.args]
         assert not any(text.startswith("Error:") for text in printed)
+
+
+class TestRoleCommandMarkup:
+    """Role names/prompts are user-controlled: role command output must stay literal."""
+
+    def _patch_manager(self, monkeypatch, manager, console):
+        monkeypatch.setattr("yaicli.role.RoleManager", lambda: manager)
+        monkeypatch.setattr(RoleManager, "console", console)
+
+    def test_show_role_option_escapes_name_and_prompt(self, monkeypatch):
+        console = make_recording_console()
+        role = MagicMock()
+        role.name = "[green]evil[/green]"
+        role.prompt = "Reply with [/] and [/INST] literally"
+        manager = MagicMock()
+        manager.get_role.return_value = role
+        self._patch_manager(monkeypatch, manager, console)
+
+        with pytest.raises(typer.Exit):
+            RoleManager.show_role_option("bad[/]")
+
+        out = rendered(console)
+        assert "[green]evil[/green]" in out
+        assert "Reply with [/] and [/INST] literally" in out
+
+    def test_create_role_option_escapes_created_name(self, monkeypatch):
+        console = make_recording_console()
+        role = MagicMock()
+        role.name = "New[/]Role"
+        manager = MagicMock()
+        manager.roles = {}
+        manager.create_role.return_value = role
+        self._patch_manager(monkeypatch, manager, console)
+        monkeypatch.setattr("typer.prompt", lambda *a, **k: "prompt text")
+
+        with pytest.raises(typer.Exit):
+            RoleManager.create_role_option("[green]new[/green]")
+
+        out = rendered(console)
+        assert "Created role: New[/]Role" in out
+
+    def test_delete_role_option_escapes_name(self, monkeypatch):
+        console = make_recording_console()
+        manager = MagicMock()
+        manager.roles = {"weird[/]": MagicMock()}
+        manager.delete_role.return_value = True
+        self._patch_manager(monkeypatch, manager, console)
+
+        with pytest.raises(typer.Exit):
+            RoleManager.delete_role_option("weird[/]")
+
+        out = rendered(console)
+        assert "Deleted role: weird[/]" in out
+
+    def test_check_id_ok_escapes_missing_role(self, monkeypatch):
+        console = make_recording_console()
+        manager = MagicMock()
+        manager.roles = {}
+        self._patch_manager(monkeypatch, manager, console)
+
+        assert RoleManager.check_id_ok("bad[/]") == "DEFAULT"
+        out = rendered(console)
+        assert "Role 'bad[/]' does not exist" in out
+
+    def test_print_list_option_renders_bracketed_filenames_literally(self, monkeypatch):
+        console = make_recording_console()
+        role_file = MagicMock()
+        role_file.stem = "Bad[/]Role"
+        role_file.stat.return_value.st_mtime = 0
+        roles_dir = MagicMock()
+        roles_dir.glob.return_value = [role_file]
+        monkeypatch.setattr(RoleManager, "roles_dir", roles_dir)
+        monkeypatch.setattr(RoleManager, "console", console)
+
+        with pytest.raises(typer.Exit):
+            RoleManager.print_list_option(True)
+
+        out = rendered(console)
+        assert "Bad[/]Role" in out
+
+    def test_load_user_roles_error_escapes_filename(self, monkeypatch, tmp_path):
+        console = make_recording_console()
+        real_file = tmp_path / "safe.json"
+        real_file.write_text("{}", encoding="utf-8")
+
+        class _FakeRoleFile:
+            """Reports a bracketed display name while opening a real, readable file."""
+
+            def __str__(self) -> str:
+                return "Bad[/]File.json"
+
+            def __fspath__(self) -> str:
+                return str(real_file)
+
+        roles_dir = MagicMock()
+        roles_dir.exists.return_value = True
+        roles_dir.glob.return_value = [_FakeRoleFile()]
+
+        def _boom(_file):
+            raise json.JSONDecodeError("bad json", "{}", 1)
+
+        monkeypatch.setattr("yaicli.role.json.load", _boom)
+
+        # A corrupt role file is reported without crashing on the bracketed filename.
+        RoleManager(roles_dir=roles_dir, console=console)
+
+        out = rendered(console)
+        assert "Bad[/]File.json" in out
