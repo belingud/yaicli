@@ -134,8 +134,10 @@ and the zero-limit behaviour — keep the `# ` / `+` file format if you change t
   `StopLive` (unused), `ConfirmToolCall(tool_call)`, `ToolConfirmDecision` (`once|session|persist|deny`).
 - Adding a `ChatMessage` field is cross-layer: update provider conversion
   (`Provider._convert_messages` and overrides in `providers/anthropic_provider.py`, `gemini_provider.py`, ...),
-  the printer, and — because `Chat.to_dict()`/`from_dict()` persist only `role` and `content` — decide whether
-  the field survives chat save/load (today `reasoning`, `tool_calls` and `images` are dropped).
+  the printer, and chat serialization. `Chat.to_dict()`/`from_dict()` now persist every field through
+  `_message_to_dict()`/`_message_from_dict()` (`role`/`content` plus optional `name`, `tool_call_id`,
+  `tool_calls`, `reasoning`, `images`), saves are atomic (temp file + `os.replace` around `fsync`), and
+  the loader still accepts legacy `{role, content}` files (`tests/test_chat_manage.py`).
 - Keep `ToolPolicy` resolved once per request (CLI → client → provider); don't read `cfg` inside provider loops.
 
 ## Console & Utils

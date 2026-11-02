@@ -28,14 +28,14 @@ There are several ways to contribute to YAICLI:
    git clone https://github.com/YOUR-USERNAME/yaicli.git
    cd yaicli
    ```
-3. Create a virtual environment:
+3. Create a virtual environment and activate it:
    ```bash
    uv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
-4. Install dependencies for development:
+4. Install dependencies for development (dev tools, docs tooling and all provider extras):
    ```bash
-   uv sync --all-extras
+   uv sync --all-groups --all-extras
    ```
 
 ## Development Guidelines
@@ -50,10 +50,11 @@ YAICLI follows these style guidelines:
 
 ### Testing
 
-Before submitting a PR, make sure to run the tests:
+Before submitting a PR, make sure to run the tests and the linter:
 
 ```bash
-pytest
+uv run pytest
+uv run ruff check yaicli tests
 ```
 
 ### Pull Request Process
@@ -70,7 +71,7 @@ To add a new LLM provider to YAICLI:
 
 1. Create a new file in `yaicli/llms/providers/` named after your provider (e.g., `my_provider.py`)
 2. Implement the provider class following the interface pattern of existing providers
-3. Add the provider to the provider registry in `yaicli/llms/providers/__init__.py`
+3. Register the provider in `ProviderFactory.providers_map` (`yaicli/llms/provider.py`); `yaicli/llms/providers/__init__.py` is empty. See [Add a New Provider](dev/add-provider.md) for the full walkthrough
 4. Update any configuration-related code to recognize the new provider
 5. Add tests for your provider in the `tests/llms/` directory
 
@@ -80,11 +81,11 @@ When contributing documentation:
 
 1. Follow the existing structure
 2. Use Markdown for all documentation files
-3. Test changes locally using MkDocs:
+3. Test changes locally using MkDocs (docs tooling is in the `docs` dependency group):
    ```bash
-   mkdocs serve
+   uv run mkdocs serve
    ```
 
 ## License
 
-By contributing to YAICLI, you agree that your contributions will be licensed under the project's [Apache License 2.0](https://github.com/vic4code/yaicli/blob/master/LICENSE). 
+By contributing to YAICLI, you agree that your contributions will be licensed under the project's [Apache License 2.0](https://github.com/belingud/yaicli/blob/master/LICENSE).

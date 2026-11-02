@@ -109,7 +109,7 @@ In chat mode:
 ```
 💬 > Tell me about quantum computing
 Assistant:
-Quantum computing uses quantum bits (qubits) that can exist in multiple 
+Quantum computing uses quantum bits (qubits) that can exist in multiple
 states simultaneously due to superposition...
 ```
 
@@ -128,7 +128,7 @@ find ~/Downloads -name "*.pdf"
 ╭─ Suggest Command ─────────────────────╮
 │ find ~/Downloads -name "*.pdf"        │
 ╰─────────────────────────────────────────╯
-Execute command? [e]dit, [y]es, [n]o (y): 
+Execute command? [e]dit, [y]es, [n]o (y):
 ```
 
 The default answer is **yes**: pressing `Enter` without typing another choice executes the

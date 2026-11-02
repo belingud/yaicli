@@ -12,7 +12,7 @@ coverage threshold, and no test job in CI — the remaining rules here are conve
 | Format | `just format` | `ruff format` + `ruff check --fix` on `yaicli` and `tests`, then `isort yaicli yaicli` / `isort yaicli tests` (`Justfile`) |
 | Lint | `ruff check --no-fix yaicli tests` | plain `ruff check yaicli tests` applies fixes because `fix = true`; only `F401` is fixable |
 | One file / subset | `uv run pytest tests/tools/test_fs_read_file.py -q`, `uv run pytest -k "streaming"` | |
-| Full suite | `uv run pytest` | 59 `test_*.py` files; `testpaths = ["tests"]` |
+| Full suite | `uv run pytest` | 60 `test_*.py` files; `testpaths = ["tests"]` |
 | Coverage (opt-in) | `uv run pytest --cov=yaicli` | `pytest-cov` is in the `dev` dependency-group; no addopts, no threshold |
 | Multi-version | `tox`, `tox -e py312`, `tox -e lint` | `tox.ini`: `env_list = py310, py311, py312, py313`, testenv `extras = all` |
 | Build | `uv build` | hatchling |

@@ -89,7 +89,18 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
    tool map is first built, so top-level imports slow the first tool-advertising request and a
    missing optional extra must degrade to an in-band error, not a load failure.
 7. No printing/UI from `execute`; the call line, `SHOW_FUNCTION_OUTPUT` panel and confirmation
-   prompt belong to `yaicli/tools/__init__.py` and `yaicli/llms/client.py`.
+   prompt belong to `yaicli/tools/__init__.py` and `yaicli/llms/client.py`. Those render sites use
+   the untrusted-text helpers (`safe_text`/`untrusted_text`) so tool arguments/results can never
+   act as Rich markup or emit terminal control sequences.
+8. Write-backs must be all-or-nothing and atomic: validate every input first, never partially
+   apply an edit list, and replace files via temp file + `os.replace`. `fs_edit_file` is the
+   reference: any failed edit leaves the file byte-identical (`success=false`), `replace`
+   requires a non-empty `old != new`, and a read-only target is rejected before writing.
+9. Network-facing built-ins must validate their targets before any request: `fetch_webpage`
+   only allows public http(s), rejects loopback/private/link-local/metadata/CGNAT targets, and
+   re-validates every redirect hop (no https-to-http downgrade, no cross-host cookie/Referer
+   forwarding, 10 MB response cap). Failures are returned in-band as `Failed to fetch ...`
+   strings instead of raising.
 
 ## Loading & Install Lifecycle
 

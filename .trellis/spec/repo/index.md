@@ -85,5 +85,4 @@ runnable directly as documented in [build-and-release.md](./build-and-release.md
 - Platforms configured in this repo: Claude Code (`.claude/`: hooks, agents, slash commands, skills and
   `settings.json` hook wiring) and DeepSeek Harness / dsh (`.dsh/skills/`, pull-based: load
   `trellis-start` / `trellis-continue` / `trellis-finish-work` on demand). `.agents/skills/` is the
-  platform-neutral Trellis skill catalog shared by agent tools; `.codex/skills/` holds the older
-  OpenSpec skills for Codex.
+  platform-neutral Trellis skill catalog shared by agent tools.

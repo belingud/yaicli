@@ -112,10 +112,6 @@ See [quality-guidelines.md](./quality-guidelines.md) for fixtures, mocking rules
 
 ## Known Discrepancies / Debt (document reality)
 
-- `CLAUDE.md` still says "add to provider imports in `yaicli/llms/providers/__init__.py`". That file
-  is empty; the real registration point is `ProviderFactory.providers_map` in
-  `yaicli/llms/provider.py`. Follow the code, and fix `CLAUDE.md` when you touch provider
-  registration.
 - Runtime loads builtin functions from `~/.config/yaicli/functions/`; updating
   `yaicli/functions/buildin/` in the source tree only reaches an existing install after
   `ai --reinstall-functions`. Keep this in mind when a "function schema change" looks ignored.
