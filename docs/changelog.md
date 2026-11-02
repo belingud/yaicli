@@ -1,6 +1,5 @@
-
 ---
-## [unreleased]
+## [0.18.0](https://github.com/belingud/yaicli/compare/v0.17.0..v0.18.0) - 2026-11-02
 
 ### ⛰️  Features
 
@@ -66,6 +65,7 @@ directory context; read failures are warned about and skipped. - ([8703514](http
 
 ### 📚 Documentation
 
+- docs(changelog): record unreleased changes since v0.17.0 and sync docs page - ([714b839](https://github.com/belingud/yaicli/commit/714b839f602a2f6483503f516cf3ca6fda7732f5)) - Belingud
 - docs(dev): fill developer guides, fix navigation and spec drift - ([bee2c03](https://github.com/belingud/yaicli/commit/bee2c0332466688d149028305fa161ac198cff97)) - Belingud
 - docs: fix provider/config examples and defaults drift - ([c715832](https://github.com/belingud/yaicli/commit/c715832f408ea7166ebe3807d637875c92ba23b2)) - Belingud
 - docs: document post-P0 behaviour (session format, exit codes, fetch/fs_edit safety) - ([491369c](https://github.com/belingud/yaicli/commit/491369c1ea6d8aa055dab3a59ac4ad4ec6b38fa7)) - Belingud
@@ -111,7 +111,6 @@ abort, context "[" sentinel, role.print_roles, fs_read_image Union debt).
 Verified: no placeholders, index<->file coverage, relative links, and
 `get_context.py --mode packages` -> py, repo; independently reviewed by a
 read-only verifier. - ([cb6abd8](https://github.com/belingud/yaicli/commit/cb6abd8050d415e9d8c136e58289b09a1cd6a690)) - Belingud
-
 
 ---
 ## [0.17.0](https://github.com/belingud/yaicli/compare/v0.16.0..v0.17.0) - 2026-06-23
