@@ -129,12 +129,12 @@ class TestFetchWebpage:
     @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
     @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
-    def test_execute_retry_on_ssl_error(self, mock_sleep, mock_client_class, _mock_trafilatura):
-        """Test that execute retries on SSL error and disables SSL verification."""
+    def test_ssl_error_retry_keeps_verification(self, mock_sleep, mock_client_class, _mock_trafilatura):
+        """Test that SSL errors are retried without ever disabling TLS verification."""
         import httpx
 
         mock_client = Mock()
-        mock_client.get.side_effect = httpx.ConnectError("SSL error")
+        mock_client.get.side_effect = httpx.ConnectError("certificate verify failed")
         mock_client.__enter__ = Mock(return_value=mock_client)
         mock_client.__exit__ = Mock(return_value=False)
         mock_client_class.return_value = mock_client
@@ -142,7 +142,52 @@ class TestFetchWebpage:
         result = Function.execute("https://example.com", max_retries=2, verify_ssl=True)
 
         assert "Failed to fetch" in result
-        assert "Connection error" in result
+        assert "TLS/connection error" in result
+        assert "certificate verification kept enabled" in result
+        # Every retry must keep certificate verification on (no silent downgrade).
+        assert [call.kwargs["verify"] for call in mock_client_class.call_args_list] == [True, True]
+        assert mock_client.get.call_count == 2
+
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
+    def test_connect_error_retry_succeeds_with_verification(self, mock_sleep, mock_client_class, _mock_trafilatura):
+        """Test that a transient connection error can be retried successfully, still verifying TLS."""
+        import httpx
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = "<html>Test content</html>"
+
+        mock_client = Mock()
+        mock_client.get.side_effect = [httpx.ConnectError("handshake failed"), mock_response]
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
+        mock_client_class.return_value = mock_client
+
+        result = Function.execute("https://example.com", max_retries=2, verify_ssl=True)
+
+        assert result == "<html>Test content</html>"
+        assert [call.kwargs["verify"] for call in mock_client_class.call_args_list] == [True, True]
+
+    @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    @patch("yaicli.functions.buildin.fetch_webpage.time.sleep")
+    def test_connect_error_keeps_explicit_verify_false(self, mock_sleep, mock_client_class, _mock_trafilatura):
+        """Test that an explicit verify_ssl=False choice is preserved across retries."""
+        import httpx
+
+        mock_client = Mock()
+        mock_client.get.side_effect = httpx.ConnectError("self-signed certificate")
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=False)
+        mock_client_class.return_value = mock_client
+
+        result = Function.execute("https://example.com", max_retries=2, verify_ssl=False)
+
+        assert "Failed to fetch" in result
+        assert "explicitly disabled by caller" in result
+        assert [call.kwargs["verify"] for call in mock_client_class.call_args_list] == [False, False]
 
     @patch.object(Function, "_fetch_with_trafilatura", return_value=TRAFILATURA_FALLBACK)
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
