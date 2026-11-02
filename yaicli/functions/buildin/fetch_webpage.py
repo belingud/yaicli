@@ -134,7 +134,16 @@ class Function(OpenAISchema):
 
     @staticmethod
     def _is_public_ip(address: str) -> bool:
-        """Return True when ``address`` is a public (non-SSRF) IP address."""
+        """Return True when ``address`` is a public (non-SSRF) IP address.
+
+        ``ip.is_global`` is the primary test: besides private/loopback/link-local/
+        unspecified ranges it also rejects shared address space such as
+        ``100.64.0.0/10`` (CGNAT — including the Alibaba Cloud metadata endpoint
+        ``100.100.100.200``), which CPython does *not* flag via ``is_private`` or
+        ``is_reserved``. Multicast is still reported as "global" by ``ipaddress``,
+        and reserved/NAT64 prefixes (e.g. ``64:ff9b::/96``) can embed private IPv4
+        targets, so those stay explicitly rejected for defence in depth.
+        """
         try:
             ip = ipaddress.ip_address(address)
         except ValueError:
@@ -142,14 +151,7 @@ class Function(OpenAISchema):
         # Normalise IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1) to its IPv4 form.
         if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
             ip = ip.ipv4_mapped
-        return not (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-            or ip.is_unspecified
-        )
+        return ip.is_global and not ip.is_multicast and not ip.is_reserved
 
     @classmethod
     def _validate_fetch_url(cls, url: str) -> Optional[str]:
@@ -332,6 +334,25 @@ class Function(OpenAISchema):
             return html
         return extracted or html
 
+    @staticmethod
+    def _warn_insecure_tls() -> None:
+        """Print one prominent warning when the caller explicitly disables TLS checks.
+
+        The caller's explicit ``verify_ssl=False`` choice is preserved (no behaviour
+        change); the warning simply makes the MITM risk visible. Uses ``markup=False``
+        so nothing model/user controlled is interpreted as console markup.
+        """
+        message = (
+            "WARNING: TLS certificate verification is DISABLED (verify_ssl=False); "
+            "the connection is vulnerable to man-in-the-middle attacks."
+        )
+        try:
+            from yaicli.console import get_console
+
+            get_console().print(message, style="bold yellow", markup=False)
+        except Exception:  # pragma: no cover - console is always available inside yaicli
+            print(message)
+
     @classmethod
     def execute(
         cls,
@@ -348,6 +369,9 @@ class Function(OpenAISchema):
         """execute the function"""
         if not isinstance(url, str):
             return f"Failed to fetch {url}: URL must be a string"
+
+        if verify_ssl is False:
+            cls._warn_insecure_tls()
 
         headers = cls._get_default_headers(user_agent, language, referer, url)
 
