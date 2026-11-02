@@ -24,7 +24,7 @@ REASONING_EFFORT=low
 | `TOP_P`            | Nucleus sampling              | `1.0`                       |
 | `MAX_TOKENS`       | Max response tokens           | `1024`                      |
 | `TIMEOUT`          | Request timeout (seconds)     | `60`                        |
-| `REASONING_EFFORT` | Thinking depth (0-10)         | -                           |
+| `REASONING_EFFORT` | Reasoning effort (`low`, `medium`, `high`, `default`, `null`) | - |
 | `BASE_URL`         | Custom API endpoint           | `https://api.openai.com/v1` |
 | `EXTRA_HEADERS`    | Additional request headers    | -                           |
 | `EXTRA_BODY`       | Additional request parameters | -                           |
@@ -32,11 +32,11 @@ REASONING_EFFORT=low
 ## Azure OpenAI Configuration
 
 ```ini
-PROVIDER=openai_azure
+PROVIDER=openai-azure
 API_KEY=your-azure-openai-key
-ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_ENDPOINT=https://your-resource.openai.azure.com/
 API_VERSION=2024-02-01
-DEPLOYMENT=your-deployment-name
+AZURE_DEPLOYMENT=your-deployment-name
 MODEL=gpt-4
 ```
 
@@ -44,11 +44,11 @@ MODEL=gpt-4
 
 | Parameter       | Description                     | Default      |
 | --------------- | ------------------------------- | ------------ |
-| `API_KEY`       | Azure OpenAI key                | -            |
-| `ENDPOINT`      | Azure OpenAI endpoint           | -            |
-| `API_VERSION`   | Azure OpenAI API version        | `2024-02-01` |
-| `DEPLOYMENT`    | Azure deployment name           | -            |
-| `AD_TOKEN`      | Azure AD OAuth token (optional) | -            |
+| `API_KEY`         | Azure OpenAI key                | -            |
+| `AZURE_ENDPOINT`  | Azure OpenAI endpoint           | -            |
+| `API_VERSION`     | Azure OpenAI API version        | `2024-02-01` |
+| `AZURE_DEPLOYMENT`| Azure deployment name           | -            |
+| `AZURE_AD_TOKEN`  | Azure AD OAuth token (optional) | -            |
 | `DEFAULT_QUERY` | Default query parameters        | -            |
 
 ## Features

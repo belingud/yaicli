@@ -223,7 +223,7 @@ or:
 export YAI_TOOL_CONFIRM=false
 ```
 
-## MCP (Machine Comprehension Protocol)
+## MCP (Model Context Protocol)
 
 MCP allows AI models to use external tools:
 
@@ -305,8 +305,10 @@ YAICLI works with many LLM providers. Configure your preferred provider in the c
 
 ```ini
 [core]
-PROVIDER=openai  # or cohere, gemini, ollama, etc.
-BASE_URL=        # leave empty for default provider URL
+# Comments must be on their own line; inline comments become part of the value.
+PROVIDER=openai
+# Leave BASE_URL empty to use the provider default URL.
+BASE_URL=
 API_KEY=your_api_key_here
 MODEL=gpt-5.2
 ```

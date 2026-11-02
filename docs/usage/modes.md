@@ -128,8 +128,11 @@ find ~/Downloads -name "*.pdf"
 ╭─ Suggest Command ─────────────────────╮
 │ find ~/Downloads -name "*.pdf"        │
 ╰─────────────────────────────────────────╯
-Execute command? [e]dit, [y]es, [n]o (n): 
+Execute command? [e]dit, [y]es, [n]o (y): 
 ```
+
+The default answer is **yes**: pressing `Enter` without typing another choice executes the
+generated command. Type `n` to cancel or `e` to edit it first.
 
 ## Chat Persistence
 
@@ -155,7 +158,7 @@ Saved chats:
 2. Work project (2023-06-28)
 
 💬 > /load 1
-Loading chat: Python tips
+Loaded chat: Python tips
 ```
 
 ## Next Steps

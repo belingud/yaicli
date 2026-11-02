@@ -34,7 +34,7 @@ export YAI_MAX_HISTORY=1000
 
 ### Viewing History
 
-In interactive mode, use the `/his` command to view your command history:
+In interactive mode, use the `/his` command to view your chat history:
 
 ```
 💬 > /his

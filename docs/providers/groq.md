@@ -40,6 +40,6 @@ MAX_TOKENS=1024
 - Uses OpenAI-compatible client implementation
 - N parameter is automatically set to 1 (Groq limitation)
 - Reasoning effort only supported for qwen3 models
-- Valid reasoning_effort values: `null`, `default`
+- `REASONING_EFFORT` is forwarded to the API; YAICLI accepts `low`, `medium`, `high`, `default`, `null` (the provider decides which values it supports).
 - Optimized for speed with high tokens per second
 - Multiple open-source models available

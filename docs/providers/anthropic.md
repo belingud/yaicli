@@ -27,7 +27,7 @@ MAX_TOKENS=1024
 ## AWS Bedrock Integration
 
 ```ini
-PROVIDER=anthropic_bedrock
+PROVIDER=anthropic-bedrock
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_REGION=us-east-1
@@ -37,7 +37,7 @@ MODEL=anthropic.claude-3-5-sonnet-20241022-v2:0
 ## Google Vertex AI Integration
 
 ```ini
-PROVIDER=anthropic_vertex
+PROVIDER=anthropic-vertex
 PROJECT_ID=your-gcp-project-id
 CLOUD_ML_REGION=us-central1
 MODEL=claude-3-5-sonnet@20241022

@@ -4,27 +4,34 @@ LongCat is an OpenAI-compatible API provider that supports tool calls and stream
 
 ## Configuration Options
 
-### Required Settings
+LongCat uses the standard YAICLI configuration keys; there are no `LONGCAT_*`-prefixed
+variables.
 
-| Environment Variable | Description          | Example Value              |
-| -------------------- | -------------------- | -------------------------- |
-| `LONGCAT_API_KEY`    | Your LongCat API key | `longcat_1234567890abcdef` |
-| `LONGCAT_MODEL`      | Model name to use    | `LongCat-Flash-Chat`       |
-
-### Optional Settings
-
-| Environment Variable    | Description                | Default Value                     |
-| ----------------------- | -------------------------- | --------------------------------- |
-| `LONGCAT_BASE_URL`      | Base URL for the API       | `https://api.longcat.chat/openai` |
-| `LONGCAT_TIMEOUT`       | Request timeout in seconds | `30`                              |
-| `LONGCAT_EXTRA_HEADERS` | Additional HTTP headers    | `{}`                              |
+| Key | Description | Default |
+| --- | --- | --- |
+| `PROVIDER` | `longcat` for the OpenAI-compatible endpoint, `longcat-anthropic` for the Anthropic-compatible endpoint | - |
+| `API_KEY` | LongCat API key (`YAI_API_KEY` env var) | - |
+| `MODEL` | Model name (`YAI_MODEL`), e.g. `LongCat-Flash-Chat` | - |
+| `BASE_URL` | Optional custom endpoint (`YAI_BASE_URL`) | `https://api.longcat.chat/openai` (`longcat-anthropic`: `https://api.longcat.chat/anthropic`) |
+| `TIMEOUT` | Request timeout in seconds (`YAI_TIMEOUT`) | `60` |
+| `EXTRA_HEADERS` | JSON object of extra HTTP headers (`YAI_EXTRA_HEADERS`) | `{}` |
 
 ## Example Configuration
 
 ```ini
+[core]
 PROVIDER=longcat
-LONGCAT_API_KEY=your-api-key
-LONGCAT_MODEL=LongCat-Flash-Chat
+API_KEY=your-api-key
+MODEL=LongCat-Flash-Chat
+```
+
+The Anthropic-compatible endpoint uses the same credentials:
+
+```ini
+[core]
+PROVIDER=longcat-anthropic
+API_KEY=your-api-key
+MODEL=LongCat-Flash-Chat
 ```
 
 ## Features
@@ -45,8 +52,8 @@ LONGCAT_MODEL=LongCat-Flash-Chat
 
 ```bash
 export YAI_PROVIDER=longcat
-export LONGCAT_API_KEY=your-api-key
-export LONGCAT_MODEL=LongCat-Flash-Chat
+export YAI_API_KEY=your-api-key
+export YAI_MODEL=LongCat-Flash-Chat
 ai "What is the capital of France?"
 ```
 
@@ -59,10 +66,10 @@ ai "Call the weather API for New York"
 ## Troubleshooting
 
 - **Error: Invalid API Key**
-  Ensure your `LONGCAT_API_KEY` is correctly set and valid.
+  Ensure your `API_KEY` (or `YAI_API_KEY`) is correctly set and valid.
 
 - **Error: Connection Timeout**
-  Check your network connection or adjust the `LONGCAT_TIMEOUT` value.
+  Check your network connection or adjust the `TIMEOUT` / `YAI_TIMEOUT` value.
 
 ## Additional Resources
 

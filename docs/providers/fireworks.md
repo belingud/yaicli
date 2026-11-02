@@ -20,11 +20,13 @@ To use Fireworks AI, you need to:
 
 ```ini
 # Fireworks configuration
-PROVIDER=fireworks  # Provider type
-MODEL=llama-v3p1-70b-instruct  # Model name
-API_KEY=your_api_key_here  # Your API key
+PROVIDER=fireworks
+MODEL=llama-v3p1-70b-instruct
+API_KEY=your_api_key_here
 ACCOUNT=fireworks
 ```
+
+Comments must be on their own line; inline comments are not stripped from INI values.
 
 ## Function Calling Support
 

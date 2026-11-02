@@ -25,7 +25,7 @@ TEMPERATURE=0.7
 ## AWS Bedrock Integration
 
 ```ini
-PROVIDER=cohere_bedrock
+PROVIDER=cohere-bedrock
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_REGION=us-east-1
@@ -36,7 +36,7 @@ MODEL=cohere.command-r-plus-v1:0
 ## AWS SageMaker Integration
 
 ```ini
-PROVIDER=cohere_sagemaker
+PROVIDER=cohere-sagemaker
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_REGION=us-east-1

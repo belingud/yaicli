@@ -38,7 +38,7 @@ YAICLI provides special commands that begin with a slash (`/`) or an exclamation
 | ------------------ | ------------------------------------------ |
 | `/help` or `/?`    | Show help message                          |
 | `/clear`           | Clear the current conversation history     |
-| `/his`             | Show command history                       |
+| `/his`             | Show chat history                          |
 | `/list`            | List all saved chat sessions               |
 | `/save <title>`    | Save the current chat session with a title |
 | `/load <index>`    | Load a saved chat session                  |

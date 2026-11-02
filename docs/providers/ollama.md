@@ -18,7 +18,7 @@ ENABLE_FUNCTIONS=true
 | ------------- | ------------------------- | ------------------------ |
 | `MODEL`       | Model name (required)     | -                        |
 | `BASE_URL`    | Ollama server URL         | `http://localhost:11434` |
-| `TEMPERATURE` | Randomness (0.0-1.0)      | `0.7`                    |
+| `TEMPERATURE` | Randomness (0.0-1.0)      | `0.3`                    |
 | `TOP_P`       | Nucleus sampling          | `1.0`                    |
 | `TIMEOUT`     | Request timeout (seconds) | `60`                     |
 | `THINK`       | Enable reasoning mode     | `false`                  |

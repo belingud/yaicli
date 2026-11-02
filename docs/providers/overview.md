@@ -12,7 +12,7 @@ YAICLI currently integrates with the following LLM providers:
 | ------------------ | ----------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | OpenAI             | GPT models and advanced AI    | `https://api.openai.com/v1`                               | [Docs](https://platform.openai.com/docs/api-reference)                           |
 | Anthropic (Claude) | Advanced reasoning and safety | `https://api.anthropic.com`                               | [Docs](https://docs.anthropic.com/claude/reference/getting-started-with-the-api) |
-| Google Gemini      | Multimodal AI models          | `https://generativelanguage.googleapis.com/v1beta/openai` | [Docs](https://ai.google.dev/gemini-api/docs/openai)                             |
+| Google Gemini      | Multimodal AI models          | `https://generativelanguage.googleapis.com/v1beta`        | [Docs](https://ai.google.dev/gemini-api/docs/openai)                             |
 | Cohere             | Enterprise-focused models     | `https://api.cohere.com/v2`                               | [Docs](https://docs.cohere.com/docs)                                             |
 | Mistral            | European AI models            | `https://api.mistral.ai/v1`                               | [Docs](https://docs.mistral.ai/api/)                                             |
 
@@ -110,7 +110,7 @@ Some providers require additional dependencies that can be installed using pip:
 pip install 'yaicli[all]'
 
 # Install specific provider dependencies
-pip install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,anthropic]'
+pip install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,cerebras,fireworks]'
 ```
 
 ## Provider-Specific Documentation
