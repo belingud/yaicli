@@ -8,6 +8,7 @@ from rich.markdown import Markdown
 from rich.padding import Padding
 
 from .config import cfg
+from .console import safe_text, strip_control_chars
 from .const import (
     CHAT_MODE,
     CMD_ADD,
@@ -66,7 +67,7 @@ class CmdHandler:
         try:
             parts = shlex.split(command_input)
         except ValueError as e:
-            self.cli.console.print(f"Error parsing command: {e}", style="red")
+            self.cli.console.print(f"Error parsing command: {safe_text(e)}", style="red")
             return True
 
         if len(parts) < 2:
@@ -77,7 +78,7 @@ class CmdHandler:
         if path.startswith("@"):
             path = path[1:]
         if self.cli.verbose:
-            self.cli.console.print(f"[dim][DEBUG] Adding context: {path}[/dim]")
+            self.cli.console.print(f"[dim][DEBUG] Adding context: {safe_text(path)}[/dim]")
         self.cli.context_manager.add(path)
         return True
 
@@ -96,7 +97,7 @@ class CmdHandler:
         try:
             parts = shlex.split(command_input)
         except ValueError as e:
-            self.cli.console.print(f"Error parsing command: {e}", style="red")
+            self.cli.console.print(f"Error parsing command: {safe_text(e)}", style="red")
             return True
 
         if len(parts) < 2:
@@ -126,7 +127,7 @@ class CmdHandler:
             else:
                 self.cli.context_manager.remove(parts[2])
         else:
-            self.cli.console.print(f"Unknown sub-command: {subcmd}", style="yellow")
+            self.cli.console.print(f"Unknown sub-command: {safe_text(subcmd)}", style="yellow")
             self.cli.console.print("Available: list, clear, add, remove", style="dim")
 
         return True
@@ -181,11 +182,11 @@ class CmdHandler:
         if not cmd:
             return True
 
-        self.cli.console.print(f"Executing: {cmd}", style="bold green")
+        self.cli.console.print(f"Executing: {safe_text(cmd)}", style="bold green")
         try:
             subprocess.call(cmd, shell=True)
         except Exception as e:
-            self.cli.console.print(f"Failed to execute command: {e}", style="red")
+            self.cli.console.print(f"Failed to execute command: {safe_text(e)}", style="red")
         return True
 
     def handle_help(self) -> bool:
@@ -229,14 +230,18 @@ class CmdHandler:
             message_count = 1
             for msg in self.cli.chat.history:
                 if msg.role == "user" and msg.content:
-                    self.cli.console.print(f"[dim]{message_count}[/dim] [bold blue]User:[/bold blue] {msg.content}")
+                    self.cli.console.print(
+                        f"[dim]{message_count}[/dim] [bold blue]User:[/bold blue] {safe_text(msg.content)}"
+                    )
                     message_count += 1
                 elif msg.role == "assistant" and (msg.content or msg.tool_calls):
-                    content = msg.content or ""
+                    content = strip_control_chars(msg.content or "")
                     if msg.tool_calls:
                         content += "\n" if content else ""  # Add newline if there's assistant content before tool calls
                         for t in msg.tool_calls:
-                            content += f">Tool Call: {t.name}({t.arguments})\n"
+                            content += (
+                                f">Tool Call: {strip_control_chars(t.name)}({strip_control_chars(t.arguments)})\n"
+                            )
                     md = Markdown(content, code_theme=cfg["CODE_THEME"])
                     padded_md = Padding(md, (0, 0, 0, 4))
                     self.cli.console.print("    Assistant:", style="bold green")

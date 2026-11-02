@@ -4,7 +4,7 @@ from json_repair import repair_json
 from rich.panel import Panel
 
 from ..config import cfg
-from ..console import get_console
+from ..console import get_console, safe_text, untrusted_text
 from ..exceptions import MCPToolsError
 from ..schemas import ToolCall
 from .function import get_function, list_functions
@@ -130,13 +130,18 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
         _type = "mcp"
 
     if announce:
-        console.print(f"@{_type.title()} call: {tool_call.name}({tool_call.arguments})", style="blue")
+        # Tool name/arguments are model output: never let them act as Rich markup
+        # or emit terminal control sequences here.
+        console.print(
+            f"@{_type.title()} call: {safe_text(tool_call.name)}({safe_text(tool_call.arguments)})",
+            style="blue",
+        )
     # 1. Get the tool
     try:
         tool = get_tool_func(tool_call.name)
     except ValueError as e:
         error_msg = f"{_type.title()} '{tool_call.name!r}' not exists: {e}"
-        console.print(error_msg, style="red")
+        console.print(safe_text(error_msg), style="red")
         return error_msg, False
 
     # 2. Parse tool arguments
@@ -144,12 +149,12 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
         arguments = repair_json(tool_call.arguments, return_objects=True)
         if not isinstance(arguments, dict):
             error_msg = f"Invalid arguments type: {arguments!r}, should be JSON object"
-            console.print(error_msg, style="red")
+            console.print(safe_text(error_msg), style="red")
             return error_msg, False
         arguments = cast(dict, arguments)
     except Exception as e:
         error_msg = f"Invalid arguments from llm: {e}\nRaw arguments: {tool_call.arguments!r}"
-        console.print(error_msg, style="red")
+        console.print(safe_text(error_msg), style="red")
         return error_msg, False
 
     # 3. Execute the tool
@@ -157,7 +162,9 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
         result = tool.execute(**arguments)
         if show_output:
             panel = Panel(
-                result,
+                # Tool output is arbitrary file/command content: render literally
+                # and strip ANSI/OSC control characters.
+                untrusted_text(result),
                 title=f"{_type.title()} output",
                 title_align="left",
                 expand=False,
@@ -168,5 +175,5 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
         return result, True
     except Exception as e:
         error_msg = f"Call {_type} error: {e}\n{_type} name: {tool_call.name!r}\nArguments: {arguments!r}"
-        console.print(error_msg, style="red")
+        console.print(safe_text(error_msg), style="red")
         return error_msg, False

@@ -9,7 +9,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from ...config import cfg
-from ...console import get_console
+from ...console import get_console, print_untrusted
 from ...exceptions import MCPToolsError, ProviderError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_mcp_tools, get_openai_schemas
@@ -169,7 +169,9 @@ class OpenAIProvider(Provider):
                 body = e.response.json()
             except Exception:
                 body = e.response.text
-            self.console.print(f"Error Response: {body}")
+            # Server error bodies are untrusted text: print literally, no markup,
+            # no terminal control sequences.
+            print_untrusted(self.console, f"Error Response: {body}")
 
     def _handle_normal_response(self, response: ChatCompletion) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response"""
