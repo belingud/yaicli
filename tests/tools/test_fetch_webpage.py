@@ -205,6 +205,42 @@ class TestURLValidation:
         assert Function._validate_fetch_url(None) is not None  # type: ignore[arg-type]
 
 
+    @pytest.mark.parametrize("host", ["100.100.100.200", "100.64.0.1", "100.127.255.254"])
+    def test_rejects_cgnat_shared_address_space(self, host):
+        """Test that 100.64.0.0/10 (CGNAT/shared space) is rejected.
+
+        CPython reports 100.64.0.0/10 as neither private nor reserved, while
+        100.100.100.200 is the Alibaba Cloud metadata endpoint.
+        """
+        error = Function._validate_fetch_url(f"http://{host}/latest/meta-data/")
+        assert error is not None
+        assert "non-public" in error
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://8.8.8.8/",
+            "http://1.1.1.1/",
+            "http://[2606:4700::1111]/",
+        ],
+    )
+    def test_allows_public_ip_literals(self, url):
+        """Test that public IPv4 and IPv6 literals are allowed."""
+        assert Function._validate_fetch_url(url) is None
+
+    def test_is_public_ip_primary_judgement(self):
+        """Test the is_global based predicate directly."""
+        assert Function._is_public_ip("8.8.8.8") is True
+        assert Function._is_public_ip("1.1.1.1") is True
+        assert Function._is_public_ip("2606:4700::1111") is True
+        assert Function._is_public_ip("100.100.100.200") is False
+        assert Function._is_public_ip("100.64.0.1") is False
+        assert Function._is_public_ip("100.127.255.254") is False
+        assert Function._is_public_ip("224.0.0.1") is False
+        assert Function._is_public_ip("::ffff:127.0.0.1") is False
+        assert Function._is_public_ip("not-an-ip") is False
+
+
 class TestFetchWebpage:
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
     def test_execute_success(self, mock_client_class, public_dns, no_trafilatura):
@@ -502,3 +538,45 @@ class TestFetchWebpage:
         assert result.startswith("Failed to fetch")
         assert "URL must be a string" in result
         mock_client_class.assert_not_called()
+
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_execute_blocks_cgnat_metadata_without_request(self, mock_client_class):
+        """Test that the Alibaba Cloud metadata address (100.64.0.0/10) is rejected."""
+        result = Function.execute("http://100.100.100.200/latest/meta-data/")
+
+        assert result.startswith("Failed to fetch")
+        assert "non-public" in result
+        mock_client_class.assert_not_called()
+
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_execute_allows_public_ip_literal(self, mock_client_class, no_trafilatura):
+        """Test that a public IP literal is fetched (mock client, no real network)."""
+        mock_client_class.return_value = make_client(make_stream_response(body=b"<html>OK</html>"))
+
+        result = Function.execute("http://8.8.8.8/")
+
+        assert result == "<html>OK</html>"
+        assert mock_client_class.call_args.kwargs["verify"] is True
+
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_execute_warns_when_verify_ssl_disabled(self, mock_client_class, public_dns, no_trafilatura, capfd):
+        """Test that explicitly disabling TLS verification emits a prominent warning."""
+        mock_client_class.return_value = make_client(make_stream_response())
+
+        Function.execute("https://example.com", verify_ssl=False)
+
+        captured = capfd.readouterr()
+        assert "TLS certificate verification is DISABLED" in captured.out
+        assert mock_client_class.call_args.kwargs["verify"] is False
+
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_execute_does_not_warn_when_verify_ssl_enabled(
+        self, mock_client_class, public_dns, no_trafilatura, capfd
+    ):
+        """Test that no TLS warning is printed when verification stays enabled (default)."""
+        mock_client_class.return_value = make_client(make_stream_response())
+
+        Function.execute("https://example.com")
+
+        captured = capfd.readouterr()
+        assert "TLS certificate verification is DISABLED" not in captured.out
