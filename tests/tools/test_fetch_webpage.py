@@ -54,6 +54,7 @@ def make_stream_response(
 def make_client(*streams, side_effect=None):
     """Build a mock httpx.Client (context manager) returning the given stream responses."""
     client = Mock()
+    client.cookies = Mock()
     client.__enter__ = Mock(return_value=client)
     client.__exit__ = Mock(return_value=False)
     if side_effect is not None:
@@ -239,6 +240,13 @@ class TestURLValidation:
         assert Function._is_public_ip("224.0.0.1") is False
         assert Function._is_public_ip("::ffff:127.0.0.1") is False
         assert Function._is_public_ip("not-an-ip") is False
+
+
+    def test_normalize_host(self):
+        """Test hostname normalisation used for cross-host redirect detection."""
+        assert Function._normalize_host("Example.COM.") == "example.com"
+        assert Function._normalize_host("bücher.example") == "xn--bcher-kva.example"
+        assert Function._normalize_host(None) == ""
 
 
 class TestFetchWebpage:
@@ -580,3 +588,85 @@ class TestFetchWebpage:
 
         captured = capfd.readouterr()
         assert "TLS certificate verification is DISABLED" not in captured.out
+
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_execute_cross_host_redirect_strips_cookies_and_referer(
+        self, mock_client_class, public_dns, no_trafilatura
+    ):
+        """Test that a cross-host redirect drops user cookies and the explicit Referer."""
+        redirect = make_stream_response(status_code=302, headers={"location": "https://other.example/final"})
+        final = make_stream_response(body=b"<html>Other</html>")
+        client = make_client(redirect, final)
+        mock_client_class.return_value = client
+
+        result = Function.execute(
+            "https://example.com/start",
+            cookies={"session": "secret"},
+            referer="https://ref.example/page",
+        )
+
+        assert result == "<html>Other</html>"
+        stream_calls = client.stream.call_args_list
+        # First (same-host) hop keeps the caller-provided headers/cookies.
+        assert stream_calls[0].kwargs["headers"]["Referer"] == "https://ref.example/page"
+        # The cross-host hop must not forward cookies nor the explicit Referer.
+        second_headers = {k.lower(): v for k, v in stream_calls[1].kwargs["headers"].items()}
+        assert "referer" not in second_headers
+        assert "cookie" not in second_headers
+        client.cookies.clear.assert_called_once()
+
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_execute_same_host_redirect_keeps_cookies_and_referer(
+        self, mock_client_class, public_dns, no_trafilatura
+    ):
+        """Test that a same-host redirect keeps cookies and the explicit Referer."""
+        redirect = make_stream_response(status_code=302, headers={"location": "/next"})
+        final = make_stream_response(body=b"<html>Next</html>")
+        client = make_client(redirect, final)
+        mock_client_class.return_value = client
+
+        result = Function.execute(
+            "https://example.com/start",
+            cookies={"session": "secret"},
+            referer="https://ref.example/page",
+        )
+
+        assert result == "<html>Next</html>"
+        stream_calls = client.stream.call_args_list
+        assert stream_calls[1].kwargs["headers"]["Referer"] == "https://ref.example/page"
+        client.cookies.clear.assert_not_called()
+
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_execute_rejects_https_to_http_downgrade(self, mock_client_class, public_dns, no_trafilatura):
+        """Test that an https -> http downgrade redirect is refused and not followed."""
+        redirect = make_stream_response(status_code=302, headers={"location": "http://example.com/insecure"})
+        client = make_client(redirect)
+        mock_client_class.return_value = client
+
+        result = Function.execute("https://example.com/start", follow_redirects=True)
+
+        assert result.startswith("Failed to fetch")
+        assert "refusing https->http downgrade redirect" in result
+        assert client.stream.call_count == 1
+
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_execute_allows_http_to_https_upgrade(self, mock_client_class, no_trafilatura):
+        """Test that an http -> https upgrade redirect is followed."""
+        redirect = make_stream_response(status_code=302, headers={"location": "https://example.com/secure"})
+        final = make_stream_response(body=b"<html>Secure</html>")
+        client = make_client(redirect, final)
+        mock_client_class.return_value = client
+
+        result = Function.execute("http://example.com/start")
+
+        assert result == "<html>Secure</html>"
+        assert client.stream.call_count == 2
+
+    @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
+    def test_execute_malformed_url_returns_error_string(self, mock_client_class):
+        """Test that malformed URLs never raise and keep the 'Failed to fetch ...' contract."""
+        for url in ("http://[::1", "http://[]/", "http://[::1]/x"):
+            result = Function.execute(url)
+            assert isinstance(result, str)
+            assert result.startswith("Failed to fetch"), f"{url!r} -> {result!r}"
+        mock_client_class.assert_not_called()
