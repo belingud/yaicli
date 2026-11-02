@@ -198,9 +198,13 @@ class Function(OpenAISchema):
                     time.sleep(1 * (attempt + 1))
                     continue
             except httpx.ConnectError as e:
-                last_error = f"Connection error (SSL): {str(e)}"
-                if attempt < max_retries - 1 and verify_ssl:
-                    verify_ssl = False
+                # A certificate-validation failure is exactly the MITM condition we must
+                # not ignore: never disable TLS verification as a retry strategy. The
+                # caller's verify_ssl choice stays in force for every attempt.
+                verify_note = "kept enabled" if verify_ssl else "explicitly disabled by caller"
+                last_error = f"TLS/connection error (certificate verification {verify_note}): {str(e)}"
+                if attempt < max_retries - 1:
+                    time.sleep(1 * (attempt + 1))
                     continue
             except httpx.HTTPStatusError as e:
                 last_error = f"HTTP status error: {str(e)}"
