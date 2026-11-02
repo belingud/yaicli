@@ -864,11 +864,11 @@ resolution-markers = [
     "python_full_version < '3.11' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "charset-normalizer", marker = "sys_platform == 'darwin'" },
-    { name = "dateparser", marker = "sys_platform == 'darwin'" },
-    { name = "lxml", marker = "sys_platform == 'darwin'" },
-    { name = "python-dateutil", marker = "sys_platform == 'darwin'" },
-    { name = "urllib3", marker = "sys_platform == 'darwin'" },
+    { name = "charset-normalizer" },
+    { name = "dateparser" },
+    { name = "lxml" },
+    { name = "python-dateutil" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/b2/19/9457e697df4f3953bbc61b17d6b1119d812c8d893425fa7771bd2e237706/htmldate-1.4.3.tar.gz", hash = "sha256:ec50f084b997fdf6b26f8c31447e5789f4deb71fe69342cda1d7af0c9f91e01b" }
 wheels = [
@@ -885,11 +885,11 @@ resolution-markers = [
     "python_full_version < '3.11' and sys_platform != 'darwin'",
 ]
 dependencies = [
-    { name = "charset-normalizer", marker = "sys_platform != 'darwin'" },
-    { name = "dateparser", marker = "sys_platform != 'darwin'" },
-    { name = "lxml", marker = "sys_platform != 'darwin'" },
-    { name = "python-dateutil", marker = "sys_platform != 'darwin'" },
-    { name = "urllib3", marker = "sys_platform != 'darwin'" },
+    { name = "charset-normalizer" },
+    { name = "dateparser" },
+    { name = "lxml" },
+    { name = "python-dateutil" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/24/fb/26213bb6300dd7d17afb131d222b4f7e083d822d0fd72089eb60e3b134c1/htmldate-1.6.0.tar.gz", hash = "sha256:5827c8f626a16800a29e57e8188a3d32d0b08ca4c7bd662537b73bbbf22c45a6" }
 wheels = [
@@ -2580,13 +2580,13 @@ resolution-markers = [
     "python_full_version < '3.11' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "certifi", marker = "sys_platform == 'darwin'" },
-    { name = "charset-normalizer", marker = "sys_platform == 'darwin'" },
-    { name = "courlan", marker = "sys_platform == 'darwin'" },
-    { name = "htmldate", version = "1.4.3", source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple/" }, marker = "sys_platform == 'darwin'" },
-    { name = "justext", marker = "sys_platform == 'darwin'" },
-    { name = "lxml", marker = "sys_platform == 'darwin'" },
-    { name = "urllib3", marker = "sys_platform == 'darwin'" },
+    { name = "certifi" },
+    { name = "charset-normalizer" },
+    { name = "courlan" },
+    { name = "htmldate", version = "1.4.3", source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple/" } },
+    { name = "justext" },
+    { name = "lxml" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/44/d8/e9f20c95d2e1189258a84467956a00d85a68563cbaec19920302b8a414f6/trafilatura-1.6.1.tar.gz", hash = "sha256:a7792b037d624d04ab05fcce556cfe08b771dfc8c1db1494c750879530c9a30c" }
 wheels = [
@@ -2603,13 +2603,13 @@ resolution-markers = [
     "python_full_version < '3.11' and sys_platform != 'darwin'",
 ]
 dependencies = [
-    { name = "certifi", marker = "sys_platform != 'darwin'" },
-    { name = "charset-normalizer", marker = "sys_platform != 'darwin'" },
-    { name = "courlan", marker = "sys_platform != 'darwin'" },
-    { name = "htmldate", version = "1.6.0", source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple/" }, marker = "sys_platform != 'darwin'" },
-    { name = "justext", marker = "sys_platform != 'darwin'" },
-    { name = "lxml", marker = "sys_platform != 'darwin'" },
-    { name = "urllib3", marker = "sys_platform != 'darwin'" },
+    { name = "certifi" },
+    { name = "charset-normalizer" },
+    { name = "courlan" },
+    { name = "htmldate", version = "1.6.0", source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple/" } },
+    { name = "justext" },
+    { name = "lxml" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/aa/2d/e91ca57ca6ead5bf72e2c651fc81d47052c4c794a27d729598fba90404b4/trafilatura-1.6.3.tar.gz", hash = "sha256:671dd6e0000e101c4bce8d70f4408bcb79fcbf2275ee25591efe33e2c8a1600d" }
 wheels = [
@@ -2873,7 +2873,7 @@ wheels = [
 
 [[package]]
 name = "yaicli"
-version = "0.17.0"
+version = "0.18.0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic", extra = ["bedrock", "vertex"] },
