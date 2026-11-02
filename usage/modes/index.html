@@ -826,6 +826,8 @@
       
         
       
+        
+      
     
     
     
@@ -1434,6 +1436,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1691,7 +1716,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -2038,7 +2063,7 @@ ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg<span class="w
 <p><strong>Example:</strong>
 <div class="highlight"><pre><span></span><code>💬 &gt; Tell me about quantum computing
 Assistant:
-Quantum computing uses quantum bits (qubits) that can exist in multiple 
+Quantum computing uses quantum bits (qubits) that can exist in multiple
 states simultaneously due to superposition...
 </code></pre></div></p>
 <h3 id="execute-mode-behavior">Execute Mode Behavior<a class="headerlink" href="#execute-mode-behavior" title="Permanent link">&para;</a></h3>
@@ -2053,8 +2078,10 @@ find ~/Downloads -name &quot;*.pdf&quot;
 ╭─ Suggest Command ─────────────────────╮
 │ find ~/Downloads -name &quot;*.pdf&quot;        │
 ╰─────────────────────────────────────────╯
-Execute command? [e]dit, [y]es, [n]o (n): 
+Execute command? [e]dit, [y]es, [n]o (y):
 </code></pre></div></p>
+<p>The default answer is <strong>yes</strong>: pressing <code>Enter</code> without typing another choice executes the
+generated command. Type <code>n</code> to cancel or <code>e</code> to edit it first.</p>
 <h2 id="chat-persistence">Chat Persistence<a class="headerlink" href="#chat-persistence" title="Permanent link">&para;</a></h2>
 <p>When starting a chat session with a title, the conversation is automatically saved:</p>
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--chat<span class="w"> </span><span class="s2">&quot;Python tips&quot;</span>
@@ -2070,7 +2097,7 @@ Saved chats:
 2. Work project (2023-06-28)
 
 💬 &gt; /load 1
-Loading chat: Python tips
+Loaded chat: Python tips
 </code></pre></div>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>

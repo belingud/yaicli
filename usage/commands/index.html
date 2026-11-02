@@ -832,6 +832,8 @@
       
         
       
+        
+      
     
     
     
@@ -1440,6 +1442,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1697,7 +1722,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -2003,9 +2028,19 @@
 <td>Show verbose output (loaded config, API calls, etc.)</td>
 </tr>
 <tr>
+<td><code>--version</code></td>
+<td><code>-v</code></td>
+<td>Show version and exit</td>
+</tr>
+<tr>
 <td><code>--template</code></td>
 <td></td>
 <td>Show the default config file template and exit</td>
+</tr>
+<tr>
+<td><code>--list-providers</code></td>
+<td></td>
+<td>List available providers and exit</td>
 </tr>
 </tbody>
 </table>
@@ -2057,7 +2092,7 @@
 <td><code>--temperature</code></td>
 <td><code>-T</code></td>
 <td>Set temperature (randomness)</td>
-<td>0.5</td>
+<td>0.3</td>
 </tr>
 <tr>
 <td><code>--top-p</code></td>
@@ -2168,18 +2203,23 @@
 <tbody>
 <tr>
 <td><code>--install-functions</code></td>
-<td>Install default functions</td>
+<td>Install built-in functions (files that already exist are skipped)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--reinstall-functions</code></td>
+<td>Overwrite built-in function files with the current version; custom files are kept</td>
 <td></td>
 </tr>
 <tr>
 <td><code>--list-functions</code></td>
-<td>List all available functions</td>
+<td>List installed functions</td>
 <td></td>
 </tr>
 <tr>
 <td><code>--enable-functions</code> / <code>--disable-functions</code></td>
-<td>Enable/disable function calling</td>
-<td>disabled</td>
+<td>Enable/disable function calling in API requests</td>
+<td>enabled</td>
 </tr>
 <tr>
 <td><code>--show-function-output</code> / <code>--hide-function-output</code></td>
@@ -2188,6 +2228,8 @@
 </tr>
 </tbody>
 </table>
+<p>See <a href="../advanced/#function-calling">Advanced Usage — Function Calling</a> for installing,
+updating after an upgrade, writing custom functions, and the confirmation protocol.</p>
 <h3 id="mcp-options">MCP Options<a class="headerlink" href="#mcp-options" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2206,7 +2248,7 @@
 <tr>
 <td><code>--show-mcp-output</code> / <code>--hide-mcp-output</code></td>
 <td>Show/hide MCP output</td>
-<td>show</td>
+<td>hide</td>
 </tr>
 <tr>
 <td><code>--list-mcp</code></td>
@@ -2295,7 +2337,7 @@ ai<span class="w"> </span>--image<span class="w"> </span>diagram.png
 </tr>
 <tr>
 <td><code>/his</code></td>
-<td>Show command history</td>
+<td>Show chat history</td>
 </tr>
 <tr>
 <td><code>/list</code></td>
@@ -2469,7 +2511,7 @@ Context<span class="w"> </span>cleared.
 </thead>
 <tbody>
 <tr>
-<td><code>Tab</code></td>
+<td><code>Shift+Tab</code></td>
 <td>Toggle between Chat/Execute modes</td>
 </tr>
 <tr>

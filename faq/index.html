@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://belingud.github.io/yaicli/faq/">
       
       
-        <link rel="prev" href="../dev/debug-cli/">
+        <link rel="prev" href="../contributing/">
       
       
         <link rel="next" href="../changelog/">
@@ -574,6 +574,8 @@
   
     
     
+      
+        
       
         
       
@@ -1233,6 +1235,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1490,7 +1515,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev/contributing.md" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -1811,9 +1836,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#how-do-i-use-mcp-multi-provider-chain-protocol" class="md-nav__link">
+  <a href="#how-do-i-use-mcp-model-context-protocol" class="md-nav__link">
     <span class="md-ellipsis">
-      How do I use MCP (Multi-provider Chain Protocol)?
+      How do I use MCP (Model Context Protocol)?
     </span>
   </a>
   
@@ -2155,9 +2180,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#how-do-i-use-mcp-multi-provider-chain-protocol" class="md-nav__link">
+  <a href="#how-do-i-use-mcp-model-context-protocol" class="md-nav__link">
     <span class="md-ellipsis">
-      How do I use MCP (Multi-provider Chain Protocol)?
+      How do I use MCP (Model Context Protocol)?
     </span>
   </a>
   
@@ -2248,10 +2273,10 @@ which<span class="w"> </span>ai
 <span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.local/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span>
 </code></pre></div>
 <h3 id="how-do-i-set-up-my-api-key">How do I set up my API key?<a class="headerlink" href="#how-do-i-set-up-my-api-key" title="Permanent link">&para;</a></h3>
-<p>You can set your API key in three ways:
+<p>You can set your API key in two ways:
 1. In the config file (<code>~/.config/yaicli/config.ini</code>)
-2. As an environment variable (<code>export YAI_API_KEY="your-key"</code>)
-3. Using a .env file in your project directory</p>
+2. As an environment variable (<code>export YAI_API_KEY="your-key"</code>)</p>
+<p>YAICLI does not load <code>.env</code> files; use one of the options above (a <code>.env</code> file has no effect).</p>
 <h3 id="can-i-use-multiple-api-keys-for-different-providers">Can I use multiple API keys for different providers?<a class="headerlink" href="#can-i-use-multiple-api-keys-for-different-providers" title="Permanent link">&para;</a></h3>
 <p>Yes! You can create separate configuration sections or switch providers using environment variables:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Use OpenAI</span>
@@ -2281,8 +2306,9 @@ which<span class="w"> </span>ai
 </code></pre></div></p>
 <h3 id="how-do-i-change-the-code-highlighting-theme">How do I change the code highlighting theme?<a class="headerlink" href="#how-do-i-change-the-code-highlighting-theme" title="Permanent link">&para;</a></h3>
 <p>Set the <code>CODE_THEME</code> in your config file:
-<div class="highlight"><pre><span></span><code><span class="na">CODE_THEME</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">monokai</span><span class="w">  </span><span class="c1"># or any other Pygments theme</span>
+<div class="highlight"><pre><span></span><code><span class="na">CODE_THEME</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">monokai</span>
 </code></pre></div></p>
+<p>Use any other Pygments theme name here (comments must be on their own line).</p>
 <h3 id="how-do-i-execute-shell-commands-safely">How do I execute shell commands safely?<a class="headerlink" href="#how-do-i-execute-shell-commands-safely" title="Permanent link">&para;</a></h3>
 <p>Use shell mode with the <code>-s</code> or <code>--shell</code> flag:
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;Find all PNG files in the current directory&quot;</span>
@@ -2335,11 +2361,13 @@ uv<span class="w"> </span>tool<span class="w"> </span>upgrade<span class="w"> </
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--install-functions
 </code></pre></div></p>
 <h3 id="how-do-i-create-custom-functions">How do I create custom functions?<a class="headerlink" href="#how-do-i-create-custom-functions" title="Permanent link">&para;</a></h3>
-<p>Add your function definitions to:
-<div class="highlight"><pre><span></span><code>~/.config/yaicli/functions/
-</code></pre></div></p>
-<p>See the <a href="../usage/configuration/#function-settings">Usage Configuration Guide</a> for details on function configuration.</p>
-<h3 id="how-do-i-use-mcp-multi-provider-chain-protocol">How do I use MCP (Multi-provider Chain Protocol)?<a class="headerlink" href="#how-do-i-use-mcp-multi-provider-chain-protocol" title="Permanent link">&para;</a></h3>
+<p>Add your function definitions to <code>~/.config/yaicli/functions/</code>; each file must define a
+<code>Function(OpenAISchema)</code> class with a classmethod <code>execute</code>. Restart <code>ai</code> afterwards.</p>
+<p>If you recently upgraded YAICLI, run <code>ai --reinstall-functions</code> so the built-in function
+definitions match the new version (custom files are preserved).</p>
+<p>See <a href="../usage/advanced/#function-calling">Advanced Usage — Function Calling</a> for the complete
+install/update/custom-function guide.</p>
+<h3 id="how-do-i-use-mcp-model-context-protocol">How do I use MCP (Model Context Protocol)?<a class="headerlink" href="#how-do-i-use-mcp-model-context-protocol" title="Permanent link">&para;</a></h3>
 <p>Enable MCP with:
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--enable-mcp<span class="w"> </span><span class="s2">&quot;Search for the latest AI research papers&quot;</span>
 </code></pre></div></p>

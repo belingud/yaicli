@@ -625,6 +625,8 @@
       
         
       
+        
+      
     
     
     
@@ -1233,6 +1235,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1531,27 +1556,27 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#history-file-format" class="md-nav__link">
+  <a href="#chat-file-format" class="md-nav__link">
     <span class="md-ellipsis">
-      History File Format
+      Chat File Format
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#manual-history-editing" class="md-nav__link">
+  <a href="#atomic-saves" class="md-nav__link">
     <span class="md-ellipsis">
-      Manual History Editing
+      Atomic Saves
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#history-migration" class="md-nav__link">
+  <a href="#compatibility-and-migration" class="md-nav__link">
     <span class="md-ellipsis">
-      History Migration
+      Compatibility and Migration
     </span>
   </a>
   
@@ -1754,7 +1779,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -2011,27 +2036,27 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#history-file-format" class="md-nav__link">
+  <a href="#chat-file-format" class="md-nav__link">
     <span class="md-ellipsis">
-      History File Format
+      Chat File Format
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#manual-history-editing" class="md-nav__link">
+  <a href="#atomic-saves" class="md-nav__link">
     <span class="md-ellipsis">
-      Manual History Editing
+      Atomic Saves
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#history-migration" class="md-nav__link">
+  <a href="#compatibility-and-migration" class="md-nav__link">
     <span class="md-ellipsis">
-      History Migration
+      Compatibility and Migration
     </span>
   </a>
   
@@ -2109,7 +2134,7 @@
 <div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">YAI_MAX_HISTORY</span><span class="o">=</span><span class="m">1000</span>
 </code></pre></div>
 <h3 id="viewing-history">Viewing History<a class="headerlink" href="#viewing-history" title="Permanent link">&para;</a></h3>
-<p>In interactive mode, use the <code>/his</code> command to view your command history:</p>
+<p>In interactive mode, use the <code>/his</code> command to view your chat history:</p>
 <div class="highlight"><pre><span></span><code>💬 &gt; /his
 Chat History:
 1 User: What is quantum computing?
@@ -2188,40 +2213,75 @@ ai<span class="w"> </span>--chat<span class="w"> </span><span class="s2">&quot;P
 </code></pre></div>
 <p>This removes all previous messages from the current session's context but does not delete saved chat history.</p>
 <h2 id="advanced-history-features">Advanced History Features<a class="headerlink" href="#advanced-history-features" title="Permanent link">&para;</a></h2>
-<h3 id="history-file-format">History File Format<a class="headerlink" href="#history-file-format" title="Permanent link">&para;</a></h3>
-<p>The chat history files are stored as JSON with this structure:</p>
+<h3 id="chat-file-format">Chat File Format<a class="headerlink" href="#chat-file-format" title="Permanent link">&para;</a></h3>
+<p>Chat sessions are stored as JSON files in <code>CHAT_HISTORY_DIR</code> (see
+<a href="../../usage/configuration/">Configuration</a>). The current format keeps every field of a
+message, so restoring a session preserves tool calls, images, and reasoning content:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Chat Title&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-06-01T12:00:00Z&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;updated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-06-01T13:30:00Z&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="nt">&quot;date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-06-01T12:00:00+00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;history&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;User message here&quot;</span>
+<span class="w">      </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;look at before.png&quot;</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;assistant&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Assistant response here&quot;</span>
+<span class="w">      </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;reasoning&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;I should read the image first.&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;tool_calls&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;call_1&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fs_read_image&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;arguments&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{\&quot;image_paths\&quot;: [\&quot;before.png\&quot;]}&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tool&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{\&quot;images\&quot;: [...]}&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fs_read_image&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;tool_call_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;call_1&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;and this one?&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;images&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;base64 or URL&gt;&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;media_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;image/png&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;is_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">]</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="manual-history-editing">Manual History Editing<a class="headerlink" href="#manual-history-editing" title="Permanent link">&para;</a></h3>
-<p>You can manually edit the history files:</p>
-<ol>
-<li>Navigate to your chat history directory</li>
-<li>Open the JSON file with any text editor</li>
-<li>Modify as needed (keeping the JSON structure intact)</li>
-<li>Save the file</li>
-</ol>
-<h3 id="history-migration">History Migration<a class="headerlink" href="#history-migration" title="Permanent link">&para;</a></h3>
-<p>When upgrading YAICLI, history files are automatically migrated to newer formats if needed. If you're experiencing issues with history after an upgrade, try:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Backup your history</span>
-cp<span class="w"> </span>~/.yaicli_history<span class="w"> </span>~/.yaicli_history.bak
-
-<span class="c1"># Remove the history file to create a fresh one</span>
-rm<span class="w"> </span>~/.yaicli_history
-</code></pre></div>
+<p>Optional fields are written only when they are set: <code>name</code>, <code>tool_call_id</code>, <code>tool_calls</code>,
+<code>reasoning</code>, and <code>images</code>. A <code>tool_calls</code> entry is <code>{"id", "name", "arguments"}</code>; an <code>images</code>
+entry is <code>{"data", "media_type", "is_url"}</code>.</p>
+<h3 id="atomic-saves">Atomic Saves<a class="headerlink" href="#atomic-saves" title="Permanent link">&para;</a></h3>
+<p>Sessions are written atomically: the new JSON is written to a hidden temporary file in the
+same directory (<code>.filename.pid.tmp</code>), flushed/<code>fsync</code>-ed, and then moved over the target file
+with <code>os.replace</code>. Consequences:</p>
+<ul>
+<li>an interrupted or failed save never truncates or corrupts the previously saved session;</li>
+<li><code>FileChatManager</code> writes the replacement file <strong>before</strong> deleting older sessions with the
+  same title, so a failed <code>/save</code> keeps the previous version loadable;</li>
+<li>a failed save still raises <code>ChatSaveError</code> and is reported in the CLI.</li>
+</ul>
+<h3 id="compatibility-and-migration">Compatibility and Migration<a class="headerlink" href="#compatibility-and-migration" title="Permanent link">&para;</a></h3>
+<p>Old session files that only contain <code>{"role", "content"}</code> messages still load: missing
+optional fields default to empty. New files are a superset of the legacy format, so no
+explicit migration step is required — loading then saving a session rewrites it in the
+current format. The same applies to <code>tool_calls</code>/<code>images</code>/<code>reasoning</code>: sessions saved by older
+versions simply do not contain them.</p>
+<p>You can still edit a session file manually. Keep the top-level <code>title</code>/<code>date</code>/<code>history</code> keys;
+each message must at least have <code>role</code> and <code>content</code>, and any <code>tool_calls</code>/<code>images</code> entries must
+keep the shapes shown above (a damaged entry is skipped, but tool results whose assistant
+<code>tool_calls</code> were removed will make provider requests invalid).</p>
+<p>If a session file is corrupted, fix or delete that JSON file; the other sessions are
+unaffected.</p>
 <h3 id="disabling-history">Disabling History<a class="headerlink" href="#disabling-history" title="Permanent link">&para;</a></h3>
 <p>You can disable command history saving completely by setting:</p>
 <div class="highlight"><pre><span></span><code><span class="k">[core]</span>

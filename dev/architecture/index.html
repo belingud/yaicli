@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#architecture" class="md-skip">
+        <a href="#architecture-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -574,6 +574,8 @@
   
     
     
+      
+        
       
         
       
@@ -1233,6 +1235,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1430,6 +1455,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Architecture Overview
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1441,6 +1479,79 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#request-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request flow
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      Module map
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-on-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      State on disk
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Modes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tool-calling-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool-calling loop
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-read-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      Where to read next
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1500,7 +1611,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1587,6 +1698,68 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#request-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request flow
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      Module map
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-on-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      State on disk
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Modes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tool-calling-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool-calling loop
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-read-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      Where to read next
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1604,10 +1777,139 @@
   
 
 
-<h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p>TODO: Add content for <strong>architecture</strong>.</p>
-</blockquote>
+<h1 id="architecture-overview">Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h1>
+<p>This page describes how YAICLI is put together and where to start when changing it. User-facing
+behaviour is documented under <code>docs/usage/</code>; coding conventions live in <code>CLAUDE.md</code> and
+<code>.trellis/spec/</code>.</p>
+<h2 id="request-flow">Request flow<a class="headerlink" href="#request-flow" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>entry.py (Typer CLI)
+  └─ cli.py (CLI: mode dispatch, REPL, tool-confirmation pump)
+       ├─ llms/client.py (LLMClient: provider call + tool loop + streaming)
+       │    └─ llms/provider.py (ProviderFactory -&gt; Provider)
+       │         └─ llms/providers/&lt;name&gt;_provider.py
+       ├─ tools/__init__.py (tool schemas, execute_tool_call, output panels)
+       │    ├─ tools/function.py (built-in functions from ~/.config/yaicli/functions/)
+       │    └─ tools/mcp.py (MCP tools, lazy fastmcp import)
+       ├─ chat.py (Chat model + FileChatManager persistence)
+       └─ printer.py / render.py (streaming, reasoning, markdown, prompts)
+</code></pre></div>
+<p><code>entry.py</code> parses arguments, merges piped stdin, processes <code>--image</code>, then builds a <code>CLI</code> and
+calls <code>cli.run(...)</code>. <code>CLI</code> decides between the single-shot path (<code>_run_once</code>) and the REPL
+(<code>_run_repl</code>); both assemble messages and ask <code>LLMClient.completion_with_tools()</code> for a
+response stream. Tool calls come back through the same generator and are executed after the
+confirmation gate, then the loop calls the provider again with the tool results.</p>
+<h2 id="module-map">Module map<a class="headerlink" href="#module-map" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>entry.py</code></td>
+<td>Typer app/options, stdin/image handling, top-level error → exit-code mapping.</td>
+</tr>
+<tr>
+<td><code>cli.py</code></td>
+<td><code>CLI</code> orchestrator: temp/chat/exec modes, REPL, chat save/load, role wiring.</td>
+</tr>
+<tr>
+<td><code>cmd_handler.py</code></td>
+<td>Slash commands (<code>/add</code>, <code>/context</code>, <code>/save</code>, <code>/mode</code>, ...) and <code>!shell</code>.</td>
+</tr>
+<tr>
+<td><code>config.py</code></td>
+<td>Layered <code>cfg</code> singleton: env &gt; <code>config.ini</code> &gt; defaults; type conversion.</td>
+</tr>
+<tr>
+<td><code>const.py</code></td>
+<td>Defaults (<code>DEFAULT_CONFIG_MAP</code>), paths, commands/modes, default roles.</td>
+</tr>
+<tr>
+<td><code>console.py</code></td>
+<td><code>YaiConsole</code> singleton + untrusted-text helpers (<code>safe_text</code>, <code>print_untrusted</code>, ...).</td>
+</tr>
+<tr>
+<td><code>context.py</code></td>
+<td><code>/add</code> persistent context and <code>@path</code> temporary references (dirs, binaries, images).</td>
+</tr>
+<tr>
+<td><code>chat.py</code></td>
+<td><code>Chat</code> message model, JSON serialization, atomic saves, <code>FileChatManager</code>.</td>
+</tr>
+<tr>
+<td><code>history.py</code></td>
+<td>Bounded prompt-toolkit history file (<code>~/.yaicli_history</code>).</td>
+</tr>
+<tr>
+<td><code>role.py</code></td>
+<td><code>Role</code>/<code>RoleManager</code>, role JSON files under <code>~/.config/yaicli/roles/</code>.</td>
+</tr>
+<tr>
+<td><code>schemas.py</code></td>
+<td>Shared dataclasses crossing layers: <code>ChatMessage</code>, <code>LLMResponse</code>, <code>ToolCall</code>, <code>ToolPolicy</code>.</td>
+</tr>
+<tr>
+<td><code>printer.py</code> / <code>render.py</code></td>
+<td>Streaming output, reasoning, confirmation prompts, markdown rendering.</td>
+</tr>
+<tr>
+<td><code>image.py</code></td>
+<td><code>--image</code> validation, MIME detection, base64/URL handling.</td>
+</tr>
+<tr>
+<td><code>function_schema.py</code></td>
+<td><code>OpenAISchema</code>: pydantic model → OpenAI/Anthropic tool schemas.</td>
+</tr>
+<tr>
+<td><code>functions/</code></td>
+<td>Built-in function templates (<code>buildin/</code>) and install/reinstall/list callbacks.</td>
+</tr>
+<tr>
+<td><code>llms/</code></td>
+<td><code>LLMClient</code>, provider ABC/registry, one module per provider.</td>
+</tr>
+<tr>
+<td><code>tools/</code></td>
+<td>Tool schema aggregation/caching, function loading, MCP integration, approval store.</td>
+</tr>
+<tr>
+<td><code>utils.py</code></td>
+<td>Shell/OS detection, <code>str2bool</code>, option callbacks, event-loop helper.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="state-on-disk">State on disk<a class="headerlink" href="#state-on-disk" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>~/.config/yaicli/config.ini</code> — configuration (<code>ai --template</code> prints the defaults).</li>
+<li><code>~/.config/yaicli/roles/</code>, <code>functions/</code>, <code>mcp.json</code>, <code>tool_permissions.json</code> — user data.</li>
+<li><code>~/.yaicli_history</code> — prompt history (bounded by <code>MAX_HISTORY</code>).</li>
+<li><code>CHAT_HISTORY_DIR</code> (temp directory by default) — saved chat JSON sessions.</li>
+</ul>
+<h2 id="modes">Modes<a class="headerlink" href="#modes" title="Permanent link">&para;</a></h2>
+<p><code>TEMP_MODE</code> (single-shot), <code>CHAT_MODE</code> (REPL) and <code>EXEC_MODE</code> (generate + confirm a shell
+command) are the only runtime modes. <code>--code</code> is not a runtime mode: it selects the
+<code>Code Assistant</code> role and a plain-text printer. <code>--shell</code> always uses the
+<code>Shell Command Generator</code> role.</p>
+<h2 id="tool-calling-loop">Tool-calling loop<a class="headerlink" href="#tool-calling-loop" title="Permanent link">&para;</a></h2>
+<ol>
+<li>A per-request <code>ToolPolicy</code> decides whether functions/MCP tools are advertised.</li>
+<li>Provider responses carry zero or more complete <code>ToolCall</code>s (streaming providers aggregate
+   per tool index).</li>
+<li><code>LLMClient</code> evaluates the policy, runs each call through the confirmation gate
+   (<code>TOOL_CONFIRM</code>) and <code>execute_tool_call()</code>.</li>
+<li>Tool results are appended as messages and the provider is called again, up to
+   <code>MAX_TOOL_CALL_DEPTH</code> rounds.</li>
+</ol>
+<h2 id="where-to-read-next">Where to read next<a class="headerlink" href="#where-to-read-next" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>CLAUDE.md</code> — commands, conventions, module overview.</li>
+<li><code>.trellis/spec/py/index.md</code> — layer-specific coding guidelines.</li>
+<li><code>docs/dev/add-provider.md</code>, <code>docs/dev/debug-cli.md</code> — provider tutorial and debugging.</li>
+<li><code>tests/</code> — the executable contract; <code>tests/conftest.py</code> shows the isolated test environment.</li>
+</ul>
 
 
 

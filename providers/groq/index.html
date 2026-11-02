@@ -627,6 +627,8 @@
       
         
       
+        
+      
     
     
     
@@ -1311,6 +1313,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1568,7 +1593,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1796,7 +1821,7 @@
 <li>Uses OpenAI-compatible client implementation</li>
 <li>N parameter is automatically set to 1 (Groq limitation)</li>
 <li>Reasoning effort only supported for qwen3 models</li>
-<li>Valid reasoning_effort values: <code>null</code>, <code>default</code></li>
+<li><code>REASONING_EFFORT</code> is forwarded to the API; YAICLI accepts <code>low</code>, <code>medium</code>, <code>high</code>, <code>default</code>, <code>null</code> (the provider decides which values it supports).</li>
 <li>Optimized for speed with high tokens per second</li>
 <li>Multiple open-source models available</li>
 </ul>

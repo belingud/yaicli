@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#debugging" class="md-skip">
+        <a href="#debugging-logs" class="md-skip">
           Skip to content
         </a>
       
@@ -574,6 +574,8 @@
   
     
     
+      
+        
       
         
       
@@ -1233,6 +1235,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1350,6 +1375,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Debugging & Logs
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1361,6 +1399,52 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#verbose-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verbose mode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit codes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#isolate-the-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Isolate the environment
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1500,7 +1584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1587,6 +1671,41 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#verbose-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verbose mode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit codes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#isolate-the-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Isolate the environment
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1604,10 +1723,39 @@
   
 
 
-<h1 id="debugging">Debugging<a class="headerlink" href="#debugging" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p>TODO: Add content for <strong>debugging</strong>.</p>
-</blockquote>
+<h1 id="debugging-logs">Debugging &amp; Logs<a class="headerlink" href="#debugging-logs" title="Permanent link">&para;</a></h1>
+<p>How to diagnose problems with YAICLI itself.</p>
+<h2 id="verbose-mode">Verbose mode<a class="headerlink" href="#verbose-mode" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--verbose<span class="w"> </span><span class="s2">&quot;hello&quot;</span>
+</code></pre></div>
+<p>Verbose mode prints the effective configuration, the current role, the provider request
+messages/tools, and tracebacks for handled errors. Only <code>API_KEY</code> is masked — be careful when
+sharing the output because provider-specific credentials may appear.</p>
+<h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
+<p>Successful runs exit <code>0</code>; handled failures exit <code>1</code> (configuration errors, provider/API errors,
+missing credentials, no input). See <a href="../../usage/cli/#exit-codes">Exit Codes</a>. In <code>--chat</code> mode, a
+failed turn prints the error and keeps the session alive instead of exiting.</p>
+<h2 id="isolate-the-environment">Isolate the environment<a class="headerlink" href="#isolate-the-environment" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># fresh config/roles/functions in a temp HOME</span>
+<span class="nv">HOME</span><span class="o">=</span>/tmp/yaicli-debug<span class="w"> </span>ai<span class="w"> </span>--verbose<span class="w"> </span><span class="s2">&quot;hello&quot;</span>
+
+<span class="c1"># inspect the default config template</span>
+ai<span class="w"> </span>--template
+
+<span class="c1"># print the effective config file path (shown by --verbose)</span>
+</code></pre></div>
+<p>Common causes:</p>
+<ul>
+<li><strong>Provider errors</strong>: verify <code>PROVIDER</code> with <code>ai --list-providers</code>, then check <code>MODEL</code>,
+  <code>BASE_URL</code> and the API key.</li>
+<li><strong>Function changes not taking effect</strong>: built-in function definitions are copied into
+  <code>~/.config/yaicli/functions/</code>; run <code>ai --reinstall-functions</code> after upgrading.</li>
+<li><strong>Network/proxy</strong>: <code>HTTPS_PROXY</code>/<code>HTTP_PROXY</code> are honoured by the HTTP stack; an invalid
+  <code>BASE_URL</code> causes connection errors.</li>
+<li><strong>MCP</strong>: <code>~/.config/yaicli/mcp.json</code> must be valid JSON; run <code>ai --list-mcp</code>.</li>
+</ul>
+<p>When reporting a bug, include the command, the expected vs actual behaviour, the exit code, and
+the relevant (redacted) verbose output.</p>
 
 
 

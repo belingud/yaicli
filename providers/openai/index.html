@@ -627,6 +627,8 @@
       
         
       
+        
+      
     
     
     
@@ -1338,6 +1340,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1595,7 +1620,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1823,7 +1848,7 @@
 </tr>
 <tr>
 <td><code>REASONING_EFFORT</code></td>
-<td>Thinking depth (0-10)</td>
+<td>Reasoning effort (<code>low</code>, <code>medium</code>, <code>high</code>, <code>default</code>, <code>null</code>)</td>
 <td>-</td>
 </tr>
 <tr>
@@ -1844,11 +1869,11 @@
 </tbody>
 </table>
 <h2 id="azure-openai-configuration">Azure OpenAI Configuration<a class="headerlink" href="#azure-openai-configuration" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="na">PROVIDER</span><span class="o">=</span><span class="s">openai_azure</span>
+<div class="highlight"><pre><span></span><code><span class="na">PROVIDER</span><span class="o">=</span><span class="s">openai-azure</span>
 <span class="na">API_KEY</span><span class="o">=</span><span class="s">your-azure-openai-key</span>
-<span class="na">ENDPOINT</span><span class="o">=</span><span class="s">https://your-resource.openai.azure.com/</span>
+<span class="na">AZURE_ENDPOINT</span><span class="o">=</span><span class="s">https://your-resource.openai.azure.com/</span>
 <span class="na">API_VERSION</span><span class="o">=</span><span class="s">2024-02-01</span>
-<span class="na">DEPLOYMENT</span><span class="o">=</span><span class="s">your-deployment-name</span>
+<span class="na">AZURE_DEPLOYMENT</span><span class="o">=</span><span class="s">your-deployment-name</span>
 <span class="na">MODEL</span><span class="o">=</span><span class="s">gpt-4</span>
 </code></pre></div>
 <h2 id="azure-key-parameters">Azure Key Parameters<a class="headerlink" href="#azure-key-parameters" title="Permanent link">&para;</a></h2>
@@ -1867,7 +1892,7 @@
 <td>-</td>
 </tr>
 <tr>
-<td><code>ENDPOINT</code></td>
+<td><code>AZURE_ENDPOINT</code></td>
 <td>Azure OpenAI endpoint</td>
 <td>-</td>
 </tr>
@@ -1877,12 +1902,12 @@
 <td><code>2024-02-01</code></td>
 </tr>
 <tr>
-<td><code>DEPLOYMENT</code></td>
+<td><code>AZURE_DEPLOYMENT</code></td>
 <td>Azure deployment name</td>
 <td>-</td>
 </tr>
 <tr>
-<td><code>AD_TOKEN</code></td>
+<td><code>AZURE_AD_TOKEN</code></td>
 <td>Azure AD OAuth token (optional)</td>
 <td>-</td>
 </tr>

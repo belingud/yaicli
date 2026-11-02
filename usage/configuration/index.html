@@ -772,6 +772,8 @@
       
         
       
+        
+      
     
     
     
@@ -1380,6 +1382,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1637,7 +1662,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1898,9 +1923,13 @@
 
 <span class="c1"># LLM parameters</span>
 <span class="na">TEMPERATURE</span><span class="o">=</span><span class="s">0.3</span>
+<span class="na">FREQUENCY_PENALTY</span><span class="o">=</span><span class="s">0.0</span>
 <span class="na">TOP_P</span><span class="o">=</span><span class="s">1.0</span>
 <span class="na">MAX_TOKENS</span><span class="o">=</span><span class="s">1024</span>
 <span class="na">TIMEOUT</span><span class="o">=</span><span class="s">60</span>
+<span class="c1"># JSON strings</span>
+<span class="na">EXTRA_HEADERS</span><span class="o">=</span>
+<span class="na">EXTRA_BODY</span><span class="o">=</span>
 <span class="na">REASONING_EFFORT</span><span class="o">=</span>
 
 <span class="c1"># Interactive mode parameters</span>
@@ -1936,7 +1965,18 @@
 
 <span class="c1"># Tool confirmation (set to false to restore silent execution)</span>
 <span class="na">TOOL_CONFIRM</span><span class="o">=</span><span class="s">true</span>
+
+<span class="c1"># Maximum recursive tool-call rounds per request</span>
+<span class="na">MAX_TOOL_CALL_DEPTH</span><span class="o">=</span><span class="s">8</span>
+
+<span class="c1"># Comma-separated API parameters to omit from requests, e.g. temperature,top_p</span>
+<span class="na">EXCLUDE_PARAMS</span><span class="o">=</span>
 </code></pre></div>
+<blockquote>
+<p>Comments in <code>config.ini</code> must be on their own line. Inline comments are <strong>not</strong> stripped by
+the INI parser and become part of the value (e.g. <code>PROVIDER=openai  # note</code> would make the
+provider name invalid).</p>
+</blockquote>
 <h2 id="configuration-options-reference">Configuration Options Reference<a class="headerlink" href="#configuration-options-reference" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1950,7 +1990,7 @@
 <tbody>
 <tr>
 <td><code>PROVIDER</code></td>
-<td>LLM provider (openai, claude, cohere, etc.)</td>
+<td>LLM provider (openai, anthropic, cohere, etc.)</td>
 <td><code>openai</code></td>
 <td><code>YAI_PROVIDER</code></td>
 </tr>
@@ -2039,6 +2079,12 @@
 <td><code>YAI_TEMPERATURE</code></td>
 </tr>
 <tr>
+<td><code>FREQUENCY_PENALTY</code></td>
+<td>Frequency penalty</td>
+<td><code>0.0</code></td>
+<td><code>YAI_FREQUENCY_PENALTY</code></td>
+</tr>
+<tr>
 <td><code>TOP_P</code></td>
 <td>Top-p sampling</td>
 <td><code>1.0</code></td>
@@ -2113,7 +2159,7 @@
 <tr>
 <td><code>SHOW_MCP_OUTPUT</code></td>
 <td>Show MCP output</td>
-<td><code>true</code></td>
+<td><code>false</code></td>
 <td><code>YAI_SHOW_MCP_OUTPUT</code></td>
 </tr>
 <tr>
@@ -2127,6 +2173,18 @@
 <td>Confirm each tool call before running it</td>
 <td><code>true</code></td>
 <td><code>YAI_TOOL_CONFIRM</code></td>
+</tr>
+<tr>
+<td><code>EXCLUDE_PARAMS</code></td>
+<td>Comma-separated API parameters to omit</td>
+<td>-</td>
+<td><code>YAI_EXCLUDE_PARAMS</code></td>
+</tr>
+<tr>
+<td><code>MINIMAX_REASONING_SPLIT</code></td>
+<td>MiniMax interleaved reasoning (reasoning_split)</td>
+<td><code>true</code></td>
+<td><code>YAI_MINIMAX_REASONING_SPLIT</code></td>
 </tr>
 </tbody>
 </table>
@@ -2147,7 +2205,8 @@
 <div class="highlight"><pre><span></span><code><span class="na">EXTRA_BODY</span><span class="o">=</span><span class="s">{&quot;thinking_budget&quot;: 4096}</span>
 </code></pre></div>
 <h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
-<p>All configuration options can be set using environment variables with the <code>YAI_</code> prefix:</p>
+<p>Every option in the reference table above can be set with its <code>YAI_*</code> environment variable
+(these override the config file):</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set API key via environment variable</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">YAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-api-key&quot;</span>
 
@@ -2158,6 +2217,9 @@
 <span class="nb">export</span><span class="w"> </span><span class="nv">YAI_STREAM</span><span class="o">=</span><span class="s2">&quot;false&quot;</span>
 </code></pre></div>
 <p>Environment variables take precedence over the configuration file settings.</p>
+<p>Provider-specific keys that are not in the table (for example <code>HF_PROVIDER</code>, <code>AZURE_ENDPOINT</code>,
+<code>AWS_*</code>, <code>AK</code>/<code>SK</code>) are read by the individual provider implementations from the config file or
+their usual environment variables; they do not have a <code>YAI_</code> alias.</p>
 <h2 id="provider-specific-configuration">Provider-Specific Configuration<a class="headerlink" href="#provider-specific-configuration" title="Permanent link">&para;</a></h2>
 <p>See the <a href="../../providers/overview/">Providers section</a> for detailed configuration options for each supported LLM provider.</p>
 

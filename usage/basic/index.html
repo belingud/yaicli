@@ -694,6 +694,8 @@
       
         
       
+        
+      
     
     
     
@@ -1302,6 +1304,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1559,7 +1584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1719,6 +1744,10 @@
 <p>Debug with verbose mode
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--verbose<span class="w"> </span><span class="s2">&quot;Explain quantum computing&quot;</span>
 </code></pre></div></p>
+<blockquote>
+<p>This help snapshot is abbreviated; run <code>ai --help</code> for the authoritative current
+options (see also <a href="../commands/">Command Overview</a>).</p>
+</blockquote>
 <h2 id="image-input">Image Input<a class="headerlink" href="#image-input" title="Permanent link">&para;</a></h2>
 <p>Send images to vision-capable models directly from the command line using <code>--image</code> / <code>-i</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Describe a local image</span>
@@ -1733,6 +1762,8 @@ ai<span class="w"> </span>--image<span class="w"> </span>https://example.com/dia
 <span class="c1"># Send image without text prompt</span>
 ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg
 </code></pre></div>
+<p>When you omit the prompt, YAICLI sends a minimal prompt (<code>Describe the image.</code>,
+or <code>Describe these images.</code> for several images) together with the image.</p>
 <p>Supported formats: JPEG (<code>.jpg</code>, <code>.jpeg</code>), PNG (<code>.png</code>), GIF (<code>.gif</code>), WebP (<code>.webp</code>).</p>
 <blockquote>
 <p><strong>Note</strong>: Image input works in single-shot mode only (not <code>--chat</code>). Providers without vision support will show a warning and ignore the images.</p>
@@ -1756,7 +1787,7 @@ ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg
 │ --model        -M                 TEXT                       Specify the model to use.                                 │
 │ --temperature  -T                 FLOAT RANGE [0.0&lt;=x&lt;=2.0]  Specify the temperature to use. [default: 0.3]            │
 │ --top-p        -P                 FLOAT RANGE [0.0&lt;=x&lt;=1.0]  Specify the top-p to use. [default: 1.0]                  │
-│ --max-tokens                      INTEGER RANGE [x&gt;=1]       Specify the max tokens to use. [default: 2048]            │
+│ --max-tokens                      INTEGER RANGE [x&gt;=1]       Specify the max tokens to use. [default: 1024]            │
 │ --stream           --no-stream                               Specify whether to stream the response. (default: stream) │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Role Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -1788,14 +1819,16 @@ ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg
 ╭─ Function Options ─────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ --install-functions                                   Install default functions.                                       │
 │ --list-functions                                      List all available functions.                                    │
+│ --reinstall-functions                                 Reinstall builtin functions (overwrites existing builtin files,  │
+│                                                       preserves custom ones).                                          │
 │ --enable-functions        --disable-functions         Enable/disable function calling in API requests (default:        │
-│                                                       disabled)                                                        │
+│                                                       enabled)                                                         │
 │ --show-function-output    --hide-function-output      Show the output of functions (default: show)                     │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ MCP Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ --enable-mcp         --disable-mcp          Enable/disable MCP in API requests (default: disabled)                     │
 │                                             [default: disable-mcp]                                                     │
-│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: show)                                     │
+│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: hide)                                     │
 │ --list-mcp                                  List all available mcp.                                                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Image Options ───────────────────────────────────────────────────────────────────────────────────────────────────────╮

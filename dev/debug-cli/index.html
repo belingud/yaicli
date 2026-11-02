@@ -16,7 +16,7 @@
         <link rel="prev" href="../add-provider/">
       
       
-        <link rel="next" href="../../faq/">
+        <link rel="next" href="../../contributing/">
       
       
       <link rel="icon" href="../../assets/artwork/logo.png">
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#debug-cli" class="md-skip">
+        <a href="#cli-debugging" class="md-skip">
           Skip to content
         </a>
       
@@ -574,6 +574,8 @@
   
     
     
+      
+        
       
         
       
@@ -1233,6 +1235,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1476,6 +1501,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    CLI Debugging
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1487,6 +1525,88 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#run-the-code-you-are-editing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run the code you are editing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verbose-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verbose mode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common failures
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit codes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#isolate-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      Isolate components
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tests
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-put-temporary-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      Where to put temporary output
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1500,7 +1620,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1587,6 +1707,77 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#run-the-code-you-are-editing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run the code you are editing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verbose-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verbose mode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common failures
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit codes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#isolate-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      Isolate components
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tests
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-put-temporary-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      Where to put temporary output
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1604,10 +1795,86 @@
   
 
 
-<h1 id="debug-cli">Debug Cli<a class="headerlink" href="#debug-cli" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p>TODO: Add content for <strong>debug-cli</strong>.</p>
-</blockquote>
+<h1 id="cli-debugging">CLI Debugging<a class="headerlink" href="#cli-debugging" title="Permanent link">&para;</a></h1>
+<p>Practical recipes for debugging YAICLI when working from a source checkout.</p>
+<h2 id="run-the-code-you-are-editing">Run the code you are editing<a class="headerlink" href="#run-the-code-you-are-editing" title="Permanent link">&para;</a></h2>
+<p>The package does not need to be installed. From the repository root:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># point imports at this checkout and keep user state out of your real HOME</span>
+<span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span><span class="nv">HOME</span><span class="o">=</span>/tmp/yaicli-dev<span class="w"> </span><span class="nv">COLUMNS</span><span class="o">=</span><span class="m">120</span><span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>yaicli.entry<span class="w"> </span><span class="s2">&quot;hello&quot;</span>
+</code></pre></div>
+<p><code>python -m yaicli.entry</code> is the same Typer app as the <code>ai</code> console script. A throwaway <code>HOME</code>
+gives you a fresh config file, roles/functions directories and chat storage, so experiments
+cannot corrupt your real <code>~/.config/yaicli</code>.</p>
+<h2 id="verbose-mode">Verbose mode<a class="headerlink" href="#verbose-mode" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--verbose<span class="w"> </span><span class="s2">&quot;hello&quot;</span>
+</code></pre></div>
+<p><code>--verbose</code> prints the loaded configuration (API key masked), the current role, provider
+messages/tools for each request, and tracebacks for handled errors. Do not paste verbose output
+into bug reports without checking it: only <code>API_KEY</code> is masked, other credentials in
+<code>EXTRA_HEADERS</code>/provider-specific keys are not.</p>
+<h2 id="common-failures">Common failures<a class="headerlink" href="#common-failures" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause / fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Unknown provider: &lt;name&gt;</code></td>
+<td>The <code>PROVIDER</code> value is not a <code>ProviderFactory.providers_map</code> key. Run <code>ai --list-providers</code>.</td>
+</tr>
+<tr>
+<td><code>API_KEY is required</code></td>
+<td>No key in <code>API_KEY</code>, <code>YAI_API_KEY</code>, or the provider-specific fallback.</td>
+</tr>
+<tr>
+<td><code>ModelAPIError</code> / HTTP 4xx</td>
+<td>Check model name, base URL, and provider credentials with <code>--verbose</code>.</td>
+</tr>
+<tr>
+<td>Config traceback / non-zero exit</td>
+<td>Malformed <code>config.ini</code> (missing <code>[core]</code>, duplicate section). Inspect <code>ai --template</code> for the expected format.</td>
+</tr>
+<tr>
+<td>Functions behave like an old version</td>
+<td>Built-in definitions are copied to <code>~/.config/yaicli/functions/</code>; run <code>ai --reinstall-functions</code>.</td>
+</tr>
+<tr>
+<td>Markup/render crash</td>
+<td>Untrusted strings must go through <code>yaicli/console.py</code> helpers (<code>safe_text</code>, <code>untrusted_text</code>, <code>print_untrusted</code>).</td>
+</tr>
+<tr>
+<td>Process exits <code>0</code> after an error message</td>
+<td>Should not happen — handled failures exit <code>1</code> (<code>entry.py</code>); file a bug with the command and exit code.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
+<p><code>0</code> on success, <code>1</code> on handled failures (config/provider/API/no-input). In <code>--chat</code> mode an
+error in one turn keeps the REPL alive; the exit code reflects leaving the REPL. See
+<a href="../../usage/cli/#exit-codes">Exit codes</a>.</p>
+<h2 id="isolate-components">Isolate components<a class="headerlink" href="#isolate-components" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Config</strong>: import <code>yaicli.config.cfg</code> and print it; the singleton is built at import time.</li>
+<li><strong>Provider only</strong>: instantiate the provider with a dict config and a mocked <code>CLIENT_CLS</code>, then
+  call <code>_handle_normal_response()</code> / <code>_handle_stream_response()</code> with constructed
+  <code>ChatCompletion</code> / <code>ChatCompletionChunk</code> objects (see <code>tests/llms/</code>).</li>
+<li><strong>Tool only</strong>: call <code>execute_tool_call(ToolCall(...))</code> with <code>yaicli.tools.cfg</code> patched and
+  <code>get_function</code>/<code>get_mcp</code> mocked (<code>tests/tools/</code>).</li>
+<li><strong>CLI/REPL</strong>: inject a mock client via <code>CLI(client=...)</code>; <code>tests/conftest.py</code> provides
+  <code>patched_config_path</code>, <code>setup_test_environment</code>, <code>cli</code>, <code>mock_console</code>.</li>
+</ul>
+<h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/test_entry.py<span class="w"> </span>tests/test_cli.py<span class="w"> </span>-q<span class="w">   </span><span class="c1"># CLI behaviour</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-k<span class="w"> </span><span class="s2">&quot;markup or confirmation&quot;</span><span class="w"> </span>-q<span class="w">            </span><span class="c1"># safety paths</span>
+</code></pre></div>
+<p>Use <code>pytest -x --pdb</code> to drop into the debugger on the first failure, and
+<code>ruff check yaicli tests</code> before pushing.</p>
+<h2 id="where-to-put-temporary-output">Where to put temporary output<a class="headerlink" href="#where-to-put-temporary-output" title="Permanent link">&para;</a></h2>
+<p>Use the project console (<code>get_console()</code>) or <code>print()</code> in <code>entry.py</code> only; remove debug output
+before committing. <code>tests/</code> never call real APIs — keep it that way when adding diagnostics.</p>
 
 
 

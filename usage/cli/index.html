@@ -575,9 +575,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#multi-line-input" class="md-nav__link">
+  <a href="#multi-line-and-long-input" class="md-nav__link">
     <span class="md-ellipsis">
-      Multi-line Input
+      Multi-line and Long Input
     </span>
   </a>
   
@@ -658,6 +658,15 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit Codes
+    </span>
+  </a>
   
 </li>
       
@@ -763,6 +772,8 @@
   
     
     
+      
+        
       
         
       
@@ -1422,6 +1433,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1679,7 +1713,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1824,9 +1858,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#multi-line-input" class="md-nav__link">
+  <a href="#multi-line-and-long-input" class="md-nav__link">
     <span class="md-ellipsis">
-      Multi-line Input
+      Multi-line and Long Input
     </span>
   </a>
   
@@ -1907,6 +1941,15 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit Codes
+    </span>
+  </a>
   
 </li>
       
@@ -2033,7 +2076,7 @@
 </tr>
 <tr>
 <td><code>/his</code></td>
-<td>Show command history</td>
+<td>Show chat history</td>
 </tr>
 <tr>
 <td><code>/list</code></td>
@@ -2071,23 +2114,27 @@
 <ul>
 <li>Press <code>→</code> (right arrow) to accept the full suggestion</li>
 <li>Continue typing to ignore the suggestion</li>
-<li>Press <code>Ctrl+→</code> to accept the next word of the suggestion</li>
+<li>Press <code>Esc</code> then <code>f</code> to accept one word of the suggestion</li>
 </ul>
 <p>To disable auto-suggestions, set <code>AUTO_SUGGEST=false</code> in your configuration.</p>
-<h2 id="multi-line-input">Multi-line Input<a class="headerlink" href="#multi-line-input" title="Permanent link">&para;</a></h2>
-<p>To enter multi-line input:</p>
-<ol>
-<li>Type your text normally</li>
-<li>Press <code>Alt+Enter</code> or <code>Esc+Enter</code> to add a new line</li>
-<li>Continue adding lines as needed</li>
-<li>Press <code>Enter</code> on an empty line to submit</li>
-</ol>
-<p>This is useful for:</p>
-<ul>
-<li>Writing multi-line code examples</li>
-<li>Composing complex prompts</li>
-<li>Structuring lists or tables</li>
-</ul>
+<h2 id="multi-line-and-long-input">Multi-line and Long Input<a class="headerlink" href="#multi-line-and-long-input" title="Permanent link">&para;</a></h2>
+<p>The interactive prompt is deliberately single-line: <code>Enter</code> submits the current line, so
+<code>Alt+Enter</code> / <code>Esc+Enter</code> also submit rather than insert a newline. For long or multi-line
+prompts, pass the text as a quoted argument or pipe it:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Quote a multi-line string</span>
+ai<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>cat<span class="w"> </span>prompt.txt<span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="c1"># Pipe content and add an instruction</span>
+cat<span class="w"> </span>error.log<span class="w"> </span><span class="p">|</span><span class="w"> </span>ai<span class="w"> </span><span class="s2">&quot;Explain these errors&quot;</span>
+
+<span class="c1"># Here-document</span>
+ai<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
+<span class="s">Summarize the following log and list the root cause:</span>
+<span class="s">&lt;paste log here&gt;</span>
+<span class="s">EOF</span>
+<span class="k">)</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Piped stdin is combined with the prompt argument (stdin content comes first).</p>
 <h2 id="command-editing">Command Editing<a class="headerlink" href="#command-editing" title="Permanent link">&para;</a></h2>
 <p>When in Execute mode and reviewing a suggested command:</p>
 <table>
@@ -2170,6 +2217,35 @@ ai<span class="w"> </span>-i<span class="w"> </span>img1.png<span class="w"> </s
 <span class="c1"># Image URL</span>
 ai<span class="w"> </span>--image<span class="w"> </span>https://example.com/photo.jpg<span class="w"> </span><span class="s2">&quot;Describe this&quot;</span>
 </code></pre></div>
+<h2 id="exit-codes">Exit Codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
+<p>YAICLI returns a non-zero exit status for failures it can detect, so scripts and CI can
+tell success from failure:</p>
+<table>
+<thead>
+<tr>
+<th>Exit code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Success (answer produced; informational commands such as <code>--version</code>, <code>--list-*</code>).</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, no input/aborted action, or an unexpected error printed as <code>Unknown error: ...</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>A failure report such as <code>Unknown error: API_KEY is required</code> is accompanied by exit code
+<code>1</code>; if you see a failure message with exit code <code>0</code>, that is a bug. Verify the current
+build with:</p>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--version<span class="p">;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;exit=</span><span class="nv">$?</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Inside the interactive <code>--chat</code> REPL, an error during one turn is printed and the session
+continues; the process exits <code>0</code> when you leave the REPL normally. Use single-shot mode when
+you need the exit code to reflect the request outcome.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Learn about different <a href="../modes/">interaction modes</a></li>

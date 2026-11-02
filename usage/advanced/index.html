@@ -645,6 +645,60 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#installing-and-updating-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installing and updating functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writing-custom-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Writing custom functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enabling-and-controlling-function-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enabling and controlling function calls
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reading-multiple-files-in-one-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading Multiple Files in One Call
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reading-multiple-images-in-one-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading Multiple Images in One Call
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#built-in-function-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      Built-in Function Safety
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#tool-execution-confirmation" class="md-nav__link">
     <span class="md-ellipsis">
       Tool Execution Confirmation
@@ -659,9 +713,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcp-machine-comprehension-protocol" class="md-nav__link">
+  <a href="#mcp-model-context-protocol" class="md-nav__link">
     <span class="md-ellipsis">
-      MCP (Machine Comprehension Protocol)
+      MCP (Model Context Protocol)
     </span>
   </a>
   
@@ -802,6 +856,8 @@
   
     
     
+      
+        
       
         
       
@@ -1461,6 +1517,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1718,7 +1797,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1864,6 +1943,60 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#installing-and-updating-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installing and updating functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writing-custom-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Writing custom functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enabling-and-controlling-function-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enabling and controlling function calls
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reading-multiple-files-in-one-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading Multiple Files in One Call
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reading-multiple-images-in-one-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading Multiple Images in One Call
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#built-in-function-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      Built-in Function Safety
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#tool-execution-confirmation" class="md-nav__link">
     <span class="md-ellipsis">
       Tool Execution Confirmation
@@ -1878,9 +2011,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcp-machine-comprehension-protocol" class="md-nav__link">
+  <a href="#mcp-model-context-protocol" class="md-nav__link">
     <span class="md-ellipsis">
-      MCP (Machine Comprehension Protocol)
+      MCP (Model Context Protocol)
     </span>
   </a>
   
@@ -2059,17 +2192,131 @@ ai<span class="w"> </span>--delete-role<span class="w"> </span><span class="s2">
 ai<span class="w"> </span>--role<span class="w"> </span><span class="s2">&quot;Python Expert&quot;</span><span class="w"> </span><span class="s2">&quot;How do I use decorators?&quot;</span>
 </code></pre></div>
 <h2 id="function-calling">Function Calling<a class="headerlink" href="#function-calling" title="Permanent link">&para;</a></h2>
-<p>YAICLI supports function calling, enabling AI models to call functions to accomplish tasks:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Install default functions</span>
-ai<span class="w"> </span>--install-functions
+<p>YAICLI supports function calling: the model can ask YAICLI to execute a local
+function/tool (for example <code>fs_read_file</code>, <code>web_search</code>, or <code>execute_shell_command</code>)
+and then continue the conversation with the result.</p>
+<h3 id="installing-and-updating-functions">Installing and updating functions<a class="headerlink" href="#installing-and-updating-functions" title="Permanent link">&para;</a></h3>
+<p>Built-in function definitions ship inside the installed package, but they are <strong>not</strong>
+used from there. They must be copied into your config directory once and re-copied
+after upgrades.</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Command</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First-time install</td>
+<td><code>ai --install-functions</code></td>
+<td>Copies every built-in definition into <code>~/.config/yaicli/functions/</code>. Files that already exist are skipped.</td>
+</tr>
+<tr>
+<td>List installed functions</td>
+<td><code>ai --list-functions</code></td>
+<td>Prints the function files currently loaded by YAICLI.</td>
+</tr>
+<tr>
+<td>Update after an upgrade</td>
+<td><code>ai --reinstall-functions</code></td>
+<td>Overwrites the files whose names match the current built-ins with the definitions from the new version. Custom files (different file names) are preserved.</td>
+</tr>
+</tbody>
+</table>
+<p>Paths on Windows: <code>C:\Users\&lt;user&gt;\.config\yaicli\functions</code> (the non-Windows path is
+<code>~/.config/yaicli/functions/</code>).</p>
+<p><strong>After every <code>pip install -U yaicli</code>, <code>uv tool upgrade yaicli</code>, or other package-manager
+upgrade, run <code>ai --reinstall-functions</code>.</strong> Built-in schemas do change between releases —
+for example <code>fs_read_file</code> and <code>fs_read_image</code> now take lists, and <code>fs_edit_file</code> validates
+its operations — and the copy in your config directory is what the model actually sees.
+<code>ai --install-functions</code> will <em>not</em> refresh files that already exist.</p>
+<h3 id="writing-custom-functions">Writing custom functions<a class="headerlink" href="#writing-custom-functions" title="Permanent link">&para;</a></h3>
+<p>Add a Python file to <code>~/.config/yaicli/functions/</code> (files starting with <code>_</code> are ignored).
+It must define a class named <code>Function</code> that subclasses <code>yaicli.function_schema.OpenAISchema</code>
+and a classmethod <code>execute</code>. The tool name is the pydantic model title (<code>class Config: title</code>).
+Pydantic fields become the tool parameters; use <code>Field(description=...)</code> (and a class
+docstring) so the model knows how to call it. Example:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
-<span class="c1"># List available functions</span>
-ai<span class="w"> </span>--list-functions
+<span class="kn">from</span><span class="w"> </span><span class="nn">yaicli.function_schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAISchema</span>
 
-<span class="c1"># Enable function calling in queries</span>
-ai<span class="w"> </span><span class="s1">&#39;check the current dir total size&#39;</span><span class="w"> </span>--enable-functions
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Function</span><span class="p">(</span><span class="n">OpenAISchema</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add two integers and return the result.&quot;&quot;&quot;</span>
+
+    <span class="n">a</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;First integer&quot;</span><span class="p">)</span>
+    <span class="n">b</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Second integer&quot;</span><span class="p">)</span>
+
+    <span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;add_numbers&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span>
 </code></pre></div>
-<p>You can also define custom functions by adding them to <code>~/.config/yaicli/functions/</code>.</p>
+<p>Restart <code>ai</code> after adding or changing a custom function; the loader executes every
+<code>*.py</code> file in that directory at startup. <code>ai --reinstall-functions</code> never deletes custom
+files, and <code>ai --install-functions</code> only adds built-in files that are missing.</p>
+<h3 id="enabling-and-controlling-function-calls">Enabling and controlling function calls<a class="headerlink" href="#enabling-and-controlling-function-calls" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Function calling is enabled by default (<code>ENABLE_FUNCTIONS=true</code>). Toggle it per run with
+  <code>--enable-functions</code> / <code>--disable-functions</code>, or set <code>ENABLE_FUNCTIONS=false</code> in the config file.</li>
+<li>Function output is displayed by default; use <code>--hide-function-output</code> or set
+  <code>SHOW_FUNCTION_OUTPUT=false</code> to hide it.</li>
+<li>Every call asks for confirmation by default (<code>TOOL_CONFIRM=true</code>); see
+  <a href="#tool-execution-confirmation">Tool Execution Confirmation</a> below for the four choices.</li>
+<li><code>MAX_TOOL_CALL_DEPTH</code> (default <code>8</code>) bounds recursive tool-call rounds in one request.</li>
+</ul>
+<h3 id="reading-multiple-files-in-one-call">Reading Multiple Files in One Call<a class="headerlink" href="#reading-multiple-files-in-one-call" title="Permanent link">&para;</a></h3>
+<p>The built-in <code>fs_read_file</code> function accepts a list of file paths, so several
+files can be read with a single tool call instead of one call per file:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;file_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/main.py&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;src/config.py&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;encoding&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;utf-8&quot;</span><span class="p">}</span>
+</code></pre></div>
+<p>A single path string is still accepted for backward compatibility. The list contract is a
+built-in schema change: run <code>ai --reinstall-functions</code> after upgrading to pick it up.</p>
+<h3 id="reading-multiple-images-in-one-call">Reading Multiple Images in One Call<a class="headerlink" href="#reading-multiple-images-in-one-call" title="Permanent link">&para;</a></h3>
+<p>The built-in <code>fs_read_image</code> function follows the same list-based contract, so several
+images can be read and base64-encoded in one tool call:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;image_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;artwork/before.png&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;artwork/after.png&quot;</span><span class="p">]}</span>
+</code></pre></div>
+<p>A single path string is still accepted for backward compatibility. The same
+<code>ai --reinstall-functions</code> rule applies after upgrading.</p>
+<h3 id="built-in-function-safety">Built-in Function Safety<a class="headerlink" href="#built-in-function-safety" title="Permanent link">&para;</a></h3>
+<p>The built-in functions run with your local permissions, so the shipped implementations apply
+their own guard rails. These are user-visible contracts — if you see different behaviour,
+run <code>ai --reinstall-functions</code> after upgrading.</p>
+<p><strong><code>fetch_webpage</code></strong> only fetches public <code>http</code>/<code>https</code> URLs:</p>
+<ul>
+<li>loopback, private, link-local, cloud-metadata (<code>169.254.169.254</code>, <code>100.100.100.200</code>),
+  CGNAT/shared-address (<code>100.64.0.0/10</code>), multicast, reserved, and unspecified addresses are
+  refused before any request is made (IPv4 and IPv6);</li>
+<li>redirects are followed manually and re-validated hop by hop (maximum 5 redirects); a
+  cross-host redirect does not forward your cookies or <code>Referer</code>, and an <code>https</code> → <code>http</code>
+  downgrade is refused;</li>
+<li>the response body is capped at 10 MB; <code>timeout</code>, <code>user_agent</code>, <code>cookies</code>, <code>referer</code>, and
+  <code>language</code> are honoured;</li>
+<li>TLS certificate verification is enabled by default and is <strong>never</strong> silently disabled on a
+  connection error. Passing <code>verify_ssl=False</code> explicitly is allowed (with a warning) but is
+  vulnerable to man-in-the-middle attacks;</li>
+<li>every failure is returned to the model as a <code>Failed to fetch ...</code> string instead of raising,
+  so the model can adapt.</li>
+</ul>
+<p><strong><code>fs_edit_file</code></strong> is all-or-nothing:</p>
+<ul>
+<li>supported operations and keys:</li>
+<li><code>replace</code>: <code>{"type": "replace", "old": &lt;str&gt;, "new": &lt;str&gt;}</code> — replaces all occurrences.
+    <code>old</code> must be non-empty and must differ from <code>new</code>;</li>
+<li><code>replace_line</code>: <code>{"type": "replace_line", "line_number": &lt;1-based int&gt;, "new": &lt;str&gt;}</code>;</li>
+<li><code>insert_line</code>: <code>{"type": "insert_line", "line_number": &lt;0..N&gt;, "content": &lt;str&gt;}</code>;</li>
+<li><code>delete_line</code>: <code>{"type": "delete_line", "line_number": &lt;1-based int&gt;}</code>;</li>
+<li><code>append</code>: <code>{"type": "append", "content": &lt;str&gt;}</code>;</li>
+<li>every edit is validated and applied in order; <strong>if any edit fails, nothing is written</strong> and
+  the result reports the failures (<code>success=false</code>, <code>error</code> explains how many failed);</li>
+<li>writes are atomic and preserve file permissions; a read-only file is rejected with
+  <code>Permission denied</code> instead of being overwritten.</li>
+</ul>
 <h3 id="tool-execution-confirmation">Tool Execution Confirmation<a class="headerlink" href="#tool-execution-confirmation" title="Permanent link">&para;</a></h3>
 <p>By default YAICLI asks for confirmation before running each tool call:</p>
 <div class="highlight"><pre><span></span><code>╭─ Confirm tool call ─────────────────────────────────────╮
@@ -2104,7 +2351,9 @@ Execute tool? [y]once, [a]session, [A]always, [n]o:
 </tbody>
 </table>
 <p>Pressing Ctrl-C or sending EOF at the prompt is treated as a denial.</p>
-<p>In non-interactive sessions (piped stdin / no TTY), tools already in the persistent allowlist run automatically; all others are denied with a hint.</p>
+<p>In non-interactive sessions (piped stdin / no TTY), tools already in the persistent
+allowlist run automatically; all others are denied with a hint telling you to pre-approve
+them or set <code>TOOL_CONFIRM=false</code>.</p>
 <p>To disable confirmation and restore silent execution:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># config.ini</span>
 <span class="na">TOOL_CONFIRM</span><span class="o">=</span><span class="s">false</span>
@@ -2112,7 +2361,7 @@ Execute tool? [y]once, [a]session, [A]always, [n]o:
 <p>or:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">YAI_TOOL_CONFIRM</span><span class="o">=</span><span class="nb">false</span>
 </code></pre></div>
-<h2 id="mcp-machine-comprehension-protocol">MCP (Machine Comprehension Protocol)<a class="headerlink" href="#mcp-machine-comprehension-protocol" title="Permanent link">&para;</a></h2>
+<h2 id="mcp-model-context-protocol">MCP (Model Context Protocol)<a class="headerlink" href="#mcp-model-context-protocol" title="Permanent link">&para;</a></h2>
 <p>MCP allows AI models to use external tools:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Enable MCP in queries</span>
 ai<span class="w"> </span><span class="s1">&#39;What is the latest exchange rate between BTC and USD?&#39;</span><span class="w"> </span>--enable-mcp
@@ -2138,6 +2387,9 @@ ai<span class="w"> </span>-i<span class="w"> </span>screenshot.png<span class="w
 <p>You can send an image without a text prompt:</p>
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg
 </code></pre></div>
+<p>When no text prompt is given, YAICLI sends a minimal prompt (<code>Describe the image.</code>,
+or <code>Describe these images.</code> for multiple images) so providers always receive a
+valid user message.</p>
 <h3 id="provider-compatibility">Provider Compatibility<a class="headerlink" href="#provider-compatibility" title="Permanent link">&para;</a></h3>
 <p>Image input is automatically formatted for each provider family:</p>
 <table>
@@ -2183,8 +2435,10 @@ ai<span class="w"> </span>-i<span class="w"> </span>screenshot.png<span class="w
 <h3 id="llm-provider-configuration">LLM Provider Configuration<a class="headerlink" href="#llm-provider-configuration" title="Permanent link">&para;</a></h3>
 <p>YAICLI works with many LLM providers. Configure your preferred provider in the config file:</p>
 <div class="highlight"><pre><span></span><code><span class="k">[core]</span>
-<span class="na">PROVIDER</span><span class="o">=</span><span class="s">openai</span><span class="w">  </span><span class="c1"># or cohere, gemini, ollama, etc.</span>
-<span class="na">BASE_URL</span><span class="o">=</span><span class="w">        </span><span class="c1"># leave empty for default provider URL</span>
+<span class="c1"># Comments must be on their own line; inline comments become part of the value.</span>
+<span class="na">PROVIDER</span><span class="o">=</span><span class="s">openai</span>
+<span class="c1"># Leave BASE_URL empty to use the provider default URL.</span>
+<span class="na">BASE_URL</span><span class="o">=</span>
 <span class="na">API_KEY</span><span class="o">=</span><span class="s">your_api_key_here</span>
 <span class="na">MODEL</span><span class="o">=</span><span class="s">gpt-5.2</span>
 </code></pre></div>

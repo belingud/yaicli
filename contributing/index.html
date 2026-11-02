@@ -13,6 +13,10 @@
         <link rel="canonical" href="https://belingud.github.io/yaicli/contributing/">
       
       
+        <link rel="prev" href="../dev/debug-cli/">
+      
+      
+        <link rel="next" href="../faq/">
       
       
       <link rel="icon" href="../assets/artwork/logo.png">
@@ -570,6 +574,8 @@
   
     
     
+      
+        
       
         
       
@@ -1229,6 +1235,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1364,8 +1393,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1381,13 +1412,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
@@ -1403,7 +1432,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Developer Guide
@@ -1483,10 +1512,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../dev/contributing.md" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1497,6 +1548,137 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ways-to-contribute" class="md-nav__link">
+    <span class="md-ellipsis">
+      Ways to Contribute
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Development Setup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setting-up-your-development-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting Up Your Development Environment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      Development Guidelines
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development Guidelines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#code-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Style
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pull-request-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pull Request Process
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding a New Provider
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      License
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1734,12 +1916,12 @@
    <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/YOUR-USERNAME/yaicli.git
 <span class="nb">cd</span><span class="w"> </span>yaicli
 </code></pre></div></li>
-<li>Create a virtual environment:
+<li>Create a virtual environment and activate it:
    <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>venv
-<span class="nb">source</span><span class="w"> </span>venv/bin/activate<span class="w">  </span><span class="c1"># On Windows: venv\Scripts\activate</span>
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate<span class="w">  </span><span class="c1"># On Windows: .venv\Scripts\activate</span>
 </code></pre></div></li>
-<li>Install dependencies for development:
-   <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--all-extras
+<li>Install dependencies for development (dev tools, docs tooling and all provider extras):
+   <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--all-groups<span class="w"> </span>--all-extras
 </code></pre></div></li>
 </ol>
 <h2 id="development-guidelines">Development Guidelines<a class="headerlink" href="#development-guidelines" title="Permanent link">&para;</a></h2>
@@ -1751,8 +1933,9 @@
 <li>Write docstrings for all public functions, classes, and methods</li>
 </ul>
 <h3 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h3>
-<p>Before submitting a PR, make sure to run the tests:</p>
-<div class="highlight"><pre><span></span><code>pytest
+<p>Before submitting a PR, make sure to run the tests and the linter:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>yaicli<span class="w"> </span>tests
 </code></pre></div>
 <h3 id="pull-request-process">Pull Request Process<a class="headerlink" href="#pull-request-process" title="Permanent link">&para;</a></h3>
 <ol>
@@ -1767,7 +1950,7 @@
 <ol>
 <li>Create a new file in <code>yaicli/llms/providers/</code> named after your provider (e.g., <code>my_provider.py</code>)</li>
 <li>Implement the provider class following the interface pattern of existing providers</li>
-<li>Add the provider to the provider registry in <code>yaicli/llms/providers/__init__.py</code></li>
+<li>Register the provider in <code>ProviderFactory.providers_map</code> (<code>yaicli/llms/provider.py</code>); <code>yaicli/llms/providers/__init__.py</code> is empty. See <a href="../dev/add-provider/">Add a New Provider</a> for the full walkthrough</li>
 <li>Update any configuration-related code to recognize the new provider</li>
 <li>Add tests for your provider in the <code>tests/llms/</code> directory</li>
 </ol>
@@ -1776,12 +1959,12 @@
 <ol>
 <li>Follow the existing structure</li>
 <li>Use Markdown for all documentation files</li>
-<li>Test changes locally using MkDocs:
-   <div class="highlight"><pre><span></span><code>mkdocs<span class="w"> </span>serve
+<li>Test changes locally using MkDocs (docs tooling is in the <code>docs</code> dependency group):
+   <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>serve
 </code></pre></div></li>
 </ol>
 <h2 id="license">License<a class="headerlink" href="#license" title="Permanent link">&para;</a></h2>
-<p>By contributing to YAICLI, you agree that your contributions will be licensed under the project's <a href="https://github.com/vic4code/yaicli/blob/master/LICENSE">Apache License 2.0</a>. </p>
+<p>By contributing to YAICLI, you agree that your contributions will be licensed under the project's <a href="https://github.com/belingud/yaicli/blob/master/LICENSE">Apache License 2.0</a>.</p>
 
 
 

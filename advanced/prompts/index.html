@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://belingud.github.io/yaicli/advanced/prompts/">
       
       
-        <link rel="prev" href="../../providers/fireworks/">
+        <link rel="prev" href="../../providers/longcat/">
       
       
         <link rel="next" href="../history/">
@@ -574,6 +574,8 @@
   
     
     
+      
+        
       
         
       
@@ -1233,6 +1235,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1703,7 +1728,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1991,7 +2016,10 @@
 <h2 id="understanding-roles">Understanding Roles<a class="headerlink" href="#understanding-roles" title="Permanent link">&para;</a></h2>
 <p>In YAICLI, a "role" is a predefined set of instructions, preferences, and behaviors assigned to the AI. Roles help guide how the AI responds to your queries.</p>
 <h3 id="default-roles">Default Roles<a class="headerlink" href="#default-roles" title="Permanent link">&para;</a></h3>
-<p>YAICLI comes with a built-in <code>DEFAULT</code> role that provides a solid foundation for general-purpose interactions. This role instructs the AI to be helpful, accurate, and concise.</p>
+<p>YAICLI ships with three built-in roles: <code>DEFAULT</code> (general-purpose assistant),
+<code>Shell Command Generator</code> (used by <code>--shell</code>/execute mode), and <code>Code Assistant</code> (used by
+<code>--code</code>). Built-in role files are seeded into <code>~/.config/yaicli/roles/</code> on first run and can be
+overridden (a warning is shown unless <code>ROLE_MODIFY_WARNING=false</code>).</p>
 <h2 id="creating-custom-roles">Creating Custom Roles<a class="headerlink" href="#creating-custom-roles" title="Permanent link">&para;</a></h2>
 <p>You can create custom roles to tailor the AI's behavior for specific tasks or domains:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Create a new role through interactive prompting</span>
@@ -2019,10 +2047,9 @@ ai<span class="w"> </span>--role<span class="w"> </span><span class="s2">&quot;S
 
 <span class="c1"># Use in chat mode</span>
 ai<span class="w"> </span>--chat<span class="w"> </span>--role<span class="w"> </span><span class="s2">&quot;SQL Expert&quot;</span>
-
-<span class="c1"># Use in shell command mode</span>
-ai<span class="w"> </span>--shell<span class="w"> </span>--role<span class="w"> </span><span class="s2">&quot;DevOps Engineer&quot;</span><span class="w"> </span><span class="s2">&quot;Set up a cronjob&quot;</span>
 </code></pre></div>
+<p>Role selection applies to direct queries, <code>--chat</code>, and <code>--code</code>. <code>--shell</code> always uses the
+built-in <code>Shell Command Generator</code> role (a non-default <code>--role</code> is ignored with a warning).</p>
 <h2 id="managing-roles">Managing Roles<a class="headerlink" href="#managing-roles" title="Permanent link">&para;</a></h2>
 <p>YAICLI provides commands to manage your roles:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># List all available roles</span>
@@ -2052,16 +2079,23 @@ ai<span class="w"> </span>--delete-role<span class="w"> </span><span class="s2">
 <p>Roles are defined as JSON files with the following structure:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Role Name&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Detailed instructions for the AI...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-06-01T12:00:00Z&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;updated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-06-01T12:00:00Z&quot;</span>
+<span class="w">  </span><span class="nt">&quot;prompt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;You are a helpful assistant. Reply concisely.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;variables&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;_os&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;macOS&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;_shell&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;zsh&quot;</span>
+<span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
+<p><code>name</code> and <code>prompt</code> are required (the prompt must be a non-empty string and is the
+"description" requested by <code>ai --create-role</code>). <code>variables</code> is optional: if omitted, YAICLI
+fills <code>_os</code> and <code>_shell</code> from auto-detection. The prompt is passed through Python
+<code>str.format()</code>, so literal braces must be doubled (<code>{{</code> and <code>}}</code>), and unknown <code>{name}</code>
+placeholders cause the role to be rejected with a load error.</p>
 <h3 id="creating-roles-manually">Creating Roles Manually<a class="headerlink" href="#creating-roles-manually" title="Permanent link">&para;</a></h3>
 <p>You can create roles manually by adding JSON files to the roles directory:</p>
 <ol>
-<li>Create a file named <code>role_name.json</code> in the roles directory</li>
-<li>Add the role structure as shown above</li>
+<li>Create a file in <code>~/.config/yaicli/roles/</code> (for example <code>my_role.json</code>)</li>
+<li>Add the role structure shown above; the <code>name</code> field is what <code>--role</code> uses, regardless of the file name</li>
 <li>Restart YAICLI or run <code>ai --list-roles</code> to see your new role</li>
 </ol>
 <h3 id="role-modification-warning">Role Modification Warning<a class="headerlink" href="#role-modification-warning" title="Permanent link">&para;</a></h3>
@@ -2118,7 +2152,7 @@ For shell commands, explain what each command does and any flags or options used
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Learn about <a href="../history/">chat history management</a></li>
-<li>Explore <a href="../../usage/configuration/#function-settings">function calling capabilities</a></li>
+<li>Explore <a href="../../usage/advanced/#function-calling">function calling capabilities</a></li>
 <li>Check out <a href="../debugging/">debugging and logs</a></li>
 </ul>
 

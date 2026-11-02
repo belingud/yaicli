@@ -729,6 +729,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#image-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image References
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#binary-file-warning" class="md-nav__link">
     <span class="md-ellipsis">
       Binary File Warning
@@ -940,6 +949,8 @@
   
     
     
+      
+        
       
         
       
@@ -1599,6 +1610,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1856,7 +1890,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev/contributing.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -2224,6 +2258,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#image-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image References
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#binary-file-warning" class="md-nav__link">
     <span class="md-ellipsis">
       Binary File Warning
@@ -2311,9 +2354,12 @@
 /add<span class="w"> </span>tests/
 <span class="c1"># Output: Added directory to context: /path/to/tests/</span>
 
-<span class="c1"># Add multiple files</span>
-/add<span class="w"> </span>config.yaml<span class="w"> </span>README.md
+<span class="c1"># Add several files: /add takes one path per command</span>
+/add<span class="w"> </span>config.yaml
+/add<span class="w"> </span>README.md
 </code></pre></div>
+<p><code>/add</code> reads a single path per invocation (extra arguments are ignored); repeat the command
+for each file.</p>
 <h3 id="viewing-context">Viewing Context<a class="headerlink" href="#viewing-context" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>/context<span class="w"> </span>list
 <span class="c1"># or</span>
@@ -2547,11 +2593,18 @@ ai<span class="w"> </span>--chat
 Error:<span class="w"> </span>Path<span class="w"> </span>does<span class="w"> </span>not<span class="w"> </span>exist:<span class="w"> </span>/path/to/nonexistent.py
 </code></pre></div>
 <p><strong>Solution</strong>: Use relative paths from current directory or absolute paths</p>
-<h3 id="binary-file-warning">Binary File Warning<a class="headerlink" href="#binary-file-warning" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>@image.png
-Warning:<span class="w"> </span>Cannot<span class="w"> </span>include<span class="w"> </span>@image.png:<span class="w"> </span><span class="o">[</span>Binary<span class="w"> </span>file<span class="w"> </span>omitted<span class="o">]</span>
+<h3 id="image-references">Image References<a class="headerlink" href="#image-references" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>@diagram.png<span class="w"> </span>What<span class="w"> </span>does<span class="w"> </span>this<span class="w"> </span>show?
 </code></pre></div>
-<p><strong>Expected behavior</strong>: Binary files are automatically skipped</p>
+<p><strong>Expected behavior</strong>: image files (<code>.jpg</code>, <code>.jpeg</code>, <code>.png</code>, <code>.gif</code>, <code>.webp</code>) referenced with
+<code>@</code> are attached as image input for vision-capable providers; no "binary file" warning is
+produced. On providers without vision support the CLI warns that the image will be ignored.</p>
+<h3 id="binary-file-warning">Binary File Warning<a class="headerlink" href="#binary-file-warning" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>@document.pdf<span class="w"> </span>Summarize<span class="w"> </span>this
+Warning:<span class="w"> </span>Cannot<span class="w"> </span>include<span class="w"> </span>@document.pdf:<span class="w"> </span><span class="o">[</span>Binary<span class="w"> </span>file<span class="w"> </span>omitted<span class="o">]</span>
+</code></pre></div>
+<p><strong>Expected behavior</strong>: non-image binary files (<code>.pdf</code>, <code>.zip</code>, compiled files, ...) are
+skipped; convert them to text (or use a different tool) first.</p>
 <h3 id="too-large-warning">Too Large Warning<a class="headerlink" href="#too-large-warning" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>@large-file.log
 Warning:<span class="w"> </span>Cannot<span class="w"> </span>include<span class="w"> </span>@large-file.log:<span class="w"> </span><span class="o">[</span>File<span class="w"> </span>too<span class="w"> </span>large:<span class="w"> </span><span class="m">2097152</span><span class="w"> </span>bytes<span class="w"> </span>-<span class="w"> </span>omitted<span class="o">]</span>
