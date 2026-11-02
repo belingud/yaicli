@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from openai.types.chat.chat_completion import ChatCompletion
 
 from yaicli.exceptions import ProviderError
 from yaicli.llms.providers.openai_provider import OpenAIAzure, OpenAIProvider
@@ -177,6 +178,29 @@ class TestOpenAIProvider:
             assert responses[0].finish_reason == "stop"
             assert responses[0].tool_call is None
 
+    def test_completion_api_error_raises_provider_error(self, mock_config, mock_openai_client):
+        """A stream-time APIStatusError must not be swallowed: callers see ProviderError."""
+        import httpx
+        import openai
+
+        request = httpx.Request("POST", "https://fake-api.openai.com/v1/chat/completions")
+        response = httpx.Response(500, json={"error": {"message": "boom"}}, request=request)
+        api_error = openai.APIStatusError("boom", response=response, body={"error": {"message": "boom"}})
+        mock_openai_client.chat.completions.create.return_value = MagicMock()
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+            provider.console = MagicMock()
+
+            with patch.object(provider, "_handle_stream_response", side_effect=api_error):
+                with pytest.raises(ProviderError, match="OpenAI API error"):
+                    list(provider.completion([ChatMessage(role="user", content="Hello")], stream=True))
+
+        # The provider still prints the error body before raising it.
+        printed = [str(c.args[0]) for c in provider.console.print.call_args_list if c.args]
+        assert any("Error Response" in text for text in printed)
+
     @patch("yaicli.tools.get_openai_schemas")
     def test_completion_tool_call(self, mock_get_schemas, mock_config, mock_openai_client):
         """Test completion with tool call response"""
@@ -222,6 +246,122 @@ class TestOpenAIProvider:
             assert responses[0].tool_call.id == "call_123"
             assert responses[0].tool_call.name == "get_weather"
             assert responses[0].tool_call.arguments == '{"location": "New York"}'
+
+    @patch("yaicli.tools.get_openai_schemas")
+    def test_completion_multiple_tool_calls_non_streaming(
+        self, mock_get_schemas, mock_config, mock_openai_client
+    ):
+        """Every parallel tool call in a non-streaming response must be surfaced.
+
+        Regression test: only `tool_calls[0]` used to be returned, silently dropping
+        the remaining requested tool calls for OpenAI and ~20 OpenAI-compatible providers.
+        """
+        mock_get_schemas.return_value = [{"type": "function", "function": {"name": "fs_read_file"}}]
+
+        mock_response = ChatCompletion.model_validate(
+            {
+                "id": "chatcmpl-multi",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "gpt-4",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "tool_calls",
+                        "message": {
+                            "role": "assistant",
+                            "content": "Reading both files",
+                            "tool_calls": [
+                                {
+                                    "id": "call_a",
+                                    "type": "function",
+                                    "function": {"name": "fs_read_file", "arguments": '{"path": "a.txt"}'},
+                                },
+                                {
+                                    "id": "call_b",
+                                    "type": "function",
+                                    "function": {"name": "fs_read_file", "arguments": '{"path": "b.txt"}'},
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        )
+        mock_openai_client.chat.completions.create.return_value = mock_response
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+
+            responses = list(
+                provider.completion([ChatMessage(role="user", content="read a and b")], stream=False)
+            )
+
+        tool_responses = [response for response in responses if response.tool_call]
+        assert len(tool_responses) == 2
+        assert [response.tool_call.id for response in tool_responses] == ["call_a", "call_b"]
+        assert [response.tool_call.name for response in tool_responses] == ["fs_read_file", "fs_read_file"]
+        assert [response.tool_call.arguments for response in tool_responses] == [
+            '{"path": "a.txt"}',
+            '{"path": "b.txt"}',
+        ]
+        assert all(response.finish_reason == "tool_calls" for response in tool_responses)
+        # assistant text is attached once (first response only)
+        assert "".join(response.content for response in responses) == "Reading both files"
+
+    @patch("yaicli.tools.get_openai_schemas")
+    def test_completion_multiple_tool_calls_synthesizes_missing_ids(
+        self, mock_get_schemas, mock_config, mock_openai_client
+    ):
+        """An empty tool-call id is replaced with a unique synthesized id."""
+        mock_get_schemas.return_value = [{"type": "function", "function": {"name": "fs_read_file"}}]
+
+        mock_response = ChatCompletion.model_validate(
+            {
+                "id": "chatcmpl-multi",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "gpt-4",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "tool_calls",
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": "",
+                                    "type": "function",
+                                    "function": {"name": "fs_read_file", "arguments": '{"path": "a.txt"}'},
+                                },
+                                {
+                                    "id": "",
+                                    "type": "function",
+                                    "function": {"name": "fs_read_file", "arguments": '{"path": "b.txt"}'},
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        )
+        mock_openai_client.chat.completions.create.return_value = mock_response
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+
+            responses = list(
+                provider.completion([ChatMessage(role="user", content="read a and b")], stream=False)
+            )
+
+        tool_responses = [response for response in responses if response.tool_call]
+        assert len(tool_responses) == 2
+        ids = [response.tool_call.id for response in tool_responses]
+        assert len(set(ids)) == 2
+        assert all(tool_id.startswith("call_") for tool_id in ids)
 
     @patch("yaicli.llms.providers.openai_provider.get_openai_mcp_tools")
     @patch("yaicli.tools.get_openai_schemas")

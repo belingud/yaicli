@@ -50,10 +50,10 @@ class TestRunSmoke(unittest.TestCase):
         # Set up mock objects returned by the API client
         mock_client.chat.completions.create.return_value = mock_chat_completion
 
-        # Directly mock api_client.completion_with_tools method to return test response
+        # Directly mock api_client.completion_with_tools method to return test response.
+        # Use a real iterator: display_stream() drives it with next(), not a for loop.
         original_completion = self.cli.client.completion_with_tools
-        mock_response = MagicMock()
-        mock_response.__iter__.return_value = [MagicMock(content="Test response", tool_call=None)]
+        mock_response = iter([MagicMock(content="Test response", reasoning="", tool_call=None)])
         self.cli.client.completion_with_tools = MagicMock(return_value=mock_response)
 
         try:
@@ -65,6 +65,9 @@ class TestRunSmoke(unittest.TestCase):
 
             # Verify mode was set correctly
             self.assertEqual(self.cli.current_mode, TEMP_MODE)
+
+            # A successful single-shot run must not be flagged as an error (exit 0).
+            self.assertFalse(self.cli.had_error)
         finally:
             # Restore original method
             self.cli.client.completion_with_tools = original_completion
@@ -88,10 +91,10 @@ class TestRunSmoke(unittest.TestCase):
         # Set up mock objects returned by the API client
         mock_client.chat.completions.create.return_value = mock_chat_completion
 
-        # Directly mock api_client.completion_with_tools method to return test response
+        # Directly mock api_client.completion_with_tools method to return test response.
+        # Use a real iterator: display_stream() drives it with next(), not a for loop.
         original_completion = self.cli.client.completion_with_tools
-        mock_response = MagicMock()
-        mock_response.__iter__.return_value = [MagicMock(content="ls -la", tool_call=None)]
+        mock_response = iter([MagicMock(content="ls -la", reasoning="", tool_call=None)])
         self.cli.client.completion_with_tools = MagicMock(return_value=mock_response)
 
         try:
@@ -170,8 +173,8 @@ class TestRunSmoke(unittest.TestCase):
             # Verify get_completion was called
             mock_get_completion.assert_called_once()
 
-            # Simply verify test completed successfully
-            # The error handling in CLI class should prevent unhandled exceptions
+            # The handled failure must be recorded so entry.main can exit non-zero.
+            self.assertTrue(self.cli.had_error)
 
     def test_streaming_response(self):
         """Test streaming response handling"""
@@ -228,6 +231,9 @@ class TestRunSmoke(unittest.TestCase):
 
             # Verify completion_with_tools was called
             mock_stream.assert_called_once()
+
+            # A stream failure during display is a handled error -> non-zero exit.
+            self.assertTrue(self.cli.had_error)
 
             # Verify message content - ChatMessage objects might be used instead of dicts
             messages_arg = mock_stream.call_args[0][0]

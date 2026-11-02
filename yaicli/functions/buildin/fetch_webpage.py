@@ -1,11 +1,19 @@
+import ipaddress
 import random
+import socket
 import time
-from typing import Optional
-from urllib.parse import urlparse
+from typing import List, Optional, Tuple
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from yaicli.function_schema import OpenAISchema
 from pydantic import Field
+
+# SSRF hardening: only public http(s) endpoints may be fetched, every redirect hop is
+# re-validated, and the response body is capped to avoid unbounded reads.
+MAX_REDIRECTS = 5
+MAX_RESPONSE_BYTES = 10 * 1024 * 1024  # 10 MB
+_REDIRECT_STATUS_CODES = (301, 302, 303, 307, 308)
 
 
 class Function(OpenAISchema):
@@ -107,7 +115,11 @@ class Function(OpenAISchema):
             return language
 
         if url:
-            domain = urlparse(url).netloc.lower()
+            try:
+                domain = urlparse(url).netloc.lower()
+            except ValueError:
+                # Malformed URLs are reported by _validate_fetch_url; never raise here.
+                domain = ""
 
             if any(tld in domain for tld in [".cn", ".com.cn", ".net.cn", ".org.cn"]):
                 return "zh-CN,zh;q=0.9,en;q=0.8"
@@ -124,6 +136,275 @@ class Function(OpenAISchema):
 
         return "zh-CN,zh;q=0.9,en;q=0.8"
 
+    @staticmethod
+    def _is_public_ip(address: str) -> bool:
+        """Return True when ``address`` is a public (non-SSRF) IP address.
+
+        ``ip.is_global`` is the primary test: besides private/loopback/link-local/
+        unspecified ranges it also rejects shared address space such as
+        ``100.64.0.0/10`` (CGNAT — including the Alibaba Cloud metadata endpoint
+        ``100.100.100.200``), which CPython does *not* flag via ``is_private`` or
+        ``is_reserved``. Multicast is still reported as "global" by ``ipaddress``,
+        and reserved/NAT64 prefixes (e.g. ``64:ff9b::/96``) can embed private IPv4
+        targets, so those stay explicitly rejected for defence in depth.
+        """
+        try:
+            ip = ipaddress.ip_address(address)
+        except ValueError:
+            return False
+        # Normalise IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1) to its IPv4 form.
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+            ip = ip.ipv4_mapped
+        return ip.is_global and not ip.is_multicast and not ip.is_reserved
+
+    @staticmethod
+    def _normalize_host(host: Optional[str]) -> str:
+        """Normalise a hostname for redirect comparison (case/trailing dot/IDNA).
+
+        ``Example.COM.``, ``example.com`` and ``EXAMPLE.com`` all compare equal, and
+        internationalised hostnames are compared in their ASCII/IDNA form so a
+        redirect cannot look cross-host when it is not (or vice versa).
+        """
+        if not host:
+            return ""
+        normalized = host.strip().lower().rstrip(".")
+        try:
+            return normalized.encode("idna").decode("ascii")
+        except UnicodeError:
+            return normalized
+
+    @classmethod
+    def _validate_fetch_url(cls, url: str) -> Optional[str]:
+        """Validate that ``url`` may be fetched (SSRF guard).
+
+        Returns ``None`` when the URL is allowed, otherwise a human readable reason.
+        Only http/https is accepted and every address the host resolves to must be a
+        public address: loopback, private, link-local (incl. 169.254.169.254 cloud
+        metadata), multicast, reserved and unspecified addresses are rejected.
+        """
+        if not isinstance(url, str):
+            return "URL must be a string"
+        try:
+            parsed = urlparse(url)
+        except ValueError as e:
+            return f"Invalid URL: {e}"
+
+        if parsed.scheme.lower() not in ("http", "https"):
+            return f"Unsupported URL scheme {parsed.scheme!r} (only http/https are allowed)"
+
+        host = parsed.hostname
+        if not host:
+            return "URL has no host"
+
+        try:
+            port = parsed.port
+        except ValueError as e:
+            return f"Invalid URL: {e}"
+
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            # Hostname: resolve *all* addresses and reject if any one is non-public.
+            try:
+                infos = socket.getaddrinfo(host, port or 0, type=socket.SOCK_STREAM)
+            except (socket.gaierror, UnicodeError, OSError) as e:
+                return f"Could not resolve host {host!r}: {e}"
+            addresses = [info[4][0] for info in infos]
+        else:
+            addresses = [host]
+
+        if not addresses:
+            return f"Could not resolve host {host!r}"
+
+        for address in addresses:
+            if not cls._is_public_ip(address):
+                return f"Refusing to fetch non-public address {address!r} (host {host!r})"
+        return None
+
+    @classmethod
+    def _read_response_text(cls, response, url: str) -> Tuple[Optional[str], Optional[str]]:
+        """Read the response body, enforcing ``MAX_RESPONSE_BYTES``.
+
+        Returns ``(text, None)`` on success, ``(None, error_message)`` when the body is
+        too large.
+        """
+        chunks: List[bytes] = []
+        total = 0
+        for chunk in response.iter_bytes():
+            total += len(chunk)
+            if total > MAX_RESPONSE_BYTES:
+                return None, f"Failed to fetch {url}: response too large (>{MAX_RESPONSE_BYTES} bytes)"
+            chunks.append(chunk)
+
+        raw = b"".join(chunks)
+        try:
+            encoding = response.encoding or "utf-8"
+        except (LookupError, ValueError):
+            encoding = "utf-8"
+        try:
+            return raw.decode(encoding, errors="replace"), None
+        except LookupError:
+            return raw.decode("utf-8", errors="replace"), None
+
+    @classmethod
+    def _download_html(
+        cls,
+        url: str,
+        timeout: int,
+        max_retries: int,
+        verify_ssl: bool,
+        follow_redirects: bool,
+        headers: dict,
+        cookies: Optional[dict] = None,
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Download a page with retries and manually followed, re-validated redirects.
+
+        Returns ``(text, None)`` on success or ``(None, error_message)`` on failure.
+        Every request — including every redirect hop — is validated with
+        ``_validate_fetch_url``, so a redirect cannot smuggle the request to a
+        loopback/private/link-local/metadata address.
+        """
+        try:
+            attempts = max(0, int(max_retries))
+        except (TypeError, ValueError):
+            attempts = 0
+
+        # Fail fast, before creating any HTTP client: a non-public / non-http URL must
+        # never trigger a network request at all.
+        error = cls._validate_fetch_url(url)
+        if error is not None:
+            return None, f"Failed to fetch {url}: {error}"
+
+        last_error = None
+        for attempt in range(attempts):
+            current_url = url
+            try:
+                # follow_redirects is disabled on purpose: hops are followed manually
+                # below so that each target is re-validated before being requested.
+                with httpx.Client(
+                    verify=verify_ssl,
+                    follow_redirects=False,
+                    timeout=timeout,
+                    cookies=cookies,
+                ) as client:
+                    redirects = 0
+                    # Per-hop headers: a cross-host redirect must not forward the
+                    # caller's explicit Referer (or any Cookie header) to the new host.
+                    current_headers = dict(headers)
+                    while True:
+                        with client.stream("GET", current_url, headers=current_headers) as response:
+                            status = response.status_code
+                            if status in _REDIRECT_STATUS_CODES:
+                                location = response.headers.get("location")
+                                if not follow_redirects:
+                                    return (
+                                        None,
+                                        f"Failed to fetch {current_url}: HTTP {status} redirect "
+                                        "not followed (follow_redirects=False)",
+                                    )
+                                if not location:
+                                    return (
+                                        None,
+                                        f"Failed to fetch {current_url}: HTTP {status} redirect "
+                                        "without Location header",
+                                    )
+                                redirects += 1
+                                if redirects > MAX_REDIRECTS:
+                                    return (
+                                        None,
+                                        f"Failed to fetch {current_url}: too many redirects (>{MAX_REDIRECTS})",
+                                    )
+                                try:
+                                    next_url = urljoin(current_url, location)
+                                except ValueError as e:
+                                    return (
+                                        None,
+                                        f"Failed to fetch {current_url}: invalid redirect "
+                                        f"Location {location!r}: {e}",
+                                    )
+                                # Re-validate every redirect target before requesting it.
+                                redirect_error = cls._validate_fetch_url(next_url)
+                                if redirect_error is not None:
+                                    return None, f"Failed to fetch {next_url}: {redirect_error}"
+                                current_parsed = urlparse(current_url)
+                                next_parsed = urlparse(next_url)
+                                if (
+                                    current_parsed.scheme.lower() == "https"
+                                    and next_parsed.scheme.lower() == "http"
+                                ):
+                                    return (
+                                        None,
+                                        f"Failed to fetch {current_url}: refusing https->http "
+                                        f"downgrade redirect to {next_url}",
+                                    )
+                                if cls._normalize_host(next_parsed.hostname) != cls._normalize_host(
+                                    current_parsed.hostname
+                                ):
+                                    # Cross-host hop: never forward the caller's cookies or
+                                    # explicit Referer/Cookie headers to a different host.
+                                    client.cookies.clear()
+                                    current_headers = {
+                                        key: value
+                                        for key, value in current_headers.items()
+                                        if key.lower() not in ("referer", "cookie")
+                                    }
+                                current_url = next_url
+                                continue
+                            if status != 200:
+                                return (
+                                    None,
+                                    f"Failed to fetch {current_url}: HTTP {status} - {response.reason_phrase}",
+                                )
+                            return cls._read_response_text(response, current_url)
+
+            except httpx.TimeoutException as e:
+                last_error = f"Timeout error: {e}"
+            except httpx.ConnectError as e:
+                # NOTE: TLS verification is never relaxed as a retry strategy; a
+                # certificate failure is reported as a connection error.
+                last_error = f"Connection error: {e}"
+            except httpx.HTTPStatusError as e:
+                last_error = f"HTTP status error: {e}"
+            except Exception as e:
+                last_error = f"Unexpected error: {e}"
+
+            if attempt < attempts - 1:
+                time.sleep(1 * (attempt + 1))
+
+        return None, f"Failed to fetch {url} after {attempts} attempts. Last error: {last_error}"
+
+    @staticmethod
+    def _extract_content(html: str) -> str:
+        """Extract readable text from HTML, falling back to the raw text."""
+        try:
+            import trafilatura
+        except ImportError:
+            return html
+        try:
+            extracted = trafilatura.extract(html)
+        except Exception:
+            return html
+        return extracted or html
+
+    @staticmethod
+    def _warn_insecure_tls() -> None:
+        """Print one prominent warning when the caller explicitly disables TLS checks.
+
+        The caller's explicit ``verify_ssl=False`` choice is preserved (no behaviour
+        change); the warning simply makes the MITM risk visible. Uses ``markup=False``
+        so nothing model/user controlled is interpreted as console markup.
+        """
+        message = (
+            "WARNING: TLS certificate verification is DISABLED (verify_ssl=False); "
+            "the connection is vulnerable to man-in-the-middle attacks."
+        )
+        try:
+            from yaicli.console import get_console
+
+            get_console().print(message, style="bold yellow", markup=False)
+        except Exception:  # pragma: no cover - console is always available inside yaicli
+            print(message)
+
     @classmethod
     def execute(
         cls,
@@ -136,22 +417,29 @@ class Function(OpenAISchema):
         cookies: Optional[dict] = None,
         referer: Optional[str] = None,
         language: Optional[str] = "auto",
-    ):
+    ) -> str:
         """execute the function"""
-        headers = cls._get_default_headers(user_agent, language, referer, url)
+        if not isinstance(url, str):
+            return f"Failed to fetch {url}: URL must be a string"
 
-        result = cls._fetch_with_trafilatura(
-            url=url,
-            timeout=timeout,
-            max_retries=max_retries,
-            verify_ssl=verify_ssl,
-            follow_redirects=follow_redirects,
-            headers=headers,
-        )
-        if not result.startswith("Failed"):
-            return result
+        # Parse the URL before building headers: urlparse (used by the Accept-Language
+        # heuristic) raises ValueError on malformed IPv6-style URLs such as
+        # "http://[::1". The public contract is to always return a "Failed to fetch ..."
+        # string, never to raise.
+        try:
+            urlparse(url)
+        except ValueError as e:
+            return f"Failed to fetch {url}: Invalid URL: {e}"
 
-        return cls._fetch_with_httpx(
+        if verify_ssl is False:
+            cls._warn_insecure_tls()
+
+        try:
+            headers = cls._get_default_headers(user_agent, language, referer, url)
+        except ValueError as e:  # pragma: no cover - defensive belt and braces
+            return f"Failed to fetch {url}: Invalid URL: {e}"
+
+        text, error = cls._download_html(
             url=url,
             timeout=timeout,
             max_retries=max_retries,
@@ -160,96 +448,7 @@ class Function(OpenAISchema):
             headers=headers,
             cookies=cookies,
         )
+        if text is None:
+            return error or f"Failed to fetch {url}"
 
-    @classmethod
-    def _fetch_with_httpx(
-        cls,
-        url: str,
-        timeout: int,
-        max_retries: int,
-        verify_ssl: bool,
-        follow_redirects: bool,
-        headers: dict,
-        cookies: Optional[dict] = None,
-    ) -> str:
-        """Fetch webpage using httpx with retry logic."""
-        last_error = None
-
-        for attempt in range(max_retries):
-            try:
-                with httpx.Client(
-                    verify=verify_ssl,
-                    follow_redirects=follow_redirects,
-                    timeout=timeout,
-                    cookies=cookies,
-                ) as client:
-                    response = client.get(url, headers=headers)
-
-                    if response.status_code == 200:
-                        return response.text
-                    elif response.status_code in [301, 302, 303, 307, 308]:
-                        continue
-                    else:
-                        return f"Failed to fetch {url}: HTTP {response.status_code} - {response.reason_phrase}"
-
-            except httpx.TimeoutException as e:
-                last_error = f"Timeout error: {str(e)}"
-                if attempt < max_retries - 1:
-                    time.sleep(1 * (attempt + 1))
-                    continue
-            except httpx.ConnectError as e:
-                last_error = f"Connection error (SSL): {str(e)}"
-                if attempt < max_retries - 1 and verify_ssl:
-                    verify_ssl = False
-                    continue
-            except httpx.HTTPStatusError as e:
-                last_error = f"HTTP status error: {str(e)}"
-                if attempt < max_retries - 1:
-                    time.sleep(1 * (attempt + 1))
-                    continue
-            except Exception as e:
-                last_error = f"Unexpected error: {str(e)}"
-                if attempt < max_retries - 1:
-                    time.sleep(1 * (attempt + 1))
-                    continue
-
-        return f"Failed to fetch {url} after {max_retries} attempts. Last error: {last_error}"
-
-    @classmethod
-    def _fetch_with_trafilatura(
-        cls,
-        url: str,
-        timeout: int,
-        max_retries: int,
-        verify_ssl: bool,
-        follow_redirects: bool,
-        headers: dict,
-    ) -> str:
-        """Fetch webpage using trafilatura for better content extraction."""
-        try:
-            import trafilatura
-        except ImportError:
-            return "Failed to import trafilatura. Falling back to httpx."
-
-        last_error = None
-
-        for attempt in range(max_retries):
-            try:
-                downloaded = trafilatura.fetch_url(url, no_ssl=not verify_ssl)
-
-                if downloaded:
-                    content = trafilatura.extract(downloaded)
-                    if content:
-                        return content
-
-                if attempt < max_retries - 1:
-                    time.sleep(1 * (attempt + 1))
-                    continue
-
-            except Exception as e:
-                last_error = str(e)
-                if attempt < max_retries - 1:
-                    time.sleep(1 * (attempt + 1))
-                    continue
-
-        return f"Failed to extract content from {url} after {max_retries} attempts. Last error: {last_error}"
+        return cls._extract_content(text)

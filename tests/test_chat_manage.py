@@ -13,6 +13,8 @@ from yaicli.chat import (
     ChatSaveError,
     FileChatManager,
 )
+from yaicli.llms.provider import Provider
+from yaicli.schemas import ChatMessage, ImageData, ToolCall
 
 
 @pytest.fixture
@@ -555,3 +557,228 @@ class TestPrintListOption:
         with patch("yaicli.chat.FileChatManager.list_chats", return_value=[chat]):
             with pytest.raises(typer.Exit):
                 FileChatManager.print_list_option(True)
+
+
+class _StubProvider(Provider):
+    """Minimal concrete provider used to exercise the base message conversion."""
+
+    def completion(self, messages, stream=False, tool_policy=None):
+        return iter(())
+
+    def detect_tool_role(self) -> str:
+        return "tool"
+
+
+def _sample_tool_chat() -> Chat:
+    return Chat(
+        title="Tool Chat",
+        history=[
+            ChatMessage(role="system", content="sys"),
+            ChatMessage(
+                role="user",
+                content="look",
+                images=[ImageData(data="b64data", media_type="image/png", is_url=False)],
+            ),
+            ChatMessage(
+                role="assistant",
+                content="",
+                tool_calls=[ToolCall(id="call_1", name="f", arguments='{"a": 1}')],
+                reasoning="need a tool",
+            ),
+            ChatMessage(role="tool", content="result", name="f", tool_call_id="call_1"),
+            ChatMessage(role="user", content="thanks"),
+        ],
+    )
+
+
+class TestFullMessageSerialization:
+    """Regression tests for complete ChatMessage persistence (P0-S7)."""
+
+    def test_save_load_roundtrip_preserves_every_field(self, tmp_path):
+        original = _sample_tool_chat()
+        assert original.save(tmp_path) is True
+
+        reloaded = Chat(path=original.path)
+        assert reloaded.load() is True
+        # Dataclass equality covers role/content/name/tool_call_id/tool_calls/reasoning/images.
+        assert reloaded.history == original.history
+
+        user_message = reloaded.history[1]
+        assert user_message.images == [ImageData(data="b64data", media_type="image/png", is_url=False)]
+        assistant_message = reloaded.history[2]
+        assert assistant_message.tool_calls == [ToolCall(id="call_1", name="f", arguments='{"a": 1}')]
+        assert assistant_message.reasoning == "need a tool"
+        tool_message = reloaded.history[3]
+        assert tool_message.tool_call_id == "call_1"
+        assert tool_message.name == "f"
+
+    def test_manager_load_chat_by_title_roundtrip(self, tmp_path):
+        original = _sample_tool_chat()
+        manager = FileChatManager(chat_dir=tmp_path)
+        manager.save_chat(original)
+
+        reloaded = manager.load_chat_by_title("Tool Chat")
+        assert reloaded.history == original.history
+
+    def test_to_dict_keeps_legacy_format_compact(self):
+        chat = Chat(title="plain", history=[ChatMessage(role="user", content="hi")])
+        assert chat.to_dict()["history"] == [{"role": "user", "content": "hi"}]
+
+    def test_legacy_file_without_content_loads(self, tmp_path):
+        f = tmp_path / "legacy.json"
+        f.write_text(
+            json.dumps(
+                {
+                    "title": "Old",
+                    "date": "2024-01-01T00:00:00",
+                    "history": [{"role": "user", "content": "hi"}, {"role": "assistant"}],
+                }
+            )
+        )
+        chat = Chat(path=f)
+        assert chat.load() is True
+        assert len(chat.history) == 2
+        assert chat.history[0].content == "hi"
+        assert chat.history[1].content is None
+        assert chat.history[1].tool_calls == []
+        assert chat.history[1].images == []
+
+    def test_malformed_history_entries_do_not_raise(self, tmp_path):
+        f = tmp_path / "damaged.json"
+        f.write_text(
+            json.dumps(
+                {
+                    "history": [
+                        "not-a-message",
+                        {"role": "tool", "content": "r", "tool_calls": "bad", "images": [1, 2]},
+                    ]
+                }
+            )
+        )
+        chat = Chat(path=f)
+        assert chat.load() is True
+        assert len(chat.history) == 2
+        assert chat.history[0].role == "user"
+        assert chat.history[1].tool_calls == []
+        assert chat.history[1].images == []
+
+    def test_saved_tool_messages_convert_to_valid_payload(self, tmp_path):
+        original = _sample_tool_chat()
+        original.save(tmp_path)
+        reloaded = Chat(path=original.path)
+        reloaded.load()
+
+        payload = _StubProvider()._convert_messages(reloaded.history)
+
+        assistant = payload[2]
+        assert assistant["tool_calls"][0]["id"] == "call_1"
+        assert assistant["tool_calls"][0]["function"]["name"] == "f"
+        tool_message = payload[3]
+        assert tool_message["role"] == "tool"
+        assert tool_message["tool_call_id"] == "call_1"
+        # Image blocks survive persistence as well.
+        assert payload[1]["content"][1]["type"] == "image_url"
+
+    def test_failed_atomic_replace_preserves_existing_file(self, tmp_path):
+        existing = tmp_path / "existing.json"
+        existing.write_text("keep me", encoding="utf-8")
+        chat = Chat(title="atomic", history=[ChatMessage(role="user", content="hi")])
+
+        with patch("yaicli.chat.os.replace", side_effect=OSError("disk full")):
+            with pytest.raises(ChatSaveError):
+                chat.save(tmp_path)
+
+        # The original file is untouched, no partial/temp files leak, and the
+        # chat does not claim a path it failed to write.
+        assert existing.read_text(encoding="utf-8") == "keep me"
+        assert sorted(p.name for p in tmp_path.iterdir()) == ["existing.json"]
+        assert chat.path is None
+
+    def test_failed_write_leaves_no_temp_file(self, tmp_path):
+        chat = Chat(title="atomic", history=[ChatMessage(role="user", content="hi")])
+        with patch("yaicli.chat.json.dump", side_effect=RuntimeError("boom")):
+            with pytest.raises(ChatSaveError):
+                chat.save(tmp_path)
+        assert list(tmp_path.iterdir()) == []
+
+    def test_successful_save_uses_original_path_contract(self, tmp_path):
+        chat = Chat(title="ok", history=[ChatMessage(role="user", content="hi")])
+        assert chat.save(tmp_path) is True
+        assert chat.path is not None
+        assert chat.path.exists()
+        assert chat.path.parent == tmp_path
+        assert not any(p.name.endswith(".tmp") for p in tmp_path.iterdir())
+
+
+
+class TestSaveChatReplacementSafety:
+    """P0-S7 residual: /save must never delete the old session before the new one is safe."""
+
+    @staticmethod
+    def _write_old_session(chat_dir: Path, title: str = "Same Title", content: str = "old content") -> Path:
+        old = chat_dir / f"20200101-000000-title-{title}.json"
+        old.write_text(
+            json.dumps(
+                {
+                    "title": title,
+                    "date": "2020-01-01T00:00:00",
+                    "history": [{"role": "user", "content": content}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return old
+
+    def test_failed_save_keeps_old_session(self, tmp_path):
+        manager = FileChatManager(chat_dir=tmp_path)
+        old = self._write_old_session(tmp_path)
+        old_bytes = old.read_bytes()
+        chat = Chat(title="Same Title", history=[ChatMessage(role="user", content="new")])
+
+        with patch.object(Chat, "save", side_effect=ChatSaveError("disk full")):
+            with pytest.raises(ChatSaveError):
+                manager.save_chat(chat)
+
+        assert old.exists()
+        assert old.read_bytes() == old_bytes
+        assert [p.name for p in tmp_path.glob("*.json")] == [old.name]
+
+    def test_failed_atomic_write_keeps_old_session(self, tmp_path):
+        manager = FileChatManager(chat_dir=tmp_path)
+        old = self._write_old_session(tmp_path)
+        old_bytes = old.read_bytes()
+        chat = Chat(title="Same Title", history=[ChatMessage(role="user", content="new")])
+
+        with patch("yaicli.chat.os.replace", side_effect=OSError("disk full")):
+            with pytest.raises(ChatSaveError):
+                manager.save_chat(chat)
+
+        assert old.read_bytes() == old_bytes
+        assert [p.name for p in tmp_path.glob("*.json")] == [old.name]
+        assert list(tmp_path.glob("*.tmp")) == []
+
+    def test_replacement_deletes_old_file_and_keeps_one(self, tmp_path):
+        manager = FileChatManager(chat_dir=tmp_path)
+        old = self._write_old_session(tmp_path)
+        # Simulate a stale chats map: deletion must scan the directory, not the map.
+        manager._chats_map = {"index": {}, "title": {}}
+        chat = Chat(title="Same Title", history=[ChatMessage(role="user", content="new")])
+
+        assert manager.save_chat(chat) == "Same Title"
+
+        remaining = list(tmp_path.glob("*.json"))
+        assert len(remaining) == 1
+        assert remaining[0] != old
+        assert not old.exists()
+        assert "new" in remaining[0].read_text(encoding="utf-8")
+        chats = manager.list_chats()
+        assert len(chats) == 1
+        assert chats[0].title == "Same Title"
+
+    def test_first_save_without_existing_session(self, tmp_path):
+        manager = FileChatManager(chat_dir=tmp_path)
+        chat = Chat(title="Fresh", history=[ChatMessage(role="user", content="hi")])
+
+        assert manager.save_chat(chat) == "Fresh"
+
+        assert len(list(tmp_path.glob("*.json"))) == 1

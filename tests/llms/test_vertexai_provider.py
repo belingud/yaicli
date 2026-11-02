@@ -92,5 +92,6 @@ class TestVertexAIProvider:
             assert hasattr(provider, "_map_role")
             assert hasattr(provider, "detect_tool_role")
 
-            # Test detect_tool_role (a simple inherited method)
-            assert provider.detect_tool_role() == "user"
+            # Test detect_tool_role (a simple inherited method). "tool" is required so
+            # LLMClient produces ChatMessages that convert to function_response parts.
+            assert provider.detect_tool_role() == "tool"

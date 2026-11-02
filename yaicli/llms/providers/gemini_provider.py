@@ -1,6 +1,6 @@
 import base64
 import json
-from typing import Any, Callable, Dict, Generator, List
+from typing import Any, Callable, Dict, Generator, List, Optional
 from uuid import uuid4
 
 import google.genai as genai
@@ -87,10 +87,20 @@ class GeminiProvider(Provider):
         return config
 
     def _convert_messages(self, messages: List[ChatMessage]) -> List[types.Content]:
-        """Convert a list of ChatMessage objects to a list of Gemini Content objects."""
+        """Convert a list of ChatMessage objects to a list of Gemini Content objects.
+
+        Consecutive ``role == "tool"`` messages are grouped into a single user Content:
+        Gemini requires all ``function_response`` parts answering one function_call turn
+        to live in the same user turn, while ``LLMClient`` appends one ChatMessage per
+        executed tool call (parallel tool rounds produce several in a row).
+        """
         converted_messages = []
-        for msg in messages:
+        index = 0
+        while index < len(messages):
+            msg = messages[index]
+
             if msg.role == "system":
+                index += 1
                 continue
 
             # Handle assistant messages with function calls
@@ -108,18 +118,21 @@ class GeminiProvider(Provider):
                         )
                     )
                 converted_messages.append(types.Content(role="model", parts=parts))
+                index += 1
                 continue
 
-            # Handle tool response messages
+            # Handle tool response messages; group consecutive responses into one turn
             if msg.role == "tool":
-                converted_messages.append(
-                    types.Content(
-                        role="user",
-                        parts=[
-                            types.Part.from_function_response(name=msg.name or "", response={"result": msg.content})
-                        ],
+                parts = []
+                while index < len(messages) and messages[index].role == "tool":
+                    tool_msg = messages[index]
+                    parts.append(
+                        types.Part.from_function_response(
+                            name=tool_msg.name or "", response={"result": tool_msg.content}
+                        )
                     )
-                )
+                    index += 1
+                converted_messages.append(types.Content(role="user", parts=parts))
                 continue
 
             # Normal messages (user, assistant without tool calls)
@@ -139,6 +152,7 @@ class GeminiProvider(Provider):
 
             content = types.Content(role=self._map_role(msg.role), parts=parts)
             converted_messages.append(content)
+            index += 1
         return converted_messages
 
     def _map_role(self, role: str) -> str:
@@ -192,8 +206,12 @@ class GeminiProvider(Provider):
             self.console.print(gemini_messages)
         chat_config = self.get_chat_config(tool_policy=tool_policy)
         chat_config.system_instruction = messages[0].content
-        chat = self.client.chats.create(model=self.config["MODEL"], history=gemini_messages, config=chat_config)  # type: ignore
-        message = messages[-1].content
+        # The last message is the new turn and is passed to send_message* below. It must
+        # stay out of `history`: google-genai appends the new message to the curated
+        # history before calling the API, so keeping it here would send that turn twice.
+        history = gemini_messages[:-1]
+        chat = self.client.chats.create(model=self.config["MODEL"], history=history, config=chat_config)  # type: ignore
+        message = self._build_new_message(messages[-1], gemini_messages[-1] if gemini_messages else None)
 
         if stream:
             response = chat.send_message_stream(message=message)  # type: ignore
@@ -201,6 +219,19 @@ class GeminiProvider(Provider):
         else:
             response = chat.send_message(message=message)  # type: ignore
             yield from self._handle_normal_response(response)
+
+    @staticmethod
+    def _build_new_message(last_message: ChatMessage, converted_last: Optional[types.Content]) -> Any:
+        """Build the payload appended by ``send_message``/``send_message_stream``.
+
+        Tool results are sent as ``function_response`` parts (so the ``function_call``
+        parts already in the history have their matching responses) and messages with
+        images are sent as parts (so the image data is not dropped). Plain text prompts
+        keep the plain-string path.
+        """
+        if converted_last is not None and (last_message.role == "tool" or last_message.images):
+            return list(converted_last.parts or [])
+        return last_message.content
 
     @staticmethod
     def _normalize_fc_args(args: dict) -> dict:
@@ -314,5 +345,10 @@ class GeminiProvider(Provider):
             )
 
     def detect_tool_role(self) -> str:
-        """Return the role that should be used for tool responses"""
-        return "user"
+        """Return the role that should be used for tool responses.
+
+        Gemini expects tool results as ``function_response`` parts, which
+        ``_convert_messages`` emits for ChatMessages with the ``tool`` role (inside a
+        user-role ``Content``, as required by the Gemini protocol).
+        """
+        return "tool"

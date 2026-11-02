@@ -359,3 +359,17 @@ EXTRA_BODY={"custom_param": 123, "option": true}
 
             # Should pick up the new URL
             assert config["BASE_URL"] == "https://updated-api.com/v1"
+
+
+def test_get_config_exits_nonzero_on_config_error():
+    """A ConfigError must terminate with a non-zero status (entry can hit this at import)."""
+    from yaicli.exceptions import ConfigError
+
+    yaicli.config.get_config.cache_clear()
+    try:
+        with patch.object(yaicli.config, "Config", side_effect=ConfigError("broken config")):
+            with pytest.raises(SystemExit) as excinfo:
+                yaicli.config.get_config()
+        assert excinfo.value.code == 1
+    finally:
+        yaicli.config.get_config.cache_clear()

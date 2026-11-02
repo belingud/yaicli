@@ -1255,3 +1255,36 @@ class TestCLICoverage:
         printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
         assert any("does not support image" in t for t in printed)
         assert messages[-1].images == []
+
+
+class TestCLIErrorTracking:
+    """Tests for the had_error flag used by entry.main to pick a non-zero exit code."""
+
+    def test_had_error_slot_initialised_false(self, cli_with_mocks):
+        assert "had_error" in CLI.__slots__
+        assert cli_with_mocks.had_error is False
+
+    def test_handle_llm_response_failure_sets_had_error(self, cli_with_mocks):
+        cli_with_mocks.client.completion_with_tools.side_effect = Exception("Simulated API Error")
+
+        content, _ = cli_with_mocks._handle_llm_response("hi")
+
+        assert content is None
+        assert cli_with_mocks.had_error is True
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
+        assert any("Error processing LLM response" in text for text in printed)
+
+    def test_handle_llm_response_success_keeps_had_error_false(self, cli_with_mocks):
+        with patch.object(cli_with_mocks.printer, "display_stream", return_value=("ok", "")):
+            content, _ = cli_with_mocks._handle_llm_response("hi")
+
+        assert content == "ok"
+        assert cli_with_mocks.had_error is False
+
+    def test_repl_continues_after_llm_error(self, cli_with_mocks):
+        """The REPL keeps going after a handled error; only the flag is recorded."""
+        cli_with_mocks.client.completion_with_tools.side_effect = Exception("Simulated API Error")
+        cli_with_mocks.current_mode = CHAT_MODE
+
+        assert cli_with_mocks._process_user_input("hi") is True
+        assert cli_with_mocks.had_error is True

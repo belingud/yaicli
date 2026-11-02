@@ -7,7 +7,7 @@ import typer
 from rich.table import Table
 
 from .config import cfg
-from .console import YaiConsole, get_console
+from .console import YaiConsole, get_console, safe_text, untrusted_text
 from .const import DEFAULT_ROLES, ROLES_DIR, DefaultRoleNames
 from .utils import detect_os, detect_shell, option_callback
 
@@ -71,7 +71,7 @@ class RoleManager:
                     role = Role(**role_dict)
                     self.roles[role.name] = role
             except (json.JSONDecodeError, KeyError, TypeError) as e:
-                self.console.print(f"Error loading role from {filename}: {e}", style="red")
+                self.console.print(f"Error loading role from {safe_text(filename)}: {safe_text(e)}", style="red")
 
     def get_role(self, name: str) -> Role:
         """Get a role by name"""
@@ -91,7 +91,8 @@ class RoleManager:
             return
 
         self.console.print(
-            f"Warning: modifying built-in role '{name}'. Set ROLE_MODIFY_WARNING=false to disable this warning.",
+            f"Warning: modifying built-in role '{safe_text(name)}'. "
+            "Set ROLE_MODIFY_WARNING=false to disable this warning.",
             style="yellow",
         )
 
@@ -149,7 +150,8 @@ class RoleManager:
         table.add_column("Name", style="dim")
         table.add_column("Filepath", style="dim")
         for file in sorted(cls.roles_dir.glob("*.json"), key=lambda f: f.stat().st_mtime):
-            table.add_row(file.stem, str(file))
+            # Role file names are user-controlled: render them literally.
+            table.add_row(untrusted_text(file.stem), untrusted_text(str(file)))
         cls.console.print(table)
         cls.console.print("Use `ai --show-role <name>` to view a role.", style="dim")
 
@@ -164,7 +166,7 @@ class RoleManager:
 
         # Check if role name already exists
         if value in role_manager.roles:
-            cls.console.print(f"Role '{value}' already exists.", style="red")
+            cls.console.print(f"Role '{safe_text(value)}' already exists.", style="red")
             return
 
         # Get role description
@@ -172,7 +174,7 @@ class RoleManager:
 
         # Create role
         role = role_manager.create_role(value, description)
-        cls.console.print(f"Created role: {role.name}", style="green")
+        cls.console.print(f"Created role: {safe_text(role.name)}", style="green")
 
     @classmethod
     @option_callback
@@ -185,14 +187,14 @@ class RoleManager:
 
         # Check if role exists
         if value not in role_manager.roles:
-            cls.console.print(f"Role '{value}' does not exist.", style="yellow")
+            cls.console.print(f"Role '{safe_text(value)}' does not exist.", style="yellow")
             return
 
         # Delete role
         if role_manager.delete_role(value):
-            cls.console.print(f"Deleted role: {value}", style="green")
+            cls.console.print(f"Deleted role: {safe_text(value)}", style="green")
         else:
-            cls.console.print(f"Failed to delete role: {value}", style="red")
+            cls.console.print(f"Failed to delete role: {safe_text(value)}", style="red")
 
     @classmethod
     @option_callback
@@ -206,12 +208,12 @@ class RoleManager:
         # Check if role exists
         role = role_manager.get_role(value)
         if not role:
-            cls.console.print(f"Role '{value}' does not exist.", style="red")
+            cls.console.print(f"Role '{safe_text(value)}' does not exist.", style="red")
             return
 
-        # Show role information
-        cls.console.print(f"[bold]Name:[/bold] {role.name}")
-        cls.console.print(f"[bold]Description:[/bold] {role.prompt}")
+        # Show role information (name/prompt are user-controlled: render literally)
+        cls.console.print(f"[bold]Name:[/bold] {safe_text(role.name)}")
+        cls.console.print(f"[bold]Description:[/bold] {safe_text(role.prompt)}")
 
     @classmethod
     def check_id_ok(cls, value: str) -> str:
@@ -226,7 +228,7 @@ class RoleManager:
         role_manager = RoleManager()
 
         if value not in role_manager.roles:
-            cls.console.print(f"Role '{value}' does not exist. Using default role.", style="red")
+            cls.console.print(f"Role '{safe_text(value)}' does not exist. Using default role.", style="red")
             return DefaultRoleNames.DEFAULT
 
         return value

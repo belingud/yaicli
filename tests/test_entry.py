@@ -5,6 +5,7 @@ import typer
 from typer.testing import CliRunner
 
 from yaicli.const import DefaultRoleNames
+from yaicli.exceptions import YaicliError
 from yaicli.schemas import ImageData
 
 # Assuming your typer app object is named 'app' in yaicli.entry
@@ -134,9 +135,8 @@ class TestTyperApp:
                 mock_cli.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
                 result = runner.invoke(app)
 
-        # Just check that execution completed without error
-        # The actual behavior depends on the implementation
-        assert result.exit_code in [0, 1]
+        # No input prints help and returns, which is a success path.
+        assert result.exit_code == 0
 
     def test_chat_with_prompt_warning(self):
         """Test that a warning is printed (to real stdout) if --chat and prompt are used."""
@@ -144,41 +144,113 @@ class TestTyperApp:
         # We mainly care that the app doesn't crash and runs correctly
         # Mock a valid CLI instance to avoid exceptions
         mock_instance = MagicMock()
+        mock_instance.had_error = False
         with patch("yaicli.cli.CLI", return_value=mock_instance):
             # Mock no API key to simulate the case
             with patch.dict("os.environ", {"YAI_API_KEY": "test_key"}):
                 result = runner.invoke(app, ["--chat", "initial prompt"])
-                # In test environment, may return different exit codes
-                # We just need to ensure the program doesn't crash
-                assert result.exit_code in [0, 1]
+                assert result.exit_code == 0
 
     def test_cli_init_exception(self, mock_cli_class):
-        """Test handling of exception during CLI initialization."""
+        """An unexpected exception during CLI init must exit non-zero, not 0."""
         # Mock CLI.evaluate_role_name to return DEFAULT
         mock_cli_class.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
         # Set side effect for CLI constructor
         mock_cli_class.side_effect = Exception("CLI Init Failed")
 
-        # Just verify the command runs without crashing the test framework
-        runner.invoke(app, ["some prompt"], catch_exceptions=True)
+        result = runner.invoke(app, ["some prompt"])
 
-        # The only expectation we have is that the test itself completes without raising errors
-        assert True
+        assert result.exit_code == 1
+        assert "Unknown error: CLI Init Failed" in result.output
 
     def test_cli_run_exception(self):
-        """Test handling of exception during cli.run()."""
+        """An unexpected exception during cli.run() must exit non-zero."""
         mock_instance = MagicMock()
         mock_instance.run.side_effect = Exception("CLI Run Failed")
+        mock_instance.had_error = False
 
         with patch("yaicli.cli.CLI", return_value=mock_instance) as mock_cli:
             # Mock evaluate_role_name to return DEFAULT
             mock_cli.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
 
-            # Just verify the command runs without crashing the test framework
-            runner.invoke(app, ["some prompt"], catch_exceptions=True)
+            result = runner.invoke(app, ["some prompt"])
 
-            # The only expectation we have is that the test itself completes without raising errors
-            assert True
+        assert result.exit_code == 1
+        assert "Unknown error: CLI Run Failed" in result.output
+
+    def test_verbose_unknown_exception_prints_traceback(self):
+        """-V prints the traceback for unexpected exceptions before exiting non-zero."""
+        mock_instance = MagicMock()
+        mock_instance.run.side_effect = Exception("CLI Run Failed")
+        mock_instance.had_error = False
+
+        with patch("yaicli.cli.CLI", return_value=mock_instance) as mock_cli:
+            mock_cli.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
+            result = runner.invoke(app, ["-V", "some prompt"])
+
+        assert result.exit_code == 1
+        assert "Traceback" in result.output + result.stderr
+
+    def test_yaicli_error_exits_nonzero(self):
+        """A handled YaicliError exits 1 and keeps its message."""
+        mock_instance = MagicMock()
+        mock_instance.run.side_effect = YaicliError("provider exploded")
+        mock_instance.had_error = False
+
+        with patch("yaicli.cli.CLI", return_value=mock_instance) as mock_cli:
+            mock_cli.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
+            result = runner.invoke(app, ["some prompt"])
+
+        assert result.exit_code == 1
+        assert "YAICLI Error: provider exploded" in result.output
+
+    def test_abort_propagates_nonzero(self):
+        """typer.Abort must not be swallowed as a success."""
+        mock_instance = MagicMock()
+        mock_instance.run.side_effect = typer.Abort()
+        mock_instance.had_error = False
+
+        with patch("yaicli.cli.CLI", return_value=mock_instance) as mock_cli:
+            mock_cli.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
+            result = runner.invoke(app, ["some prompt"])
+
+        assert result.exit_code == 1
+
+    @pytest.mark.parametrize("had_error, expected", [(True, 1), (False, 0)])
+    def test_single_shot_uses_had_error(self, had_error, expected):
+        """Single-shot mode turns a handled LLM failure into a non-zero exit."""
+        mock_instance = MagicMock()
+        mock_instance.had_error = had_error
+
+        with patch("yaicli.cli.CLI", return_value=mock_instance) as mock_cli:
+            mock_cli.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
+            result = runner.invoke(app, ["some prompt"])
+
+        assert result.exit_code == expected
+
+    def test_chat_mode_ignores_had_error(self):
+        """The interactive REPL keeps its error-tolerant behaviour: quitting still exits 0."""
+        mock_instance = MagicMock()
+        mock_instance.had_error = True
+
+        # CliRunner isolates sys.stdin as a non-TTY; patch entry's sys reference so the
+        # code takes the interactive (chat) path instead of being downgraded to one-shot.
+        with patch("yaicli.entry.sys") as mock_sys:
+            mock_sys.stdin.isatty.return_value = True
+            with patch("yaicli.cli.CLI", return_value=mock_instance) as mock_cli:
+                mock_cli.evaluate_role_name.return_value = DefaultRoleNames.DEFAULT
+                result = runner.invoke(app, ["--chat", "title"])
+
+        assert result.exit_code == 0
+        assert mock_instance.run.call_args.kwargs["chat"] is True
+
+    def test_provider_init_failure_exits_nonzero(self):
+        """The real provider-init failure path (unknown provider/missing API_KEY) exits 1."""
+        with patch("yaicli.cli.LLMClient", side_effect=ValueError("API_KEY is required")):
+            result = runner.invoke(app, ["some prompt"])
+
+        assert result.exit_code == 1
+        assert "Unknown error: API_KEY is required" in result.output
 
 
 class TestImageOptions:
