@@ -76,12 +76,27 @@ class Function(OpenAISchema):
             return None, f"Invalid 'line_number': expected an integer, got {raw!r}"
 
     @staticmethod
+    def _assert_file_writable(path: Path) -> None:
+        """Raise ``PermissionError`` when the existing file itself is not writable.
+
+        The atomic replacement renames a temp file over ``path``; rename only checks the
+        *directory* permissions, so a read-only file (e.g. chmod 0444) in a writable
+        directory would otherwise be silently overwritten. Probing with ``open(path,
+        "r+")`` reproduces the historical ``open(path, "w")`` behaviour (without
+        truncating, writing content or changing mtime) and stays correct for ACLs,
+        immutable flags and root, where a mode-bit check would lie.
+        """
+        with open(path, "r+"):
+            pass
+
+    @staticmethod
     def _atomic_write(path: Path, content: str) -> None:
         """Atomically replace ``path`` with ``content``.
 
         The new content is written to a temporary file in the same directory and then
         moved into place with ``os.replace``, so a failed/interrupted write can never
         truncate or corrupt the original file. The original permission bits are kept.
+        Callers must check writability first (see ``_assert_file_writable``).
         """
         fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
         try:
@@ -280,6 +295,9 @@ class Function(OpenAISchema):
                 result["success"] = True
                 return json.dumps(result, ensure_ascii=False, indent=2)
 
+            # Preserve the historical open("w") contract: a read-only target file must
+            # fail with PermissionError (-> "Permission denied") before we replace it.
+            cls._assert_file_writable(path)
             cls._atomic_write(path, modified_content)
             result["success"] = True
 

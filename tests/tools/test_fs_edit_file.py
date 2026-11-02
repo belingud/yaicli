@@ -1,7 +1,10 @@
 """Test fs_edit_file function."""
 
 import json
+import os
 import stat
+
+import pytest
 
 from yaicli.functions.buildin.fs_edit_file import Function
 
@@ -456,3 +459,44 @@ class TestFSEditFile:
         assert result_dict["success"] is True
         assert test_file.read_text() == "Hello There"
         assert stat.S_IMODE(test_file.stat().st_mode) == 0o640
+
+    @pytest.mark.skipif(
+        hasattr(os, "geteuid") and os.geteuid() == 0,
+        reason="root bypasses read-only permission bits (open('r+') succeeds)",
+    )
+    def test_execute_readonly_file_permission_denied(self, tmp_path):
+        """Test that editing a read-only file keeps the historical Permission denied contract."""
+        test_file = tmp_path / "test.txt"
+        original = "Hello World"
+        test_file.write_text(original)
+        test_file.chmod(0o444)
+        try:
+            edits = [{"type": "replace", "old": "World", "new": "There"}]
+            result = Function.execute(str(test_file), edits)
+            result_dict = json.loads(result)
+
+            assert result_dict["success"] is False
+            assert result_dict["error"] == "Permission denied"
+            # The read-only file is untouched: content, mode and inode all preserved.
+            assert test_file.read_text() == original
+            assert stat.S_IMODE(test_file.stat().st_mode) == 0o444
+            assert list(tmp_path.glob(".*.tmp")) == []
+        finally:
+            test_file.chmod(0o644)
+
+    def test_execute_readonly_file_dry_run_still_works(self, tmp_path):
+        """Test that dry_run does not require write permission (no write happens)."""
+        test_file = tmp_path / "test.txt"
+        original = "Hello World"
+        test_file.write_text(original)
+        test_file.chmod(0o444)
+        try:
+            edits = [{"type": "replace", "old": "World", "new": "There"}]
+            result = Function.execute(str(test_file), edits, dry_run=True)
+            result_dict = json.loads(result)
+
+            assert result_dict["success"] is True
+            assert result_dict["dry_run"] is True
+            assert test_file.read_text() == original
+        finally:
+            test_file.chmod(0o644)
