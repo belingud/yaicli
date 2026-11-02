@@ -145,6 +145,15 @@ layer and catch `YaicliError` only at `entry.py` or a REPL boundary that keeps l
 `Printer` (existing: `entry.py`, the `@Function call`/`@MCP call` debug lines, `ProviderFactory.list_providers`). Tests
 inject `mock_console`.
 
+Untrusted text (model output, tool arguments/results, file names, chat titles, provider error
+bodies) must never be interpolated into a Rich markup string: use `safe_text()`/`untrusted_text()`/
+`print_untrusted()` from `yaicli/console.py` (helpers also strip C0/C1 control characters to prevent
+ANSI/OSC terminal injection; `tests/test_markup_safety.py` covers the sink list). A single bad
+turn must not kill the REPL: `_run_repl()` catches unexpected exceptions per turn and keeps
+looping (KeyboardInterrupt/EOF keep their original semantics). Handled failures set
+`CLI.had_error`; `entry.main()` maps that to `typer.Exit(1)` in single-shot mode, and `ConfigError`
+exits `1` at import time (S5 contract).
+
 ## Verification
 
 ```bash

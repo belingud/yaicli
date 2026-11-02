@@ -103,8 +103,8 @@ Consequence: docs never deploy from a feature branch; merge/copy the docs commit
   added there is unreachable.
 - Docs tooling is the `docs` dependency-group (`mkdocs`, `mkdocs-material`, `mkdocstrings`):
   `uv sync --all-groups` then `uv run mkdocs serve` / `uv run mkdocs build`.
-- `docs/dev/architecture.md` is currently a stub (only a heading, no content) — the real architecture
-  knowledge lives in `CLAUDE.md` and `.trellis/spec/py/index.md` for now.
+- `docs/dev/` contains the contributor guides (`architecture.md`, `add-provider.md`, `debug-cli.md`);
+  `.trellis/spec/py/index.md` remains the layer-level reference and `CLAUDE.md` the agent entry point.
 
 ## Test Matrix (`tox.ini`)
 

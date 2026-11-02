@@ -28,7 +28,7 @@ MAX_TOKENS=1024
 | `FREQUENCY_PENALTY`  | Frequency penalty                | -                                              |
 | `SEED`               | Random seed for deterministic output | -                                          |
 | `INCLUDE_THOUGHTS`   | Include reasoning                | `true`                                         |
-| `THINKING_BUDGET`    | Max tokens for reasoning         | `1000`                                         |
+| `THINKING_BUDGET`    | Max tokens for reasoning (unset unless configured) | -                                |
 | `BASE_URL`           | Custom API endpoint              | `https://generativelanguage.googleapis.com/v1beta` |
 | `API_VERSION`        | API version to use               | -                                              |
 

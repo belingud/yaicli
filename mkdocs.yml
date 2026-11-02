@@ -68,6 +68,7 @@ nav:
       - Bailian: providers/bailian.md
       - Minimax: providers/minimax.md
       - Fireworks: providers/fireworks.md
+      - LongCat: providers/longcat.md
   - Advanced:
       - Prompt Template System: advanced/prompts.md
       - Conversation & History: advanced/history.md
@@ -76,7 +77,7 @@ nav:
       - Architecture Overview: dev/architecture.md
       - Add a New Provider: dev/add-provider.md
       - CLI Debugging: dev/debug-cli.md
-      - Contributing: dev/contributing.md
+      - Contributing: contributing.md
   - FAQ & Troubleshooting: faq.md
   - Changelog: changelog.md
 

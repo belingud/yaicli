@@ -62,7 +62,7 @@ Press Shift+Tab to switch mode
 
 - `/help|?` - Show help message
 - `/clear` - Clear conversation history
-- `/his` - Show command history
+- `/his` - Show chat history
 - `/list` - List saved chats
 - `/save <title>` - Save current chat with title
 - `/load <index>` - Load a saved chat

@@ -59,20 +59,72 @@ ai --role "Python Expert" "How do I use decorators?"
 
 ## Function Calling
 
-YAICLI supports function calling, enabling AI models to call functions to accomplish tasks:
+YAICLI supports function calling: the model can ask YAICLI to execute a local
+function/tool (for example `fs_read_file`, `web_search`, or `execute_shell_command`)
+and then continue the conversation with the result.
 
-```bash
-# Install default functions
-ai --install-functions
+### Installing and updating functions
 
-# List available functions
-ai --list-functions
+Built-in function definitions ship inside the installed package, but they are **not**
+used from there. They must be copied into your config directory once and re-copied
+after upgrades.
 
-# Enable function calling in queries
-ai 'check the current dir total size' --enable-functions
+| Action | Command | Effect |
+| --- | --- | --- |
+| First-time install | `ai --install-functions` | Copies every built-in definition into `~/.config/yaicli/functions/`. Files that already exist are skipped. |
+| List installed functions | `ai --list-functions` | Prints the function files currently loaded by YAICLI. |
+| Update after an upgrade | `ai --reinstall-functions` | Overwrites the files whose names match the current built-ins with the definitions from the new version. Custom files (different file names) are preserved. |
+
+Paths on Windows: `C:\Users\<user>\.config\yaicli\functions` (the non-Windows path is
+`~/.config/yaicli/functions/`).
+
+**After every `pip install -U yaicli`, `uv tool upgrade yaicli`, or other package-manager
+upgrade, run `ai --reinstall-functions`.** Built-in schemas do change between releases —
+for example `fs_read_file` and `fs_read_image` now take lists, and `fs_edit_file` validates
+its operations — and the copy in your config directory is what the model actually sees.
+`ai --install-functions` will *not* refresh files that already exist.
+
+### Writing custom functions
+
+Add a Python file to `~/.config/yaicli/functions/` (files starting with `_` are ignored).
+It must define a class named `Function` that subclasses `yaicli.function_schema.OpenAISchema`
+and a classmethod `execute`. The tool name is the pydantic model title (`class Config: title`).
+Pydantic fields become the tool parameters; use `Field(description=...)` (and a class
+docstring) so the model knows how to call it. Example:
+
+```python
+from pydantic import Field
+
+from yaicli.function_schema import OpenAISchema
+
+
+class Function(OpenAISchema):
+    """Add two integers and return the result."""
+
+    a: int = Field(..., description="First integer")
+    b: int = Field(..., description="Second integer")
+
+    class Config:
+        title = "add_numbers"
+
+    @classmethod
+    def execute(cls, a: int, b: int) -> str:
+        return str(a + b)
 ```
 
-You can also define custom functions by adding them to `~/.config/yaicli/functions/`.
+Restart `ai` after adding or changing a custom function; the loader executes every
+`*.py` file in that directory at startup. `ai --reinstall-functions` never deletes custom
+files, and `ai --install-functions` only adds built-in files that are missing.
+
+### Enabling and controlling function calls
+
+- Function calling is enabled by default (`ENABLE_FUNCTIONS=true`). Toggle it per run with
+  `--enable-functions` / `--disable-functions`, or set `ENABLE_FUNCTIONS=false` in the config file.
+- Function output is displayed by default; use `--hide-function-output` or set
+  `SHOW_FUNCTION_OUTPUT=false` to hide it.
+- Every call asks for confirmation by default (`TOOL_CONFIRM=true`); see
+  [Tool Execution Confirmation](#tool-execution-confirmation) below for the four choices.
+- `MAX_TOOL_CALL_DEPTH` (default `8`) bounds recursive tool-call rounds in one request.
 
 ### Reading Multiple Files in One Call
 
@@ -83,15 +135,13 @@ files can be read with a single tool call instead of one call per file:
 {"file_paths": ["src/main.py", "src/config.py"], "encoding": "utf-8"}
 ```
 
-A single path string is still accepted for backward compatibility. Built-in
-functions are copied to `~/.config/yaicli/functions/` on first install, so run
-`ai --reinstall-functions` after upgrading to pick up the latest built-in
-function definitions.
+A single path string is still accepted for backward compatibility. The list contract is a
+built-in schema change: run `ai --reinstall-functions` after upgrading to pick it up.
 
 ### Reading Multiple Images in One Call
 
-The built-in `fs_read_image` function follows the same list-based contract, so
-several images can be read and base64-encoded in one tool call:
+The built-in `fs_read_image` function follows the same list-based contract, so several
+images can be read and base64-encoded in one tool call:
 
 ```json
 {"image_paths": ["artwork/before.png", "artwork/after.png"]}
@@ -99,6 +149,42 @@ several images can be read and base64-encoded in one tool call:
 
 A single path string is still accepted for backward compatibility. The same
 `ai --reinstall-functions` rule applies after upgrading.
+
+### Built-in Function Safety
+
+The built-in functions run with your local permissions, so the shipped implementations apply
+their own guard rails. These are user-visible contracts — if you see different behaviour,
+run `ai --reinstall-functions` after upgrading.
+
+**`fetch_webpage`** only fetches public `http`/`https` URLs:
+
+- loopback, private, link-local, cloud-metadata (`169.254.169.254`, `100.100.100.200`),
+  CGNAT/shared-address (`100.64.0.0/10`), multicast, reserved, and unspecified addresses are
+  refused before any request is made (IPv4 and IPv6);
+- redirects are followed manually and re-validated hop by hop (maximum 5 redirects); a
+  cross-host redirect does not forward your cookies or `Referer`, and an `https` → `http`
+  downgrade is refused;
+- the response body is capped at 10 MB; `timeout`, `user_agent`, `cookies`, `referer`, and
+  `language` are honoured;
+- TLS certificate verification is enabled by default and is **never** silently disabled on a
+  connection error. Passing `verify_ssl=False` explicitly is allowed (with a warning) but is
+  vulnerable to man-in-the-middle attacks;
+- every failure is returned to the model as a `Failed to fetch ...` string instead of raising,
+  so the model can adapt.
+
+**`fs_edit_file`** is all-or-nothing:
+
+- supported operations and keys:
+  - `replace`: `{"type": "replace", "old": <str>, "new": <str>}` — replaces all occurrences.
+    `old` must be non-empty and must differ from `new`;
+  - `replace_line`: `{"type": "replace_line", "line_number": <1-based int>, "new": <str>}`;
+  - `insert_line`: `{"type": "insert_line", "line_number": <0..N>, "content": <str>}`;
+  - `delete_line`: `{"type": "delete_line", "line_number": <1-based int>}`;
+  - `append`: `{"type": "append", "content": <str>}`;
+- every edit is validated and applied in order; **if any edit fails, nothing is written** and
+  the result reports the failures (`success=false`, `error` explains how many failed);
+- writes are atomic and preserve file permissions; a read-only file is rejected with
+  `Permission denied` instead of being overwritten.
 
 ### Tool Execution Confirmation
 
@@ -120,7 +206,9 @@ Execute tool? [y]once, [a]session, [A]always, [n]o:
 
 Pressing Ctrl-C or sending EOF at the prompt is treated as a denial.
 
-In non-interactive sessions (piped stdin / no TTY), tools already in the persistent allowlist run automatically; all others are denied with a hint.
+In non-interactive sessions (piped stdin / no TTY), tools already in the persistent
+allowlist run automatically; all others are denied with a hint telling you to pre-approve
+them or set `TOOL_CONFIRM=false`.
 
 To disable confirmation and restore silent execution:
 
@@ -135,7 +223,7 @@ or:
 export YAI_TOOL_CONFIRM=false
 ```
 
-## MCP (Machine Comprehension Protocol)
+## MCP (Model Context Protocol)
 
 MCP allows AI models to use external tools:
 
@@ -217,8 +305,10 @@ YAICLI works with many LLM providers. Configure your preferred provider in the c
 
 ```ini
 [core]
-PROVIDER=openai  # or cohere, gemini, ollama, etc.
-BASE_URL=        # leave empty for default provider URL
+# Comments must be on their own line; inline comments become part of the value.
+PROVIDER=openai
+# Leave BASE_URL empty to use the provider default URL.
+BASE_URL=
 API_KEY=your_api_key_here
 MODEL=gpt-5.2
 ```

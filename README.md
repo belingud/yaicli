@@ -92,25 +92,27 @@ pipx install yaicli
 uv tool install yaicli
 ```
 
-Yaicli has several optional dependencies group, you can copy below commands to install specific dependencies.
+YAICLI has several optional dependency groups; install the extras for the providers you use.
 
 ```shell
-# install all denpendencies
+# install all optional dependencies
 pip install 'yaicli[all]'
 
 # install with specific provider support
-pip instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,anthropic]'
+pip install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,cerebras,fireworks]'
 ```
 
-Install by `uv`.
+Install with `uv`:
 
 ```shell
-# install all denpendencies
+# install all optional dependencies
 uv tool install 'yaicli[all]'
 
 # install with specific provider support
-uv tool instsall 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,anthropic]'
+uv tool install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,cerebras,fireworks]'
 ```
+
+Anthropic support is part of the core dependencies and needs no extra.
 
 ### Install from Source
 
@@ -120,41 +122,49 @@ cd yaicli
 pip install .
 ```
 
-## Buildin Supported Providers
+## Built-in Supported Providers
 
 - AI21
 - Anthropic/Claude
 - Anthropic Bedrock
 - Anthropic Vertex
+- Bailian
+- Bailian International
 - Cerebras
-- Chatglm
-- Chuts
+- ChatGLM
+- Chutes
 - Cohere
-- Cohere Badrock
-- Cohere Sagemaker
-- Deepseek
+- Cohere Bedrock
+- Cohere SageMaker
+- DeepSeek
 - Doubao
 - Fireworks
 - Gemini
 - Groq
-- Huggingface
-- Longcat
-- Longcat Anthropic Format
-- Minimax
+- HuggingFace
+- Infini-AI
+- LongCat
+- LongCat (Anthropic format)
+- MiniMax
 - Mistral
 - ModelScope
+- Moonshot
+- NVIDIA NIM
 - Ollama
-- Openai
-- Openai Azure
-- Sambanova
-- Siliconflow
+- OpenAI
+- OpenAI Azure
+- OpenRouter
+- SambaNova
+- SiliconFlow
 - Spark
 - Targon
 - Together
-- Vertex ai
-- X AI
+- Vertex AI
+- xAI
 - Yi
-- Unlimited OpenAI-compatible providers
+
+Any other OpenAI-compatible endpoint can be used with the `openai` or `openai-compatible`
+provider plus a custom `BASE_URL`.
 
 ## ⚙️ Configuration
 
@@ -168,13 +178,13 @@ YAICLI uses a simple configuration file to store your preferences and API keys.
 
 ### Configuration File Structure
 
-The default configuration file is located at `~/.config/yaicli/config.ini`. You can use `ai --template` to see default
+The default configuration file is located at `~/.config/yaicli/config.ini`. You can use `ai --template` to see the default configuration template.
 
 ### Configuration Options Reference
 
 | Option                 | Description                                 | Default                  | Env Variable               |
 | ---------------------- | ------------------------------------------- | ------------------------ | -------------------------- |
-| `PROVIDER`             | LLM provider (openai, claude, cohere, etc.) | `openai`                 | `YAI_PROVIDER`             |
+| `PROVIDER`             | LLM provider (openai, anthropic, cohere, etc.) | `openai`              | `YAI_PROVIDER`             |
 | `BASE_URL`             | API endpoint URL                            | -                        | `YAI_BASE_URL`             |
 | `API_KEY`              | Your API key                                | -                        | `YAI_API_KEY`              |
 | `MODEL`                | LLM model to use                            | `gpt-5.2`                | `YAI_MODEL`                |
@@ -188,8 +198,8 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `REASONING_EFFORT`     | Reasoning effort                            | -                        | `YAI_REASONING_EFFORT`     |
 | `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                     | `YAI_INTERACTIVE_ROUND`    |
 | `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                | `YAI_CODE_THEME`           |
-| `TEMPERATURE`          | Response randomness                         | `0.7`                    | `YAI_TEMPERATURE`          |
-| `FREQUENCY_PENALTY`    | Repeat pubnish                              | `0.0`                    | `YAI_FREQUENCY_PENALTY`    |
+| `TEMPERATURE`          | Response randomness                         | `0.3`                    | `YAI_TEMPERATURE`          |
+| `FREQUENCY_PENALTY`    | Frequency penalty                           | `0.0`                    | `YAI_FREQUENCY_PENALTY`    |
 | `TOP_P`                | Top-p sampling                              | `1.0`                    | `YAI_TOP_P`                |
 | `MAX_TOKENS`           | Max response tokens                         | `1024`                   | `YAI_MAX_TOKENS`           |
 | `MAX_HISTORY`          | Max history entries                         | `500`                    | `YAI_MAX_HISTORY`          |
@@ -202,9 +212,11 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
 | `SHOW_FUNCTION_OUTPUT` | Show function output when calling function  | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
 | `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
-| `SHOW_MCP_OUTPUT`      | Show MCP output when calling mcp            | `true`                   | `YAI_SHOW_MCP_OUTPUT`      |
+| `SHOW_MCP_OUTPUT`      | Show MCP output when calling mcp            | `false`                  | `YAI_SHOW_MCP_OUTPUT`      |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
 | `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
+| `EXCLUDE_PARAMS`       | Comma-separated API parameters to omit       | -                        | `YAI_EXCLUDE_PARAMS`       |
+| `MINIMAX_REASONING_SPLIT` | MiniMax interleaved reasoning (reasoning_split) | `true`            | `YAI_MINIMAX_REASONING_SPLIT` |
 
 > **Tool execution confirmation:** With `TOOL_CONFIRM` enabled (the default), YAICLI asks before running each
 > tool/function call. At the prompt you can allow it once, allow it for the rest of the session, allow it permanently,
@@ -224,10 +236,9 @@ Note: blank `BASE_URL` (or no `BASE_URL`) means use provider default url.
 | Provider                       | BASE_URL                                                  |
 | ------------------------------ | --------------------------------------------------------- |
 | **OpenAI** (default)           | `https://api.openai.com/v1`                               |
-| **Claude** (native API)        | `https://api.anthropic.com/v1`                            |
-| **Claude** (OpenAI-compatible) | `https://api.anthropic.com/v1/openai`                     |
-| **Cohere**                     | `https://api.cohere.com`                                  |
-| **Gemini**                     | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| **Anthropic/Claude**           | `https://api.anthropic.com`                               |
+| **Cohere**                     | `https://api.cohere.com/v2`                               |
+| **Gemini**                     | `https://generativelanguage.googleapis.com/v1beta`        |
 
 > **Note**: Many providers offer OpenAI-compatible endpoints that work with the default settings.
 >
@@ -258,7 +269,7 @@ MODEL=gpt-5.2
 Extra params:
 
 ```ini
-# REASONING_EFFORT: [high, midium, low]
+# REASONING_EFFORT: [low, medium, high] (provider-specific)
 REASONING_EFFORT=
 ```
 
@@ -296,7 +307,7 @@ If `AZURE_AD_TOKEN` not set in config, will look for `AZURE_OPENAI_AD_TOKEN` env
 
 If `BASE_URL` and `AZURE_ENDPOINT` not set in config, will look for `AZURE_OPENAI_ENDPOINT` environment variable.
 
-#### Anghropic/Claude
+#### Anthropic/Claude
 
 ```ini
 PROVIDER=anthropic
@@ -434,6 +445,16 @@ MODEL=LongCat-Flash-Chat
 BASE_URL=https://api.longcat.chat/openai
 ```
 
+#### Moonshot
+
+```ini
+PROVIDER=moonshot
+API_KEY=
+MODEL=moonshot-v1-8k
+```
+
+See [Moonshot provider docs](docs/providers/moonshot.md).
+
 #### XAI
 
 ```ini
@@ -526,10 +547,10 @@ API_KEY=
 MODEL=deepseek-ai/DeepSeek-V3-0324
 ```
 
-#### Inifiniai
+#### Infini-AI
 
 ```ini
-PROVIDER=infiniai
+PROVIDER=infini-ai
 ; BASE_URL=https://cloud.infini-ai.com/maas/v1
 API_KEY=
 MODEL=deepseek-v3
@@ -673,16 +694,17 @@ API_KEY=
 MODEL=qwen-plus
 ```
 
-#### Nvida nim
+#### NVIDIA NIM
 
 ```ini
+# the registered provider key is spelled "nvida" for historical reasons
 PROVIDER=nvida
 API_KEY=
 MODEL=qwen/qwen3-235b-a22b
 EXTRA_BODY={"chat_template_kwargs": {"thinking": false}}
 ```
 
-> `chat_template_kwargs` is for Qwen3 and ibm/granite models, you disable thinking as above config.
+> `chat_template_kwargs` is for Qwen3 and ibm/granite models; the example above disables thinking.
 
 #### Together
 
@@ -696,18 +718,13 @@ MODEL=Qwen/Qwen3-235B-A22B-fp8-tput
 
 #### Spark
 
+Spark requires both `API_KEY` and `API_SECRET`; `APP_ID` is optional (sent as the request `uid`).
+
 ```ini
 PROVIDER=spark
 API_KEY=
-MODEL=4.0Ultra
-```
-
-Or you can use your `APP_ID` and `API_SECRET`.
-
-```ini
-PROVIDER=spark
+API_SECRET=
 APP_ID=
-APP_SECRET=
 MODEL=4.0Ultra
 ```
 
@@ -756,7 +773,7 @@ ai --verbose "Explain quantum computing"
 
 - `/help|?` - Show help message
 - `/clear` - Clear conversation history
-- `/his` - Show command history
+- `/his` - Show chat history
 - `/list` - List saved chats
 - `/save <title>` - Save current chat with title
 - `/load <index>` - Load a saved chat
@@ -984,7 +1001,7 @@ du -sh .
 ╭─ Command ─╮
 │ du -sh .  │
 ╰───────────╯
-Execute command? [e]dit, [y]es, [n]o (n): e
+Execute command? [e]dit, [y]es, [n]o (y): e
 Edit command, press enter to execute:
 du -sh ./
 Output:
@@ -997,7 +1014,7 @@ In code mode, select the language for code generation. If none is specified, Pyt
 
 The `--code` mode outputs plain text, making it easy to copy, paste, or redirect to a file, especially when using the standard model.
 
-When using a deep reasoning model, the thinking content is displayed with syntax highlighting. To disable this, use the `--no-show-reasoning` option or set `SHOW_REASONING` to `false` in the configuration.
+When using a deep reasoning model, the thinking content is displayed with syntax highlighting. To disable this, use the `--hide-reasoning` option or set `SHOW_REASONING` to `false` in the configuration.
 
 ```bash
 $ ai --code 'Write a fib generator'
@@ -1057,7 +1074,7 @@ du -sh .
 ╭─ Suggest Command ─╮
 │ du -sh .          │
 ╰───────────────────╯
-Execute command? [e]dit, [y]es, [n]o (n): e
+Execute command? [e]dit, [y]es, [n]o (y): e
 Edit command: du -sh ./
 --- Executing ---
  55M    ./
@@ -1074,7 +1091,7 @@ find ~/Downloads -type f -name "*.pdf"
 ╭─ Suggest Command ───────────────────────╮
 │ find ~/Downloads -type f -iname "*.pdf" │
 ╰─────────────────────────────────────────╯
-Execute command? [e]dit, [y]es, [n]o (n): y
+Execute command? [e]dit, [y]es, [n]o (y): y
 Output:
 
 /Users/username/Downloads/document1.pdf
@@ -1092,96 +1109,23 @@ $ ai --code "write a fib generator" --model deepseek-r1
 
 ### Function Call
 
-To use function call, you need to install default functions by `ai --install-functions`.
-After that, you can check the functions by `ai --list-functions`.
-You can also define your own functions by adding them to the config folder in `~/.config/yaicli/functions/` (`C:\Users\<user>\.config\yaicli\functions` on Windows).
+Function calling lets the model run local tools such as file readers, `web_search`, and
+`execute_shell_command`. Built-in definitions ship with the package and must be installed
+once, then refreshed after every upgrade:
 
-The built-in `fs_read_file` function accepts a list of file paths, so several files can be read in a single tool call:
-
-```json
-{"file_paths": ["src/main.py", "src/config.py"]}
+```bash
+ai --install-functions      # first-time install (existing files are skipped)
+ai --list-functions         # show installed functions
+ai --reinstall-functions    # after upgrading: refresh built-in definitions (custom files kept)
 ```
 
-A single path string is still accepted for backward compatibility. Run `ai --reinstall-functions` to refresh the built-in function definitions after an upgrade.
+Function calling is enabled by default (`ENABLE_FUNCTIONS`); use `--enable-functions` /
+`--disable-functions` to toggle it per run, and `--hide-function-output` to hide tool output.
+Every tool call asks for confirmation by default (`TOOL_CONFIRM`; allow once, for the session,
+permanently, or deny). Custom functions live in `~/.config/yaicli/functions/`.
 
-The built-in `fs_read_image` accepts an `image_paths` list the same way:
-
-```json
-{"image_paths": ["before.png", "after.png"]}
-```
-
-By default YAICLI asks for confirmation before running each tool call:
-
-```
-╭─ Confirm tool call ──────────────────────────────╮
-│ execute_shell_command({"shell_command": "du -sh ."}) │
-╰──────────────────────────────────────────────────╯
-Execute tool? [y]once, [a]session, [A]always, [n]o:
-```
-
-| Key | Meaning |
-|-----|---------|
-| `y` | Allow this call only |
-| `a` | Allow for the rest of this session |
-| `A` | Always allow (saved to `~/.config/yaicli/tool_permissions.json`) |
-| `n` | Deny — the model is informed and can adapt |
-
-To disable confirmation and restore silent execution: set `TOOL_CONFIRM=false` in `config.ini` or `YAI_TOOL_CONFIRM=false` in your environment.
-
-```shell
-❯ ai --list-functions
-/Users/xxx/.config/yaicli/functions/fs_file_operations.py
-/Users/xxx/.config/yaicli/functions/fs_list_directory.py
-/Users/xxx/.config/yaicli/functions/fs_read_file.py
-/Users/xxx/.config/yaicli/functions/fs_write_file.py
-/Users/xxx/.config/yaicli/functions/fs_search_files.py
-/Users/xxx/.config/yaicli/functions/fetch_webpage.py
-/Users/xxx/.config/yaicli/functions/get_weather.py
-/Users/xxx/.config/yaicli/functions/fs_edit_file.py
-/Users/xxx/.config/yaicli/functions/fs_get_filesystem_info.py
-/Users/xxx/.config/yaicli/functions/web_search.py
-/Users/xxx/.config/yaicli/functions/fs_read_image.py
-/Users/xxx/.config/yaicli/functions/execute_shell_command.py
-```
-
-`--enable-functions` option is corresponds to the configuration key `ENABLE_FUNCTIONS`.
-
-```shell
-ai 'check the current dir total size' --enable-functions
-Assistant:
-Thinking:
-
-▌ Okay, the user wants to check the current directory's total size. Hmm, how do I do that in macOS with zsh?
-▌ I remember that the command to get disk usage is usually 'du'. But wait, the default 'du' might not give the total size of the
-▌ current directory directly. Let me think. Oh right, if I use 'du -sh' with the current directory, that should give the total size
-▌ in human-readable format.
-▌ Wait, but sometimes the -s option summarizes the directory. So 'du -sh .' would calculate the total size of the current directory
-▌ and its subdirectories. That should work. Let me confirm the syntax. Yeah, 'du -sh .' is the right command here.
-▌ The user is using zsh, but the 'du' command is standard, so it should be available. I need to execute this shell command. The
-▌ function provided is execute_shell_command, so I'll call that with the shell command 'du -sh .' as the argument.
-▌ I should make sure the parameters are correctly formatted. The function requires a shell_command string. Alright, that's all.
-▌ Let's generate the tool call.
-
-{"index":0,"finish_reason":"tool_calls","delta":{"role":"assistant","content":null,"audio":null,"tool_calls":[{"id":"call_202505141526
-36cc3f776ae8f14b56_0","index":0,"type":"function","function":{"name":"execute_shell_command","arguments":"{"shell_command": "du -sh
-."}","outputs":null},"code_interpreter":null,"retrieval":null,"drawing_tool":null,"web_browser":null,"search_intent":null,"search_resu
-lt":null}],"tool_call_id":null,"attachments":null,"metadata":null}}
-@Function call: execute_shell_command({"shell_command": "du -sh ."})
-╭─ Function output ─────╮
-│ Exit code: 0, Output: │
-│ 156M    .             │
-│                       │
-╰───────────────────────╯
-Thinking:
-
-▌ Okay, the user asked to check the current directory's total size. I used the 'du -sh .' command, which stands for disk usage,
-▌ summarize, and current directory. The output was "156M". So I need to present this in a concise way.
-▌ First, confirm the command was executed. Then, report the result clearly. Since the user didn't ask for extra details, keep it
-▌ simple. Just state the total size as 156MB. Maybe mention the command used for transparency. Alright, that should cover it without
-▌ overcomplicating.
-
-Current directory size: 156M (using du -sh .).
-```
+See [Advanced Usage — Function Calling](docs/usage/advanced.md#function-calling) for the full
+install/update/custom-function guide, built-in safety contracts, and the confirmation protocol.
 
 ### MCP
 

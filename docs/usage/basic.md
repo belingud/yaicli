@@ -35,6 +35,9 @@ Debug with verbose mode
 ai --verbose "Explain quantum computing"
 ```
 
+> This help snapshot is abbreviated; run `ai --help` for the authoritative current
+> options (see also [Command Overview](commands.md)).
+
 ## Image Input
 
 Send images to vision-capable models directly from the command line using `--image` / `-i`:
@@ -81,7 +84,7 @@ Supported formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), GIF (`.gif`), WebP (`.w
 │ --model        -M                 TEXT                       Specify the model to use.                                 │
 │ --temperature  -T                 FLOAT RANGE [0.0<=x<=2.0]  Specify the temperature to use. [default: 0.3]            │
 │ --top-p        -P                 FLOAT RANGE [0.0<=x<=1.0]  Specify the top-p to use. [default: 1.0]                  │
-│ --max-tokens                      INTEGER RANGE [x>=1]       Specify the max tokens to use. [default: 2048]            │
+│ --max-tokens                      INTEGER RANGE [x>=1]       Specify the max tokens to use. [default: 1024]            │
 │ --stream           --no-stream                               Specify whether to stream the response. (default: stream) │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Role Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -113,14 +116,16 @@ Supported formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), GIF (`.gif`), WebP (`.w
 ╭─ Function Options ─────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ --install-functions                                   Install default functions.                                       │
 │ --list-functions                                      List all available functions.                                    │
+│ --reinstall-functions                                 Reinstall builtin functions (overwrites existing builtin files,  │
+│                                                       preserves custom ones).                                          │
 │ --enable-functions        --disable-functions         Enable/disable function calling in API requests (default:        │
-│                                                       disabled)                                                        │
+│                                                       enabled)                                                         │
 │ --show-function-output    --hide-function-output      Show the output of functions (default: show)                     │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ MCP Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ --enable-mcp         --disable-mcp          Enable/disable MCP in API requests (default: disabled)                     │
 │                                             [default: disable-mcp]                                                     │
-│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: show)                                     │
+│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: hide)                                     │
 │ --list-mcp                                  List all available mcp.                                                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Image Options ───────────────────────────────────────────────────────────────────────────────────────────────────────╮

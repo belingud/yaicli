@@ -54,9 +54,13 @@ STREAM=true
 
 # LLM parameters
 TEMPERATURE=0.3
+FREQUENCY_PENALTY=0.0
 TOP_P=1.0
 MAX_TOKENS=1024
 TIMEOUT=60
+# JSON strings
+EXTRA_HEADERS=
+EXTRA_BODY=
 REASONING_EFFORT=
 
 # Interactive mode parameters
@@ -92,13 +96,23 @@ SHOW_MCP_OUTPUT=false
 
 # Tool confirmation (set to false to restore silent execution)
 TOOL_CONFIRM=true
+
+# Maximum recursive tool-call rounds per request
+MAX_TOOL_CALL_DEPTH=8
+
+# Comma-separated API parameters to omit from requests, e.g. temperature,top_p
+EXCLUDE_PARAMS=
 ```
+
+> Comments in `config.ini` must be on their own line. Inline comments are **not** stripped by
+> the INI parser and become part of the value (e.g. `PROVIDER=openai  # note` would make the
+> provider name invalid).
 
 ## Configuration Options Reference
 
 | Option                 | Description                                 | Default                  | Environment Variable       |
 | ---------------------- | ------------------------------------------- | ------------------------ | -------------------------- |
-| `PROVIDER`             | LLM provider (openai, claude, cohere, etc.) | `openai`                 | `YAI_PROVIDER`             |
+| `PROVIDER`             | LLM provider (openai, anthropic, cohere, etc.) | `openai`              | `YAI_PROVIDER`             |
 | `BASE_URL`             | API endpoint URL                            | -                        | `YAI_BASE_URL`             |
 | `API_KEY`              | Your API key                                | -                        | `YAI_API_KEY`              |
 | `MODEL`                | LLM model to use                            | `gpt-5.2`                | `YAI_MODEL`                |
@@ -113,6 +127,7 @@ TOOL_CONFIRM=true
 | `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                     | `YAI_INTERACTIVE_ROUND`    |
 | `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                | `YAI_CODE_THEME`           |
 | `TEMPERATURE`          | Response randomness                         | `0.3`                    | `YAI_TEMPERATURE`          |
+| `FREQUENCY_PENALTY`    | Frequency penalty                           | `0.0`                    | `YAI_FREQUENCY_PENALTY`    |
 | `TOP_P`                | Top-p sampling                              | `1.0`                    | `YAI_TOP_P`                |
 | `MAX_TOKENS`           | Max response tokens                         | `1024`                   | `YAI_MAX_TOKENS`           |
 | `MAX_HISTORY`          | Max history entries                         | `500`                    | `YAI_MAX_HISTORY`          |
@@ -125,9 +140,11 @@ TOOL_CONFIRM=true
 | `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
 | `SHOW_FUNCTION_OUTPUT` | Show function output                        | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
 | `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
-| `SHOW_MCP_OUTPUT`      | Show MCP output                             | `true`                   | `YAI_SHOW_MCP_OUTPUT`      |
+| `SHOW_MCP_OUTPUT`      | Show MCP output                             | `false`                  | `YAI_SHOW_MCP_OUTPUT`      |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
 | `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
+| `EXCLUDE_PARAMS`       | Comma-separated API parameters to omit      | -                        | `YAI_EXCLUDE_PARAMS`       |
+| `MINIMAX_REASONING_SPLIT` | MiniMax interleaved reasoning (reasoning_split) | `true`            | `YAI_MINIMAX_REASONING_SPLIT` |
 
 
 ## Syntax Highlighting Themes
@@ -163,7 +180,8 @@ EXTRA_BODY={"thinking_budget": 4096}
 
 ## Environment Variables
 
-All configuration options can be set using environment variables with the `YAI_` prefix:
+Every option in the reference table above can be set with its `YAI_*` environment variable
+(these override the config file):
 
 ```bash
 # Set API key via environment variable
@@ -177,6 +195,10 @@ export YAI_STREAM="false"
 ```
 
 Environment variables take precedence over the configuration file settings.
+
+Provider-specific keys that are not in the table (for example `HF_PROVIDER`, `AZURE_ENDPOINT`,
+`AWS_*`, `AK`/`SK`) are read by the individual provider implementations from the config file or
+their usual environment variables; they do not have a `YAI_` alias.
 
 ## Provider-Specific Configuration
 

@@ -24,9 +24,13 @@ Use the `/add` command to add files or directories to your session context. Thes
 /add tests/
 # Output: Added directory to context: /path/to/tests/
 
-# Add multiple files
-/add config.yaml README.md
+# Add several files: /add takes one path per command
+/add config.yaml
+/add README.md
 ```
+
+`/add` reads a single path per invocation (extra arguments are ignored); repeat the command
+for each file.
 
 ### Viewing Context
 
@@ -289,14 +293,25 @@ Error: Path does not exist: /path/to/nonexistent.py
 
 **Solution**: Use relative paths from current directory or absolute paths
 
+### Image References
+
+```bash
+💬 > @diagram.png What does this show?
+```
+
+**Expected behavior**: image files (`.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`) referenced with
+`@` are attached as image input for vision-capable providers; no "binary file" warning is
+produced. On providers without vision support the CLI warns that the image will be ignored.
+
 ### Binary File Warning
 
 ```bash
-💬 > @image.png
-Warning: Cannot include @image.png: [Binary file omitted]
+💬 > @document.pdf Summarize this
+Warning: Cannot include @document.pdf: [Binary file omitted]
 ```
 
-**Expected behavior**: Binary files are automatically skipped
+**Expected behavior**: non-image binary files (`.pdf`, `.zip`, compiled files, ...) are
+skipped; convert them to text (or use a different tool) first.
 
 ### Too Large Warning
 

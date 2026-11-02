@@ -2,10 +2,12 @@
 
 NVIDIA's NIM (NVIDIA Inference Microservice) platform.
 
+> The provider key is registered as `nvida` (historical spelling). Use `PROVIDER=nvida`.
+
 ## Configuration
 
 ```ini
-PROVIDER=nvidia
+PROVIDER=nvida
 API_KEY=nvapi-your-nvidia-api-key
 MODEL=meta/llama-3.1-70b-instruct
 TEMPERATURE=0.3

@@ -20,7 +20,9 @@ Here's a comprehensive list of all available options:
 |--------|-------|-------------|
 | `--help` | `-h` | Show help message and exit |
 | `--verbose` | `-V` | Show verbose output (loaded config, API calls, etc.) |
+| `--version` | `-v` | Show version and exit |
 | `--template` | | Show the default config file template and exit |
+| `--list-providers` | | List available providers and exit |
 
 ### Mode Options
 
@@ -35,7 +37,7 @@ Here's a comprehensive list of all available options:
 | Option | Short | Description | Default |
 |--------|-------|-------------|---------|
 | `--model` | `-M` | Specify the model to use | Configured default |
-| `--temperature` | `-T` | Set temperature (randomness) | 0.5 |
+| `--temperature` | `-T` | Set temperature (randomness) | 0.3 |
 | `--top-p` | `-P` | Set top-p sampling | 1.0 |
 | `--max-tokens` | | Set max tokens in response | 1024 |
 | `--stream` / `--no-stream` | | Enable/disable streaming | stream |
@@ -67,17 +69,21 @@ Here's a comprehensive list of all available options:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--install-functions` | Install default functions | |
-| `--list-functions` | List all available functions | |
-| `--enable-functions` / `--disable-functions` | Enable/disable function calling | disabled |
+| `--install-functions` | Install built-in functions (files that already exist are skipped) | |
+| `--reinstall-functions` | Overwrite built-in function files with the current version; custom files are kept | |
+| `--list-functions` | List installed functions | |
+| `--enable-functions` / `--disable-functions` | Enable/disable function calling in API requests | enabled |
 | `--show-function-output` / `--hide-function-output` | Show/hide function output | show |
+
+See [Advanced Usage — Function Calling](advanced.md#function-calling) for installing,
+updating after an upgrade, writing custom functions, and the confirmation protocol.
 
 ### MCP Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--enable-mcp` / `--disable-mcp` | Enable/disable MCP in API requests | disabled |
-| `--show-mcp-output` / `--hide-mcp-output` | Show/hide MCP output | show |
+| `--show-mcp-output` / `--hide-mcp-output` | Show/hide MCP output | hide |
 | `--list-mcp` | List all available MCP | |
 
 ### Image Options
@@ -140,7 +146,7 @@ When in interactive chat or shell mode, you can use these special commands:
 |---------|-------------|
 | `/help` or `/?` | Show help message |
 | `/clear` | Clear conversation history |
-| `/his` | Show command history |
+| `/his` | Show chat history |
 | `/list` | List saved chats |
 | `/save <title>` | Save current chat with title |
 | `/load <index>` | Load a saved chat |
@@ -250,7 +256,7 @@ In addition to persistent context, you can temporarily reference files using the
 
 | Shortcut | Description |
 |----------|-------------|
-| `Tab` | Toggle between Chat/Execute modes |
+| `Shift+Tab` | Toggle between Chat/Execute modes |
 | `Ctrl+C` or `Ctrl+D` | Exit |
 | `Ctrl+R` | Search history |
 | `↑/↓` | Navigate through history |

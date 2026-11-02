@@ -63,10 +63,12 @@ user-facing name.
 
 - Stream text immediately: yield one `LLMResponse(content=delta)` per chunk; see
   `_handle_stream_response()` in `yaicli/llms/providers/openai_provider.py`.
-- Tool-call arguments arrive in fragments. Accumulate them with `_process_tool_call_chunk()` and
-  attach `tool_call` only when `finish_reason == "tool_calls"` (or, for
-  `OpenAICompatibleProvider`, once the accumulated arguments parse as JSON — some proxies never
-  send a finish reason).
+- Tool-call arguments arrive in fragments. Accumulate them per `delta.tool_calls[i].index`
+  (`_accumulate_tool_call_chunks()` in `openai_provider.py`) and emit **each** call as its own
+  `LLMResponse` when `finish_reason == "tool_calls"`; parallel calls must never be merged into one
+  `ToolCall` (or silently dropped). `OpenAICompatibleProvider` still finalizes once the accumulated
+  arguments parse as JSON, since some proxies never send a finish reason. The legacy
+  `_process_tool_call_chunk()` helper is kept for subclasses that override streaming.
 - Re-yielding the same accumulated tool call is safe because `LLMClient` dedups by id; dropping or
   reusing ids is not, because two calls sharing an id collapse into one.
 - Anthropic streams `text` deltas and `partial_json` deltas separately, finalizes the `ToolCall` on
@@ -114,6 +116,9 @@ LongCat strips `<longcat_tool_call>...</longcat_tool_call>` out of reasoning bef
   `ValueError("API_KEY is required")`; `OpenAIAzure.get_client_params()` raises `ProviderError` or
   `ValueError`; `AnthropicBedrockProvider`/`AnthropicVertexProvider` raise `ConfigMissingError` for
   missing AWS/GCP settings. Ollama needs no key.
+- Do not swallow API errors: providers print untrusted error bodies literally then raise
+  `ProviderError` (`openai_provider.py`) so callers can set a non-zero process exit; the REPL
+  catches it and keeps the session.
 
 ## Adding a Provider
 

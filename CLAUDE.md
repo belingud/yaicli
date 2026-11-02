@@ -56,9 +56,14 @@ entry.py (Typer app) → cli.py (CLI orchestrator) → llms/client.py (LLMClient
 ### Adding a New Provider
 
 1. Create `yaicli/llms/providers/your_provider.py`
-2. Extend `Provider` ABC from `yaicli/llms/provider.py`
-3. Implement required methods: `completion()`, `detect_tool_role()`, `_convert_messages()`
-4. Add to provider imports in `yaicli/llms/providers/__init__.py`
+2. Extend the narrowest base (`Provider` ABC, `OpenAIProvider`, `AnthropicProvider`, ...); implement
+   `completion()` and `detect_tool_role()`; override `_convert_messages()` only when the wire format differs
+3. Register the key in `ProviderFactory.providers_map` in `yaicli/llms/provider.py` (the
+   `yaicli/llms/providers/__init__.py` file is empty)
+4. Add tests under `tests/llms/` and docs under `docs/providers/` (+ `mkdocs.yml` nav)
+5. Declare the SDK extra in `pyproject.toml` if it is optional
+
+See `docs/dev/add-provider.md` for the step-by-step guide.
 
 ### Configuration Priority
 

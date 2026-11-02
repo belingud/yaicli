@@ -8,7 +8,10 @@ In YAICLI, a "role" is a predefined set of instructions, preferences, and behavi
 
 ### Default Roles
 
-YAICLI comes with a built-in `DEFAULT` role that provides a solid foundation for general-purpose interactions. This role instructs the AI to be helpful, accurate, and concise.
+YAICLI ships with three built-in roles: `DEFAULT` (general-purpose assistant),
+`Shell Command Generator` (used by `--shell`/execute mode), and `Code Assistant` (used by
+`--code`). Built-in role files are seeded into `~/.config/yaicli/roles/` on first run and can be
+overridden (a warning is shown unless `ROLE_MODIFY_WARNING=false`).
 
 ## Creating Custom Roles
 
@@ -47,10 +50,10 @@ ai --role "SQL Expert" "Optimize this query: SELECT * FROM users WHERE active = 
 
 # Use in chat mode
 ai --chat --role "SQL Expert"
-
-# Use in shell command mode
-ai --shell --role "DevOps Engineer" "Set up a cronjob"
 ```
+
+Role selection applies to direct queries, `--chat`, and `--code`. `--shell` always uses the
+built-in `Shell Command Generator` role (a non-default `--role` is ignored with a warning).
 
 ## Managing Roles
 
@@ -99,18 +102,26 @@ Roles are defined as JSON files with the following structure:
 ```json
 {
   "name": "Role Name",
-  "description": "Detailed instructions for the AI...",
-  "created_at": "2024-06-01T12:00:00Z",
-  "updated_at": "2024-06-01T12:00:00Z"
+  "prompt": "You are a helpful assistant. Reply concisely.",
+  "variables": {
+    "_os": "macOS",
+    "_shell": "zsh"
+  }
 }
 ```
+
+`name` and `prompt` are required (the prompt must be a non-empty string and is the
+"description" requested by `ai --create-role`). `variables` is optional: if omitted, YAICLI
+fills `_os` and `_shell` from auto-detection. The prompt is passed through Python
+`str.format()`, so literal braces must be doubled (`{{` and `}}`), and unknown `{name}`
+placeholders cause the role to be rejected with a load error.
 
 ### Creating Roles Manually
 
 You can create roles manually by adding JSON files to the roles directory:
 
-1. Create a file named `role_name.json` in the roles directory
-2. Add the role structure as shown above
+1. Create a file in `~/.config/yaicli/roles/` (for example `my_role.json`)
+2. Add the role structure shown above; the `name` field is what `--role` uses, regardless of the file name
 3. Restart YAICLI or run `ai --list-roles` to see your new role
 
 ### Role Modification Warning
@@ -182,5 +193,5 @@ For shell commands, explain what each command does and any flags or options used
 ## Next Steps
 
 - Learn about [chat history management](history.md)
-- Explore [function calling capabilities](../usage/configuration.md#function-settings)
+- Explore [function calling capabilities](../usage/advanced.md#function-calling)
 - Check out [debugging and logs](debugging.md)

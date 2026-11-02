@@ -43,10 +43,11 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ### How do I set up my API key?
 
-You can set your API key in three ways:
+You can set your API key in two ways:
 1. In the config file (`~/.config/yaicli/config.ini`)
 2. As an environment variable (`export YAI_API_KEY="your-key"`)
-3. Using a .env file in your project directory
+
+YAICLI does not load `.env` files; use one of the options above (a `.env` file has no effect).
 
 ### Can I use multiple API keys for different providers?
 
@@ -96,8 +97,10 @@ ai --no-stream "What is the capital of France?"
 
 Set the `CODE_THEME` in your config file:
 ```ini
-CODE_THEME = monokai  # or any other Pygments theme
+CODE_THEME = monokai
 ```
+
+Use any other Pygments theme name here (comments must be on their own line).
 
 ### How do I execute shell commands safely?
 
@@ -182,14 +185,16 @@ ai --install-functions
 
 ### How do I create custom functions?
 
-Add your function definitions to:
-```
-~/.config/yaicli/functions/
-```
+Add your function definitions to `~/.config/yaicli/functions/`; each file must define a
+`Function(OpenAISchema)` class with a classmethod `execute`. Restart `ai` afterwards.
 
-See the [Usage Configuration Guide](usage/configuration.md#function-settings) for details on function configuration.
+If you recently upgraded YAICLI, run `ai --reinstall-functions` so the built-in function
+definitions match the new version (custom files are preserved).
 
-### How do I use MCP (Multi-provider Chain Protocol)?
+See [Advanced Usage — Function Calling](usage/advanced.md#function-calling) for the complete
+install/update/custom-function guide.
+
+### How do I use MCP (Model Context Protocol)?
 
 Enable MCP with:
 ```bash

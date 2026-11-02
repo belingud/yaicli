@@ -42,7 +42,7 @@ EXTRA_BODY={"thinking":{"type":"disabled"}}
 | `TIMEOUT`     | Request timeout (seconds)     | `60`                          |
 | `BASE_URL`    | Custom API endpoint           | `https://api.deepseek.com/v1` |
 | `EXTRA_BODY`  | Additional request parameters | `{}`                          |
-| `REASONING_EFFORT` | Thinking effort (`high` or `max` for DeepSeek thinking models) | - |
+| `REASONING_EFFORT` | Thinking effort, passed through as `reasoning_effort` (`low`, `medium`, `high`; provider/model support varies) | - |
 
 ## Features
 
