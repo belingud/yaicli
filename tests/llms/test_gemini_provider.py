@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from yaicli.llms.providers.gemini_provider import GeminiProvider
-from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
+from yaicli.schemas import ChatMessage, ImageData, ToolCall, ToolPolicy
 from yaicli.tools.function import wrap_gemini_function
 
 
@@ -439,7 +439,9 @@ class TestGeminiProvider:
         """Test detect_tool_role returns the expected role"""
         with patch("google.genai.Client"):
             provider = GeminiProvider(config=mock_config)
-            assert provider.detect_tool_role() == "user"
+            # "tool" is required so LLMClient creates ChatMessages that _convert_messages
+            # turns into function_response parts (client.py uses detect_tool_role()).
+            assert provider.detect_tool_role() == "tool"
 
     # ---- _normalize_fc_args tests ----
 
@@ -843,3 +845,220 @@ class TestGeminiProvider:
             assert len(responses) == 1
             assert responses[0].content == "Hello"
             assert responses[0].tool_call is None
+
+    # ---- tool-round protocol / last-message de-duplication tests ----
+
+    def test_client_tool_message_converts_to_function_response(self, mock_config):
+        """Messages built by LLMClient (role == detect_tool_role()) become function_response parts."""
+        with patch("google.genai.Client"):
+            provider = GeminiProvider(config=mock_config)
+
+        tool_role = provider.detect_tool_role()
+        assert tool_role == "tool"
+
+        messages = [
+            ChatMessage(role="system", content="sys"),
+            ChatMessage(role="user", content="read a.txt"),
+            ChatMessage(
+                role="assistant",
+                content="",
+                tool_calls=[ToolCall(id="call_1", name="fs_read_file", arguments='{"path": "a.txt"}')],
+            ),
+            # exactly what LLMClient._execute_tools_and_continue appends
+            ChatMessage(role=tool_role, content="file contents", name="fs_read_file", tool_call_id="call_1"),
+        ]
+
+        converted = provider._convert_messages(messages)
+
+        assert [content.role for content in converted] == ["user", "model", "user"]
+        function_call = converted[1].parts[0].function_call
+        assert function_call is not None
+        assert function_call.name == "fs_read_file"
+        tool_content = converted[-1]
+        assert len(tool_content.parts) == 1
+        function_response = tool_content.parts[0].function_response
+        assert function_response is not None
+        assert function_response.name == "fs_read_file"
+        assert function_response.response == {"result": "file contents"}
+
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
+    def test_completion_last_user_message_not_duplicated_in_history(
+        self, mock_get_functions, mock_config, mock_gemini_client
+    ):
+        """The final user message is sent exactly once (via send_message), not also in history."""
+        mock_get_functions.return_value = []
+
+        mock_response = MagicMock()
+        mock_response.candidates = []
+        mock_response.to_json_dict.return_value = {"error": "No candidates"}
+
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = mock_response
+        mock_gemini_client.chats.create.return_value = mock_chat
+
+        with patch("google.genai.Client", return_value=mock_gemini_client):
+            provider = GeminiProvider(config=mock_config)
+            provider.client = mock_gemini_client
+
+            messages = [
+                ChatMessage(role="system", content="sys prompt"),
+                ChatMessage(role="user", content="first question"),
+                ChatMessage(role="assistant", content="first answer"),
+                ChatMessage(role="user", content="second question"),
+            ]
+            list(provider.completion(messages, stream=False))
+
+        history = mock_gemini_client.chats.create.call_args[1]["history"]
+        assert [content.parts[0].text for content in history] == ["first question", "first answer"]
+        assert mock_chat.send_message.call_args[1]["message"] == "second question"
+
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
+    def test_completion_streaming_last_user_message_not_duplicated_in_history(
+        self, mock_get_functions, mock_config, mock_gemini_client
+    ):
+        """Streaming path also keeps the final user message out of the history."""
+        mock_get_functions.return_value = []
+
+        mock_chat = MagicMock()
+        mock_chat.send_message_stream.return_value = []
+        mock_gemini_client.chats.create.return_value = mock_chat
+
+        with patch("google.genai.Client", return_value=mock_gemini_client):
+            provider = GeminiProvider(config=mock_config)
+            provider.client = mock_gemini_client
+
+            messages = [
+                ChatMessage(role="system", content="sys prompt"),
+                ChatMessage(role="user", content="first question"),
+                ChatMessage(role="assistant", content="first answer"),
+                ChatMessage(role="user", content="second question"),
+            ]
+            list(provider.completion(messages, stream=True))
+
+        history = mock_gemini_client.chats.create.call_args[1]["history"]
+        assert [content.parts[0].text for content in history] == ["first question", "first answer"]
+        assert mock_chat.send_message_stream.call_args[1]["message"] == "second question"
+
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
+    def test_completion_tool_round_sends_function_response_parts(
+        self, mock_get_functions, mock_config, mock_gemini_client
+    ):
+        """A tool round sends the tool result as function_response parts, not plain user text."""
+        mock_get_functions.return_value = []
+
+        mock_response = MagicMock()
+        mock_response.candidates = []
+        mock_response.to_json_dict.return_value = {"error": "No candidates"}
+
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = mock_response
+        mock_gemini_client.chats.create.return_value = mock_chat
+
+        with patch("google.genai.Client", return_value=mock_gemini_client):
+            provider = GeminiProvider(config=mock_config)
+            provider.client = mock_gemini_client
+
+            messages = [
+                ChatMessage(role="system", content="sys prompt"),
+                ChatMessage(role="user", content="read a.txt"),
+                ChatMessage(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="call_1", name="fs_read_file", arguments='{"path": "a.txt"}')],
+                ),
+                ChatMessage(
+                    role=provider.detect_tool_role(),
+                    content="file contents",
+                    name="fs_read_file",
+                    tool_call_id="call_1",
+                ),
+            ]
+            list(provider.completion(messages, stream=False))
+
+        # The tool result turn is not part of history; only user prompt + model function_call are.
+        history = mock_gemini_client.chats.create.call_args[1]["history"]
+        assert [content.role for content in history] == ["user", "model"]
+        assert history[1].parts[0].function_call.name == "fs_read_file"
+
+        message = mock_chat.send_message.call_args[1]["message"]
+        assert isinstance(message, list)
+        assert len(message) == 1
+        function_response = message[0].function_response
+        assert function_response is not None
+        assert function_response.name == "fs_read_file"
+        assert function_response.response == {"result": "file contents"}
+
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
+    def test_completion_streaming_tool_round_sends_function_response_parts(
+        self, mock_get_functions, mock_config, mock_gemini_client
+    ):
+        """Streaming tool round also sends function_response parts (not plain user text)."""
+        mock_get_functions.return_value = []
+
+        mock_chat = MagicMock()
+        mock_chat.send_message_stream.return_value = []
+        mock_gemini_client.chats.create.return_value = mock_chat
+
+        with patch("google.genai.Client", return_value=mock_gemini_client):
+            provider = GeminiProvider(config=mock_config)
+            provider.client = mock_gemini_client
+
+            messages = [
+                ChatMessage(role="system", content="sys prompt"),
+                ChatMessage(role="user", content="read a.txt"),
+                ChatMessage(
+                    role="assistant",
+                    content="",
+                    tool_calls=[ToolCall(id="call_1", name="fs_read_file", arguments='{"path": "a.txt"}')],
+                ),
+                ChatMessage(
+                    role=provider.detect_tool_role(),
+                    content="file contents",
+                    name="fs_read_file",
+                    tool_call_id="call_1",
+                ),
+            ]
+            list(provider.completion(messages, stream=True))
+
+        history = mock_gemini_client.chats.create.call_args[1]["history"]
+        assert [content.role for content in history] == ["user", "model"]
+
+        message = mock_chat.send_message_stream.call_args[1]["message"]
+        assert isinstance(message, list)
+        assert message[0].function_response.name == "fs_read_file"
+        assert message[0].function_response.response == {"result": "file contents"}
+
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
+    def test_completion_last_message_with_images_sends_parts(self, mock_get_functions, mock_config, mock_gemini_client):
+        """De-duplication must not drop image parts of the final user message."""
+        mock_get_functions.return_value = []
+
+        mock_response = MagicMock()
+        mock_response.candidates = []
+        mock_response.to_json_dict.return_value = {"error": "No candidates"}
+
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = mock_response
+        mock_gemini_client.chats.create.return_value = mock_chat
+
+        with patch("google.genai.Client", return_value=mock_gemini_client):
+            provider = GeminiProvider(config=mock_config)
+            provider.client = mock_gemini_client
+
+            messages = [
+                ChatMessage(role="system", content="sys prompt"),
+                ChatMessage(
+                    role="user",
+                    content="describe the image",
+                    images=[ImageData(data="aGVsbG8=", media_type="image/png", is_url=False)],
+                ),
+            ]
+            list(provider.completion(messages, stream=False))
+
+        history = mock_gemini_client.chats.create.call_args[1]["history"]
+        assert history == []
+        message = mock_chat.send_message.call_args[1]["message"]
+        assert isinstance(message, list)
+        assert message[0].inline_data is not None
+        assert message[0].inline_data.mime_type == "image/png"
+        assert message[1].text == "describe the image"
