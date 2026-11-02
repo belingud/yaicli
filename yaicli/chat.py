@@ -267,6 +267,10 @@ class FileChatManager:
     def save_chat(self, chat: Optional[Chat] = None) -> str:
         """Save chat session to file
 
+        The new session file is written (atomically) *before* any older file with
+        the same title is removed, so a failed save keeps the previous session
+        intact instead of losing both.
+
         Args:
             chat (Optional[Chat], optional): The chat to save. If None, uses current_chat.
 
@@ -282,12 +286,15 @@ class FileChatManager:
         if chat is None:
             raise ChatSaveError("No chat found")
 
-        # Check for existing chat with the same title and delete it
-        if chat.title:
-            self._delete_existing_chat_with_title(chat.title)
-
-        # Save the chat using its own method - this will throw ChatSaveError if it fails
+        # Write the replacement first: this is what makes /save safe. Chat.save()
+        # uses a temp file + os.replace, so the new file only appears when complete.
         chat.save(self.chat_dir)
+
+        # The replacement is safely on disk; now remove the older session(s) with
+        # the same title so /save still behaves as "replace". Never touch the file
+        # that was just written.
+        if chat.title:
+            self._delete_existing_chat_with_title(chat.title, exclude_path=chat.path)
 
         # If we get here, the save was successful
         # Clean up old chats if we exceed the maximum
@@ -298,21 +305,46 @@ class FileChatManager:
 
         return chat.title
 
-    def _delete_existing_chat_with_title(self, title: str) -> None:
-        """Delete any existing chat with the given title"""
+    def _delete_existing_chat_with_title(self, title: str, exclude_path: Optional[Path] = None) -> None:
+        """Delete existing chats with the given title, except ``exclude_path``.
+
+        The chat directory is scanned instead of relying on ``chats_map`` (which can
+        be stale when files were written by a previous process or session).
+        """
         if not title:
             return
 
-        # Use chats_map to find the chat by title
-        if title in self.chats_map["title"]:
-            chat = self.chats_map["title"][title]
-            if chat.path and chat.path.exists():
-                try:
-                    chat.path.unlink()
-                    # Reset the chats map to force a refresh
-                    self._chats_map = None
-                except OSError as e:
-                    raise ChatDeleteError(f"Warning: Failed to delete existing chat file {chat.path}: {e}") from e
+        keep_path: Optional[Path] = None
+        if exclude_path is not None:
+            try:
+                keep_path = Path(exclude_path).resolve()
+            except OSError:
+                keep_path = None
+
+        candidates: List[Path] = []
+        for chat_file in self.chat_dir.glob("*.json"):
+            try:
+                parsed_title = self._parse_filename(chat_file).title
+            except Exception:
+                continue
+            if parsed_title == title:
+                candidates.append(chat_file)
+
+        for candidate in candidates:
+            try:
+                resolved = candidate.resolve()
+            except OSError:
+                resolved = candidate
+            if keep_path is not None and resolved == keep_path:
+                continue
+            try:
+                resolved.unlink()
+            except FileNotFoundError:
+                continue
+            except OSError as e:
+                raise ChatDeleteError(f"Warning: Failed to delete existing chat file {resolved}: {e}") from e
+            # Reset the chats map to force a refresh
+            self._chats_map = None
 
     def _cleanup_old_chats(self) -> None:
         """Clean up expired chat files"""

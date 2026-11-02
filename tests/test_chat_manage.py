@@ -709,3 +709,76 @@ class TestFullMessageSerialization:
         assert chat.path.parent == tmp_path
         assert not any(p.name.endswith(".tmp") for p in tmp_path.iterdir())
 
+
+
+class TestSaveChatReplacementSafety:
+    """P0-S7 residual: /save must never delete the old session before the new one is safe."""
+
+    @staticmethod
+    def _write_old_session(chat_dir: Path, title: str = "Same Title", content: str = "old content") -> Path:
+        old = chat_dir / f"20200101-000000-title-{title}.json"
+        old.write_text(
+            json.dumps(
+                {
+                    "title": title,
+                    "date": "2020-01-01T00:00:00",
+                    "history": [{"role": "user", "content": content}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return old
+
+    def test_failed_save_keeps_old_session(self, tmp_path):
+        manager = FileChatManager(chat_dir=tmp_path)
+        old = self._write_old_session(tmp_path)
+        old_bytes = old.read_bytes()
+        chat = Chat(title="Same Title", history=[ChatMessage(role="user", content="new")])
+
+        with patch.object(Chat, "save", side_effect=ChatSaveError("disk full")):
+            with pytest.raises(ChatSaveError):
+                manager.save_chat(chat)
+
+        assert old.exists()
+        assert old.read_bytes() == old_bytes
+        assert [p.name for p in tmp_path.glob("*.json")] == [old.name]
+
+    def test_failed_atomic_write_keeps_old_session(self, tmp_path):
+        manager = FileChatManager(chat_dir=tmp_path)
+        old = self._write_old_session(tmp_path)
+        old_bytes = old.read_bytes()
+        chat = Chat(title="Same Title", history=[ChatMessage(role="user", content="new")])
+
+        with patch("yaicli.chat.os.replace", side_effect=OSError("disk full")):
+            with pytest.raises(ChatSaveError):
+                manager.save_chat(chat)
+
+        assert old.read_bytes() == old_bytes
+        assert [p.name for p in tmp_path.glob("*.json")] == [old.name]
+        assert list(tmp_path.glob("*.tmp")) == []
+
+    def test_replacement_deletes_old_file_and_keeps_one(self, tmp_path):
+        manager = FileChatManager(chat_dir=tmp_path)
+        old = self._write_old_session(tmp_path)
+        # Simulate a stale chats map: deletion must scan the directory, not the map.
+        manager._chats_map = {"index": {}, "title": {}}
+        chat = Chat(title="Same Title", history=[ChatMessage(role="user", content="new")])
+
+        assert manager.save_chat(chat) == "Same Title"
+
+        remaining = list(tmp_path.glob("*.json"))
+        assert len(remaining) == 1
+        assert remaining[0] != old
+        assert not old.exists()
+        assert "new" in remaining[0].read_text(encoding="utf-8")
+        chats = manager.list_chats()
+        assert len(chats) == 1
+        assert chats[0].title == "Same Title"
+
+    def test_first_save_without_existing_session(self, tmp_path):
+        manager = FileChatManager(chat_dir=tmp_path)
+        chat = Chat(title="Fresh", history=[ChatMessage(role="user", content="hi")])
+
+        assert manager.save_chat(chat) == "Fresh"
+
+        assert len(list(tmp_path.glob("*.json"))) == 1
