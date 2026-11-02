@@ -1,5 +1,603 @@
 
 ---
+## [unreleased]
+
+### ⛰️  Features
+
+- feat(functions): read multiple files in a single fs_read_file call
+
+Advertise fs_read_file's file_paths as a JSON array instead of
+Union[str, List[str]], so OpenAI/Anthropic schemas no longer emit anyOf
+and Gemini's callable-derived declaration becomes ARRAY/STRING instead of
+an invalid OBJECT + any_of. execute() keeps accepting a single path
+string (and tuples) for backward compatibility and returns an in-band
+JSON error for other argument types.
+
+Add schema-contract, end-to-end tool-call, Gemini regression and
+compatibility tests, and document batch reads in README and docs. - ([0d2d943](https://github.com/belingud/yaicli/commit/0d2d943385d1cdf3f88bae4441c1ab27d9a5ad6a)) - Belingud
+
+### 🐛 Bug Fixes
+
+- fix(tools): harden fetch_webpage redirect handling - ([cfddf81](https://github.com/belingud/yaicli/commit/cfddf8169c8db4e09171edc7174197d5425a6e63)) - Belingud
+- fix(chat): keep old session until replacement is written - ([ee0c125](https://github.com/belingud/yaicli/commit/ee0c125ec52cdf40036e169dd06c9c1d202060c2)) - Belingud
+- fix(render): escape role names and prompts in role command output - ([a4258e6](https://github.com/belingud/yaicli/commit/a4258e63024f9e540f02f61216f7031e06a6fd0e)) - Belingud
+- fix(gemini): group parallel tool responses into one function_response turn - ([fde4264](https://github.com/belingud/yaicli/commit/fde4264a16e4c583a0e2b68660ff555ff3556775)) - Belingud
+- fix(tools): reject CGNAT/shared address space in fetch_webpage SSRF guard - ([a4b7fea](https://github.com/belingud/yaicli/commit/a4b7feae6f885688ea4fe7ddf15222f42fc70f34)) - Belingud
+- fix(tools): block SSRF in fetch_webpage with URL validation and redirect checks - ([a437dc9](https://github.com/belingud/yaicli/commit/a437dc9bef88f2cc5199e762c03e39fb835dd6a5)) - Belingud
+- fix(tools): never disable TLS verification on retry in fetch_webpage - ([451d878](https://github.com/belingud/yaicli/commit/451d878c389a23d055151a1f1b36b16ae4489a4a)) - Belingud
+- fix(render): never interpret untrusted text as Rich markup - ([159b8e0](https://github.com/belingud/yaicli/commit/159b8e090e74fc13834a3e539a8132e4c5f99795)) - Belingud
+- fix(cli): exit non-zero on handled failures - ([f344a93](https://github.com/belingud/yaicli/commit/f344a9370f0ece0a704ab5fe4e974fc7758dd2a9)) - Belingud
+- fix(chat): persist full message fields in saved sessions - ([5a04fa7](https://github.com/belingud/yaicli/commit/5a04fa72de676d12dbc982c9d67979356d274709)) - Belingud
+- fix(providers): support parallel tool calls in OpenAI-compatible providers - ([58d11e6](https://github.com/belingud/yaicli/commit/58d11e61cae5b51bde44a5c8429f6f4bae387a12)) - Belingud
+- fix(gemini): send tool results as function_response and stop resending last turn - ([34d4139](https://github.com/belingud/yaicli/commit/34d4139d0d5af0c74f55d7fdb9bae2acc5ab4e6b)) - Belingud
+- fix(providers): tolerate missing reasoning_content in ChatGLM/HuggingFace responses - ([1b59b9a](https://github.com/belingud/yaicli/commit/1b59b9abef5f2efe507fa6a28c62f714a4f53490)) - Belingud
+- fix(functions): keep permission checks before atomic fs_edit_file write - ([7f0d414](https://github.com/belingud/yaicli/commit/7f0d4140ba73e74b25bd7f6d1cd8fc0685aef86d)) - Belingud
+- fix(functions): prevent fs_edit_file data loss on invalid replace edits - ([215688e](https://github.com/belingud/yaicli/commit/215688ef4738cacb37ea2242d9443b8621a70911)) - Belingud
+- fix(functions): array-first fs_read_image schema
+
+Mirror the fs_read_file fix: advertise image_paths as List[str] so OpenAI,
+Anthropic and Gemini no longer receive an anyOf/OBJECT+any_of declaration;
+execute() normalizes legacy str/tuple input and returns in-band errors for
+other types. - ([92a4d05](https://github.com/belingud/yaicli/commit/92a4d0528a1c27b0b1029d029c7acd9608848b29)) - Belingud
+- fix(cli): send a minimal prompt for image-only invocations
+
+`ai --image photo.jpg` now sends "Describe the image." (plural for several
+images) instead of aborting in CLI.run() with an empty prompt. - ([c6df177](https://github.com/belingud/yaicli/commit/c6df1773d23974f1a1f926f354d43c50b73a5b0b)) - Belingud
+- fix(context): replace '[' sentinel with structured FileReadResult
+
+_read_file() now returns FileReadResult(content, error) instead of magic
+strings, so real text starting with '[' is included again in @refs and
+directory context; read failures are warned about and skipped. - ([8703514](https://github.com/belingud/yaicli/commit/8703514d239faca1a78cd25cacd1a202ebf7dcdc)) - Belingud
+- fix(cli): wire MAX_HISTORY and ROLE_MODIFY_WARNING
+
+- prompt history now uses cfg["MAX_HISTORY"] instead of INTERACTIVE_ROUND
+- MAX_HISTORY=0 disables history saving as documented
+- warn when a built-in role is created/overwritten or deleted, gated by
+  ROLE_MODIFY_WARNING
+- remove the broken, unused RoleManager.print_roles() - ([defdf80](https://github.com/belingud/yaicli/commit/defdf80d5d26ad2e72e49bf5164cd8b985779291)) - Belingud
+- fix(config): parse default config on first run and read YAI_PROVIDER
+
+- add PROVIDER to DEFAULT_CONFIG_MAP with the YAI_PROVIDER env key
+- parse DEFAULT_CONFIG_INI after writing it on a first run instead of
+  returning early, so PROVIDER and friends are present immediately
+- treat empty file/env values as unset and fall back to the typed map
+  default (EXTRA_HEADERS/EXTRA_BODY become dicts, REASONING_EFFORT None)
+- drop the unused const.CODE_MODE constant - ([097b6b4](https://github.com/belingud/yaicli/commit/097b6b415b9156c4ad9c0753e78cca4dcf052a56)) - Belingud
+
+### 📚 Documentation
+
+- docs(dev): fill developer guides, fix navigation and spec drift - ([bee2c03](https://github.com/belingud/yaicli/commit/bee2c0332466688d149028305fa161ac198cff97)) - Belingud
+- docs: fix provider/config examples and defaults drift - ([c715832](https://github.com/belingud/yaicli/commit/c715832f408ea7166ebe3807d637875c92ba23b2)) - Belingud
+- docs: document post-P0 behaviour (session format, exit codes, fetch/fs_edit safety) - ([491369c](https://github.com/belingud/yaicli/commit/491369c1ea6d8aa055dab3a59ac4ad4ec6b38fa7)) - Belingud
+- docs(functions): add complete function install/update guide - ([bdb8784](https://github.com/belingud/yaicli/commit/bdb8784680c57e692b21acfd6af0c9905a2b842c)) - Belingud
+- docs: document image-only prompts and multi-image reads
+
+- note the minimal prompt used when --image is passed without a prompt
+- document the fs_read_image image_paths list contract - ([37d46a7](https://github.com/belingud/yaicli/commit/37d46a7dba202f8054563ef0447d445fec99a5ce)) - Belingud
+- docs: document tool execution confirmation for v0.17.0 - ([530c774](https://github.com/belingud/yaicli/commit/530c77440d4723337c11d33d4765e63259804e94)) - Belingud
+- docs: update CHANGELOG for v0.17.0 release - ([9273693](https://github.com/belingud/yaicli/commit/92736937dc1855d2de54a485e4572845fdfdf238)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore(task): archive 11-01-fix-bootstrap-known-defects - ([a191828](https://github.com/belingud/yaicli/commit/a191828cd13f45370820a7b594ce7bcc50c8d456)) - Belingud
+- chore: record journal - ([0949f40](https://github.com/belingud/yaicli/commit/0949f40b436b2beb1cc3a549b7f69f5f6d892414)) - Belingud
+- chore(trellis): record fixed bootstrap defects in spec and task
+
+- update py/ specs to the fixed behaviour (first-run config, typed
+  defaults, MAX_HISTORY/ROLE_MODIFY_WARNING, image-only prompt,
+  FileReadResult context reads, fs_read_image array schema)
+- mark the bootstrap PRD's known-defect list as fixed with commit refs
+- add the 11-01-fix-bootstrap-known-defects task artifacts - ([2011b37](https://github.com/belingud/yaicli/commit/2011b37c8cb7058e088e6765e7114585d716e1f1)) - Belingud
+- chore: record journal - ([331f4a8](https://github.com/belingud/yaicli/commit/331f4a8be8a9fc860b8a4504032faa06572bb526)) - Belingud
+- chore(task): archive 00-bootstrap-guidelines - ([9a61200](https://github.com/belingud/yaicli/commit/9a6120064a7da293bda48a61c00cf406bdfcb717)) - Belingud
+- chore(trellis): install Trellis workflow and bootstrap project spec
+
+Add the Trellis AI development workflow for Claude Code and DeepSeek
+Harness (dsh): .trellis/ (workflow, scripts, tasks, workspace, spec),
+.agents/skills/ shared skill catalog, .dsh/ entry skills, the Claude Code
+surface (.claude/ hooks, agents, commands, skills, settings.json), the
+union-merge .gitattributes rule, and the managed Trellis block in
+CLAUDE.md (AGENTS.md symlink follows it).
+
+Complete the 00-bootstrap-guidelines task: reshape the generated
+backend/web spec scaffold into layers that match the repository - py/
+(architecture, providers, function calling/tools, CLI/rendering,
+config/context, quality) and repo/ (conventions, build/CI/release) - with
+every rule grounded in real source files, tests, and commits. The spec
+records current defects found while writing (first-run PROVIDER KeyError,
+unused CODE_MODE, dead MAX_HISTORY/ROLE_MODIFY_WARNING, --image-only
+abort, context "[" sentinel, role.print_roles, fs_read_image Union debt).
+
+Verified: no placeholders, index<->file coverage, relative links, and
+`get_context.py --mode packages` -> py, repo; independently reviewed by a
+read-only verifier. - ([cb6abd8](https://github.com/belingud/yaicli/commit/cb6abd8050d415e9d8c136e58289b09a1cd6a690)) - Belingud
+
+
+---
+## [0.17.0](https://github.com/belingud/yaicli/compare/v0.16.0..v0.17.0) - 2026-06-23
+
+### ⛰️  Features
+
+- feat!: confirm tool calls before execution
+
+Add a confirmation gate before each tool/function call with four outcomes:
+allow once, allow for the session, allow permanently, or deny. Approvals
+are keyed by tool name (MCP prefix preserved); permanent approvals persist
+to ~/.config/yaicli/tool_permissions.json via an atomic write. Denied calls
+return a matched tool result so the provider request stays valid, and
+non-interactive sessions deny unapproved tools instead of blocking.
+
+Also stream reasoning as append-only text rather than re-rendering it in the
+live region, fixing duplicated 'Thinking:' frames after large tool output.
+
+BREAKING CHANGE: tool calls now require confirmation by default. Set
+TOOL_CONFIRM=false (env YAI_TOOL_CONFIRM=false) to restore silent execution. - ([7cc64f0](https://github.com/belingud/yaicli/commit/7cc64f02978b50594fda319f4648f725c4d88094)) - Belingud
+
+### 🐛 Bug Fixes
+
+- fix: drop api_key for Cohere
+  Bedrock/Sagemaker clients
+
+Bedrock and Sagemaker authenticate via AWS credentials; the Cohere api_key injected by the base initializer is not a valid argument for those
+  clients and caused client creation to fail. - ([9b77aa1](https://github.com/belingud/yaicli/commit/9b77aa103cd3a351e7dc4004e33673d11e6a979e)) - Belingud
+
+### 📚 Documentation
+
+- docs: update CHANGELOG for v0.16.0 release - ([1a0dfd6](https://github.com/belingud/yaicli/commit/1a0dfd62992c5bcd3e10c01f3c8e882abba95f7b)) - Belingud
+
+### 🧪 Testing
+
+- test: expand coverage across CLI, context, tools, and providers
+
+Add tests for functions init, render, and tools init modules, and extend
+anthropic, longcat, chat manage, CLI, command handler, context, fetch
+webpage, and fs file operation test suites. - ([8fe3871](https://github.com/belingud/yaicli/commit/8fe387105c33e8fec3adfc939168fa87c87c1105)) - Belingud
+- test: expand provider test coverage
+
+Add tests for openai-compatible, sambanova, and targon providers, and extend ai21, cohere, minimax, and simple provider test suites. - ([14b38cb](https://github.com/belingud/yaicli/commit/14b38cb3e30597e602bfdd0eb3f49815c7734fe0)) - Belingud
+
+
+---
+## [Unreleased]
+
+### ⛰️  Features
+
+- feat!: confirm tool/function calls before execution — allow once, allow for the session, allow permanently, or deny. **BREAKING:** tool calls now require confirmation by default; set `TOOL_CONFIRM=false` (env `YAI_TOOL_CONFIRM=false`) to restore the previous silent execution. Permanent approvals are stored per tool name in `~/.config/yaicli/tool_permissions.json`.
+
+
+---
+## [0.16.0](https://github.com/belingud/yaicli/compare/v0.15.2..v0.16.0) - 2026-05-10
+
+### ⛰️  Features
+
+- feat: support DeepSeek thinking mode - ([2980316](https://github.com/belingud/yaicli/commit/2980316e9ee2a0a9521113c07d3742ffdc03bb99)) - Belingud
+
+### 📚 Documentation
+
+- docs: update changelog for v0.5.2 release - ([4e96660](https://github.com/belingud/yaicli/commit/4e96660fc222e9a71281125c0a311ac91396b276)) - Belingud
+
+
+---
+## [0.15.2](https://github.com/belingud/yaicli/compare/v0.15.1..v0.15.2) - 2026-04-28
+
+### 🐛 Bug Fixes
+
+- fix: add tool_policy parameter to completion params - ([a47d619](https://github.com/belingud/yaicli/commit/a47d619ee7dfa5de2e4e2e30ab74cc385149608f)) - Belingud
+- fix: fall back to httpx when trafilatura extraction fails - ([1bdd254](https://github.com/belingud/yaicli/commit/1bdd2549b3ec86ecb0aec16b922fbbac2de629cd)) - Belingud
+
+
+---
+## [0.15.2](https://github.com/belingud/yaicli/compare/v0.15.1..v0.15.2) - 2026-04-28
+
+### 🐛 Bug Fixes
+
+- fix: add tool_policy parameter to completion params - ([a47d619](https://github.com/belingud/yaicli/commit/a47d619ee7dfa5de2e4e2e30ab74cc385149608f)) - Belingud
+- fix: fall back to httpx when trafilatura extraction fails - ([1bdd254](https://github.com/belingud/yaicli/commit/1bdd2549b3ec86ecb0aec16b922fbbac2de629cd)) - Belingud
+
+
+---
+## [0.15.0](https://github.com/belingud/yaicli/compare/v0.14.2..v0.15.0) - 2026-03-24
+
+### ⛰️  Features
+
+- feat: add -v/--version flag to show version and exit - ([bae66c2](https://github.com/belingud/yaicli/commit/bae66c2cd4e59b8c82158adffa742b7601958ebf)) - Belingud
+
+
+---
+## [0.10.0](https://github.com/belingud/yaicli/compare/v0.9.0..v0.10.0) - 2026-01-20
+
+### ⛰️  Features
+
+- add longcat provider support and improve anthropic tool call handling - ([6ca2e8e](https://github.com/belingud/yaicli/commit/6ca2e8e35b28855c884a1d99f602be258ca16bba)) - Belingud
+- add default empty string to command handlers - ([0c6ebed](https://github.com/belingud/yaicli/commit/0c6ebedeef0a40cfccc35659e74a4b48ea45fc13)) - Belingud
+- update file/dir context help text - ([698fd61](https://github.com/belingud/yaicli/commit/698fd61b93572b5bb6873052cebfe170d661d99d)) - Belingud
+- add support for @-prefixed paths in AtPathCompleter - ([1b43712](https://github.com/belingud/yaicli/commit/1b43712e5b4fe447b96e490cab63e7d6321d62b5)) - Belingud
+
+### 🐛 Bug Fixes
+
+- compatible with /context add - ([e60333d](https://github.com/belingud/yaicli/commit/e60333decb220d63914e9ceb2cbe4e353c989b6b)) - Belingud
+
+### 📚 Documentation
+
+- add LongCat provider documentation - ([a3e4a79](https://github.com/belingud/yaicli/commit/a3e4a796ffdb9150f94c45fd6f4568b519b88ebc)) - Belingud
+- add context management and path completion features - ([1bc7c74](https://github.com/belingud/yaicli/commit/1bc7c74136fe09cab8eb0775752cd4a604941ba7)) - Belingud
+- add file context management feature documentation - ([4f53c73](https://github.com/belingud/yaicli/commit/4f53c739b3769270b37892389be602631f05ab22)) - Belingud
+- add changelog entries for v0.9.0 and v0.8.12 - ([8fbfb27](https://github.com/belingud/yaicli/commit/8fbfb27eb36398995b7fecb9ad2cad4caaf85ce7)) - Belingud
+
+### 🧪 Testing
+
+- add LongCat provider tests and improve Anthropic provider testing - ([5b950db](https://github.com/belingud/yaicli/commit/5b950db7b16d4ba5d08eb734161edd1131f42eee)) - Belingud
+- add message filtering and context management tests - ([43b226d](https://github.com/belingud/yaicli/commit/43b226dfd5702666fccdcd24b6ca9b593377fd6e)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update uv.lock - ([5fa5af4](https://github.com/belingud/yaicli/commit/5fa5af479810e3164fce82b3aad866901dc48f8c)) - Belingud
+
+
+---
+## [0.9.0](https://github.com/belingud/yaicli/compare/v0.8.12..v0.9.0) - 2026-01-10
+
+### ⛰️  Features
+
+- add EXCLUDE_PARAMS configuration option - ([d36ce77](https://github.com/belingud/yaicli/commit/d36ce774406b37cef7767a70329df4185256fa51)) - Belingud
+
+### 📚 Documentation
+
+- add implementation plan for EXCLUDE_PARAMS feature - ([ac3f743](https://github.com/belingud/yaicli/commit/ac3f743220f9ed8f602510ef6748473ec639e84c)) - Belingud
+- add changelog entries for v0.8.12 and v0.8.11 - ([94c09e6](https://github.com/belingud/yaicli/commit/94c09e6f766efb31a61867b1869bd2d6f3b80a54)) - Belingud
+
+### 🎨 Styling
+
+- format py files - ([6a6cea8](https://github.com/belingud/yaicli/commit/6a6cea8467cb9a95e5e8fe1a70d41c8741e6384d)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update uv sync command to include all groups and extras - ([c025d72](https://github.com/belingud/yaicli/commit/c025d72e87bd9bf7c3ab63112a359e1dce1d1b24)) - Belingud
+
+
+---
+## [0.8.12](https://github.com/belingud/yaicli/compare/v0.8.11..v0.8.12) - 2026-01-08
+
+### ⛰️  Features
+
+- **(fetch_webpage)** enhance webpage fetching with retries and trafilatura support - ([cf64899](https://github.com/belingud/yaicli/commit/cf64899af3e87be038767381a81c8d8153025736)) - Belingud
+- **(filesystem)** add builtin filesystem functions for CLI - ([55a7039](https://github.com/belingud/yaicli/commit/55a7039dde531de4277eed80f78e4bc9ff86cb70)) - Belingud
+- add verbose logging for raw tool call names - ([fe1e1a0](https://github.com/belingud/yaicli/commit/fe1e1a0e4bcd0f6a189d10d7598e354921beaa85)) - Belingud
+
+### 🐛 Bug Fixes
+
+- improve security checks for file operations and refactor path handling - ([ca0ae47](https://github.com/belingud/yaicli/commit/ca0ae47d85d1c1bfe06406e76969af1e73f5c7f6)) - Belingud
+
+### 📚 Documentation
+
+- add changelog entry for v0.8.11 - ([4077b27](https://github.com/belingud/yaicli/commit/4077b2735f3a76e639e96634f21853c897093fd8)) - Belingud
+
+### 🧪 Testing
+
+- remove unused imports from test files - ([f736c04](https://github.com/belingud/yaicli/commit/f736c043e3febdf18c05916ca888c346db936efd)) - Belingud
+- add test files for filesystem operations - ([aec5980](https://github.com/belingud/yaicli/commit/aec5980e2b9089f298aea26a2bb89116df5370a6)) - Belingud
+
+
+---
+## [0.8.11](https://github.com/belingud/yaicli/compare/v0.8.10..v0.8.11) - 2025-08-03
+
+### 📚 Documentation
+
+- update changelog for v0.8.10 release - ([c212daa](https://github.com/belingud/yaicli/commit/c212daad1807648ce5f96b576dbd336ee24c278a)) - Belingud
+
+
+---
+## [0.8.10](https://github.com/belingud/yaicli/compare/v0.8.9..v0.8.10) - 2025-07-24
+
+### ⛰️  Features
+
+- update wrap_gemini_function to add gemini func call log - ([f34d322](https://github.com/belingud/yaicli/commit/f34d32277638e272cd4b1909fa0f5540029736b3)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.9 release - ([73e9ab8](https://github.com/belingud/yaicli/commit/73e9ab8c835c9d227ec824af33bd2710d8812088)) - Belingud
+
+
+---
+## [0.8.9](https://github.com/belingud/yaicli/compare/v0.8.8..v0.8.9) - 2025-07-22
+
+### ⛰️  Features
+
+- add OpenAICampatibleProvider and update Config imports - ([72f8d91](https://github.com/belingud/yaicli/commit/72f8d914ba19a3818520542c7f43da4310b59de6)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.8 release - ([063faf7](https://github.com/belingud/yaicli/commit/063faf7cddeca9709924b3ac6e8791c6b83cd26d)) - Belingud
+
+### 🧪 Testing
+
+- add openai-compatible provider to test cases - ([4f75278](https://github.com/belingud/yaicli/commit/4f75278faf06f2ad83206707996a584210f0590c)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update uv lock - ([e339adf](https://github.com/belingud/yaicli/commit/e339adfae55d0834082dde3ae0be94ca6f17394b)) - Belingud
+
+
+---
+## [0.8.8](https://github.com/belingud/yaicli/compare/v0.8.7..v0.8.8) - 2025-07-21
+
+### 🐛 Bug Fixes
+
+- remove frequency_penalty from AnthropicProvider - ([6d21e6a](https://github.com/belingud/yaicli/commit/6d21e6ad8a17bda94faac6a38ebea84dc5485c14)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.7 release - ([b788c6c](https://github.com/belingud/yaicli/commit/b788c6c1a3bac58fb68e22ba1393c9519302357b)) - Belingud
+
+
+---
+## [0.8.7](https://github.com/belingud/yaicli/compare/v0.8.6..v0.8.7) - 2025-07-20
+
+### ⛰️  Features
+
+- add error handling for first chunk in OpenAIProvider - ([c6e3eae](https://github.com/belingud/yaicli/commit/c6e3eae356d69b71926c843269ddb26c2a2afd49)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.6 release - ([1104d0f](https://github.com/belingud/yaicli/commit/1104d0fbfac7d7b3d74c69dce8500dd901fdf30c)) - Belingud
+
+
+---
+## [0.8.6](https://github.com/belingud/yaicli/compare/v0.8.5..v0.8.6) - 2025-07-19
+
+### 🚜 Refactor
+
+- remove frequency_penalty for cerebras and add get_tools method - ([c6a16a5](https://github.com/belingud/yaicli/commit/c6a16a5739c71b8768102f4655aa0618f83d546d)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.5 release - ([a4e358b](https://github.com/belingud/yaicli/commit/a4e358b32aa4837c8ec6e72b04ad9e0bfd8601a2)) - Belingud
+
+
+---
+## [0.8.5](https://github.com/belingud/yaicli/compare/v0.8.4..v0.8.5) - 2025-07-17
+
+### ⛰️  Features
+
+- add FireworksProvider and frequency penalty support - ([a316006](https://github.com/belingud/yaicli/commit/a3160067410a07b07d75de969dd294a61c089254)) - Belingud
+
+### 📚 Documentation
+
+- add frequency penalty configuration to README - ([8fe3836](https://github.com/belingud/yaicli/commit/8fe3836f027853b9b8048de2940de5c8d34c2800)) - Belingud
+- update changelog for v0.8.4 release - ([afd4f95](https://github.com/belingud/yaicli/commit/afd4f950c20bed8ab3bd4d8159e22b18e8d477a1)) - Belingud
+
+### 🧪 Testing
+
+- add frequency_penalty to llm provider tests - ([8f4da43](https://github.com/belingud/yaicli/commit/8f4da43d067ef819ad873e3339dde9436c226a18)) - Belingud
+- add Fireworks provider tests - ([cfc189f](https://github.com/belingud/yaicli/commit/cfc189fb9423049ddfe00588a127b3742cecefc1)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add fireworks-ai dependency - ([0ff81af](https://github.com/belingud/yaicli/commit/0ff81af3a5723f94f4c4a86a00310eb35b51701f)) - Belingud
+
+
+---
+## [0.8.4](https://github.com/belingud/yaicli/compare/v0.8.3..v0.8.4) - 2025-07-17
+
+### 📚 Documentation
+
+- add Fireworks to README.md - ([ba80dbc](https://github.com/belingud/yaicli/commit/ba80dbcc8233f4382eec8becd1c7a87a6f38d583)) - Belingud
+- add Fireworks AI provider documentation - ([27df748](https://github.com/belingud/yaicli/commit/27df7486fd352cf45b22b4fafc35fdc8e3d1c72c)) - Belingud
+- update changelog for v0.8.3 release - ([4851cd0](https://github.com/belingud/yaicli/commit/4851cd0f20643113522cc7266d7271164d61acc6)) - Belingud
+
+
+---
+## [0.8.3](https://github.com/belingud/yaicli/compare/v0.8.2..v0.8.3) - 2025-07-16
+
+### ⛰️  Features
+
+- add new configuration options and refactor CLI options - ([a52ee92](https://github.com/belingud/yaicli/commit/a52ee9211a28c09f6bf2eef88edb113236beef55)) - Belingud
+
+### 📚 Documentation
+
+- add `MAX_TOOL_CALL_DEPTH` configuration option - ([c1cf420](https://github.com/belingud/yaicli/commit/c1cf420777abdbb9a7156f08fecda23a454fe421)) - Belingud
+- update changelog for v0.8.2 release - ([5f27d5d](https://github.com/belingud/yaicli/commit/5f27d5d58cdffa4adaefffa64d924c42a2d12c46)) - Belingud
+
+### 🧪 Testing
+
+- update test cases for AnthropicProvider and CLI - ([367ea89](https://github.com/belingud/yaicli/commit/367ea891e96a95fa8474fb569d64ca862cd089a6)) - Belingud
+
+
+---
+## [0.8.2](https://github.com/belingud/yaicli/compare/v0.8.1..v0.8.2) - 2025-07-15
+
+### 🐛 Bug Fixes
+
+- add tool result handling in AnthropicProvider and update tool schema - ([8e27965](https://github.com/belingud/yaicli/commit/8e2796502c16435b1c60779801dd2d85e7e321b5)) - Belingud
+
+### 📚 Documentation
+
+- update changelog for v0.8.1 release - ([1c546cd](https://github.com/belingud/yaicli/commit/1c546cd318a918716a98ee95c6a6192f4bb858f7)) - Belingud
+
+### 🧪 Testing
+
+- add test for converting messages with tool results - ([3b04a71](https://github.com/belingud/yaicli/commit/3b04a71640fe721f50e33e53230cdee11f1d36b5)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update deploy-docs.yml for better readability - ([17ad8eb](https://github.com/belingud/yaicli/commit/17ad8eb32bb5d5781a9beb15713d4261308e6028)) - Belingud
+- add GitHub Actions workflow for deploying MkDocs - ([a653a29](https://github.com/belingud/yaicli/commit/a653a29c26bb4a1ca234102af1525b2b07eff50d)) - Belingud
+
+
+---
+## [0.8.1](https://github.com/belingud/yaicli/compare/v0.8.0..v0.8.1) - 2025-07-15
+
+### 🚜 Refactor
+
+- add conditional newline in tool call content - ([7bb167f](https://github.com/belingud/yaicli/commit/7bb167f6078d797bcfd4e3c069de9fcd5e2ce196)) - Belingud
+
+### 📚 Documentation
+
+- update documentation for providers - ([f36de06](https://github.com/belingud/yaicli/commit/f36de0692129ac941954b9aa839e39e23907c430)) - Belingud
+- update changelog for v0.8.0 release - ([1cd2fc4](https://github.com/belingud/yaicli/commit/1cd2fc4148597755280511896abf2ab5ea71562b)) - Belingud
+
+
+---
+## [0.8.0](https://github.com/belingud/yaicli/compare/v0.7.17..v0.8.0) - 2025-07-14
+
+**Disable time sleep in streaming response content from this version.**
+
+### ⛰️  Features
+
+- add run shell directly cmd in chat - ([126f5df](https://github.com/belingud/yaicli/commit/126f5dfc3c6bd6262672c5841cea81be1df1cf92)) - Belingud
+
+### 🚜 Refactor
+
+- improve chat history display and tool call handling - ([145fdc6](https://github.com/belingud/yaicli/commit/145fdc60ca8dd999d0de7b401b7a27ce4eafc4cd)) - Belingud
+
+### 📚 Documentation
+
+- add shell command execution feature to CLI and usage docs - ([fd22f9d](https://github.com/belingud/yaicli/commit/fd22f9d75bfa973ac05c8baf7a30a8e0f48b6445)) - Belingud
+- update changelog for v0.7.17 release - ([f1165a6](https://github.com/belingud/yaicli/commit/f1165a673f15ee5d727b6f4b677d8c8e737bb2b2)) - Belingud
+
+### 🧪 Testing
+
+- update test case for run shell command - ([9a2f2b7](https://github.com/belingud/yaicli/commit/9a2f2b71df051d1f63172e558c1245e3816e86af)) - Belingud
+
+
+---
+## [0.7.17](https://github.com/belingud/yaicli/compare/v0.7.16..v0.7.17) - 2025-07-13
+
+### ⛰️  Features
+
+- add moonshot provider support - ([8109255](https://github.com/belingud/yaicli/commit/81092559488aebb09dadd714bb88f90e74417159)) - Belingud
+
+### 📚 Documentation
+
+- add more provider docs - ([30e981d](https://github.com/belingud/yaicli/commit/30e981d728c309fae1bc0b42c639d427fed73a96)) - Belingud
+- update changelog for v0.7.16 release - ([e10b79a](https://github.com/belingud/yaicli/commit/e10b79a0968fb068b83eb821da197daa2a0205f7)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- update uv lock - ([794305a](https://github.com/belingud/yaicli/commit/794305ab264602b2ec6811eca342d5dd45028d7c)) - Belingud
+
+
+---
+## [0.7.16](https://github.com/belingud/yaicli/compare/v0.7.15..v0.7.16) - 2025-07-12
+
+### 🐛 Bug Fixes
+
+- ensure live stop and remove update interval - ([f9bb0aa](https://github.com/belingud/yaicli/commit/f9bb0aa780ee66fa147f401c760a1beda7f674e0)) - Belingud
+
+### 📚 Documentation
+
+- add new release notes for v0.7.15 - ([a347b64](https://github.com/belingud/yaicli/commit/a347b64b35d2488ec0e4f304fbcf3178f2404c55)) - Belingud
+
+
+---
+## [0.7.15](https://github.com/belingud/yaicli/compare/v0.7.14..v0.7.15) - 2025-07-12
+
+### ⛰️  Features
+
+- enable openai azure provider and add docs - ([7be0da3](https://github.com/belingud/yaicli/commit/7be0da3523f44d8ad7296911b1c2a5897b868b7a)) - Belingud
+- add openai azure provider support - ([6384d1f](https://github.com/belingud/yaicli/commit/6384d1fc99801c6035d981f82335e48898d3ffb5)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([a2aa596](https://github.com/belingud/yaicli/commit/a2aa596273f14c17b904c9704388f269403d6648)) - Belingud
+
+
+---
+## [0.7.14](https://github.com/belingud/yaicli/compare/v0.7.13..v0.7.14) - 2025-07-10
+
+### ⛰️  Features
+
+- add cerebras provider support - ([d6cc354](https://github.com/belingud/yaicli/commit/d6cc35480de2e939d08a0d8570b9ea4f3054d057)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([f4bd8d3](https://github.com/belingud/yaicli/commit/f4bd8d34cb4c08565b45a44cb1b7a3c0366e8328)) - Belingud
+
+
+---
+## [0.7.13](https://github.com/belingud/yaicli/compare/v0.7.12..v0.7.13) - 2025-07-09
+
+### 🐛 Bug Fixes
+
+- update APP_REFERER and improve type annotations in OpenAIProvider - ([a04a2c5](https://github.com/belingud/yaicli/commit/a04a2c51b040fdb842b488dc149240c286adccb6)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([b18aaea](https://github.com/belingud/yaicli/commit/b18aaeae8e1de14a9d5656cf6017e2265af088e9)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- remove unused GitHub Actions workflow - ([87e802c](https://github.com/belingud/yaicli/commit/87e802c43dad6b2a3e455b520d19cd1603b86514)) - Belingud
+
+
+---
+## [0.7.12](https://github.com/belingud/yaicli/compare/v0.7.11..v0.7.12) - 2025-07-09
+
+### 🐛 Bug Fixes
+
+- Indent tool choice print statement - ([f70ba3a](https://github.com/belingud/yaicli/commit/f70ba3a04851b95ba8c7395ec7de67a2b33e09e9)) - Belingud
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([c53150f](https://github.com/belingud/yaicli/commit/c53150f1fa841c2f283dba2453cde8ed915b868a)) - Belingud
+
+
+---
+## [0.7.11](https://github.com/belingud/yaicli/compare/v0.7.10..v0.7.11) - 2025-07-09
+
+### 📚 Documentation
+
+- update CHANGELOG with new release notes - ([2a1ea8c](https://github.com/belingud/yaicli/commit/2a1ea8c90d481ee5ce663ccbf87b928d649a7e85)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- remove docs.yml workflow - ([b2e6aed](https://github.com/belingud/yaicli/commit/b2e6aed8e9e43c18a5cacdc2a9326068741ce6bb)) - Belingud
+- remove google-cloud-aiplatform dependency - ([6118c85](https://github.com/belingud/yaicli/commit/6118c85f9bdc6cd130bbd07f38ac03f366b04466)) - Belingud
+
+
+---
+## [0.7.10](https://github.com/belingud/yaicli/compare/v0.7.9..v0.7.10) - 2025-07-09
+
+### 📚 Documentation
+
+- update provider documentation and navigation - ([bffb3c6](https://github.com/belingud/yaicli/commit/bffb3c6572cc185c73db4a5c93a7dab5747d100e)) - Belingud
+- correct logo path in index.md - ([97b94cb](https://github.com/belingud/yaicli/commit/97b94cbc10253f0faf5ef80683c4b3e8d85e37b1)) - Belingud
+- update function calling and MCP documentation - ([030129b](https://github.com/belingud/yaicli/commit/030129bc0bf08f3cb2ab3345bda43cf21ce6a19f)) - Belingud
+- update CHANGELOG with new release notes - ([4845ca0](https://github.com/belingud/yaicli/commit/4845ca0b2e628c31bb9b9ec7d35e8196b9938469)) - Belingud
+- add more doc files - ([8c5fffe](https://github.com/belingud/yaicli/commit/8c5fffee74cd893f0308c140332df9371f7a36c6)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- add vertex support to anthropic dependency - ([80e8252](https://github.com/belingud/yaicli/commit/80e82525ada61cf3565125b3348efb53d240a124)) - Belingud
+- add new dependencies for anthropic and google-cloud-aiplatform - ([9f9ceaf](https://github.com/belingud/yaicli/commit/9f9ceaf288ef0314157969bc771b9aabfad24575)) - Belingud
+- add debug steps to docs.yml - ([1a7e4f1](https://github.com/belingud/yaicli/commit/1a7e4f1142487b4c355df48503e2c4e4c189370d)) - Belingud
+- update GitHub Actions workflow for docs deployment - ([cb3af0f](https://github.com/belingud/yaicli/commit/cb3af0f9eeb28370af87c91b5bc3f25329ba4683)) - Belingud
+- update docs.yml to trigger on master branch - ([6df9996](https://github.com/belingud/yaicli/commit/6df9996cc77a048e450ccff2d61565f090ea3c29)) - Belingud
+- update GitHub Actions workflow and docs - ([f371d11](https://github.com/belingud/yaicli/commit/f371d1155070f1c86ab4211b33d6d02371db3b6f)) - Belingud
+- update docs.yml to trigger on docs branch - ([d87644b](https://github.com/belingud/yaicli/commit/d87644bd4420d813ebe7db348a684bd30bfea41e)) - Belingud
+- update GitHub Actions dependencies - ([60ab515](https://github.com/belingud/yaicli/commit/60ab515b785409b5813f2fe7fe13fe229dea8be1)) - Belingud
+- add main branch to docs workflow and update dependencies - ([bc5e312](https://github.com/belingud/yaicli/commit/bc5e3127e20b079447f7c08ff187f76a2f2d21e0)) - Belingud
+- add mkdocs workflow - ([f566602](https://github.com/belingud/yaicli/commit/f566602bb2f26862091902748c180b86ddc1a069)) - Belingud
+
+
+---
+## [0.7.9](https://github.com/belingud/yaicli/compare/v0.7.8..v0.7.9) - 2025-07-07
+
+### ⛰️  Features
+
+- add support for Anthropic, Anthropic Vertex and Anthropic Bedrock providers - ([88c879e](https://github.com/belingud/yaicli/commit/88c879e37fc3fcbe82a91349a9d0be7674f8bc13)) - Belingud
+
+### 📚 Documentation
+
+- add Anthropic/Claude provider details - ([3f95754](https://github.com/belingud/yaicli/commit/3f95754510add560e64f19236497470dc6b9a85b)) - Belingud
+- update CHANGELOG with new release notes - ([f24a550](https://github.com/belingud/yaicli/commit/f24a550add43d2340172f1fd01dad69e1c2636e1)) - Belingud
+
+### 🧪 Testing
+
+- add tests for AnthropicProvider and setup test environment - ([5aa0986](https://github.com/belingud/yaicli/commit/5aa0986618444f95a1b9a69448f90bcac975ad4d)) - Belingud
+
+
+---
 ## [0.7.8](https://github.com/belingud/yaicli/compare/v0.7.7..v0.7.8) - 2025-07-03
 
 ### 📚 Documentation

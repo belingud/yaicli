@@ -1,5 +1,119 @@
 
 ---
+## [unreleased]
+
+### ⛰️  Features
+
+- feat(functions): read multiple files in a single fs_read_file call
+
+Advertise fs_read_file's file_paths as a JSON array instead of
+Union[str, List[str]], so OpenAI/Anthropic schemas no longer emit anyOf
+and Gemini's callable-derived declaration becomes ARRAY/STRING instead of
+an invalid OBJECT + any_of. execute() keeps accepting a single path
+string (and tuples) for backward compatibility and returns an in-band
+JSON error for other argument types.
+
+Add schema-contract, end-to-end tool-call, Gemini regression and
+compatibility tests, and document batch reads in README and docs. - ([0d2d943](https://github.com/belingud/yaicli/commit/0d2d943385d1cdf3f88bae4441c1ab27d9a5ad6a)) - Belingud
+
+### 🐛 Bug Fixes
+
+- fix(tools): harden fetch_webpage redirect handling - ([cfddf81](https://github.com/belingud/yaicli/commit/cfddf8169c8db4e09171edc7174197d5425a6e63)) - Belingud
+- fix(chat): keep old session until replacement is written - ([ee0c125](https://github.com/belingud/yaicli/commit/ee0c125ec52cdf40036e169dd06c9c1d202060c2)) - Belingud
+- fix(render): escape role names and prompts in role command output - ([a4258e6](https://github.com/belingud/yaicli/commit/a4258e63024f9e540f02f61216f7031e06a6fd0e)) - Belingud
+- fix(gemini): group parallel tool responses into one function_response turn - ([fde4264](https://github.com/belingud/yaicli/commit/fde4264a16e4c583a0e2b68660ff555ff3556775)) - Belingud
+- fix(tools): reject CGNAT/shared address space in fetch_webpage SSRF guard - ([a4b7fea](https://github.com/belingud/yaicli/commit/a4b7feae6f885688ea4fe7ddf15222f42fc70f34)) - Belingud
+- fix(tools): block SSRF in fetch_webpage with URL validation and redirect checks - ([a437dc9](https://github.com/belingud/yaicli/commit/a437dc9bef88f2cc5199e762c03e39fb835dd6a5)) - Belingud
+- fix(tools): never disable TLS verification on retry in fetch_webpage - ([451d878](https://github.com/belingud/yaicli/commit/451d878c389a23d055151a1f1b36b16ae4489a4a)) - Belingud
+- fix(render): never interpret untrusted text as Rich markup - ([159b8e0](https://github.com/belingud/yaicli/commit/159b8e090e74fc13834a3e539a8132e4c5f99795)) - Belingud
+- fix(cli): exit non-zero on handled failures - ([f344a93](https://github.com/belingud/yaicli/commit/f344a9370f0ece0a704ab5fe4e974fc7758dd2a9)) - Belingud
+- fix(chat): persist full message fields in saved sessions - ([5a04fa7](https://github.com/belingud/yaicli/commit/5a04fa72de676d12dbc982c9d67979356d274709)) - Belingud
+- fix(providers): support parallel tool calls in OpenAI-compatible providers - ([58d11e6](https://github.com/belingud/yaicli/commit/58d11e61cae5b51bde44a5c8429f6f4bae387a12)) - Belingud
+- fix(gemini): send tool results as function_response and stop resending last turn - ([34d4139](https://github.com/belingud/yaicli/commit/34d4139d0d5af0c74f55d7fdb9bae2acc5ab4e6b)) - Belingud
+- fix(providers): tolerate missing reasoning_content in ChatGLM/HuggingFace responses - ([1b59b9a](https://github.com/belingud/yaicli/commit/1b59b9abef5f2efe507fa6a28c62f714a4f53490)) - Belingud
+- fix(functions): keep permission checks before atomic fs_edit_file write - ([7f0d414](https://github.com/belingud/yaicli/commit/7f0d4140ba73e74b25bd7f6d1cd8fc0685aef86d)) - Belingud
+- fix(functions): prevent fs_edit_file data loss on invalid replace edits - ([215688e](https://github.com/belingud/yaicli/commit/215688ef4738cacb37ea2242d9443b8621a70911)) - Belingud
+- fix(functions): array-first fs_read_image schema
+
+Mirror the fs_read_file fix: advertise image_paths as List[str] so OpenAI,
+Anthropic and Gemini no longer receive an anyOf/OBJECT+any_of declaration;
+execute() normalizes legacy str/tuple input and returns in-band errors for
+other types. - ([92a4d05](https://github.com/belingud/yaicli/commit/92a4d0528a1c27b0b1029d029c7acd9608848b29)) - Belingud
+- fix(cli): send a minimal prompt for image-only invocations
+
+`ai --image photo.jpg` now sends "Describe the image." (plural for several
+images) instead of aborting in CLI.run() with an empty prompt. - ([c6df177](https://github.com/belingud/yaicli/commit/c6df1773d23974f1a1f926f354d43c50b73a5b0b)) - Belingud
+- fix(context): replace '[' sentinel with structured FileReadResult
+
+_read_file() now returns FileReadResult(content, error) instead of magic
+strings, so real text starting with '[' is included again in @refs and
+directory context; read failures are warned about and skipped. - ([8703514](https://github.com/belingud/yaicli/commit/8703514d239faca1a78cd25cacd1a202ebf7dcdc)) - Belingud
+- fix(cli): wire MAX_HISTORY and ROLE_MODIFY_WARNING
+
+- prompt history now uses cfg["MAX_HISTORY"] instead of INTERACTIVE_ROUND
+- MAX_HISTORY=0 disables history saving as documented
+- warn when a built-in role is created/overwritten or deleted, gated by
+  ROLE_MODIFY_WARNING
+- remove the broken, unused RoleManager.print_roles() - ([defdf80](https://github.com/belingud/yaicli/commit/defdf80d5d26ad2e72e49bf5164cd8b985779291)) - Belingud
+- fix(config): parse default config on first run and read YAI_PROVIDER
+
+- add PROVIDER to DEFAULT_CONFIG_MAP with the YAI_PROVIDER env key
+- parse DEFAULT_CONFIG_INI after writing it on a first run instead of
+  returning early, so PROVIDER and friends are present immediately
+- treat empty file/env values as unset and fall back to the typed map
+  default (EXTRA_HEADERS/EXTRA_BODY become dicts, REASONING_EFFORT None)
+- drop the unused const.CODE_MODE constant - ([097b6b4](https://github.com/belingud/yaicli/commit/097b6b415b9156c4ad9c0753e78cca4dcf052a56)) - Belingud
+
+### 📚 Documentation
+
+- docs(dev): fill developer guides, fix navigation and spec drift - ([bee2c03](https://github.com/belingud/yaicli/commit/bee2c0332466688d149028305fa161ac198cff97)) - Belingud
+- docs: fix provider/config examples and defaults drift - ([c715832](https://github.com/belingud/yaicli/commit/c715832f408ea7166ebe3807d637875c92ba23b2)) - Belingud
+- docs: document post-P0 behaviour (session format, exit codes, fetch/fs_edit safety) - ([491369c](https://github.com/belingud/yaicli/commit/491369c1ea6d8aa055dab3a59ac4ad4ec6b38fa7)) - Belingud
+- docs(functions): add complete function install/update guide - ([bdb8784](https://github.com/belingud/yaicli/commit/bdb8784680c57e692b21acfd6af0c9905a2b842c)) - Belingud
+- docs: document image-only prompts and multi-image reads
+
+- note the minimal prompt used when --image is passed without a prompt
+- document the fs_read_image image_paths list contract - ([37d46a7](https://github.com/belingud/yaicli/commit/37d46a7dba202f8054563ef0447d445fec99a5ce)) - Belingud
+- docs: document tool execution confirmation for v0.17.0 - ([530c774](https://github.com/belingud/yaicli/commit/530c77440d4723337c11d33d4765e63259804e94)) - Belingud
+- docs: update CHANGELOG for v0.17.0 release - ([9273693](https://github.com/belingud/yaicli/commit/92736937dc1855d2de54a485e4572845fdfdf238)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore(task): archive 11-01-fix-bootstrap-known-defects - ([a191828](https://github.com/belingud/yaicli/commit/a191828cd13f45370820a7b594ce7bcc50c8d456)) - Belingud
+- chore: record journal - ([0949f40](https://github.com/belingud/yaicli/commit/0949f40b436b2beb1cc3a549b7f69f5f6d892414)) - Belingud
+- chore(trellis): record fixed bootstrap defects in spec and task
+
+- update py/ specs to the fixed behaviour (first-run config, typed
+  defaults, MAX_HISTORY/ROLE_MODIFY_WARNING, image-only prompt,
+  FileReadResult context reads, fs_read_image array schema)
+- mark the bootstrap PRD's known-defect list as fixed with commit refs
+- add the 11-01-fix-bootstrap-known-defects task artifacts - ([2011b37](https://github.com/belingud/yaicli/commit/2011b37c8cb7058e088e6765e7114585d716e1f1)) - Belingud
+- chore: record journal - ([331f4a8](https://github.com/belingud/yaicli/commit/331f4a8be8a9fc860b8a4504032faa06572bb526)) - Belingud
+- chore(task): archive 00-bootstrap-guidelines - ([9a61200](https://github.com/belingud/yaicli/commit/9a6120064a7da293bda48a61c00cf406bdfcb717)) - Belingud
+- chore(trellis): install Trellis workflow and bootstrap project spec
+
+Add the Trellis AI development workflow for Claude Code and DeepSeek
+Harness (dsh): .trellis/ (workflow, scripts, tasks, workspace, spec),
+.agents/skills/ shared skill catalog, .dsh/ entry skills, the Claude Code
+surface (.claude/ hooks, agents, commands, skills, settings.json), the
+union-merge .gitattributes rule, and the managed Trellis block in
+CLAUDE.md (AGENTS.md symlink follows it).
+
+Complete the 00-bootstrap-guidelines task: reshape the generated
+backend/web spec scaffold into layers that match the repository - py/
+(architecture, providers, function calling/tools, CLI/rendering,
+config/context, quality) and repo/ (conventions, build/CI/release) - with
+every rule grounded in real source files, tests, and commits. The spec
+records current defects found while writing (first-run PROVIDER KeyError,
+unused CODE_MODE, dead MAX_HISTORY/ROLE_MODIFY_WARNING, --image-only
+abort, context "[" sentinel, role.print_roles, fs_read_image Union debt).
+
+Verified: no placeholders, index<->file coverage, relative links, and
+`get_context.py --mode packages` -> py, repo; independently reviewed by a
+read-only verifier. - ([cb6abd8](https://github.com/belingud/yaicli/commit/cb6abd8050d415e9d8c136e58289b09a1cd6a690)) - Belingud
+
+
+---
 ## [0.17.0](https://github.com/belingud/yaicli/compare/v0.16.0..v0.17.0) - 2026-06-23
 
 ### ⛰️  Features
