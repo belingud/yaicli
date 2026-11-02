@@ -1,6 +1,14 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from huggingface_hub.inference._generated.types.chat_completion import (
+    ChatCompletionOutput,
+    ChatCompletionOutputComplete,
+    ChatCompletionOutputMessage,
+    ChatCompletionStreamOutput,
+    ChatCompletionStreamOutputChoice,
+    ChatCompletionStreamOutputDelta,
+)
 
 from yaicli.llms.providers.huggingface_provider import HuggingFaceProvider
 
@@ -126,3 +134,85 @@ class TestHuggingFaceProvider:
 
                         # Check that the create method was called
                         mock_create.assert_called_once()
+
+    def _hf_chat_completion(self, content: str = "hf answer") -> ChatCompletionOutput:
+        """Build a real huggingface_hub chat completion response object."""
+        return ChatCompletionOutput(
+            id="chatcmpl-hf",
+            created=1,
+            model="meta-llama/Llama-3-8B-Instruct",
+            system_fingerprint="",
+            choices=[
+                ChatCompletionOutputComplete(
+                    index=0,
+                    finish_reason="stop",
+                    message=ChatCompletionOutputMessage(role="assistant", content=content),
+                    logprobs=None,
+                )
+            ],
+            usage=None,
+        )
+
+    def test_handle_normal_response_without_reasoning_content_attribute(self, mock_config):
+        """HuggingFace messages have no reasoning_content attribute; parsing must not crash.
+
+        Regression test: ``_handle_normal_response`` used to read
+        ``choice.message.reasoning_content`` unconditionally, so *every* non-streaming
+        HuggingFace completion raised AttributeError.
+        """
+        with patch("huggingface_hub.InferenceClient"):
+            provider = HuggingFaceProvider(config=mock_config)
+
+        response = self._hf_chat_completion("hf answer")
+        assert not hasattr(response.choices[0].message, "reasoning_content")
+
+        responses = list(provider._handle_normal_response(response))
+
+        assert len(responses) == 1
+        assert responses[0].content == "hf answer"
+        assert responses[0].reasoning is None
+        assert responses[0].tool_call is None
+
+    def test_completion_non_streaming_with_real_hf_response(self, mock_config):
+        """End-to-end ``completion(stream=False)`` with a real HF SDK response object."""
+        from yaicli.schemas import ChatMessage
+
+        with patch("huggingface_hub.InferenceClient"):
+            provider = HuggingFaceProvider(config=mock_config)
+
+        provider.client = MagicMock()
+        provider.client.chat.completions.create.return_value = self._hf_chat_completion("non-streamed")
+
+        responses = list(provider.completion([ChatMessage(role="user", content="Hello")], stream=False))
+
+        assert len(responses) == 1
+        assert responses[0].content == "non-streamed"
+        assert responses[0].reasoning is None
+
+    def test_handle_stream_response_without_reasoning_content_attribute(self, mock_config):
+        """Streaming HF deltas have no reasoning_content attribute; parsing must not crash."""
+        with patch("huggingface_hub.InferenceClient"):
+            provider = HuggingFaceProvider(config=mock_config)
+
+        chunk = ChatCompletionStreamOutput(
+            id="chatcmpl-hf",
+            created=1,
+            model="meta-llama/Llama-3-8B-Instruct",
+            system_fingerprint="",
+            choices=[
+                ChatCompletionStreamOutputChoice(
+                    index=0,
+                    finish_reason=None,
+                    delta=ChatCompletionStreamOutputDelta(role="assistant", content="streamed"),
+                    logprobs=None,
+                )
+            ],
+            usage=None,
+        )
+        assert not hasattr(chunk.choices[0].delta, "reasoning_content")
+
+        responses = list(provider._handle_stream_response([chunk]))
+
+        assert len(responses) == 1
+        assert responses[0].content == "streamed"
+        assert responses[0].reasoning is None

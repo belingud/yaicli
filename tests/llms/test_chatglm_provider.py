@@ -356,3 +356,89 @@ class TestChatglmProvider:
             ):
                 with pytest.raises(ValueError, match="Invalid message from LLM"):
                     provider.parse_choice_from_content(valid_content)
+
+    def test_handle_normal_response_without_reasoning_content_attribute(self, mock_config):
+        """A plain OpenAI-schema message with no reasoning_content field must not crash.
+
+        Regression test for HuggingFace's ``ChatCompletionOutputMessage`` (and non-thinking
+        ChatGLM responses), which do not expose a ``reasoning_content`` attribute at all.
+        """
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = ChatglmProvider(config=mock_config)
+
+        response = ChatCompletion.model_validate(
+            {
+                "id": "chatcmpl-1",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "glm-4",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {"role": "assistant", "content": "plain answer"},
+                    }
+                ],
+            }
+        )
+        # The SDK model only exposes reasoning_content when the API actually returned it.
+        assert not hasattr(response.choices[0].message, "reasoning_content")
+
+        responses = list(provider._handle_normal_response(response))
+
+        assert len(responses) == 1
+        assert responses[0].content == "plain answer"
+        assert responses[0].reasoning is None
+        assert responses[0].tool_call is None
+
+    def test_handle_normal_response_keeps_reasoning_content(self, mock_config):
+        """When reasoning_content is present it is still returned as reasoning."""
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = ChatglmProvider(config=mock_config)
+
+        message = MagicMock()
+        message.content = "actual answer"
+        message.reasoning_content = "thinking process"
+        message.model_extra = None
+
+        choice = MagicMock()
+        choice.message = message
+        choice.finish_reason = "stop"
+
+        mock_response = MagicMock(spec=ChatCompletion)
+        mock_response.choices = [choice]
+
+        responses = list(provider._handle_normal_response(mock_response))
+
+        assert len(responses) == 1
+        assert responses[0].content == "actual answer"
+        assert responses[0].reasoning == "thinking process"
+
+    def test_handle_stream_response_without_reasoning_content_attribute(self, mock_config):
+        """Streaming deltas without a reasoning_content attribute must not crash."""
+        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+            provider = ChatglmProvider(config=mock_config)
+
+        chunk = ChatCompletionChunk.model_validate(
+            {
+                "id": "chatcmpl-1",
+                "object": "chat.completion.chunk",
+                "created": 1,
+                "model": "glm-4",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"role": "assistant", "content": "streamed answer"},
+                        "finish_reason": None,
+                    }
+                ],
+            }
+        )
+        assert not hasattr(chunk.choices[0].delta, "reasoning_content")
+
+        responses = list(provider._handle_stream_response([chunk]))
+
+        assert len(responses) == 1
+        assert responses[0].content == "streamed answer"
+        assert responses[0].reasoning is None
+        assert responses[0].tool_call is None
