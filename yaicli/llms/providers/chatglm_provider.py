@@ -36,7 +36,9 @@ class ChatglmProvider(OpenAIProvider):
         """
         choice = response.choices[0]
         content = choice.message.content or ""  # type: ignore
-        reasoning = choice.message.reasoning_content  # type: ignore
+        # HuggingFace's ChatCompletionOutputMessage (and plain OpenAI-schema ChatGLM
+        # responses) may not expose reasoning_content at all, so never access it directly.
+        reasoning = getattr(choice.message, "reasoning_content", None)
         finish_reason = choice.finish_reason
         tool_call: Optional[ToolCall] = None
 
