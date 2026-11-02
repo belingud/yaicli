@@ -87,10 +87,20 @@ class GeminiProvider(Provider):
         return config
 
     def _convert_messages(self, messages: List[ChatMessage]) -> List[types.Content]:
-        """Convert a list of ChatMessage objects to a list of Gemini Content objects."""
+        """Convert a list of ChatMessage objects to a list of Gemini Content objects.
+
+        Consecutive ``role == "tool"`` messages are grouped into a single user Content:
+        Gemini requires all ``function_response`` parts answering one function_call turn
+        to live in the same user turn, while ``LLMClient`` appends one ChatMessage per
+        executed tool call (parallel tool rounds produce several in a row).
+        """
         converted_messages = []
-        for msg in messages:
+        index = 0
+        while index < len(messages):
+            msg = messages[index]
+
             if msg.role == "system":
+                index += 1
                 continue
 
             # Handle assistant messages with function calls
@@ -108,18 +118,21 @@ class GeminiProvider(Provider):
                         )
                     )
                 converted_messages.append(types.Content(role="model", parts=parts))
+                index += 1
                 continue
 
-            # Handle tool response messages
+            # Handle tool response messages; group consecutive responses into one turn
             if msg.role == "tool":
-                converted_messages.append(
-                    types.Content(
-                        role="user",
-                        parts=[
-                            types.Part.from_function_response(name=msg.name or "", response={"result": msg.content})
-                        ],
+                parts = []
+                while index < len(messages) and messages[index].role == "tool":
+                    tool_msg = messages[index]
+                    parts.append(
+                        types.Part.from_function_response(
+                            name=tool_msg.name or "", response={"result": tool_msg.content}
+                        )
                     )
-                )
+                    index += 1
+                converted_messages.append(types.Content(role="user", parts=parts))
                 continue
 
             # Normal messages (user, assistant without tool calls)
@@ -139,6 +152,7 @@ class GeminiProvider(Provider):
 
             content = types.Content(role=self._map_role(msg.role), parts=parts)
             converted_messages.append(content)
+            index += 1
         return converted_messages
 
     def _map_role(self, role: str) -> str:
