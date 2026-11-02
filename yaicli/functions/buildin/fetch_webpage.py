@@ -115,7 +115,11 @@ class Function(OpenAISchema):
             return language
 
         if url:
-            domain = urlparse(url).netloc.lower()
+            try:
+                domain = urlparse(url).netloc.lower()
+            except ValueError:
+                # Malformed URLs are reported by _validate_fetch_url; never raise here.
+                domain = ""
 
             if any(tld in domain for tld in [".cn", ".com.cn", ".net.cn", ".org.cn"]):
                 return "zh-CN,zh;q=0.9,en;q=0.8"
@@ -152,6 +156,22 @@ class Function(OpenAISchema):
         if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
             ip = ip.ipv4_mapped
         return ip.is_global and not ip.is_multicast and not ip.is_reserved
+
+    @staticmethod
+    def _normalize_host(host: Optional[str]) -> str:
+        """Normalise a hostname for redirect comparison (case/trailing dot/IDNA).
+
+        ``Example.COM.``, ``example.com`` and ``EXAMPLE.com`` all compare equal, and
+        internationalised hostnames are compared in their ASCII/IDNA form so a
+        redirect cannot look cross-host when it is not (or vice versa).
+        """
+        if not host:
+            return ""
+        normalized = host.strip().lower().rstrip(".")
+        try:
+            return normalized.encode("idna").decode("ascii")
+        except UnicodeError:
+            return normalized
 
     @classmethod
     def _validate_fetch_url(cls, url: str) -> Optional[str]:
@@ -268,8 +288,11 @@ class Function(OpenAISchema):
                     cookies=cookies,
                 ) as client:
                     redirects = 0
+                    # Per-hop headers: a cross-host redirect must not forward the
+                    # caller's explicit Referer (or any Cookie header) to the new host.
+                    current_headers = dict(headers)
                     while True:
-                        with client.stream("GET", current_url, headers=headers) as response:
+                        with client.stream("GET", current_url, headers=current_headers) as response:
                             status = response.status_code
                             if status in _REDIRECT_STATUS_CODES:
                                 location = response.headers.get("location")
@@ -291,11 +314,40 @@ class Function(OpenAISchema):
                                         None,
                                         f"Failed to fetch {current_url}: too many redirects (>{MAX_REDIRECTS})",
                                     )
-                                next_url = urljoin(current_url, location)
+                                try:
+                                    next_url = urljoin(current_url, location)
+                                except ValueError as e:
+                                    return (
+                                        None,
+                                        f"Failed to fetch {current_url}: invalid redirect "
+                                        f"Location {location!r}: {e}",
+                                    )
                                 # Re-validate every redirect target before requesting it.
                                 redirect_error = cls._validate_fetch_url(next_url)
                                 if redirect_error is not None:
                                     return None, f"Failed to fetch {next_url}: {redirect_error}"
+                                current_parsed = urlparse(current_url)
+                                next_parsed = urlparse(next_url)
+                                if (
+                                    current_parsed.scheme.lower() == "https"
+                                    and next_parsed.scheme.lower() == "http"
+                                ):
+                                    return (
+                                        None,
+                                        f"Failed to fetch {current_url}: refusing https->http "
+                                        f"downgrade redirect to {next_url}",
+                                    )
+                                if cls._normalize_host(next_parsed.hostname) != cls._normalize_host(
+                                    current_parsed.hostname
+                                ):
+                                    # Cross-host hop: never forward the caller's cookies or
+                                    # explicit Referer/Cookie headers to a different host.
+                                    client.cookies.clear()
+                                    current_headers = {
+                                        key: value
+                                        for key, value in current_headers.items()
+                                        if key.lower() not in ("referer", "cookie")
+                                    }
                                 current_url = next_url
                                 continue
                             if status != 200:
@@ -370,10 +422,22 @@ class Function(OpenAISchema):
         if not isinstance(url, str):
             return f"Failed to fetch {url}: URL must be a string"
 
+        # Parse the URL before building headers: urlparse (used by the Accept-Language
+        # heuristic) raises ValueError on malformed IPv6-style URLs such as
+        # "http://[::1". The public contract is to always return a "Failed to fetch ..."
+        # string, never to raise.
+        try:
+            urlparse(url)
+        except ValueError as e:
+            return f"Failed to fetch {url}: Invalid URL: {e}"
+
         if verify_ssl is False:
             cls._warn_insecure_tls()
 
-        headers = cls._get_default_headers(user_agent, language, referer, url)
+        try:
+            headers = cls._get_default_headers(user_agent, language, referer, url)
+        except ValueError as e:  # pragma: no cover - defensive belt and braces
+            return f"Failed to fetch {url}: Invalid URL: {e}"
 
         text, error = cls._download_html(
             url=url,
