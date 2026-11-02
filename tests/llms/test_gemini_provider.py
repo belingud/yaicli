@@ -1062,3 +1062,128 @@ class TestGeminiProvider:
         assert message[0].inline_data is not None
         assert message[0].inline_data.mime_type == "image/png"
         assert message[1].text == "describe the image"
+
+    # ---- parallel tool responses (grouped into one function_response turn) ----
+
+    @staticmethod
+    def _parallel_tool_round_messages(tool_role="tool"):
+        """Messages exactly as LLMClient builds them after executing two parallel tools."""
+        return [
+            ChatMessage(role="system", content="sys prompt"),
+            ChatMessage(role="user", content="read a.txt and b.txt"),
+            ChatMessage(
+                role="assistant",
+                content="",
+                tool_calls=[
+                    ToolCall(id="call_a", name="fs_read_file", arguments='{"path": "a.txt"}'),
+                    ToolCall(id="call_b", name="fs_read_file", arguments='{"path": "b.txt"}'),
+                ],
+            ),
+            ChatMessage(role=tool_role, content="contents A", name="fs_read_file", tool_call_id="call_a"),
+            ChatMessage(role=tool_role, content="contents B", name="fs_read_file", tool_call_id="call_b"),
+        ]
+
+    def test_convert_messages_groups_consecutive_tool_responses(self, mock_config):
+        """Consecutive tool messages become one user Content with all function_response parts."""
+        with patch("google.genai.Client"):
+            provider = GeminiProvider(config=mock_config)
+
+        converted = provider._convert_messages(self._parallel_tool_round_messages())
+
+        assert [content.role for content in converted] == ["user", "model", "user"]
+        # both function calls stay in the same model turn
+        assert len(converted[1].parts) == 2
+        assert [part.function_call.name for part in converted[1].parts] == ["fs_read_file", "fs_read_file"]
+        # both tool results are grouped into a single user turn
+        tool_turn = converted[-1]
+        assert len(tool_turn.parts) == 2
+        assert [part.function_response.name for part in tool_turn.parts] == ["fs_read_file", "fs_read_file"]
+        assert [part.function_response.response for part in tool_turn.parts] == [
+            {"result": "contents A"},
+            {"result": "contents B"},
+        ]
+
+    def test_convert_messages_does_not_merge_non_consecutive_tool_responses(self, mock_config):
+        """Tool messages separated by another message form separate user Contents."""
+        with patch("google.genai.Client"):
+            provider = GeminiProvider(config=mock_config)
+
+        messages = [
+            ChatMessage(role="tool", content="first", name="fs_read_file", tool_call_id="call_a"),
+            ChatMessage(role="assistant", content="in between"),
+            ChatMessage(role="tool", content="second", name="fs_read_file", tool_call_id="call_b"),
+        ]
+
+        converted = provider._convert_messages(messages)
+
+        assert [content.role for content in converted] == ["user", "model", "user"]
+        assert len(converted[0].parts) == 1
+        assert converted[0].parts[0].function_response.response == {"result": "first"}
+        assert len(converted[2].parts) == 1
+        assert converted[2].parts[0].function_response.response == {"result": "second"}
+
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
+    def test_completion_parallel_tool_followup_sends_one_function_response_turn(
+        self, mock_get_functions, mock_config, mock_gemini_client
+    ):
+        """Two parallel calls: history excludes the grouped tool turn, send carries both parts."""
+        mock_get_functions.return_value = []
+
+        mock_response = MagicMock()
+        mock_response.candidates = []
+        mock_response.to_json_dict.return_value = {"error": "No candidates"}
+
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = mock_response
+        mock_gemini_client.chats.create.return_value = mock_chat
+
+        with patch("google.genai.Client", return_value=mock_gemini_client):
+            provider = GeminiProvider(config=mock_config)
+            provider.client = mock_gemini_client
+
+            messages = self._parallel_tool_round_messages(tool_role=provider.detect_tool_role())
+            list(provider.completion(messages, stream=False))
+
+        history = mock_gemini_client.chats.create.call_args[1]["history"]
+        assert [content.role for content in history] == ["user", "model"]
+        # the grouped tool turn is sent as the new message, not left in history
+        assert all(part.function_response is None for content in history for part in content.parts)
+
+        message = mock_chat.send_message.call_args[1]["message"]
+        assert isinstance(message, list)
+        assert len(message) == 2
+        assert [part.function_response.name for part in message] == ["fs_read_file", "fs_read_file"]
+        assert [part.function_response.response for part in message] == [
+            {"result": "contents A"},
+            {"result": "contents B"},
+        ]
+
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
+    def test_completion_streaming_parallel_tool_followup_sends_one_function_response_turn(
+        self, mock_get_functions, mock_config, mock_gemini_client
+    ):
+        """Streaming variant of the parallel tool-response grouping."""
+        mock_get_functions.return_value = []
+
+        mock_chat = MagicMock()
+        mock_chat.send_message_stream.return_value = []
+        mock_gemini_client.chats.create.return_value = mock_chat
+
+        with patch("google.genai.Client", return_value=mock_gemini_client):
+            provider = GeminiProvider(config=mock_config)
+            provider.client = mock_gemini_client
+
+            messages = self._parallel_tool_round_messages(tool_role=provider.detect_tool_role())
+            list(provider.completion(messages, stream=True))
+
+        history = mock_gemini_client.chats.create.call_args[1]["history"]
+        assert [content.role for content in history] == ["user", "model"]
+        assert all(part.function_response is None for content in history for part in content.parts)
+
+        message = mock_chat.send_message_stream.call_args[1]["message"]
+        assert isinstance(message, list)
+        assert len(message) == 2
+        assert [part.function_response.response for part in message] == [
+            {"result": "contents A"},
+            {"result": "contents B"},
+        ]
