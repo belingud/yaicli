@@ -18,7 +18,7 @@ from .chat import Chat, FileChatManager, chat_mgr
 from .cmd_handler import CmdHandler
 from .completer import AtPathCompleter
 from .config import cfg
-from .console import get_console
+from .console import get_console, safe_text, untrusted_text
 from .const import (
     CHAT_MODE,
     CMD_CLEAR,
@@ -123,13 +123,13 @@ class CLI:
             cfg["SHELL_NAME"] = detect_shell(cfg)
 
         if self.verbose:
-            # Print verbose configuration
+            # Print verbose configuration (values can come from config/env files: never markup)
             self.console.print("Loading Configuration:", style="bold cyan")
-            self.console.print(f"Config file path: {CONFIG_PATH}")
+            self.console.print(f"Config file path: {safe_text(CONFIG_PATH)}")
             for key, value in cfg.items():
                 display_value = "****" if key == "API_KEY" and value else value
-                self.console.print(f"  {key:<20}: {display_value}")
-            self.console.print(f"Current role: {self.role_name}")
+                self.console.print(f"  {safe_text(key):<20}: {safe_text(display_value)}")
+            self.console.print(f"Current role: {safe_text(self.role_name)}")
             self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
 
         # Disable prompt_toolkit warning when use non-tty input,
@@ -192,11 +192,11 @@ class CLI:
         try:
             saved_title = self.chat_manager.save_chat(self.chat)
         except ChatSaveError as e:
-            self.console.print(f"Failed to save chat: {e}", style="red")
+            self.console.print(f"Failed to save chat: {safe_text(e)}", style="red")
             return
 
         # Session list will be refreshed automatically by the save method
-        self.console.print(f"Chat saved as: {saved_title}", style="bold green")
+        self.console.print(f"Chat saved as: {safe_text(saved_title)}", style="bold green")
 
         # Mark session as persistent if it was temporary
         if self.is_temp_session:
@@ -221,9 +221,11 @@ class CLI:
             date = chat.date
 
             if date:
-                self.console.print(f"[dim]{index}.[/dim] [bold blue]{title}[/bold blue] - {date}")
+                self.console.print(
+                    f"[dim]{safe_text(index)}.[/dim] [bold blue]{safe_text(title)}[/bold blue] - {safe_text(date)}"
+                )
             else:
-                self.console.print(f"[dim]{index}.[/dim] [bold blue]{title}[/bold blue]")
+                self.console.print(f"[dim]{safe_text(index)}.[/dim] [bold blue]{safe_text(title)}[/bold blue]")
 
     def _refresh_chats(self) -> None:
         """Force refresh the chat list."""
@@ -245,7 +247,7 @@ class CLI:
         self.chat_start_time = chat_data.date
         self.is_temp_session = False
 
-        self.console.print(f"Loaded chat: {self.chat.title}", style="bold green")
+        self.console.print(f"Loaded chat: {safe_text(self.chat.title)}", style="bold green")
         return True
 
     def _delete_chat_by_index(self, index: str) -> bool:
@@ -261,14 +263,14 @@ class CLI:
             return False
 
         if chat_data.path is None:
-            self.console.print(f"Chat has no associated file to delete: {chat_data.title}", style="bold red")
+            self.console.print(f"Chat has no associated file to delete: {safe_text(chat_data.title)}", style="bold red")
             return False
 
         if self.chat_manager.delete_chat(chat_data.path):
-            self.console.print(f"Deleted chat: {chat_data.title}", style="bold green")
+            self.console.print(f"Deleted chat: {safe_text(chat_data.title)}", style="bold green")
             return True
         else:
-            self.console.print(f"Failed to delete chat: {chat_data.title}", style="bold red")
+            self.console.print(f"Failed to delete chat: {safe_text(chat_data.title)}", style="bold red")
             return False
 
     # ------------------- Special commands -------------------
@@ -301,7 +303,8 @@ class CLI:
             provider = cfg.get("PROVIDER", "").lower()
             if provider in NO_VISION_PROVIDERS:
                 self.console.print(
-                    f"Warning: Provider '{provider}' does not support image input. Images will be ignored.",
+                    f"Warning: Provider '{safe_text(provider)}' does not support image input. "
+                    "Images will be ignored.",
                     style="yellow",
                 )
                 effective_images = []
@@ -345,7 +348,7 @@ class CLI:
             return content, messages
         except Exception as e:
             self.had_error = True
-            self.console.print(f"Error processing LLM response: {e}", style="red")
+            self.console.print(f"Error processing LLM response: {safe_text(e)}", style="red")
             if self.verbose:
                 traceback.print_exc()
             return None, messages
@@ -379,7 +382,15 @@ class CLI:
             self.console.print("No command generated or command is empty.", style="bold red")
             return
         self.console.print(
-            Panel(cmd, title="Suggest Command", title_align="left", border_style="bold magenta", expand=False)
+            Panel(
+                # The command is model output: show it literally so markup can not
+                # restyle/hide the command the operator is asked to run.
+                untrusted_text(cmd),
+                title="Suggest Command",
+                title_align="left",
+                border_style="bold magenta",
+                expand=False,
+            )
         )
         _input = Prompt.ask(
             r"Execute command? \[e]dit, \[y]es, \[n]o",
@@ -408,7 +419,7 @@ class CLI:
             try:
                 subprocess.call(executed_cmd, shell=True)
             except Exception as e:
-                self.console.print(f"Failed to execute command: {e}", style="red")
+                self.console.print(f"Failed to execute command: {safe_text(e)}", style="red")
         elif _input != "e":
             self.console.print("Execution cancelled.", style="yellow")
 
@@ -431,7 +442,7 @@ class CLI:
                 complete_in_thread=True,  # Don't block on completion
             )
         except Exception as e:
-            self.console.print(f"Error initializing prompt session history: {e}", style="red")
+            self.console.print(f"Error initializing prompt session history: {safe_text(e)}", style="red")
             self.session = PromptSession(key_bindings=self.bindings)
 
     def _setup_key_bindings(self) -> None:
@@ -462,7 +473,8 @@ class CLI:
             self.console.print("Current: [bold yellow]Temporary Session[/bold yellow] (use /save to make persistent)")
         else:
             self.console.print(
-                f"Current: [bold green]Persistent Session[/bold green]{f': {self.chat.title}' if self.chat.title else ''}"
+                "Current: [bold green]Persistent Session[/bold green]"
+                f"{f': {safe_text(self.chat.title)}' if self.chat.title else ''}"
             )
         self.print_help()
 
@@ -503,8 +515,17 @@ class CLI:
                 if not user_input:
                     continue
 
-                # Handle special commands
-                _continue = self._handle_special_commands(user_input)
+                # A single turn must never terminate the session because of an
+                # unexpected rendering/parsing error: report it and keep looping.
+                try:
+                    # Handle special commands
+                    _continue = self._handle_special_commands(user_input)
+                except (KeyboardInterrupt, EOFError):
+                    # Keep the original prompt semantics: these exit the REPL.
+                    raise
+                except Exception as e:
+                    self.console.print(f"Error: {safe_text(e)}", style="red")
+                    continue
                 if _continue is False:  # Exit command
                     break
                 if _continue is True:  # Other special command
@@ -516,6 +537,12 @@ class CLI:
                         break
                 except KeyboardInterrupt:
                     self.console.print("KeyboardInterrupt", style="yellow")
+                    continue
+                except EOFError:
+                    # Keep the original semantics: EOF leaves the REPL.
+                    raise
+                except Exception as e:
+                    self.console.print(f"Error: {safe_text(e)}", style="red")
                     continue
             except (KeyboardInterrupt, EOFError):
                 break
@@ -569,5 +596,5 @@ class CLI:
                 interactive=sys.stdin.isatty(),
             )
         except YaicliError as e:
-            self.console.print(f"Error creating client: {e}", style="red")
+            self.console.print(f"Error creating client: {safe_text(e)}", style="red")
             raise typer.Abort()

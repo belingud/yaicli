@@ -7,7 +7,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .config import Config, get_config
-from .console import YaiConsole, get_console
+from .console import YaiConsole, get_console, strip_control_chars, untrusted_text
 from .render import Markdown, plain_formatter
 from .schemas import ConfirmToolCall, LLMResponse, RefreshLive, ToolConfirmDecision
 
@@ -195,7 +195,10 @@ class Printer:
         """
         self.console.print(
             Panel(
-                f"{tool_call.name}({tool_call.arguments})",
+                # Tool name/arguments come from the model: render them literally so
+                # a "[/...]" can neither raise MarkupError nor restyle/hide the
+                # command the operator is being asked to approve.
+                untrusted_text(f"{tool_call.name}({tool_call.arguments})"),
                 title="Confirm tool call",
                 title_align="left",
                 border_style="bold magenta",
@@ -252,7 +255,10 @@ class Printer:
             if not header_shown:
                 self.console.print("Thinking:")
                 header_shown = True
-            prefixed = self._REASONING_PREFIX + text.replace("\n", f"\n{self._REASONING_PREFIX}")
+            # Strip control chars: reasoning is model text and must not inject
+            # ANSI/OSC sequences even though markup is already disabled.
+            sanitized = strip_control_chars(text)
+            prefixed = self._REASONING_PREFIX + sanitized.replace("\n", f"\n{self._REASONING_PREFIX}")
             # markup/highlight off: reasoning is arbitrary model text, not Rich markup.
             self.console.print(prefixed, style="dim", markup=False, highlight=False)
         return printed_len + emitted, header_shown

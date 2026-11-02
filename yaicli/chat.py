@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Union
 from rich.table import Table
 
 from .config import cfg
-from .console import YaiConsole, get_console
+from .console import YaiConsole, get_console, safe_text, untrusted_text
 from .exceptions import ChatDeleteError, ChatLoadError, ChatSaveError
 from .schemas import ChatMessage, ImageData, ToolCall
 from .utils import option_callback
@@ -431,7 +431,8 @@ class FileChatManager:
 
         for i, chat in enumerate(chats):
             created_at = datetime.fromisoformat(chat.date).strftime("%Y-%m-%d %H:%M:%S") if chat.date else "Unknown"
-            table.add_row(str(i + 1), created_at, str(len(chat.history)), chat.title)
+            # Session titles come from filenames/user input: render literally.
+            table.add_row(str(i + 1), safe_text(created_at), str(len(chat.history)), untrusted_text(chat.title))
 
         console.print(table)
 
@@ -450,7 +451,7 @@ class FileChatManager:
 
         for i, chat in enumerate(chats):
             created_at = datetime.fromisoformat(chat.date).strftime("%Y-%m-%d %H:%M:%S") if chat.date else "Unknown"
-            console.print(f"{i + 1}. {chat.title} ({created_at})")
+            console.print(f"{i + 1}. {safe_text(chat.title)} ({safe_text(created_at)})")
         return value
 
     @staticmethod
