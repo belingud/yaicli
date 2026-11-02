@@ -150,6 +150,79 @@ images can be read and base64-encoded in one tool call:
 A single path string is still accepted for backward compatibility. The same
 `ai --reinstall-functions` rule applies after upgrading.
 
+### Built-in Function Safety
+
+The built-in functions run with your local permissions, so the shipped implementations apply
+their own guard rails. These are user-visible contracts — if you see different behaviour,
+run `ai --reinstall-functions` after upgrading.
+
+**`fetch_webpage`** only fetches public `http`/`https` URLs:
+
+- loopback, private, link-local, cloud-metadata (`169.254.169.254`, `100.100.100.200`),
+  CGNAT/shared-address (`100.64.0.0/10`), multicast, reserved, and unspecified addresses are
+  refused before any request is made (IPv4 and IPv6);
+- redirects are followed manually and re-validated hop by hop (maximum 5 redirects); a
+  cross-host redirect does not forward your cookies or `Referer`, and an `https` → `http`
+  downgrade is refused;
+- the response body is capped at 10 MB; `timeout`, `user_agent`, `cookies`, `referer`, and
+  `language` are honoured;
+- TLS certificate verification is enabled by default and is **never** silently disabled on a
+  connection error. Passing `verify_ssl=False` explicitly is allowed (with a warning) but is
+  vulnerable to man-in-the-middle attacks;
+- every failure is returned to the model as a `Failed to fetch ...` string instead of raising,
+  so the model can adapt.
+
+**`fs_edit_file`** is all-or-nothing:
+
+- supported operations and keys:
+  - `replace`: `{"type": "replace", "old": <str>, "new": <str>}` — replaces all occurrences.
+    `old` must be non-empty and must differ from `new`;
+  - `replace_line`: `{"type": "replace_line", "line_number": <1-based int>, "new": <str>}`;
+  - `insert_line`: `{"type": "insert_line", "line_number": <0..N>, "content": <str>}`;
+  - `delete_line`: `{"type": "delete_line", "line_number": <1-based int>}`;
+  - `append`: `{"type": "append", "content": <str>}`;
+- every edit is validated and applied in order; **if any edit fails, nothing is written** and
+  the result reports the failures (`success=false`, `error` explains how many failed);
+- writes are atomic and preserve file permissions; a read-only file is rejected with
+  `Permission denied` instead of being overwritten.
+
+### Tool Execution Confirmation
+
+By default YAICLI asks for confirmation before running each tool call:
+
+```
+╭─ Confirm tool call ─────────────────────────────────────╮
+│ execute_shell_command({"shell_command": "du -sh ."})    │
+╰─────────────────────────────────────────────────────────╯
+Execute tool? [y]once, [a]session, [A]always, [n]o:
+```
+
+| Key | Meaning |
+|-----|---------|
+| `y` | Allow this call only |
+| `a` | Allow for the rest of this session |
+| `A` | Always allow — saved to `~/.config/yaicli/tool_permissions.json` |
+| `n` | Deny — the model receives a refusal result and can adapt |
+
+Pressing Ctrl-C or sending EOF at the prompt is treated as a denial.
+
+In non-interactive sessions (piped stdin / no TTY), tools already in the persistent
+allowlist run automatically; all others are denied with a hint telling you to pre-approve
+them or set `TOOL_CONFIRM=false`.
+
+To disable confirmation and restore silent execution:
+
+```ini
+# config.ini
+TOOL_CONFIRM=false
+```
+
+or:
+
+```bash
+export YAI_TOOL_CONFIRM=false
+```
+
 ## MCP (Machine Comprehension Protocol)
 
 MCP allows AI models to use external tools:

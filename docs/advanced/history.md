@@ -157,48 +157,84 @@ This removes all previous messages from the current session's context but does n
 
 ## Advanced History Features
 
-### History File Format
+### Chat File Format
 
-The chat history files are stored as JSON with this structure:
+Chat sessions are stored as JSON files in `CHAT_HISTORY_DIR` (see
+[Configuration](../usage/configuration.md)). The current format keeps every field of a
+message, so restoring a session preserves tool calls, images, and reasoning content:
 
 ```json
 {
   "title": "Chat Title",
-  "created_at": "2024-06-01T12:00:00Z",
-  "updated_at": "2024-06-01T13:30:00Z",
-  "messages": [
+  "date": "2024-06-01T12:00:00+00:00",
+  "history": [
     {
       "role": "user",
-      "content": "User message here"
+      "content": "look at before.png"
     },
     {
       "role": "assistant",
-      "content": "Assistant response here"
+      "content": "",
+      "reasoning": "I should read the image first.",
+      "tool_calls": [
+        {
+          "id": "call_1",
+          "name": "fs_read_image",
+          "arguments": "{\"image_paths\": [\"before.png\"]}"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"images\": [...]}",
+      "name": "fs_read_image",
+      "tool_call_id": "call_1"
+    },
+    {
+      "role": "user",
+      "content": "and this one?",
+      "images": [
+        {
+          "data": "<base64 or URL>",
+          "media_type": "image/png",
+          "is_url": false
+        }
+      ]
     }
   ]
 }
 ```
 
-### Manual History Editing
+Optional fields are written only when they are set: `name`, `tool_call_id`, `tool_calls`,
+`reasoning`, and `images`. A `tool_calls` entry is `{"id", "name", "arguments"}`; an `images`
+entry is `{"data", "media_type", "is_url"}`.
 
-You can manually edit the history files:
+### Atomic Saves
 
-1. Navigate to your chat history directory
-2. Open the JSON file with any text editor
-3. Modify as needed (keeping the JSON structure intact)
-4. Save the file
+Sessions are written atomically: the new JSON is written to a hidden temporary file in the
+same directory (`.filename.pid.tmp`), flushed/`fsync`-ed, and then moved over the target file
+with `os.replace`. Consequences:
 
-### History Migration
+- an interrupted or failed save never truncates or corrupts the previously saved session;
+- `FileChatManager` writes the replacement file **before** deleting older sessions with the
+  same title, so a failed `/save` keeps the previous version loadable;
+- a failed save still raises `ChatSaveError` and is reported in the CLI.
 
-When upgrading YAICLI, history files are automatically migrated to newer formats if needed. If you're experiencing issues with history after an upgrade, try:
+### Compatibility and Migration
 
-```bash
-# Backup your history
-cp ~/.yaicli_history ~/.yaicli_history.bak
+Old session files that only contain `{"role", "content"}` messages still load: missing
+optional fields default to empty. New files are a superset of the legacy format, so no
+explicit migration step is required — loading then saving a session rewrites it in the
+current format. The same applies to `tool_calls`/`images`/`reasoning`: sessions saved by older
+versions simply do not contain them.
 
-# Remove the history file to create a fresh one
-rm ~/.yaicli_history
-```
+You can still edit a session file manually. Keep the top-level `title`/`date`/`history` keys;
+each message must at least have `role` and `content`, and any `tool_calls`/`images` entries must
+keep the shapes shown above (a damaged entry is skipped, but tool results whose assistant
+`tool_calls` were removed will make provider requests invalid).
+
+If a session file is corrupted, fix or delete that JSON file; the other sessions are
+unaffected.
 
 ### Disabling History
 

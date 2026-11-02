@@ -55,24 +55,32 @@ YAICLI offers auto-suggestions based on your command history. As you type, it sh
 
 - Press `→` (right arrow) to accept the full suggestion
 - Continue typing to ignore the suggestion
-- Press `Ctrl+→` to accept the next word of the suggestion
+- Press `Esc` then `f` to accept one word of the suggestion
 
 To disable auto-suggestions, set `AUTO_SUGGEST=false` in your configuration.
 
-## Multi-line Input
+## Multi-line and Long Input
 
-To enter multi-line input:
+The interactive prompt is deliberately single-line: `Enter` submits the current line, so
+`Alt+Enter` / `Esc+Enter` also submit rather than insert a newline. For long or multi-line
+prompts, pass the text as a quoted argument or pipe it:
 
-1. Type your text normally
-2. Press `Alt+Enter` or `Esc+Enter` to add a new line
-3. Continue adding lines as needed
-4. Press `Enter` on an empty line to submit
+```bash
+# Quote a multi-line string
+ai "$(cat prompt.txt)"
 
-This is useful for:
+# Pipe content and add an instruction
+cat error.log | ai "Explain these errors"
 
-- Writing multi-line code examples
-- Composing complex prompts
-- Structuring lists or tables
+# Here-document
+ai "$(cat <<'EOF'
+Summarize the following log and list the root cause:
+<paste log here>
+EOF
+)"
+```
+
+Piped stdin is combined with the prompt argument (stdin content comes first).
 
 ## Command Editing
 
@@ -141,6 +149,28 @@ ai -i img1.png -i img2.png "Compare these"
 # Image URL
 ai --image https://example.com/photo.jpg "Describe this"
 ```
+
+## Exit Codes
+
+YAICLI returns a non-zero exit status for failures it can detect, so scripts and CI can
+tell success from failure:
+
+| Exit code | Meaning |
+| --------- | ------- |
+| `0` | Success (answer produced; informational commands such as `--version`, `--list-*`). |
+| `1` | A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, no input/aborted action, or an unexpected error printed as `Unknown error: ...`. |
+
+A failure report such as `Unknown error: API_KEY is required` is accompanied by exit code
+`1`; if you see a failure message with exit code `0`, that is a bug. Verify the current
+build with:
+
+```bash
+ai --version; echo "exit=$?"
+```
+
+Inside the interactive `--chat` REPL, an error during one turn is printed and the session
+continues; the process exits `0` when you leave the REPL normally. Use single-shot mode when
+you need the exit code to reflect the request outcome.
 
 ## Next Steps
 
