@@ -178,6 +178,29 @@ class TestOpenAIProvider:
             assert responses[0].finish_reason == "stop"
             assert responses[0].tool_call is None
 
+    def test_completion_api_error_raises_provider_error(self, mock_config, mock_openai_client):
+        """A stream-time APIStatusError must not be swallowed: callers see ProviderError."""
+        import httpx
+        import openai
+
+        request = httpx.Request("POST", "https://fake-api.openai.com/v1/chat/completions")
+        response = httpx.Response(500, json={"error": {"message": "boom"}}, request=request)
+        api_error = openai.APIStatusError("boom", response=response, body={"error": {"message": "boom"}})
+        mock_openai_client.chat.completions.create.return_value = MagicMock()
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+            provider.console = MagicMock()
+
+            with patch.object(provider, "_handle_stream_response", side_effect=api_error):
+                with pytest.raises(ProviderError, match="OpenAI API error"):
+                    list(provider.completion([ChatMessage(role="user", content="Hello")], stream=True))
+
+        # The provider still prints the error body before raising it.
+        printed = [str(c.args[0]) for c in provider.console.print.call_args_list if c.args]
+        assert any("Error Response" in text for text in printed)
+
     @patch("yaicli.tools.get_openai_schemas")
     def test_completion_tool_call(self, mock_get_schemas, mock_config, mock_openai_client):
         """Test completion with tool call response"""

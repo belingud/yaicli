@@ -171,6 +171,9 @@ class OpenAIProvider(Provider):
             except Exception:
                 body = e.response.text
             self.console.print(f"Error Response: {body}")
+            # Do not swallow API errors: callers (and the process exit code) need to
+            # know the request failed. The REPL catches this and keeps the session.
+            raise ProviderError(f"OpenAI API error: {body}") from e
 
     @staticmethod
     def _generate_tool_call_id() -> str:
