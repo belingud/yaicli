@@ -11,10 +11,90 @@ from rich.table import Table
 from .config import cfg
 from .console import YaiConsole, get_console
 from .exceptions import ChatDeleteError, ChatLoadError, ChatSaveError
-from .schemas import ChatMessage
+from .schemas import ChatMessage, ImageData, ToolCall
 from .utils import option_callback
 
 console: YaiConsole = get_console()
+
+
+def _tool_call_to_dict(tool_call: ToolCall) -> Dict:
+    """Serialize a ToolCall into a JSON friendly dict."""
+    return {"id": tool_call.id, "name": tool_call.name, "arguments": tool_call.arguments}
+
+
+def _image_to_dict(image: ImageData) -> Dict:
+    """Serialize an ImageData into a JSON friendly dict."""
+    return {"data": image.data, "media_type": image.media_type, "is_url": image.is_url}
+
+
+def _message_to_dict(message: ChatMessage) -> Dict:
+    """Serialize a ChatMessage, including optional fields only when set.
+
+    Old sessions only stored ``role``/``content``; keeping unset optional fields
+    out of the JSON keeps newly written files compact while staying a superset
+    of the legacy format.
+    """
+    data: Dict = {"role": message.role, "content": message.content}
+    if message.name:
+        data["name"] = message.name
+    if message.tool_call_id:
+        data["tool_call_id"] = message.tool_call_id
+    if message.tool_calls:
+        data["tool_calls"] = [_tool_call_to_dict(tool_call) for tool_call in message.tool_calls]
+    if message.reasoning:
+        data["reasoning"] = message.reasoning
+    if message.images:
+        data["images"] = [_image_to_dict(image) for image in message.images]
+    return data
+
+
+def _tool_call_from_dict(data: Dict) -> ToolCall:
+    """Rebuild a ToolCall from a saved dict, tolerating missing fields."""
+    return ToolCall(
+        id=str(data.get("id") or ""),
+        name=str(data.get("name") or ""),
+        arguments=str(data.get("arguments") or ""),
+    )
+
+
+def _image_from_dict(data: Dict) -> ImageData:
+    """Rebuild an ImageData from a saved dict, tolerating missing fields."""
+    return ImageData(
+        data=str(data.get("data") or ""),
+        media_type=str(data.get("media_type") or ""),
+        is_url=bool(data.get("is_url", False)),
+    )
+
+
+def _message_from_dict(data: Dict) -> ChatMessage:
+    """Rebuild a ChatMessage from a saved dict.
+
+    Works for both the legacy ``{"role", "content"}`` format and the current
+    format with tool calls / images / reasoning. Non-dict entries and missing
+    fields fall back to safe defaults so a damaged entry can not raise KeyError.
+    """
+    if not isinstance(data, dict):
+        return ChatMessage(role="user", content=None)
+
+    raw_tool_calls = data.get("tool_calls")
+    tool_calls = []
+    if isinstance(raw_tool_calls, list):
+        tool_calls = [_tool_call_from_dict(item) for item in raw_tool_calls if isinstance(item, dict)]
+
+    raw_images = data.get("images")
+    images = []
+    if isinstance(raw_images, list):
+        images = [_image_from_dict(item) for item in raw_images if isinstance(item, dict)]
+
+    return ChatMessage(
+        role=str(data.get("role") or "user"),
+        content=data.get("content"),
+        name=data.get("name") or None,
+        tool_call_id=data.get("tool_call_id") or None,
+        tool_calls=tool_calls,
+        reasoning=data.get("reasoning") or None,
+        images=images,
+    )
 
 
 @dataclass
@@ -32,11 +112,11 @@ class Chat:
         self.history.append(ChatMessage(role=role, content=content))
 
     def to_dict(self) -> Dict:
-        """Convert to dictionary representation"""
+        """Convert to dictionary representation, preserving every message field."""
         return {
             "title": self.title,
             "date": self.date,
-            "history": [{"role": msg.role, "content": msg.content} for msg in self.history],
+            "history": [_message_to_dict(msg) for msg in self.history],
         }
 
     @classmethod
@@ -50,7 +130,7 @@ class Chat:
         )
 
         for msg_data in data.get("history", []):
-            chat.add_message(msg_data["role"], msg_data["content"])
+            chat.history.append(_message_from_dict(msg_data))
 
         return chat
 
@@ -68,15 +148,17 @@ class Chat:
                 data = json.load(f)
                 self.title = data.get("title", self.title)
                 self.date = data.get("date", self.date)
-                self.history = [
-                    ChatMessage(role=msg["role"], content=msg["content"]) for msg in data.get("history", [])
-                ]
+                self.history = [_message_from_dict(msg) for msg in data.get("history", [])]
             return True
         except (json.JSONDecodeError, OSError) as e:
             raise ChatLoadError(f"Error loading chat: {e}") from e
 
     def save(self, chat_dir: Path) -> bool:
-        """Save chat to file
+        """Save chat to file atomically
+
+        The chat is written to a temporary file in the same directory and then
+        moved into place with :func:`os.replace`, so a failed or interrupted
+        save never truncates a previously saved session file.
 
         Args:
             chat_dir: Directory to save chat file
@@ -102,18 +184,29 @@ class Chat:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         filename = f"{timestamp}-title-{self.title}.json"
         chat_path = chat_dir / filename
+        # Sibling temporary file: same filesystem, hidden from the "*.json"
+        # session listing, and unique per process to survive concurrent saves.
+        temp_path = chat_dir / f".{filename}.{os.getpid()}.tmp"
 
         try:
-            # Save the chat as JSON
-            with open(chat_path, "w", encoding="utf-8") as f:
+            # Write the full payload first, then atomically swap it into place.
+            with open(temp_path, "w", encoding="utf-8") as f:
                 json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_path, chat_path)
 
-            # Update chat's path to the new file
+            # Update chat's path to the new file only after a successful replace
             self.path = chat_path
             return True
         except Exception as e:
             error_msg = f"Error saving chat '{self.title}': {e}"
             raise ChatSaveError(error_msg) from e
+        finally:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 @dataclass
