@@ -2,6 +2,7 @@ import json
 import os
 from copy import deepcopy
 from typing import Any, Dict, Generator, List, Optional, cast
+from uuid import uuid4
 
 import openai
 from openai._streaming import Stream
@@ -171,8 +172,19 @@ class OpenAIProvider(Provider):
                 body = e.response.text
             self.console.print(f"Error Response: {body}")
 
+    @staticmethod
+    def _generate_tool_call_id() -> str:
+        """Generate a unique id for a tool call that arrived without one."""
+        return f"call_{uuid4().hex[:24]}"
+
     def _handle_normal_response(self, response: ChatCompletion) -> Generator[LLMResponse, None, None]:
-        """Handle normal (non-streaming) response"""
+        """Handle normal (non-streaming) response.
+
+        A response may contain several parallel tool calls; each one needs its own
+        ``LLMResponse`` so ``LLMClient`` can collect and execute all of them. The
+        assistant text/reasoning is attached to the first response only so it is not
+        accumulated multiple times.
+        """
         if not response.choices:
             yield LLMResponse(
                 content=json.dumps(getattr(response, "base_resp", None) or response.to_dict()), finish_reason="stop"
@@ -182,7 +194,6 @@ class OpenAIProvider(Provider):
         content = choice.message.content or ""
         reasoning = getattr(choice.message, "reasoning_content", "")
         finish_reason = choice.finish_reason
-        tool_call: Optional[ToolCall] = None
 
         # Check if the response contains reasoning content in model_extra
         if not reasoning and hasattr(choice.message, "model_extra") and choice.message.model_extra:
@@ -190,10 +201,22 @@ class OpenAIProvider(Provider):
             reasoning = self._get_reasoning_content(model_extra)
 
         if finish_reason == "tool_calls" and hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
-            tool = choice.message.tool_calls[0]
-            tool_call = ToolCall(tool.id, tool.function.name or "", tool.function.arguments)
+            for tool_call_index, tool in enumerate(choice.message.tool_calls):
+                function = getattr(tool, "function", None)
+                tool_call = ToolCall(
+                    getattr(tool, "id", None) or self._generate_tool_call_id(),
+                    (getattr(function, "name", None) if function else None) or "",
+                    (getattr(function, "arguments", None) if function else None) or "",
+                )
+                yield LLMResponse(
+                    reasoning=reasoning if tool_call_index == 0 else None,
+                    content=content if tool_call_index == 0 else "",
+                    finish_reason=finish_reason,
+                    tool_call=tool_call,
+                )
+            return
 
-        yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason, tool_call=tool_call)
+        yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason)
 
     def _first_chunk_error(self, chunk) -> Optional[LLMResponse]:
         """
@@ -207,9 +230,16 @@ class OpenAIProvider(Provider):
         return None
 
     def _handle_stream_response(self, response: Stream[ChatCompletionChunk]) -> Generator[LLMResponse, None, None]:
-        """Handle streaming response from OpenAI API"""
-        # Initialize tool call object to accumulate tool call data across chunks
-        tool_call: Optional[ToolCall] = None
+        """Handle streaming response from OpenAI API.
+
+        Tool calls are accumulated per ``delta.tool_calls[i].index`` (id/position
+        fallback) because the id and function name are only sent in the first chunk of
+        each call while arguments arrive in later, possibly interleaved, chunks. When
+        ``finish_reason == "tool_calls"`` every accumulated call is emitted as its own
+        ``LLMResponse`` (in index order) so the client can collect and execute all of
+        them. The chunk's text/reasoning is attached to the first emitted response.
+        """
+        accumulated_tool_calls: Dict[Any, ToolCall] = {}
         started = False
         # Process each chunk in the response stream
         for chunk in response:
@@ -233,20 +263,88 @@ class OpenAIProvider(Provider):
             # Extract reasoning content if available
             reasoning = self._get_reasoning_content(getattr(delta, "model_extra", None) or delta)
 
-            # Process tool call information that may be scattered across chunks
+            # Accumulate tool call information scattered across chunks, keyed by index
             if hasattr(delta, "tool_calls") and delta.tool_calls:
-                tool_call = self._process_tool_call_chunk(delta.tool_calls, tool_call)
+                self._accumulate_tool_call_chunks(delta.tool_calls, accumulated_tool_calls)
 
-            # Generate response object with tool_call only when finish_reason indicates completion
+            if finish_reason == "tool_calls":
+                tool_calls = self._finalize_tool_calls(accumulated_tool_calls)
+                accumulated_tool_calls = {}
+                if not tool_calls:
+                    yield LLMResponse(
+                        reasoning=reasoning, content=content, finish_reason=finish_reason, tool_call=None
+                    )
+                    continue
+                for tool_call_index, tool_call in enumerate(tool_calls):
+                    yield LLMResponse(
+                        reasoning=reasoning if tool_call_index == 0 else None,
+                        content=content if tool_call_index == 0 else "",
+                        tool_call=tool_call,
+                        finish_reason=finish_reason,
+                    )
+                continue
+
             yield LLMResponse(
                 reasoning=reasoning,
                 content=content,
-                tool_call=tool_call if finish_reason == "tool_calls" else None,
+                tool_call=None,
                 finish_reason=finish_reason,
             )
 
+    def _accumulate_tool_call_chunks(self, tool_calls, accumulated: Dict[Any, ToolCall]) -> None:
+        """Accumulate streamed tool-call chunks into ``accumulated`` keyed by index.
+
+        The OpenAI streaming format only includes ``id``/``function.name`` in the first
+        chunk of a tool call and sends argument fragments afterwards; several calls can
+        be interleaved in a single chunk, hence the per-``index`` bookkeeping. When
+        ``index`` is absent (some OpenAI-compatible servers) the id or the chunk
+        position is used as the key.
+        """
+        for position, tool in enumerate(tool_calls):
+            index = getattr(tool, "index", None)
+            if index is None:
+                index = getattr(tool, "id", None) or position
+            tool_call = accumulated.get(index)
+            if tool_call is None:
+                tool_call = ToolCall(id="", name="", arguments="")
+                accumulated[index] = tool_call
+
+            tool_id = getattr(tool, "id", None)
+            if tool_id:
+                tool_call.id = tool_id
+
+            function = getattr(tool, "function", None)
+            if function is None:
+                continue
+            name = getattr(function, "name", None)
+            if name:
+                tool_call.name = name
+            arguments = getattr(function, "arguments", None)
+            if arguments:
+                tool_call.arguments += arguments
+
+    def _finalize_tool_calls(self, accumulated: Dict[Any, ToolCall]) -> List[ToolCall]:
+        """Return the accumulated tool calls in index order with unique ids."""
+        def sort_key(item):
+            index = item[0]
+            if isinstance(index, int):
+                return (0, index)
+            return (1, 0)
+
+        tool_calls = [tool_call for _, tool_call in sorted(accumulated.items(), key=sort_key)]
+        for tool_call in tool_calls:
+            if not tool_call.id:
+                tool_call.id = self._generate_tool_call_id()
+        return tool_calls
+
     def _process_tool_call_chunk(self, tool_calls, existing_tool_call=None):
-        """Process tool call data from a response chunk"""
+        """Accumulate a single tool call from a response chunk (legacy helper).
+
+        Kept for provider subclasses that override the streaming handler and still
+        assume one tool call per response (chatglm/minimax/openai-compatible).
+        ``_handle_stream_response`` uses ``_accumulate_tool_call_chunks`` instead and
+        supports parallel calls.
+        """
         # Initialize tool call object if this is the first chunk with tool call data
         if existing_tool_call is None and tool_calls:
             existing_tool_call = ToolCall(tool_calls[0].id or "", tool_calls[0].function.name or "", "")

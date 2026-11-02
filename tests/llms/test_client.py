@@ -2,9 +2,12 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from openai.types.chat.chat_completion import ChatCompletion
+from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from yaicli.llms.client import LLMClient
 from yaicli.llms.provider import Provider
+from yaicli.llms.providers.openai_provider import OpenAIProvider
 from yaicli.schemas import ChatMessage, LLMResponse, RefreshLive, ToolCall, ToolPolicy
 
 
@@ -299,3 +302,167 @@ class TestLLMClient:
         assert mock_execute_tool.call_args[0][0].name == "_mcp__clock"
         assert any(isinstance(response, RefreshLive) for response in responses)
         assert messages[-3].tool_calls == [mcp_tool_call]
+
+    @patch("yaicli.llms.client.execute_tool_call")
+    def test_completion_with_parallel_tool_calls_executes_all(self, mock_execute_tool, mock_config):
+        """End-to-end: a provider emitting two parallel tool calls executes both of them.
+
+        Uses the real OpenAI provider (no mocked factory) so the provider parsing and the
+        client collection/execution loop are exercised together.
+        """
+        first_response = ChatCompletion.model_validate(
+            {
+                "id": "chatcmpl-multi",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "gpt-4",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "tool_calls",
+                        "message": {
+                            "role": "assistant",
+                            "content": "Reading both files",
+                            "tool_calls": [
+                                {
+                                    "id": "call_a",
+                                    "type": "function",
+                                    "function": {"name": "fs_read_file", "arguments": '{"path": "a.txt"}'},
+                                },
+                                {
+                                    "id": "call_b",
+                                    "type": "function",
+                                    "function": {"name": "fs_read_file", "arguments": '{"path": "b.txt"}'},
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        )
+        second_response = ChatCompletion.model_validate(
+            {
+                "id": "chatcmpl-final",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "gpt-4",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {"role": "assistant", "content": "Both files read"},
+                    }
+                ],
+            }
+        )
+        mock_config["ENABLE_FUNCTIONS"] = True
+        with patch.object(OpenAIProvider, "CLIENT_CLS"):
+            client = LLMClient(provider_name="openai", config=mock_config)
+
+        client.provider.client = MagicMock()
+        client.provider.client.chat.completions.create.side_effect = [first_response, second_response]
+        mock_execute_tool.side_effect = lambda tool_call, announce=True: (f"result-{tool_call.id}", True)
+
+        messages = [ChatMessage(role="user", content="read a.txt and b.txt")]
+        responses = list(client.completion_with_tools(messages, stream=False))
+
+        # both tool calls executed, in index order
+        assert mock_execute_tool.call_count == 2
+        assert [call.args[0].id for call in mock_execute_tool.call_args_list] == ["call_a", "call_b"]
+        assert [call.args[0].name for call in mock_execute_tool.call_args_list] == [
+            "fs_read_file",
+            "fs_read_file",
+        ]
+
+        # assistant message keeps both calls; history has one tool result per call
+        assistant_messages = [message for message in messages if message.role == "assistant"]
+        assert [tool.id for tool in assistant_messages[0].tool_calls] == ["call_a", "call_b"]
+        tool_messages = [message for message in messages if message.role == "tool"]
+        assert [message.tool_call_id for message in tool_messages] == ["call_a", "call_b"]
+        assert [message.content for message in tool_messages] == ["result-call_a", "result-call_b"]
+
+        # final answer was still received
+        assert any(getattr(response, "content", None) == "Both files read" for response in responses)
+
+    @patch("yaicli.llms.client.execute_tool_call")
+    def test_completion_with_parallel_tool_calls_streaming_executes_all(self, mock_execute_tool, mock_config):
+        """Streaming end-to-end: interleaved parallel tool call chunks are all executed."""
+
+        def chunk(choices):
+            return ChatCompletionChunk.model_validate(
+                {
+                    "id": "chatcmpl-stream",
+                    "object": "chat.completion.chunk",
+                    "created": 1,
+                    "model": "gpt-4",
+                    "choices": choices,
+                }
+            )
+
+        first_stream = [
+            chunk([{"index": 0, "delta": {"role": "assistant", "content": "Reading both"}, "finish_reason": None}]),
+            chunk(
+                [
+                    {
+                        "index": 0,
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "id": "call_a",
+                                    "type": "function",
+                                    "function": {"name": "fs_read_file", "arguments": ""},
+                                },
+                                {
+                                    "index": 1,
+                                    "id": "call_b",
+                                    "type": "function",
+                                    "function": {"name": "fs_read_file", "arguments": ""},
+                                },
+                            ]
+                        },
+                        "finish_reason": None,
+                    }
+                ]
+            ),
+            chunk(
+                [
+                    {
+                        "index": 0,
+                        "delta": {
+                            "tool_calls": [
+                                {"index": 1, "function": {"arguments": '{"path": "b.txt"}'}},
+                                {"index": 0, "function": {"arguments": '{"path": "a.txt"}'}},
+                            ]
+                        },
+                        "finish_reason": None,
+                    }
+                ]
+            ),
+            chunk([{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]),
+        ]
+        second_stream = [
+            chunk([{"index": 0, "delta": {"role": "assistant", "content": "Both files read"}, "finish_reason": None}]),
+            chunk([{"index": 0, "delta": {"content": ""}, "finish_reason": "stop"}]),
+        ]
+
+        mock_config["ENABLE_FUNCTIONS"] = True
+        with patch.object(OpenAIProvider, "CLIENT_CLS"):
+            client = LLMClient(provider_name="openai", config=mock_config)
+
+        client.provider.client = MagicMock()
+        client.provider.client.chat.completions.create.side_effect = [first_stream, second_stream]
+        mock_execute_tool.side_effect = lambda tool_call, announce=True: (f"result-{tool_call.id}", True)
+
+        messages = [ChatMessage(role="user", content="read a.txt and b.txt")]
+        responses = list(client.completion_with_tools(messages, stream=True))
+
+        assert mock_execute_tool.call_count == 2
+        assert [call.args[0].id for call in mock_execute_tool.call_args_list] == ["call_a", "call_b"]
+        assert [call.args[0].arguments for call in mock_execute_tool.call_args_list] == [
+            '{"path": "a.txt"}',
+            '{"path": "b.txt"}',
+        ]
+        tool_messages = [message for message in messages if message.role == "tool"]
+        assert [message.tool_call_id for message in tool_messages] == ["call_a", "call_b"]
+        assert any(getattr(response, "content", None) == "Both files read" for response in responses)
