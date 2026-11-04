@@ -588,3 +588,153 @@ class TestStructuredErrorOutcomes:
         payload = json.loads(buffer.getvalue())
         assert payload["exit_code"] == 1
         assert payload["error"]["kind"] == "depth_limit"
+
+
+class _PollutingProvider:
+    """Fake provider that writes diagnostics through its own console."""
+
+    def __init__(self):
+        self.console = None
+
+
+class _PollutingClient:
+    """Fake LLMClient reproducing provider-side stdout writes (K04 D1/D2)."""
+
+    def __init__(self, *args, **kwargs):
+        self.console = None
+        self.provider = _PollutingProvider()
+        self.interactive = True
+        self.approval = None
+        self.depth_limit_reached = False
+        self.tool_denied = False
+
+    def completion_with_tools(self, messages, **kwargs):
+        # Real providers dump the request in --verbose and print API error bodies
+        # through ``self.console`` (captured at construction time from get_console()).
+        self.provider.console.print("Messages:")
+        self.provider.console.print([{"role": "user", "content": "hi"}])
+        self.provider.console.print("Error Response: {'error': 'boom'}")
+        self.console.print("Skipping disallowed tool calls: x")
+        yield LLMResponse(content="answer")
+
+
+class _NoisyConstructionClient(_PollutingClient):
+    """Fake client that prints before the CLI can re-point its console."""
+
+    def __init__(self, *args, **kwargs):
+        print("Provider not found, using openai as default")
+        super().__init__(*args, **kwargs)
+
+
+class TestProviderStdoutIsolation:
+    def test_json_stdout_clean_with_polluting_provider(self):
+        with patch("yaicli.cli.LLMClient", _PollutingClient):
+            result = runner.invoke(app, ["-p", "--json", "hi"])
+
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)  # exactly one JSON object
+        assert payload["content"] == "answer"
+        assert "Messages:" not in result.stdout
+        assert "Error Response" not in result.stdout
+        assert "Skipping disallowed tool calls" not in result.stdout
+        # Diagnostics still reach the operator on stderr.
+        assert "Error Response: {'error': 'boom'}" in result.stderr
+        assert "Skipping disallowed tool calls" in result.stderr
+
+    def test_verbose_json_stdout_stays_single_object(self):
+        with patch("yaicli.cli.LLMClient", _PollutingClient):
+            result = runner.invoke(app, ["-p", "--json", "--verbose", "hi"])
+
+        assert result.exit_code == 0, result.stderr
+        assert result.stdout.count("\n") == 1
+        json.loads(result.stdout)
+        for noise in ("Messages:", "Error Response", "Loading Configuration:", "Config file path:"):
+            assert noise not in result.stdout, f"{noise!r} leaked to stdout"
+            assert noise in result.stderr, f"{noise!r} missing from stderr"
+
+    def test_stream_json_stdout_is_ndjson_only(self):
+        with patch("yaicli.cli.LLMClient", _PollutingClient):
+            result = runner.invoke(app, ["-p", "--output-format", "stream-json", "hi"])
+
+        assert result.exit_code == 0, result.stderr
+        lines = [line for line in result.stdout.splitlines() if line.strip()]
+        events = [json.loads(line) for line in lines]
+        assert events[0]["type"] == "turn_start"
+        assert events[-1]["type"] == "done"
+        assert "Messages:" not in result.stdout
+        assert "Messages:" in result.stderr
+
+    def test_construction_warnings_are_redirected_to_stderr(self):
+        with patch("yaicli.cli.LLMClient", _NoisyConstructionClient):
+            result = runner.invoke(app, ["-p", "--json", "hi"])
+
+        assert result.exit_code == 0, result.stderr
+        json.loads(result.stdout)
+        assert "Provider not found" not in result.stdout
+        assert "Provider not found" in result.stderr
+
+    def test_client_and_provider_consoles_repointed_in_machine_mode(self):
+        client = _PollutingClient()
+        cli = CLI(client=client, print_mode=True, output_format="json")
+        assert cli.machine_output is True
+        assert cli.client.console is cli.console
+        assert cli.client.provider.console is cli.console
+        assert cli.client.interactive is False
+
+
+class TestConstructorHeadlessIntent:
+    def test_print_mode_constructor_skips_prompt_session_and_uses_stderr(self):
+        with (
+            patch("yaicli.cli.PromptSession") as mock_session,
+            patch("yaicli.cli.get_console") as get_console_mock,
+            patch("yaicli.cli.get_error_console") as get_error_console_mock,
+            patch.object(CLI, "_stdin_is_tty", return_value=True),
+            patch.object(CLI, "_stdout_is_tty", return_value=True),
+        ):
+            stdout_console = MagicMock()
+            stderr_console = MagicMock()
+            get_console_mock.return_value = stdout_console
+            get_error_console_mock.return_value = stderr_console
+            cli = CLI(print_mode=True, output_format="json", client=MagicMock())
+
+        mock_session.assert_not_called()
+        assert cli.interactive is False
+        assert cli.machine_output is True
+        assert cli.session is None
+        assert cli.console is stderr_console
+        assert cli.printer.console is stderr_console
+
+    def test_quiet_tty_skips_prompt_session_and_uses_stderr(self):
+        with (
+            patch("yaicli.cli.PromptSession") as mock_session,
+            patch("yaicli.cli.get_console"),
+            patch("yaicli.cli.get_error_console") as get_error_console_mock,
+            patch.object(CLI, "_stdin_is_tty", return_value=True),
+            patch.object(CLI, "_stdout_is_tty", return_value=True),
+        ):
+            stderr_console = MagicMock()
+            get_error_console_mock.return_value = stderr_console
+            cli = CLI(quiet=True, client=MagicMock())
+
+        mock_session.assert_not_called()
+        assert cli.machine_output is True
+        assert cli.session is None
+        assert cli.console is stderr_console
+
+    def test_plain_tty_still_builds_prompt_session_and_stdout_console(self):
+        with (
+            patch("yaicli.cli.PromptSession") as mock_session,
+            patch("yaicli.cli.get_console") as get_console_mock,
+            patch("yaicli.cli.get_error_console") as get_error_console_mock,
+            patch.object(CLI, "_stdin_is_tty", return_value=True),
+            patch.object(CLI, "_stdout_is_tty", return_value=True),
+        ):
+            stdout_console = MagicMock()
+            get_console_mock.return_value = stdout_console
+            cli = CLI(client=MagicMock())
+
+        assert mock_session.call_count == 1
+        assert cli.interactive is True
+        assert cli.machine_output is False
+        assert cli.console is stdout_console
+        get_error_console_mock.assert_not_called()

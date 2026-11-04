@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
+from ..console import get_error_console
 from ..const import MCP_JSON_PATH
 from ..utils import get_or_create_event_loop
 
@@ -401,7 +402,11 @@ class MCPToolConverter:
 
         # Dynamic function
         def dynamic_function(**kwargs):
-            print(f"\033[94m@MCP call: {dynamic_function.__name__}({json.dumps(kwargs)})\033[0m")
+            # stderr: stdout is reserved for the tool result (headless JSON purity).
+            try:
+                get_error_console().print(f"@MCP call: {dynamic_function.__name__}({json.dumps(kwargs)})", style="blue")
+            except Exception:  # noqa: BLE001 - diagnostics must never break the tool call
+                pass
             return tool_obj.execute(**kwargs)
 
         # Set function attributes

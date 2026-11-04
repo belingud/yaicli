@@ -124,13 +124,23 @@ class CLI:
         role_manager: Optional[RoleManager] = None,
         context_manager: Optional[ContextManager] = None,
         client=None,
+        print_mode: bool = False,
+        output_format: str = DEFAULT_OUTPUT_FORMAT,
+        quiet: bool = False,
     ):
         self.verbose: bool = verbose
         # Set when a handled LLM/API failure occurs; single-shot mode turns it into
         # a non-zero process exit (the REPL only prints and continues).
         self.had_error: bool = False
         # ---- v0.19 headless state contract ----
-        self.interactive: bool = self._stdin_is_tty() and self._stdout_is_tty()
+        # The headless intent must be known *before* the console/printer/client and
+        # prompt_toolkit session are created (K04 D3): on a TTY, `-p --json` must
+        # not build prompt_toolkit nor print verbose diagnostics to stdout.
+        self.print_mode: bool = bool(print_mode)
+        self.output_format: str = output_format if output_format in OUTPUT_FORMATS else DEFAULT_OUTPUT_FORMAT
+        self.quiet: bool = bool(quiet)
+        self.interactive: bool = self._stdin_is_tty() and self._stdout_is_tty() and not self.print_mode
+        self.machine_output: bool = (not self.interactive) or self.quiet or self.output_format != "text"
         self.exit_code: int = EXIT_OK
         self.interrupted: bool = False
         self.depth_limit_reached: bool = False
@@ -139,16 +149,13 @@ class CLI:
         self.error_message: Optional[str] = None
         self.last_content: str = ""
         self.tool_calls: List[Dict[str, Any]] = []
-        # Headless run options; entry.py calls configure_headless() with the flags.
-        self.print_mode: bool = False
-        self.output_format: str = DEFAULT_OUTPUT_FORMAT
-        self.quiet: bool = False
+        # Remaining headless run options; entry.py calls configure_headless() with
+        # the flags (yes/allowed-tools/fail-on-denied/max-turns/cwd).
         self.yes: bool = False
         self.allowed_tools: List[str] = []
         self.fail_on_tool_denied: bool = False
         self.max_turns: Optional[int] = None
         self.cwd: Optional[str] = None
-        self.machine_output: bool = (not self.interactive) or self.output_format != "text"
         # --role can specify a role when enter interactive chat
         # TAB will switch between role and shell
         self.init_role: str = role
@@ -163,6 +170,10 @@ class CLI:
         self.role: Role = self.role_manager.get_role(self.role_name)
         self.printer = self._make_printer()
         self.client = client or self._create_client()
+        # Providers capture their own stdout console at construction time; in
+        # machine mode every diagnostic (verbose request dumps, error bodies) must
+        # use stderr, so re-point the client *and* its provider console here.
+        self._sync_client_console()
         self.cmd_handler = CmdHandler(self)
 
         self.bindings = KeyBindings()
@@ -198,9 +209,10 @@ class CLI:
 
         # v0.19 K04/K21: do not build a prompt_toolkit session for one-shot/pipe
         # runs (it is useless there and can print warnings); the REPL builds its
-        # own session lazily in prepare_chat_loop().
+        # own session lazily in prepare_chat_loop(). This also keeps -p/--json TTY
+        # invocations free of prompt_toolkit cost/noise (K04 D3).
         self.session = None
-        if self.interactive:
+        if self.interactive and not self.machine_output:
             # Disable prompt_toolkit warning when use non-tty input,
             # e.g. when use pipe or redirect
             _origin_stderr = None
@@ -214,6 +226,29 @@ class CLI:
                     sys.stderr.flush()
                     sys.stderr.close()
                     sys.stderr = _origin_stderr
+
+    def _sync_client_console(self) -> None:
+        """Point the LLM client and its provider at this CLI's console.
+
+        ``LLMClient`` and every provider capture ``get_console()`` (stdout) when
+        constructed. In machine-output modes their diagnostics — verbose request
+        dumps, ``Error Response: {...}`` bodies, skipped-tool warnings — must go
+        to stderr so structured stdout stays parseable. Tool announcements are
+        handled separately by ``yaicli.tools.console`` in :meth:`configure_headless`.
+        """
+        if self.client is None:  # pragma: no cover - defensive
+            return
+        try:
+            self.client.interactive = bool(self.interactive and not self.machine_output)
+            self.client.console = self.console
+        except AttributeError:  # pragma: no cover - client without these slots
+            return
+        try:
+            provider = getattr(self.client, "provider", None)
+            if provider is not None and hasattr(provider, "console"):
+                provider.console = self.console
+        except (AttributeError, TypeError):  # pragma: no cover - exotic provider object
+            pass
 
     # ------------------- v0.19 headless configuration -------------------
     @staticmethod
@@ -295,13 +330,10 @@ class CLI:
                 pass
 
         # Keep the LLM client in sync: a one-shot/structured run must not block on
-        # interactive tool approval prompts (K06 owns the richer policy).
-        if self.client is not None:
-            try:
-                self.client.interactive = self.interactive and not self.machine_output
-                self.client.console = self.console
-            except AttributeError:  # pragma: no cover - client without these slots
-                pass
+        # interactive tool approval prompts (K06 owns the richer policy), and the
+        # client/provider consoles must be the stderr console of this mode so
+        # verbose dumps and provider error bodies never reach stdout.
+        self._sync_client_console()
 
     def _emit_event(self, event: Dict[str, Any]) -> None:
         """Write one stream-json event (one JSON object per line) to stdout."""
@@ -1119,7 +1151,18 @@ class CLI:
         self._finalize_headless()
 
     def _create_client(self):
-        """Create an LLM client instance based on configuration"""
+        """Create an LLM client instance based on configuration.
+
+        In machine-output mode the client/provider constructors would otherwise
+        write their diagnostics (unknown-provider warning, SDK noise) to the real
+        stdout before :meth:`_sync_client_console` can re-point their consoles.
+        Redirect stdout to stderr for the duration of the construction only; the
+        original stream is restored immediately afterwards.
+        """
+        redirect_stdout = self.machine_output
+        original_stdout = sys.stdout
+        if redirect_stdout:
+            sys.stdout = sys.stderr
         try:
             return LLMClient(
                 provider_name=cfg["PROVIDER"].lower(),
@@ -1134,3 +1177,6 @@ class CLI:
         except YaicliError as e:
             self.console.print(f"Error creating client: {safe_text(e)}", style="red")
             raise typer.Abort()
+        finally:
+            if redirect_stdout:
+                sys.stdout = original_stdout

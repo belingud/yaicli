@@ -70,7 +70,9 @@ class TestTyperApp:
         prompt_text = "list files"
         result = runner.invoke(app, ["--shell", prompt_text])
         assert result.exit_code == 0
-        mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
+        mock_cli_class.assert_called_once_with(
+            verbose=False, role="DEFAULT", print_mode=False, output_format="text", quiet=False
+        )
         mock_cli_instance.run.assert_called_once_with(
             chat=False, shell=True, code=False, user_input=prompt_text, images=[]
         )
@@ -81,7 +83,9 @@ class TestTyperApp:
         prompt_text = "what is the date?"
         result = runner.invoke(app, [prompt_text])
         assert result.exit_code == 0
-        mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
+        mock_cli_class.assert_called_once_with(
+            verbose=False, role="DEFAULT", print_mode=False, output_format="text", quiet=False
+        )
         mock_cli_instance.run.assert_called_once_with(
             chat=False, shell=False, code=False, user_input=prompt_text, images=[]
         )
@@ -93,7 +97,9 @@ class TestTyperApp:
         result = runner.invoke(app, ["--verbose", prompt_text])
         assert result.exit_code == 0
         # Verify CLI was instantiated with verbose=True
-        mock_cli_class.assert_called_once_with(verbose=True, role="DEFAULT")
+        mock_cli_class.assert_called_once_with(
+            verbose=True, role="DEFAULT", print_mode=False, output_format="text", quiet=False
+        )
         mock_cli_instance.run.assert_called_once_with(
             chat=False, shell=False, code=False, user_input=prompt_text, images=[]
         )
@@ -106,7 +112,9 @@ class TestTyperApp:
         with patch("sys.stdin.isatty", return_value=False):
             result = runner.invoke(app, input=stdin_text)
         assert result.exit_code == 0
-        mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
+        mock_cli_class.assert_called_once_with(
+            verbose=False, role="DEFAULT", print_mode=False, output_format="text", quiet=False
+        )
         mock_cli_instance.run.assert_called_once_with(
             chat=False, shell=False, code=False, user_input=stdin_text, images=[]
         )
@@ -120,7 +128,9 @@ class TestTyperApp:
         with patch("sys.stdin.isatty", return_value=False):
             result = runner.invoke(app, [arg_text], input=stdin_text)
         assert result.exit_code == 0
-        mock_cli_class.assert_called_once_with(verbose=False, role="DEFAULT")
+        mock_cli_class.assert_called_once_with(
+            verbose=False, role="DEFAULT", print_mode=False, output_format="text", quiet=False
+        )
         mock_cli_instance.run.assert_called_once_with(
             chat=False, shell=False, code=False, user_input=expected_prompt, images=[]
         )

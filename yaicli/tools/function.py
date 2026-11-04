@@ -39,7 +39,14 @@ def wrap_gemini_function(func: Callable) -> Callable:
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        print(f"\033[94m@Function call: {wrapper.__name__}({json.dumps(kwargs) if kwargs else args})\033[0m")
+        # Diagnostics go to stderr: stdout is reserved for results (headless JSON).
+        # This wrapper is used by the Gemini function-calling path; never let a
+        # non-serializable argument or a closed pipe break the actual call.
+        try:
+            payload = json.dumps(kwargs) if kwargs else repr(args)
+            get_error_console().print(f"@Function call: {wrapper.__name__}({payload})", style="blue")
+        except Exception:  # noqa: BLE001 - diagnostics must never break the call
+            pass
         return func(*args, **kwargs)
 
     return wrapper

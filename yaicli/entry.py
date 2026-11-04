@@ -671,8 +671,16 @@ def main(
 
     cli = None
     try:
-        # Instantiate the main CLI class with the specified role
-        cli = CLI(verbose=verbose, role=role)
+        # Instantiate the main CLI class with the specified role. The headless
+        # intent (K04 D3) is passed to the constructor so the console/printer/
+        # client/prompt_toolkit setup is already correct before any output.
+        cli = CLI(
+            verbose=verbose,
+            role=role,
+            print_mode=print_mode,
+            output_format=output_format_value,
+            quiet=quiet,
+        )
         # Apply the v0.19 headless contract (state attributes live on the CLI).
         cli.configure_headless(
             print_mode=print_mode,
