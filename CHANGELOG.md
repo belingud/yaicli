@@ -1,3 +1,39 @@
+
+---
+## [0.19.0](https://github.com/belingud/yaicli/compare/v0.18.0..v0.19.0) - 2026-11-04
+
+### ⛰️  Features
+
+- feat(permissions): risk-aware confirmation, rule-based allowlist and audit log
+
+K06: tool risk classes (read/write/network/exec) and a shlex-based danger classifier gate execution: dangerous shell commands always need explicit confirmation (non-interactive => deny, even with TOOL_CONFIRM=false), --yes auto-allows only read risk, --allowed-tools grants globs for one run. tool_permissions.json v2 adds argv_prefix/path_glob rules while still reading the v1 always_allow format; writes are atomic and 0600. The confirmation prompt now shows the canonical arguments that will execute (shell command + danger reasons, fs_write target/mode, fs_edit diff head 40). Denied calls return structured {error: tool_denied, reason} results and tool_denied feeds --fail-on-tool-denied (exit 3). Every decision is appended to tool_audit.jsonl (best-effort, secret-redacted) and /permissions can list/revoke. - ([c83c87c](https://github.com/belingud/yaicli/commit/c83c87c02f82c507a6a28df70568be4fc9f48640)) - Belingud
+- feat(agent): context economy, retries and classified provider errors
+
+K02: single truncation point for tool output (per-tool caps, head/tail marker, full text spilled to TOOL_OUTPUT_DIR), heuristic token estimator + model-window budget, turn-group-aligned history trimming that never orphans role=tool messages, context-length 400 self-heal (trim one group, retry once), bounded exponential retry for rate-limit/network/timeout/5xx before any content is streamed, depth-limit finish_reason/flag, /context usage summary and /compact.
+K05: all 39 provider registry keys now raise classified AgentError (kind/status/retryable) instead of returning API errors as assistant content or silently stopping; request-time and mid-stream failures are wrapped, empty/in-band error bodies raise, and TIMEOUT is forwarded consistently. - ([3b8e27d](https://github.com/belingud/yaicli/commit/3b8e27d4e7bff982128072bd645d80cdd55650da)) - Belingud
+- feat(cli): headless scripting contract and side-effect-free startup
+
+K04: new -p/--print, --output-format text|json|stream-json, --json (shorthand), -q/--quiet, --max-turns, -y/--yes, --allowed-tools, --cwd and --fail-on-tool-denied flags; stdout carries only the result/events while warnings, errors and progress go to stderr; non-TTY runs skip prompt_toolkit/banner/Live; JSON object and NDJSON event contracts; exit codes 0/1/2/3/130/141; SIGINT semantics (one-shot 130, REPL clears/cancels); POSIX SIGPIPE restore so 'ai --help | head' no longer exits 1; --shell non-TTY only prints the command unless --yes.
+K21: new _faststart console entry answers --version from the static __version__ without importing config/role/CLI (zero writes), python -m yaicli works, config/role/chat imports are write-free and lazy, ensure_config_file() creates config.ini 0600 under dir 0700 on first real run only, config dir resolution honours YAI_CONFIG_DIR/XDG/APPDATA and never writes /.config for an empty HOME. Includes the v0.19 error taxonomy/retry backbone (errors.py) and stderr console/EPIPE handling. - ([978eec5](https://github.com/belingud/yaicli/commit/978eec5a58fb976bed40bcea6964491ab3c56b09)) - Belingud
+- feat(functions): load built-in tools out of the box and harden shell execution
+
+K01/K15: load the 12 packaged builtins directly, let same-named user copies override them, and warn about stale exported copies via functions_manifest.json (version+sha256). A broken function file is skipped with one warning instead of bricking every tool. --install-functions now exports editable copies; --reinstall-functions refreshes them. K03: shell tool gains timeout (default 120s, process-group kill), workspace-bounded cwd, env allowlist (TOOL_ENV_INHERIT opt-in), output cap and exits 124 on timeout; the old 3-substring danger blacklist is replaced by shlex/argv classification in tools/risk.py. - ([77bd086](https://github.com/belingud/yaicli/commit/77bd086bb83c89faaefa278eb7ddc497b816b674)) - Belingud
+
+### 📚 Documentation
+
+- docs: reposition YAICLI as a lightweight agent and document v0.19
+
+Rewrite README/docs index around the agent-first, lightweight-first positioning; add a 3-step quick start and the measured footprint table (with the sandbox measurement caveat). New pages: usage/headless (stdout/stderr contract, JSON/NDJSON, exit codes), usage/permissions (risk classes, rules v2, audit, /permissions), usage/context-limits (truncation, budget, /context, /compact), advanced/upgrade (v0.19 changes, reinstall, XDG config dirs). Move the 30+ provider matrix to a Compatibility section and sync mkdocs nav. - ([dbd0a0b](https://github.com/belingud/yaicli/commit/dbd0a0b4a95dd30e15b54484721705baa4153a7c)) - Belingud
+- docs(trellis): sync release spec with v0.18.0 release flow - ([84d9a13](https://github.com/belingud/yaicli/commit/84d9a13c3c2e72a8a6728ec789971f4279b35960)) - Belingud
+- docs: update CHANGELOG for v0.18.0 release - ([7e947dd](https://github.com/belingud/yaicli/commit/7e947dde8d7d0c73cba44d1e0486a3a0e61cea30)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore(release): v0.19.0
+
+Bump to 0.19.0 and point ai/yaicli console scripts at yaicli._faststart:main; update the PyPI description to 'A lightweight agent in your terminal'. The static __version__ in yaicli/__init__.py is now kept in sync with pyproject.toml by bump2version. - ([fe62929](https://github.com/belingud/yaicli/commit/fe62929cf9d32fcee9bcd3df54214ab1fc3e4985)) - Belingud
+- chore: refresh uv.lock for v0.18.0 release - ([b7b868f](https://github.com/belingud/yaicli/commit/b7b868fc2359712c7d042cf4cc7999897b9d2d9e)) - Belingud
+
 ---
 ## [0.18.0](https://github.com/belingud/yaicli/compare/v0.17.0..v0.18.0) - 2026-11-02
 
