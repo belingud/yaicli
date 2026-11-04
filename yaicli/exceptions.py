@@ -15,7 +15,25 @@ class ConfigMissingError(ConfigError):
 
 
 class ProviderError(YaicliError):
-    """Error in provider"""
+    """Error in provider
+
+    Providers should attach a ``kind`` (see ``yaicli.errors.ErrorKind``) and the
+    HTTP status when known so the client can classify the failure, decide on
+    retries and render an actionable message. All attributes keep v0.18
+    defaults, so existing ``ProviderError("message")`` call sites stay valid.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        kind=None,
+        status_code: int | None = None,
+        retryable: bool | None = None,
+    ):
+        self.kind = kind
+        self.status_code = status_code
+        self.retryable = retryable
+        super().__init__(message)
 
 
 class ChatSaveError(YaicliError):

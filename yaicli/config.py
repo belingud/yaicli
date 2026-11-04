@@ -1,9 +1,11 @@
 import configparser
 import json
+import os
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from os import getenv
+from pathlib import Path
 from typing import Any, Optional
 
 from rich import get_console
@@ -19,6 +21,40 @@ from .const import (
 )
 from .exceptions import ConfigError
 from .utils import str2bool
+
+# File-system diagnostics go to stderr (the headless contract keeps stdout for
+# results) and must never take the process down: importing this module happens
+# in containers / read-only HOMEs where creating state is simply not possible.
+# ``yaicli.console`` cannot be imported here (console.py imports this module
+# first), so this is a plain lazily-created Rich console.
+_error_console: Optional[Console] = None
+_warned_keys: set = set()
+
+
+def _get_error_console() -> Console:
+    global _error_console
+    if _error_console is None:
+        _error_console = Console(stderr=True)
+    return _error_console
+
+
+def _warn_once(key: str, message: str) -> None:
+    """Report one best-effort filesystem failure on stderr; never raise."""
+    if key in _warned_keys:
+        return
+    _warned_keys.add(key)
+    try:
+        _get_error_console().print(f"[yellow]Warning:[/yellow] {message}", style="dim")
+    except Exception:  # noqa: BLE001 - diagnostics must never break startup
+        pass
+
+
+def _chmod(path: Path, mode: int) -> None:
+    """Best-effort POSIX mode change (no-op where chmod is unavailable)."""
+    try:
+        os.chmod(path, mode)
+    except OSError:
+        pass
 
 
 class CasePreservingConfigParser(configparser.RawConfigParser):
@@ -82,35 +118,48 @@ class Config(dict):
         """Ensure configuration keys added in version updates exist in the config file.
 
         Uses config parser to check for missing keys instead of full text search.
-        Only writes to file if keys are actually missing.
+        Only writes to file if keys are actually missing. Appending is best effort:
+        a read-only config directory only produces one stderr warning, the typed
+        default is already loaded in memory.
         """
         # Check using config parser instead of full text search
         core_section = config_parser["core"] if config_parser.has_section("core") else {}
 
         if "CHAT_HISTORY_DIR" not in core_section:
-            # Only append if the key is missing
-            with open(CONFIG_PATH, "a", encoding="utf-8") as f:
-                f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}\n")
+            try:
+                with open(CONFIG_PATH, "a", encoding="utf-8") as f:
+                    f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}\n")
+            except OSError as e:
+                _warn_once(
+                    f"append:{CONFIG_PATH}",
+                    f"Could not update configuration file {CONFIG_PATH}: {e}. Continuing with the in-memory defaults.",
+                )
 
     def _load_from_file(self) -> None:
         """Load configuration from the config file.
 
-        Creates the default config file if it doesn't exist, then parses it so a first
-        run exposes the same keys/values as subsequent runs (e.g. PROVIDER).
+        A missing file is never created here (v0.19 K21): first-run values are
+        parsed from the ``DEFAULT_CONFIG_INI`` template in memory, and the file
+        is materialised later by :func:`ensure_config_file` when the CLI starts
+        doing real work. This keeps read-only/meta commands (``--version``,
+        ``--help``, ``--template``) free of filesystem writes and lets a
+        read-only HOME run on the defaults instead of crashing.
         """
         config_parser = CasePreservingConfigParser()
+        file_existed = CONFIG_PATH.exists()
         try:
-            if CONFIG_PATH.exists():
-                config_parser.read(CONFIG_PATH, encoding="utf-8")
+            if file_existed:
+                parsed_files = config_parser.read(CONFIG_PATH, encoding="utf-8")
+                if not parsed_files:
+                    # Existing but unreadable file (permission/encoding): use defaults.
+                    _warn_once(
+                        f"read:{CONFIG_PATH}",
+                        f"Could not read configuration file {CONFIG_PATH}. Using in-memory defaults.",
+                    )
+                    return
             else:
-                self.console.print(
-                    "Creating default configuration file.", style="bold yellow", justify=self["JUSTIFY"]
-                )
-                CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-                with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                    f.write(DEFAULT_CONFIG_INI)
-                # Parse the content just written instead of returning early: the shared
-                # parsing path below is what makes template keys (e.g. PROVIDER) visible.
+                # Parse the template in memory so a first run exposes the same keys
+                # (e.g. PROVIDER) as later runs without touching the disk.
                 config_parser.read_string(DEFAULT_CONFIG_INI, source=str(CONFIG_PATH))
         except configparser.DuplicateOptionError as e:
             self.console.print(f"[red]Error:[/red] {e}", justify=self["JUSTIFY"])
@@ -129,8 +178,10 @@ class Config(dict):
         # Update config with file values
         self.update(dict(core_section))
 
-        # Check if keys added in version updates are missing and add them
-        self._ensure_version_updated_config_keys(config_parser)
+        # Only migrate a file that already exists: a first run has no file yet and
+        # must stay write-free (the created template already contains every key).
+        if file_existed:
+            self._ensure_version_updated_config_keys(config_parser)
 
     def _load_from_env(self) -> None:
         """Load configuration from environment variables.
@@ -213,6 +264,49 @@ class Config(dict):
 
             # Convert the value
             self[key] = self._convert_value(raw_value, target_type, key)
+
+
+def ensure_config_file() -> Optional[Path]:
+    """Create the configuration file on demand (first real use of the CLI).
+
+    Importing :mod:`yaicli.config` no longer writes anything: a first run parses
+    the ``DEFAULT_CONFIG_INI`` template in memory. The CLI calls this function
+    once it actually starts doing work (first request / REPL), so read-only
+    HOME and container environments can still run the read-only commands.
+
+    The directory is created with mode ``0700`` and the file with mode ``0600``
+    (best effort; sensitive values such as ``API_KEY`` are stored in plain
+    text). Any OSError is reported once on stderr and swallowed.
+
+    Returns:
+        The configuration path when it exists afterwards (created now or
+        already present), or ``None`` when it could not be created.
+    """
+    try:
+        if CONFIG_PATH.exists():
+            return CONFIG_PATH
+
+        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _chmod(CONFIG_PATH.parent, 0o700)
+        try:
+            fd = os.open(CONFIG_PATH, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:  # pragma: no cover - concurrent creator won the race
+            return CONFIG_PATH
+        try:
+            payload = DEFAULT_CONFIG_INI.encode("utf-8")
+            while payload:
+                payload = payload[os.write(fd, payload) :]
+        finally:
+            os.close(fd)
+        _chmod(CONFIG_PATH, 0o600)
+        return CONFIG_PATH
+    except OSError as e:
+        _warn_once(
+            f"create:{CONFIG_PATH}",
+            f"Could not create configuration file {CONFIG_PATH}: {e}. "
+            "Continuing with the in-memory defaults (read-only HOME/container).",
+        )
+        return None
 
 
 @lru_cache(1)

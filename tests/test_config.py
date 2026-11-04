@@ -69,32 +69,45 @@ class TestConfig:
                 assert config[key] == expected_value
                 assert isinstance(config[key], type(expected_value))
 
-    def test_first_run_creates_and_parses_default_config(self, mock_console, tmp_path):
-        """A first run with no config file must not crash and must parse the created file (D1)."""
+    def test_first_run_creates_config_on_demand(self, mock_console, tmp_path):
+        """A first run parses the template in memory; ensure_config_file() writes it (K21).
+
+        v0.19 defers the first-run config.ini write to an explicit entry point so
+        read-only commands (--version/--help/--template) never touch the disk.
+        """
         config_file = tmp_path / ".config" / "yaicli" / "config.ini"
         with (
             patch.object(yaicli.config, "CONFIG_PATH", config_file),
             patch("yaicli.config.getenv", return_value=None),
         ):
             config = Config(mock_console)
-            config_from_existing_file = Config(mock_console)
+
+            # No KeyError: PROVIDER is present from the in-memory template...
+            assert config["PROVIDER"] == "openai"
+            assert config["PROVIDER"] == DEFAULT_PROVIDER
+
+            # ...and constructing the config must not have created the file.
+            assert not config_file.exists()
+
+            # Every DEFAULT_CONFIG_MAP key keeps its typed default on a first run: the
+            # template's empty values fall back to the map default (D1).
+            for key, expected_value in TYPED_DEFAULTS.items():
+                assert config[key] == expected_value
+                assert isinstance(config[key], type(expected_value))
+
+            # The file is created on demand (CLI first real request / REPL).
+            created_path = yaicli.config.ensure_config_file()
+            assert created_path == config_file
             written = config_file.read_text(encoding="utf-8")
 
-        # No KeyError: PROVIDER is present from the default map and the parsed template.
-        assert config["PROVIDER"] == "openai"
-        assert config["PROVIDER"] == DEFAULT_PROVIDER
+            # A later run parses the existing file and yields the very same configuration.
+            config_from_existing_file = Config(mock_console)
 
         # The template is written to disk unchanged (--template output depends on the text).
         assert written == DEFAULT_CONFIG_INI
         assert "PROVIDER=openai" in written
-
-        # Every DEFAULT_CONFIG_MAP key keeps its typed default after a first run: the
-        # template's empty values fall back to the map default (D1).
-        for key, expected_value in TYPED_DEFAULTS.items():
-            assert config[key] == expected_value
-            assert isinstance(config[key], type(expected_value))
-
-        # A later run parses the existing file and yields the very same configuration.
+        assert (config_file.stat().st_mode & 0o777) == 0o600
+        assert (config_file.parent.stat().st_mode & 0o777) == 0o700
         assert config_from_existing_file == config
 
     def test_empty_template_values_fall_back_to_typed_defaults(self, mock_console):
@@ -127,13 +140,15 @@ REASONING_EFFORT=
             patch("yaicli.config.getenv", side_effect=mock_getenv),
         ):
             config = Config(mock_console)
+            assert not config_file.exists()
+            yaicli.config.ensure_config_file()
 
         assert config["PROVIDER"] == "anthropic"
         # The created file keeps the default provider; only the env layer overrides it.
         assert "PROVIDER=openai" in config_file.read_text(encoding="utf-8")
 
-    def test_first_run_parses_created_file(self, mock_console, tmp_path):
-        """The file written on a first run must be parsed, not merely left as defaults (D1)."""
+    def test_first_run_parses_template_in_memory(self, mock_console, tmp_path):
+        """The in-memory first-run template is parsed even though nothing is written (K21)."""
         custom_ini = """[core]
 PROVIDER=ollama
 CUSTOM_FILE_ONLY_KEY=parsed-from-created-file
@@ -145,13 +160,17 @@ CUSTOM_FILE_ONLY_KEY=parsed-from-created-file
             patch("yaicli.config.getenv", return_value=None),
         ):
             config = Config(mock_console)
+
+            # The template is parsed without touching the disk...
+            assert not config_file.exists()
+            assert config["PROVIDER"] == "ollama"
+            assert config["CUSTOM_FILE_ONLY_KEY"] == "parsed-from-created-file"
+
+            # ...and ensure_config_file() materialises the same template on demand.
+            assert yaicli.config.ensure_config_file() == config_file
             written = config_file.read_text(encoding="utf-8")
 
-        # The custom template really is what got written to the new file...
         assert written.startswith(custom_ini)
-        # ...and parsing it is reflected in the config instead of being skipped.
-        assert config["PROVIDER"] == "ollama"
-        assert config["CUSTOM_FILE_ONLY_KEY"] == "parsed-from-created-file"
 
     def test_load_from_file(self, mock_console):
         """Test loading configuration from file"""
@@ -373,3 +392,39 @@ def test_get_config_exits_nonzero_on_config_error():
         assert excinfo.value.code == 1
     finally:
         yaicli.config.get_config.cache_clear()
+
+
+class TestEnsureConfigFile:
+    """v0.19 K21: config.ini creation is explicit, private and idempotent."""
+
+    def test_creates_dir_and_file_on_demand(self, tmp_path, monkeypatch):
+        target = tmp_path / "fresh" / "yaicli" / "config.ini"
+        monkeypatch.setattr(yaicli.config, "CONFIG_PATH", target)
+
+        assert not target.exists()
+        created = yaicli.config.ensure_config_file()
+
+        assert created == target
+        assert target.read_text(encoding="utf-8") == DEFAULT_CONFIG_INI
+        # API_KEY is stored in plain text in this file: keep it private.
+        assert (target.stat().st_mode & 0o777) == 0o600
+        assert (target.parent.stat().st_mode & 0o777) == 0o700
+
+    def test_does_not_overwrite_existing_file(self, tmp_path, monkeypatch):
+        target = tmp_path / "yaicli" / "config.ini"
+        target.parent.mkdir(parents=True)
+        target.write_text("[core]\nPROVIDER=custom\n", encoding="utf-8")
+        monkeypatch.setattr(yaicli.config, "CONFIG_PATH", target)
+
+        assert yaicli.config.ensure_config_file() == target
+        assert target.read_text(encoding="utf-8") == "[core]\nPROVIDER=custom\n"
+
+    def test_read_only_home_warns_instead_of_raising(self, tmp_path, monkeypatch):
+        read_only = tmp_path / "readonly-home"
+        read_only.mkdir()
+        read_only.chmod(0o500)
+        monkeypatch.setattr(yaicli.config, "CONFIG_PATH", read_only / ".config" / "yaicli" / "config.ini")
+        try:
+            assert yaicli.config.ensure_config_file() is None
+        finally:
+            read_only.chmod(0o700)

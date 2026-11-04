@@ -1,10 +1,11 @@
+import json
 import subprocess
 import sys
 import time
 import traceback
 from os import devnull
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import typer
 from prompt_toolkit import PromptSession, prompt
@@ -15,10 +16,10 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .chat import Chat, FileChatManager, chat_mgr
-from .cmd_handler import CmdHandler
+from .cmd_handler import CMD_COMPACT, CmdHandler
 from .completer import AtPathCompleter
 from .config import cfg
-from .console import get_console, safe_text, untrusted_text
+from .console import get_console, get_error_console, safe_text, untrusted_text
 from .const import (
     CHAT_MODE,
     CMD_CLEAR,
@@ -32,6 +33,7 @@ from .const import (
     CMD_SAVE_CHAT,
     CONFIG_PATH,
     DEFAULT_OS_NAME,
+    DEFAULT_OUTPUT_FORMAT,
     DEFAULT_SHELL_NAME,
     EXEC_MODE,
     HISTORY_FILE,
@@ -40,20 +42,57 @@ from .const import (
     DefaultRoleNames,
 )
 from .context import ContextManager, ctx_mgr
+from .errors import EXIT_ERROR, EXIT_OK, EXIT_SIGINT, EXIT_TOOL_DENIED, ErrorKind, classify_exception
 from .exceptions import ChatSaveError, YaicliError
 from .history import LimitedFileHistory
 from .llms import LLMClient
 from .printer import Printer
 from .role import Role, RoleManager, role_mgr
-from .schemas import ChatMessage, ImageData, ToolPolicy
+from .schemas import ChatMessage, ImageData, RefreshLive, ToolPolicy
+from .tokens import resolve_context_budget, trim_messages_to_budget, trim_oldest_group
 from .tools.approval import ToolApprovalManager
 from .utils import detect_os, detect_shell, filter_command
+
+OUTPUT_FORMATS = ("text", "json", "stream-json")
+#: Content of the in-band tool result the client appends when a tool call is denied.
+TOOL_DENIED_MARKERS = ("declined to execute", "tool_denied")
 
 
 class CLI:
     __slots__ = (
         "verbose",
+        # ----- v0.19 headless state contract (public; entry.py maps it) -----
+        #: True when a human terminal UI is available (TTY stdin+stdout, not -p).
+        "interactive",
+        #: Process exit code resolved by the CLI for a non-chat run.
+        "exit_code",
+        #: A handled LLM/tool failure occurred (maps to exit 1).
         "had_error",
+        #: The run/turn was interrupted by SIGINT (maps to exit 130).
+        "interrupted",
+        #: The tool-call depth limit was reached (maps to exit 1 when configured).
+        "depth_limit_reached",
+        #: At least one tool call was denied in this run (maps to exit 3 with
+        #: --fail-on-tool-denied).
+        "tool_denied",
+        #: Last handled error (kind + message) for JSON output.
+        "error_kind",
+        "error_message",
+        #: Final assistant answer of the last turn (JSON ``content``).
+        "last_content",
+        #: Tool calls/results of the last turn (JSON ``tool_calls``).
+        "tool_calls",
+        # ---- headless run options (set by entry.CLI.configure_headless) ----
+        "print_mode",
+        "output_format",
+        "quiet",
+        "yes",
+        "allowed_tools",
+        "fail_on_tool_denied",
+        "max_turns",
+        "cwd",
+        #: True when stdout must contain only results/events (pipe, -p, -q, json).
+        "machine_output",
         "init_role",
         "role_name",
         "console",
@@ -66,6 +105,8 @@ class CLI:
         "bindings",
         "current_mode",
         "interactive_round",
+        #: K02: one-shot flag so the group-trim notice is printed at most once.
+        "_trim_notified",
         "chat_start_time",
         "is_temp_session",
         "chat",
@@ -88,17 +129,39 @@ class CLI:
         # Set when a handled LLM/API failure occurs; single-shot mode turns it into
         # a non-zero process exit (the REPL only prints and continues).
         self.had_error: bool = False
+        # ---- v0.19 headless state contract ----
+        self.interactive: bool = self._stdin_is_tty() and self._stdout_is_tty()
+        self.exit_code: int = EXIT_OK
+        self.interrupted: bool = False
+        self.depth_limit_reached: bool = False
+        self.tool_denied: bool = False
+        self.error_kind: ErrorKind = ErrorKind.UNKNOWN
+        self.error_message: Optional[str] = None
+        self.last_content: str = ""
+        self.tool_calls: List[Dict[str, Any]] = []
+        # Headless run options; entry.py calls configure_headless() with the flags.
+        self.print_mode: bool = False
+        self.output_format: str = DEFAULT_OUTPUT_FORMAT
+        self.quiet: bool = False
+        self.yes: bool = False
+        self.allowed_tools: List[str] = []
+        self.fail_on_tool_denied: bool = False
+        self.max_turns: Optional[int] = None
+        self.cwd: Optional[str] = None
+        self.machine_output: bool = (not self.interactive) or self.output_format != "text"
         # --role can specify a role when enter interactive chat
         # TAB will switch between role and shell
         self.init_role: str = role
         self.role_name: str = role
 
-        self.console = get_console()
+        # In machine/headless runs all diagnostics go to stderr; stdout is reserved
+        # for the final result/events.
+        self.console = get_console() if not self.machine_output else get_error_console()
         self.chat_manager = chat_manager or chat_mgr
         self.role_manager = role_manager or role_mgr
         self.context_manager = context_manager or ctx_mgr
         self.role: Role = self.role_manager.get_role(self.role_name)
-        self.printer = Printer()
+        self.printer = self._make_printer()
         self.client = client or self._create_client()
         self.cmd_handler = CmdHandler(self)
 
@@ -107,6 +170,7 @@ class CLI:
         self.current_mode: str = TEMP_MODE
 
         self.interactive_round = cfg["INTERACTIVE_ROUND"]
+        self._trim_notified = False
         self.chat_start_time = None
         self.is_temp_session = True
         self.chat = Chat(title="", history=[])
@@ -132,25 +196,332 @@ class CLI:
             self.console.print(f"Current role: {safe_text(self.role_name)}")
             self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
 
-        # Disable prompt_toolkit warning when use non-tty input,
-        # e.g. when use pipe or redirect
-        _origin_stderr = None
-        if not sys.stdin.isatty():
-            _origin_stderr = sys.stderr
-            sys.stderr = open(devnull, "w", encoding="utf-8")
+        # v0.19 K04/K21: do not build a prompt_toolkit session for one-shot/pipe
+        # runs (it is useless there and can print warnings); the REPL builds its
+        # own session lazily in prepare_chat_loop().
+        self.session = None
+        if self.interactive:
+            # Disable prompt_toolkit warning when use non-tty input,
+            # e.g. when use pipe or redirect
+            _origin_stderr = None
+            if not sys.stdin.isatty():
+                _origin_stderr = sys.stderr
+                sys.stderr = open(devnull, "w", encoding="utf-8")
+            try:
+                self.session = PromptSession(key_bindings=self.bindings)
+            finally:
+                if _origin_stderr:
+                    sys.stderr.flush()
+                    sys.stderr.close()
+                    sys.stderr = _origin_stderr
+
+    # ------------------- v0.19 headless configuration -------------------
+    @staticmethod
+    def _stdin_is_tty() -> bool:
         try:
-            self.session = PromptSession(key_bindings=self.bindings)
-        finally:
-            if _origin_stderr:
-                sys.stderr.flush()
-                sys.stderr.close()
-                sys.stderr = _origin_stderr
+            return bool(sys.stdin.isatty())
+        except (AttributeError, ValueError):
+            return False
+
+    @staticmethod
+    def _stdout_is_tty() -> bool:
+        try:
+            return bool(sys.stdout.isatty())
+        except (AttributeError, ValueError):
+            return False
+
+    def _make_printer(self, content_markdown: bool = True) -> Printer:
+        """Build the renderer for the current output mode."""
+        events = self._emit_event if self.output_format == "stream-json" else None
+        if self.machine_output:
+            return Printer(console=self.console, content_markdown=False, machine=True, events=events)
+        return Printer(console=self.console, content_markdown=content_markdown)
+
+    def configure_headless(
+        self,
+        *,
+        print_mode: bool = False,
+        output_format: str = DEFAULT_OUTPUT_FORMAT,
+        quiet: bool = False,
+        yes: bool = False,
+        allowed_tools: Optional[List[str]] = None,
+        fail_on_tool_denied: bool = False,
+        max_turns: Optional[int] = None,
+        cwd: Optional[str] = None,
+    ) -> None:
+        """Apply the v0.19 headless/scripting flags (called once by entry.main).
+
+        ``print_mode`` forces the one-shot contract (plain output, no prompts).
+        ``output_format`` is one of ``text``/``json``/``stream-json``.
+        ``--yes``/``--allowed-tools`` are stored for the K06 approval gate.
+        """
+        self.print_mode = bool(print_mode)
+        if output_format not in OUTPUT_FORMATS:
+            output_format = DEFAULT_OUTPUT_FORMAT
+        self.output_format = output_format
+        self.quiet = bool(quiet)
+        self.yes = bool(yes)
+        self.allowed_tools = list(allowed_tools or [])
+        self.fail_on_tool_denied = bool(fail_on_tool_denied)
+        if max_turns is not None:
+            self.max_turns = int(max_turns)
+            cfg["MAX_TOOL_CALL_DEPTH"] = self.max_turns
+        else:
+            self.max_turns = cfg["MAX_TOOL_CALL_DEPTH"]
+        self.cwd = cwd
+
+        # The interactive contract: a human terminal is available *and* we are not
+        # asked for explicit one-shot output. Everything else is machine output.
+        self.interactive = self._stdin_is_tty() and self._stdout_is_tty() and not self.print_mode
+        self.machine_output = (not self.interactive) or self.quiet or self.output_format != "text"
+        if not self.interactive:
+            self.session = None
+
+        # Rebuild the console/printer for the effective output mode: in machine
+        # mode stdout carries only the result, so every diagnostic uses stderr.
+        self.console = get_console() if not self.machine_output else get_error_console()
+        self.printer = self._make_printer(content_markdown=self.role_name != DefaultRoleNames.CODER)
+
+        # K02: in machine-output modes tool announcements/output panels must not reach
+        # stdout. ``yaicli.tools`` picks its console at import time (stdout on a TTY);
+        # re-point it at the stderr console of this mode. Interactive TTY runs keep
+        # their import-time console, so this is a no-op there.
+        if self.machine_output:
+            try:
+                from . import tools as _tools_module
+
+                _tools_module.console = get_error_console()
+            except Exception:  # pragma: no cover - tool module is always importable
+                pass
+
+        # Keep the LLM client in sync: a one-shot/structured run must not block on
+        # interactive tool approval prompts (K06 owns the richer policy).
+        if self.client is not None:
+            try:
+                self.client.interactive = self.interactive and not self.machine_output
+                self.client.console = self.console
+            except AttributeError:  # pragma: no cover - client without these slots
+                pass
+
+    def _emit_event(self, event: Dict[str, Any]) -> None:
+        """Write one stream-json event (one JSON object per line) to stdout."""
+        if self.output_format != "stream-json":
+            return
+        sys.stdout.write(json.dumps(event, ensure_ascii=False, default=str) + "\n")
+        sys.stdout.flush()
+
+    def _write_text_result(self, content: Optional[str]) -> None:
+        """Write the final text answer to stdout with exactly one trailing newline."""
+        if not self.machine_output or self.output_format != "text" or content is None:
+            return
+        if content == "":
+            return
+        sys.stdout.write(content.rstrip("\n") + "\n")
+        sys.stdout.flush()
+
+    @staticmethod
+    def _parse_arguments(arguments: Any) -> Any:
+        """Best-effort JSON decoding of tool-call arguments for structured output."""
+        if isinstance(arguments, str):
+            try:
+                return json.loads(arguments)
+            except (ValueError, TypeError):
+                return arguments
+        return arguments
+
+    def _record_error(self, exc: BaseException) -> None:
+        """Store a classified error for JSON output/stderr rendering."""
+        try:
+            agent_error = classify_exception(exc)
+            self.error_kind = agent_error.kind
+            self.error_message = agent_error.message or str(exc)
+        except Exception:  # pragma: no cover - classifier must never break the CLI
+            self.error_kind = ErrorKind.UNKNOWN
+            self.error_message = str(exc)
+
+    def _error_payload(self) -> Optional[Dict[str, Any]]:
+        """The JSON ``error`` field: ``null`` on success, ``{kind, message}``."""
+        if not self.error_message:
+            return None
+        kind = self.error_kind.value if isinstance(self.error_kind, ErrorKind) else str(self.error_kind)
+        return {"kind": kind, "message": self.error_message}
+
+    def _build_result(self) -> Dict[str, Any]:
+        """The single JSON object emitted by ``--output-format json``."""
+        return {
+            "content": self.last_content or "",
+            "tool_calls": [
+                {"name": call.get("name", ""), "arguments": call.get("arguments"), "result": call.get("result")}
+                for call in self.tool_calls
+            ],
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+            "model": cfg.get("MODEL", ""),
+            "provider": cfg.get("PROVIDER", ""),
+            "error": self._error_payload(),
+            "exit_code": self.exit_code,
+        }
+
+    def _record_tool_calls(self, messages: Optional[List[ChatMessage]]) -> None:
+        """Extract tool calls/results of the last user turn from the client messages.
+
+        The client mutates the message list in place (no client.py changes needed):
+        assistant messages carry ``tool_calls`` and the following ``role=tool``
+        messages carry the matching results via ``tool_call_id``.
+        """
+        calls: List[Dict[str, Any]] = []
+        if not messages:
+            self.tool_calls = calls
+            return
+        last_user = -1
+        for index, message in enumerate(messages):
+            if getattr(message, "role", None) == "user":
+                last_user = index
+        pending: Dict[str, Dict[str, Any]] = {}
+        for message in messages[last_user + 1 :]:
+            role = getattr(message, "role", None)
+            if role == "assistant":
+                for tool_call in getattr(message, "tool_calls", None) or []:
+                    entry: Dict[str, Any] = {
+                        "name": getattr(tool_call, "name", ""),
+                        "arguments": self._parse_arguments(getattr(tool_call, "arguments", None)),
+                        "result": None,
+                    }
+                    calls.append(entry)
+                    call_id = getattr(tool_call, "id", None)
+                    if call_id:
+                        pending[call_id] = entry
+            elif role == "tool":
+                content = message.content or ""
+                if self._is_denied_result(content):
+                    self.tool_denied = True
+                entry = pending.pop(getattr(message, "tool_call_id", None) or "", None)
+                if entry is not None and entry.get("result") is None:
+                    entry["result"] = content
+                else:
+                    calls.append(
+                        {
+                            "name": getattr(message, "name", None) or "",
+                            "arguments": None,
+                            "result": content,
+                        }
+                    )
+        self.tool_calls = calls
+
+    @staticmethod
+    def _is_denied_result(content: str) -> bool:
+        """True when a tool result represents a denied tool call."""
+        lowered = (content or "").lower()
+        return any(marker in lowered for marker in TOOL_DENIED_MARKERS)
+
+    def _emit_tool_events_from(self, messages: List[ChatMessage], cursor: int) -> int:
+        """Emit stream-json tool_call/tool_result events for messages[cursor:]."""
+        if self.output_format != "stream-json":
+            return len(messages)
+        for message in messages[cursor:]:
+            role = getattr(message, "role", None)
+            if role == "assistant":
+                for tool_call in getattr(message, "tool_calls", None) or []:
+                    self._emit_event(
+                        {
+                            "type": "tool_call",
+                            "name": getattr(tool_call, "name", ""),
+                            "arguments": self._parse_arguments(getattr(tool_call, "arguments", None)),
+                        }
+                    )
+            elif role == "tool":
+                content = message.content or ""
+                if self._is_denied_result(content):
+                    self.tool_denied = True
+                self._emit_event(
+                    {
+                        "type": "tool_result",
+                        "name": getattr(message, "name", None) or "",
+                        "result": content,
+                    }
+                )
+        return len(messages)
+
+    def _instrument_tool_events(self, stream_iterator, messages: List[ChatMessage]):
+        """Tee the LLM stream so stream-json tool events are emitted per round.
+
+        ``RefreshLive`` marks the end of a completion round; the client executes the
+        tools when the generator is resumed, so new messages are inspected right
+        after the next chunk arrives (or when the stream ends).
+        """
+        cursor = len(messages)
+
+        def _forward():
+            nonlocal cursor
+            send_value = None
+            boundary_pending = False
+            while True:
+                try:
+                    if send_value is None:
+                        chunk = next(stream_iterator)
+                    else:
+                        chunk = stream_iterator.send(send_value)
+                except StopIteration:
+                    cursor = self._emit_tool_events_from(messages, cursor)
+                    return
+                send_value = None
+                if boundary_pending:
+                    cursor = self._emit_tool_events_from(messages, cursor)
+                    boundary_pending = False
+                if isinstance(chunk, RefreshLive):
+                    boundary_pending = True
+                try:
+                    send_value = yield chunk
+                except GeneratorExit:  # pragma: no cover - consumer stopped early
+                    return
+
+        return _forward()
+
+    def _finalize_exit_code(self) -> int:
+        """Resolve the process exit code from the public state contract."""
+        if self.interrupted:
+            self.exit_code = EXIT_SIGINT
+        elif self.tool_denied and self.fail_on_tool_denied:
+            self.exit_code = EXIT_TOOL_DENIED
+        elif self.had_error:
+            self.exit_code = EXIT_ERROR
+        elif self.depth_limit_reached and cfg.get("EXIT_ON_DEPTH_LIMIT", True):
+            self.exit_code = EXIT_ERROR
+        else:
+            self.exit_code = EXIT_OK
+        return self.exit_code
+
+    def _finalize_headless(self) -> int:
+        """Emit the final structured output (json/stream-json) and resolve the code."""
+        self._finalize_exit_code()
+        if self.exit_code != EXIT_OK and not self.error_message:
+            # Describe flag-only outcomes (depth limit / denied tool) so JSON and
+            # stream-json consumers never see a non-zero code with a null error.
+            if self.depth_limit_reached:
+                self.error_kind = ErrorKind.DEPTH_LIMIT
+                self.error_message = "tool-call depth limit reached"
+            elif self.tool_denied and self.fail_on_tool_denied:
+                self.error_kind = ErrorKind.TOOL
+                self.error_message = "a tool call was denied"
+        if self.output_format == "json":
+            payload = json.dumps(self._build_result(), ensure_ascii=False, default=str)
+            sys.stdout.write(payload + "\n")
+            sys.stdout.flush()
+        elif self.output_format == "stream-json":
+            self._emit_event({"type": "usage", "prompt_tokens": 0, "completion_tokens": 0})
+            self._emit_event(
+                {
+                    "type": "done",
+                    "exit_code": self.exit_code,
+                    "error": self._error_payload(),
+                }
+            )
+        return self.exit_code
 
     def set_role(self, role_name: str) -> None:
         self.role_name = role_name
         self.role = self.role_manager.get_role(role_name)
         if role_name == DefaultRoleNames.CODER:
-            self.printer = Printer(content_markdown=False)
+            self.printer = self._make_printer(content_markdown=False)
         elif role_name == DefaultRoleNames.SHELL:
             self.current_mode = EXEC_MODE
 
@@ -174,12 +545,40 @@ class CLI:
         return [("class:qmark", f" {mode_icon} "), ("class:prompt", "> ")]
 
     def _check_history_len(self) -> None:
-        """Check history length and remove the oldest messages if necessary"""
-        target_len = self.interactive_round * 2
-        if len(self.chat.history) > target_len:
-            self.chat.history = self.chat.history[-target_len:]
-            if self.verbose:
-                self.console.print(f"Dialogue trimmed to {target_len} messages.", style="dim")
+        """Keep the in-conversation history inside the token budget, group-aligned.
+
+        v0.19 K02: the old implementation sliced ``history[-INTERACTIVE_ROUND*2:]`` by
+        message index, which could split an ``assistant(tool_calls)`` message from its
+        ``tool`` results (orphan tool message -> every provider 400). Trimming now
+        happens at turn-group boundaries via :mod:`yaicli.tokens`:
+
+        * over the token budget -> drop whole oldest turn groups (system/context
+          messages are preserved);
+        * ``INTERACTIVE_ROUND * 2`` remains a *maximum message count* cap, applied on
+          whole groups only (no split, at least the newest group survives).
+        """
+        history = self.chat.history
+        if not history:
+            return
+        budget = resolve_context_budget(cfg, cfg.get("MODEL", ""))
+        result = trim_messages_to_budget(history, budget=budget, max_messages=self.interactive_round * 2)
+        if not result.removed_messages:
+            return
+        self.chat.history = result.messages
+        notice = (
+            f"Context trimmed: dropped {result.removed_count} older message(s) "
+            f"({result.tokens_before} -> {result.tokens_after} est. tokens)."
+        )
+        if self.verbose:
+            self.console.print(
+                f"Dialogue trimmed to {len(result.messages)} messages "
+                f"({result.tokens_before} -> {result.tokens_after} est. tokens).",
+                style="dim",
+            )
+        # One stderr notice per session (stdout belongs to the answer/JSON events).
+        if not getattr(self, "_trim_notified", False):
+            self._trim_notified = True
+            get_error_console().print(f"{notice} Use /compact to trim deliberately.", style="dim yellow")
 
     # ------------------- Chat Command Methods -------------------
     def _save_chat(self, title: Union[str, None] = None) -> None:
@@ -303,8 +702,7 @@ class CLI:
             provider = cfg.get("PROVIDER", "").lower()
             if provider in NO_VISION_PROVIDERS:
                 self.console.print(
-                    f"Warning: Provider '{safe_text(provider)}' does not support image input. "
-                    "Images will be ignored.",
+                    f"Warning: Provider '{safe_text(provider)}' does not support image input. Images will be ignored.",
                     style="yellow",
                 )
                 effective_images = []
@@ -333,7 +731,7 @@ class CLI:
             list[ChatMessage]: The updated message history.
         """
         messages = self._build_messages(user_input, images=images)
-        if self.role.name != DefaultRoleNames.CODER:
+        if not self.machine_output and self.role.name != DefaultRoleNames.CODER:
             self.console.print("Assistant:", style="bold green")
         try:
             response_iterator = self.client.completion_with_tools(
@@ -341,25 +739,71 @@ class CLI:
                 stream=cfg["STREAM"],
                 tool_policy=self._get_tool_policy(),
             )
+            if self.output_format == "stream-json":
+                response_iterator = self._instrument_tool_events(response_iterator, messages)
 
             content, _ = self.printer.display_stream(response_iterator)
+
+            # Wave-2 coordination (K02/K06): the client reports depth/denial
+            # outcomes through its own flags; mirror them onto the CLI contract.
+            if getattr(self.client, "depth_limit_reached", False) is True:
+                self.depth_limit_reached = True
+            if getattr(self.client, "tool_denied", False) is True:
+                self.tool_denied = True
 
             # The 'messages' list is modified by the client in-place
             return content, messages
         except Exception as e:
             self.had_error = True
-            self.console.print(f"Error processing LLM response: {safe_text(e)}", style="red")
+            self._record_error(e)
+            self._recover_persisted_context_on_overflow(e)
+            # K05: print the *classified* message (kind + actionable hint, e.g.
+            # "auth (HTTP 401) ... Hint: Check API_KEY") instead of the raw SDK text.
+            try:
+                agent_error = classify_exception(e)
+                detail = getattr(agent_error, "user_message", None) or str(e)
+            except Exception:  # pragma: no cover - classifier must never break the CLI
+                detail = str(e)
+            self.console.print(f"Error processing LLM response: {safe_text(detail)}", style="red")
             if self.verbose:
                 traceback.print_exc()
             return None, messages
+
+    def _recover_persisted_context_on_overflow(self, exc: BaseException) -> None:
+        """Persist one group trim when the provider rejected the context as too long.
+
+        The client already trims-and-retries the *live* request once; if that still
+        failed, dropping one turn group from the saved history gives the next turn a
+        chance instead of repeating the same over-window payload forever.
+        """
+        try:
+            kind = classify_exception(exc).kind
+        except Exception:  # pragma: no cover - classifier must never break the CLI
+            return
+        if kind is not ErrorKind.CONTEXT_LENGTH:
+            return
+        try:
+            result = trim_oldest_group(self.chat.history)
+        except Exception:  # pragma: no cover - history must never break error handling
+            return
+        if not result.removed_messages:
+            return
+        self.chat.history = result.messages
+        get_error_console().print(
+            f"Context repaired: dropped {result.removed_count} older message(s) from history "
+            f"({result.tokens_before} -> {result.tokens_after} est. tokens).",
+            style="dim yellow",
+        )
 
     def _process_user_input(self, user_input: str, images: Optional[List[ImageData]] = None) -> bool:
         """Process user input: get response, print, update history, maybe execute.
         Returns True to continue REPL, False to exit on critical error.
         """
         content, updated_messages = self._handle_llm_response(user_input, images=images)
+        self._record_tool_calls(updated_messages)
 
-        if content is None and not any(msg.tool_calls for msg in updated_messages):
+        if content is None and not any(getattr(msg, "tool_calls", None) for msg in updated_messages):
+            self.last_content = ""
             return True
 
         # The client modifies the message list in place, so the updated_messages
@@ -371,9 +815,48 @@ class CLI:
 
         self._check_history_len()
 
+        result_text = content or ""
         if self.current_mode == EXEC_MODE:
-            self._confirm_and_execute(content or "")
+            # --shell generates a command: filter Markdown fences before showing or
+            # executing it so stdout carries exactly the command.
+            command = filter_command(result_text)
+            self.last_content = command
+            if self.machine_output:
+                self._write_text_result(command)
+                self._run_generated_command(command)
+            else:
+                self._confirm_and_execute(result_text)
+        else:
+            self.last_content = result_text
+            if self.machine_output:
+                self._write_text_result(result_text)
         return True
+
+    def _run_generated_command(self, command: str) -> None:
+        """Non-interactive ``--shell`` handling.
+
+        In a pipe/one-shot run the generated command is printed to stdout and only
+        executed when ``--yes`` was passed; otherwise the run succeeds without
+        executing anything.
+        """
+        if not command:
+            self.console.print("No command generated or command is empty.", style="bold red")
+            self.had_error = True
+            self.error_message = self.error_message or "no command generated"
+            return
+        if not self.yes:
+            return
+        self.console.print("Executing...", style="bold green")
+        try:
+            return_code = subprocess.call(command, shell=True)
+        except OSError as exc:
+            self.had_error = True
+            self.error_message = f"failed to execute command: {exc}"
+            self.console.print(f"Failed to execute command: {safe_text(exc)}", style="red")
+            return
+        if return_code != 0:
+            self.had_error = True
+            self.error_message = self.error_message or f"command exited with status {return_code}"
 
     def _confirm_and_execute(self, raw_content: str) -> None:
         """Review, edit and execute the command"""
@@ -428,13 +911,26 @@ class CLI:
         """Setup key bindings and history for interactive modes."""
         self.current_mode = CHAT_MODE
         self._setup_key_bindings()
-        HISTORY_FILE.touch(exist_ok=True)
+
+        # K21: a read-only HOME (containers/CI/sandbox) must not crash the REPL
+        # because the history file cannot be created; fall back to in-memory
+        # history and keep going.
+        history = None
+        try:
+            HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+            HISTORY_FILE.touch(exist_ok=True)
+            history = LimitedFileHistory(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"])
+        except OSError as e:
+            get_error_console().print(
+                f"Warning: could not set up prompt history ({safe_text(e)}); using in-memory history.",
+                style="yellow",
+            )
 
         # Set up the prompt session with command history
         try:
             self.session = PromptSession(
                 key_bindings=self.bindings,
-                history=LimitedFileHistory(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"]),
+                history=history,
                 auto_suggest=AutoSuggestFromHistory() if cfg.get("AUTO_SUGGEST", True) else None,
                 enable_history_search=True,
                 completer=AtPathCompleter(),
@@ -492,66 +988,94 @@ class CLI:
         delete_cmd = f"{CMD_DELETE_CHAT} <index>"
         self.console.print(f"{delete_cmd:<19}: Delete a saved chat")
         self.console.print(f"{'/add <path>':<19}: Add @file/dir to context")
-        self.console.print(f"{'/context, /ctx':<19}: Manage context (list, add, remove, clear)")
+        self.console.print(
+            f"{'/context, /ctx':<19}: Show context/token usage; manage context (list, add, remove, clear, budget)"
+        )
+        self.console.print(
+            f"{CMD_COMPACT + ' [keep_rounds]':<19}: Compact history, keeping the last N turn groups (default 5)"
+        )
+        self.console.print(
+            f"{'/permissions [revoke <tool-or-index>]':<19}: List/revoke tool permissions and session grants"
+        )
         self.console.print("[dim]  Tip: Type '@' for path completion, use Tab/arrows to select[/dim]")
         self.console.print(f"{'!<command>':<19}: Execute shell command directly (e.g., !ls -al)")
-        cmd_exit = f"{CMD_EXIT}|Ctrl+D|Ctrl+C"
+        cmd_exit = f"{CMD_EXIT}|Ctrl+D"
         self.console.print(f"{cmd_exit:<19}: Exit")
+        self.console.print(f"{'Ctrl+C':<19}: Clear input / cancel current turn")
         cmd_mode = f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"
         self.console.print(f"{cmd_mode:<19}: Switch mode (Case insensitive)", style="dim")
 
     def _run_repl(self) -> None:
-        """Run the main Read-Eval-Print Loop (REPL)."""
+        """Run the main Read-Eval-Print Loop (REPL).
+
+        SIGINT semantics (v0.19 K04): Ctrl-C *at the prompt* discards the current
+        line and keeps the session alive; Ctrl-D exits 0; Ctrl-C during a turn
+        cancels that turn only. The REPL never turns an interrupt into exit 130.
+        """
         self.prepare_chat_loop()
-        self._print_welcome_message()
+        # getattr fallbacks keep bare/legacy CLI objects (tests build them via
+        # CLI.__new__) working without the full v0.19 state contract.
+        interactive = getattr(self, "interactive", True)
+        quiet = getattr(self, "quiet", False)
+        machine_output = getattr(self, "machine_output", False)
+        if interactive and not quiet:
+            self._print_welcome_message()
 
         # Main REPL loop
         while True:
-            self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
+            if not machine_output:
+                self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
+
+            # --- Read ---
             try:
-                # Get user input
                 user_input = self.session.prompt(self.get_prompt_tokens)
-                user_input = user_input.strip()
-                if not user_input:
-                    continue
-
-                # A single turn must never terminate the session because of an
-                # unexpected rendering/parsing error: report it and keep looping.
-                try:
-                    # Handle special commands
-                    _continue = self._handle_special_commands(user_input)
-                except (KeyboardInterrupt, EOFError):
-                    # Keep the original prompt semantics: these exit the REPL.
-                    raise
-                except Exception as e:
-                    self.console.print(f"Error: {safe_text(e)}", style="red")
-                    continue
-                if _continue is False:  # Exit command
-                    break
-                if _continue is True:  # Other special command
-                    continue
-
-                # Process regular chat input
-                try:
-                    if not self._process_user_input(user_input):
-                        break
-                except KeyboardInterrupt:
-                    self.console.print("KeyboardInterrupt", style="yellow")
-                    continue
-                except EOFError:
-                    # Keep the original semantics: EOF leaves the REPL.
-                    raise
-                except Exception as e:
-                    self.console.print(f"Error: {safe_text(e)}", style="red")
-                    continue
-            except (KeyboardInterrupt, EOFError):
+            except KeyboardInterrupt:
+                # Ctrl-C at the prompt: clear the input, stay in the REPL.
+                continue
+            except EOFError:
+                # Ctrl-D: leave the REPL normally (exit code 0).
                 break
+
+            user_input = user_input.strip()
+            if not user_input:
+                continue
+
+            # --- Evaluate special commands ---
+            try:
+                _continue = self._handle_special_commands(user_input)
+            except KeyboardInterrupt:
+                # Ctrl-C while running a slash command cancels it only.
+                continue
+            except EOFError:
+                break
+            except Exception as e:
+                self.console.print(f"Error: {safe_text(e)}", style="red")
+                continue
+            if _continue is False:  # Exit command
+                break
+            if _continue is True:  # Other special command
+                continue
+
+            # --- Evaluate a regular turn ---
+            try:
+                if not self._process_user_input(user_input):
+                    break
+            except KeyboardInterrupt:
+                # Generation Ctrl-C: cancel this turn and keep the session.
+                self.console.print("KeyboardInterrupt", style="yellow")
+                continue
+            except EOFError:
+                break
+            except Exception as e:
+                self.console.print(f"Error: {safe_text(e)}", style="red")
+                continue
 
         # Auto-save chat history when exiting if there are messages and not a temporary session
         if not self.is_temp_session and self.chat.history:
             self._save_chat(self.chat.title)
 
-        self.console.print("\nExiting YAICLI... Goodbye!", style="bold green")
+        if not quiet:
+            self.console.print("\nExiting YAICLI... Goodbye!", style="bold green")
 
     def _run_once(
         self, user_input: str, shell: bool = False, code: bool = False, images: Optional[List[ImageData]] = None
@@ -581,9 +1105,18 @@ class CLI:
                     self.is_temp_session = False
             # Run the interactive chat REPL
             self._run_repl()
-        else:
-            # Run in single-use mode
+            return
+
+        # Run in single-use mode. SIGINT is a first-class outcome (exit 130) and
+        # must not escape as a traceback; the REPL keeps its own semantics.
+        try:
             self._run_once(user_input or "", shell=shell, code=code, images=images)
+        except KeyboardInterrupt:
+            self.interrupted = True
+            self.error_kind = ErrorKind.INTERRUPTED
+            self.error_message = self.error_message or "interrupted"
+            get_error_console().print("Interrupted.", style="yellow")
+        self._finalize_headless()
 
     def _create_client(self):
         """Create an LLM client instance based on configuration"""
@@ -593,7 +1126,10 @@ class CLI:
                 verbose=self.verbose,
                 config=cfg,
                 approval=ToolApprovalManager(),
-                interactive=sys.stdin.isatty(),
+                # Machine/one-shot runs must never block on a tool confirmation
+                # prompt; the client then denies unapproved tool calls (K06 owns
+                # the richer --yes/--allowed-tools policy).
+                interactive=bool(self.interactive and not self.machine_output),
             )
         except YaicliError as e:
             self.console.print(f"Error creating client: {safe_text(e)}", style="red")

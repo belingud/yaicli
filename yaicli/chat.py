@@ -219,10 +219,24 @@ class FileChatManager:
     _chats_map: Optional[Dict[str, Dict[str, Chat]]] = None
 
     def __post_init__(self) -> None:
+        # Directory creation is lazy and best effort (v0.19 K21): importing
+        # ``yaicli.chat`` / constructing ``chat_mgr`` must not touch the disk so
+        # read-only HOMEs and meta commands stay write-free. The directory is
+        # created on the first save.
         if not isinstance(self.chat_dir, Path):
             self.chat_dir = Path(self.chat_dir)
-        if not self.chat_dir.exists():
+
+    def _ensure_chat_dir(self) -> bool:
+        """Create the chat directory if needed. Best effort, never raises."""
+        try:
             self.chat_dir.mkdir(parents=True, exist_ok=True)
+            return True
+        except OSError as e:
+            console.print(
+                f"Warning: could not create chat directory {safe_text(str(self.chat_dir))}: {safe_text(str(e))}",
+                style="yellow",
+            )
+            return False
 
     @property
     def chats_map(self) -> Dict[str, Dict[str, Chat]]:
@@ -285,6 +299,9 @@ class FileChatManager:
 
         if chat is None:
             raise ChatSaveError("No chat found")
+
+        # First write into this manager: create the session directory lazily.
+        self._ensure_chat_dir()
 
         # Write the replacement first: this is what makes /save safe. Chat.save()
         # uses a temp file + os.replace, so the new file only appears when complete.

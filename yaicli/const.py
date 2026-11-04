@@ -7,6 +7,8 @@ except ImportError:
         """Compatible with python below 3.11"""
 
 
+import os
+import sys
 from pathlib import Path
 from tempfile import gettempdir
 from typing import Any, Literal, Optional
@@ -40,12 +42,60 @@ EXEC_MODE = "exec"
 CHAT_MODE = "chat"
 TEMP_MODE = "temp"
 
-HISTORY_FILE = Path("~/.yaicli_history").expanduser()
-CONFIG_PATH = Path("~/.config/yaicli/config.ini").expanduser()
-ROLES_DIR = CONFIG_PATH.parent / "roles"
-FUNCTIONS_DIR = CONFIG_PATH.parent / "functions"
-MCP_JSON_PATH = CONFIG_PATH.parent / "mcp.json"
-TOOL_PERMISSIONS_PATH = CONFIG_PATH.parent / "tool_permissions.json"
+
+def get_home_dir() -> Path:
+    """Resolve the user's home directory without relying on ``expanduser('~')``.
+
+    ``expanduser('~')`` returns the root directory when an empty ``HOME`` is set
+    (``HOME=""`` resolves to ``/.config/...``), which made a container/CI run
+    write outside its sandbox. Resolve HOME explicitly and fall back to a temp
+    directory when neither HOME nor USERPROFILE is usable.
+    """
+    home = os.environ.get("HOME", "").strip() or os.environ.get("USERPROFILE", "").strip()
+    if not home:
+        return Path(gettempdir()) / "yaicli-home"
+    try:
+        return Path(home).expanduser()
+    except (RuntimeError, OSError):
+        return Path(gettempdir()) / "yaicli-home"
+
+
+def get_config_dir() -> Path:
+    """Resolve the config directory.
+
+    Priority: ``YAI_CONFIG_DIR`` > ``XDG_CONFIG_HOME/yaicli`` >
+    ``%APPDATA%/yaicli`` (Windows) > ``~/.config/yaicli``.
+    """
+    env_dir = os.environ.get("YAI_CONFIG_DIR", "").strip()
+    if env_dir:
+        return Path(env_dir).expanduser()
+    xdg_config = os.environ.get("XDG_CONFIG_HOME", "").strip()
+    if xdg_config:
+        return Path(xdg_config).expanduser() / "yaicli"
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA", "").strip()
+        if appdata:
+            return Path(appdata) / "yaicli"
+    return get_home_dir() / ".config" / "yaicli"
+
+
+def get_history_file() -> Path:
+    """Resolve the REPL history file (XDG state dir when configured)."""
+    xdg_state = os.environ.get("XDG_STATE_HOME", "").strip()
+    if xdg_state:
+        return Path(xdg_state).expanduser() / "yaicli" / "history"
+    return get_home_dir() / ".yaicli_history"
+
+
+HISTORY_FILE = get_history_file()
+CONFIG_DIR = get_config_dir()
+CONFIG_PATH = CONFIG_DIR / "config.ini"
+ROLES_DIR = CONFIG_DIR / "roles"
+FUNCTIONS_DIR = CONFIG_DIR / "functions"
+FUNCTIONS_MANIFEST_PATH = CONFIG_DIR / "functions_manifest.json"
+MCP_JSON_PATH = CONFIG_DIR / "mcp.json"
+TOOL_PERMISSIONS_PATH = CONFIG_DIR / "tool_permissions.json"
+TOOL_AUDIT_PATH = CONFIG_DIR / "tool_audit.jsonl"
 
 # Default configuration values
 DEFAULT_CODE_THEME = "monokai"
@@ -80,6 +130,27 @@ DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
 DEFAULT_MAX_TOOL_CALL_DEPTH: int = 8
 DEFAULT_TOOL_CONFIRM: BOOL_STR = "true"
 DEFAULT_EXCLUDE_PARAMS: str = ""  # Empty by default
+
+# Agent context / tool-output economy (v0.19 K02)
+DEFAULT_TOOL_OUTPUT_MAX_CHARS: int = 32000
+DEFAULT_TOOL_OUTPUT_DIR: Path = DEFAULT_CHAT_HISTORY_DIR / "tool-outputs"
+# 0 means "derive from the model context window (70%)" at request time.
+DEFAULT_CONTEXT_BUDGET_TOKENS: int = 0
+# Shell tool guardrails (v0.19 K03)
+DEFAULT_TOOL_TIMEOUT: int = 120
+DEFAULT_TOOL_TIMEOUT_MAX: int = 600
+DEFAULT_TOOL_ENV_INHERIT: BOOL_STR = "false"
+DEFAULT_WORKSPACE_ROOT: str = ""
+# Error retry policy (v0.19 K05)
+DEFAULT_RETRY_ENABLED: BOOL_STR = "true"
+DEFAULT_RETRY_MAX: int = 2
+DEFAULT_RETRY_BASE_DELAY: float = 1.0
+DEFAULT_RETRY_MAX_DELAY: float = 8.0
+DEFAULT_EXIT_ON_DEPTH_LIMIT: BOOL_STR = "true"
+# Tool audit log (v0.19 K06)
+DEFAULT_TOOL_AUDIT: BOOL_STR = "true"
+# Headless output (v0.19 K04)
+DEFAULT_OUTPUT_FORMAT: str = "text"
 
 # Providers known to not support vision/image input
 NO_VISION_PROVIDERS = {"cohere", "cohere-bedrock", "cohere-sagemaker", "huggingface", "chatglm", "modelscope"}
@@ -173,6 +244,29 @@ DEFAULT_CONFIG_MAP = {
     "MAX_TOOL_CALL_DEPTH": {"value": DEFAULT_MAX_TOOL_CALL_DEPTH, "env_key": "YAI_MAX_TOOL_CALL_DEPTH", "type": int},
     "TOOL_CONFIRM": {"value": DEFAULT_TOOL_CONFIRM, "env_key": "YAI_TOOL_CONFIRM", "type": bool},
     "EXCLUDE_PARAMS": {"value": DEFAULT_EXCLUDE_PARAMS, "env_key": "YAI_EXCLUDE_PARAMS", "type": str},
+    # Agent context / tool-output economy
+    "TOOL_OUTPUT_MAX_CHARS": {
+        "value": DEFAULT_TOOL_OUTPUT_MAX_CHARS,
+        "env_key": "YAI_TOOL_OUTPUT_MAX_CHARS",
+        "type": int,
+    },
+    "TOOL_OUTPUT_DIR": {"value": str(DEFAULT_TOOL_OUTPUT_DIR), "env_key": "YAI_TOOL_OUTPUT_DIR", "type": str},
+    "CONTEXT_BUDGET_TOKENS": {
+        "value": DEFAULT_CONTEXT_BUDGET_TOKENS,
+        "env_key": "YAI_CONTEXT_BUDGET_TOKENS",
+        "type": int,
+    },
+    # Shell tool guardrails
+    "TOOL_TIMEOUT": {"value": DEFAULT_TOOL_TIMEOUT, "env_key": "YAI_TOOL_TIMEOUT", "type": int},
+    "TOOL_ENV_INHERIT": {"value": DEFAULT_TOOL_ENV_INHERIT, "env_key": "YAI_TOOL_ENV_INHERIT", "type": bool},
+    "WORKSPACE_ROOT": {"value": DEFAULT_WORKSPACE_ROOT, "env_key": "YAI_WORKSPACE_ROOT", "type": str},
+    # Error retry policy
+    "RETRY_ENABLED": {"value": DEFAULT_RETRY_ENABLED, "env_key": "YAI_RETRY_ENABLED", "type": bool},
+    "RETRY_MAX": {"value": DEFAULT_RETRY_MAX, "env_key": "YAI_RETRY_MAX", "type": int},
+    "RETRY_BASE_DELAY": {"value": DEFAULT_RETRY_BASE_DELAY, "env_key": "YAI_RETRY_BASE_DELAY", "type": float},
+    "EXIT_ON_DEPTH_LIMIT": {"value": DEFAULT_EXIT_ON_DEPTH_LIMIT, "env_key": "YAI_EXIT_ON_DEPTH_LIMIT", "type": bool},
+    # Tool audit log
+    "TOOL_AUDIT": {"value": DEFAULT_TOOL_AUDIT, "env_key": "YAI_TOOL_AUDIT", "type": bool},
     # MiniMax specific settings
     "MINIMAX_REASONING_SPLIT": {
         "value": True,
@@ -251,4 +345,33 @@ TOOL_CONFIRM={DEFAULT_CONFIG_MAP["TOOL_CONFIRM"]["value"]}
 # Comma-separated list of API parameters to exclude from requests
 # Example: temperature,top_p,frequency_penalty
 EXCLUDE_PARAMS=
+
+# Agent context settings
+# Maximum characters of a single tool result kept in the model context
+# (head and tail are kept, the full output is saved to TOOL_OUTPUT_DIR).
+# Set to 0 to disable truncation.
+TOOL_OUTPUT_MAX_CHARS={DEFAULT_CONFIG_MAP["TOOL_OUTPUT_MAX_CHARS"]["value"]}
+# Directory where full (untruncated) tool outputs are saved
+TOOL_OUTPUT_DIR={DEFAULT_CONFIG_MAP["TOOL_OUTPUT_DIR"]["value"]}
+# Token budget for one request; 0 = derive 70% of the model context window
+CONTEXT_BUDGET_TOKENS={DEFAULT_CONFIG_MAP["CONTEXT_BUDGET_TOKENS"]["value"]}
+
+# Shell tool settings
+# Maximum seconds a shell command may run
+TOOL_TIMEOUT={DEFAULT_CONFIG_MAP["TOOL_TIMEOUT"]["value"]}
+# true: pass the full parent environment to shell commands (previous behavior)
+TOOL_ENV_INHERIT={DEFAULT_CONFIG_MAP["TOOL_ENV_INHERIT"]["value"]}
+# Commands may only run inside this directory (empty = current directory)
+WORKSPACE_ROOT=
+
+# Reliability settings
+# Retry rate-limit / network / timeout / 5xx failures
+RETRY_ENABLED={DEFAULT_CONFIG_MAP["RETRY_ENABLED"]["value"]}
+RETRY_MAX={DEFAULT_CONFIG_MAP["RETRY_MAX"]["value"]}
+RETRY_BASE_DELAY={DEFAULT_CONFIG_MAP["RETRY_BASE_DELAY"]["value"]}
+# Exit non-zero in one-shot mode when the tool-call depth limit is reached
+EXIT_ON_DEPTH_LIMIT={DEFAULT_CONFIG_MAP["EXIT_ON_DEPTH_LIMIT"]["value"]}
+
+# Write one JSON line per tool-call decision to TOOL_AUDIT_PATH
+TOOL_AUDIT={DEFAULT_CONFIG_MAP["TOOL_AUDIT"]["value"]}
 """

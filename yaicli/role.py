@@ -42,17 +42,28 @@ class RoleManager:
     console: YaiConsole = get_console()
 
     def __post_init__(self) -> None:
-        self._ensure_roles_dir()
+        # Never seed/write role files at import time (v0.19 K21): default roles
+        # live in memory, user files are read when present, and disk writes only
+        # happen on explicit create/modify/delete. This keeps read-only HOMEs and
+        # ``--version``/``--help``/``--list-*`` write-free.
         self._load_default_roles()
         self._load_user_roles()
 
-    def _ensure_roles_dir(self) -> None:
-        """Ensure the roles directory exists, and create default roles if they don't exist"""
-        self.roles_dir.mkdir(parents=True, exist_ok=True)
-        for role in DEFAULT_ROLES.values():
-            if not (self.roles_dir / f"{role['name']}.json").exists():
-                with open(self.roles_dir / f"{role['name']}.json", "w") as f:
-                    json.dump(role, f, indent=2)
+    def _write_role_file(self, role: Role) -> bool:
+        """Persist one role JSON file. Best effort, never raises."""
+        role_path = self.roles_dir / f"{role.name}.json"
+        try:
+            self.roles_dir.mkdir(parents=True, exist_ok=True)
+            with open(role_path, "w", encoding="utf-8") as f:
+                json.dump(role.to_dict(), f, indent=2)
+            return True
+        except OSError as e:
+            self.console.print(
+                f"Warning: could not save role {safe_text(role.name)} to {safe_text(str(role_path))}: "
+                f"{safe_text(str(e))}",
+                style="yellow",
+            )
+            return False
 
     def _load_default_roles(self) -> None:
         """Load default roles"""
@@ -64,12 +75,23 @@ class RoleManager:
         if not self.roles_dir.exists():
             return
 
-        for filename in self.roles_dir.glob("*.json"):
+        try:
+            role_files = list(self.roles_dir.glob("*.json"))
+        except OSError as e:  # pragma: no cover - unreadable roles dir
+            self.console.print(
+                f"Warning: could not read roles directory {safe_text(str(self.roles_dir))}: {safe_text(str(e))}",
+                style="yellow",
+            )
+            return
+
+        for filename in role_files:
             try:
-                with open(filename, "r") as f:
+                with open(filename, "r", encoding="utf-8") as f:
                     role_dict = json.load(f)
                     role = Role(**role_dict)
                     self.roles[role.name] = role
+            except OSError as e:
+                self.console.print(f"Error loading role from {safe_text(filename)}: {safe_text(e)}", style="red")
             except (json.JSONDecodeError, KeyError, TypeError) as e:
                 self.console.print(f"Error loading role from {safe_text(filename)}: {safe_text(e)}", style="red")
 
@@ -97,15 +119,17 @@ class RoleManager:
         )
 
     def create_role(self, name: str, description: str) -> Role:
-        """Create and save a new role"""
+        """Create and save a new role.
+
+        The role is always added to the in-memory registry; persisting the JSON
+        file is best effort so a read-only config directory does not crash.
+        """
         self._warn_builtin_role_modification(name)
         role = Role(name=name, prompt=description)
         self.roles[name] = role
 
-        # Save to file
-        role_path = self.roles_dir / f"{name}.json"
-        with open(role_path, "w") as f:
-            json.dump(role.to_dict(), f, indent=2)
+        # Save to file (best effort, never raises)
+        self._write_role_file(role)
 
         return role
 
@@ -113,10 +137,16 @@ class RoleManager:
         """Delete a role"""
         self._warn_builtin_role_modification(name)
 
-        # Delete role file
+        # Delete role file (best effort: a read-only dir only warns)
         role_path = self.roles_dir / f"{name}.json"
-        if role_path.exists():
-            role_path.unlink()
+        try:
+            if role_path.exists():
+                role_path.unlink()
+        except OSError as e:
+            self.console.print(
+                f"Warning: could not delete role file {safe_text(str(role_path))}: {safe_text(str(e))}",
+                style="yellow",
+            )
 
         # Delete role from memory
         if name in self.roles:
@@ -149,9 +179,27 @@ class RoleManager:
         table = Table(show_header=True, show_footer=False)
         table.add_column("Name", style="dim")
         table.add_column("Filepath", style="dim")
-        for file in sorted(cls.roles_dir.glob("*.json"), key=lambda f: f.stat().st_mtime):
+        # Built-in roles live in memory and are not written to disk at startup
+        # (v0.19 K21), so merge them into the listing: a fresh/read-only HOME
+        # still shows the built-in roles instead of an empty table.
+        try:
+            files = sorted(cls.roles_dir.glob("*.json"), key=lambda f: f.stat().st_mtime)
+        except OSError:  # pragma: no cover - unreadable roles dir
+            files = []
+        seen_names = set()
+        rows = []
+        for file in files:
+            if file.stem in seen_names:
+                continue
+            seen_names.add(file.stem)
+            rows.append((file.stem, file))
+        for name in sorted(DEFAULT_ROLES):
+            if name in seen_names:
+                continue
+            rows.append((name, cls.roles_dir / f"{name}.json"))
+        for name, path in rows:
             # Role file names are user-controlled: render them literally.
-            table.add_row(untrusted_text(file.stem), untrusted_text(str(file)))
+            table.add_row(untrusted_text(name), untrusted_text(str(path)))
         cls.console.print(table)
         cls.console.print("Use `ai --show-role <name>` to view a role.", style="dim")
 

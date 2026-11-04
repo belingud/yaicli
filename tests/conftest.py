@@ -22,6 +22,22 @@ def patched_config_path(tmp_path_factory):
     # Patch is automatically reverted after yield, tmp dir is cleaned up by pytest
 
 
+# Session-scoped fixture to keep REPL history writes inside the test sandbox.
+# Tests that exercise prompt_toolkit/history setup without patching the history
+# path would otherwise write the real ``~/.yaicli_history``, which fails in a
+# read-only HOME / CI sandbox (and is not the test's subject anyway).
+@pytest.fixture(scope="session", autouse=True)
+def patched_history_file(tmp_path_factory):
+    """Point REPL history at a temp file for the whole test session."""
+    import yaicli.cli
+    import yaicli.const
+
+    history_file = tmp_path_factory.mktemp("history") / "yaicli_history"
+    with patch.object(yaicli.cli, "HISTORY_FILE", history_file):
+        with patch.object(yaicli.const, "HISTORY_FILE", history_file):
+            yield history_file
+
+
 # Add a session-scoped fixture to set test provider and credentials
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():

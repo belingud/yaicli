@@ -10,6 +10,7 @@ from .config import cfg
 from .const import DEFAULT_JUSTIFY
 
 _console = None
+_error_console = None
 
 # C0/C1 control characters other than tab/newline. Model output and tool output
 # must never be able to emit ANSI/OSC escape sequences into the terminal.
@@ -24,6 +25,17 @@ class YaiConsole(Console):
         self._default_justify: JustifyMethod = DEFAULT_JUSTIFY
         if "JUSTIFY" in cfg:
             self._default_justify = cfg["JUSTIFY"]
+
+    def on_broken_pipe(self) -> None:
+        """Exit quietly when stdout is a closed pipe (e.g. ``ai --help | head``).
+
+        ``rich.console.Console`` exits with status 1 by default, which made
+        ``ai --help | head`` a failing command in scripts. A closed pipe is a
+        success for the producer, so override with exit code 0 (the roadmap
+        accepts 0 or 141).
+        """
+        self.quiet = True
+        raise SystemExit(0)
 
     def print(
         self,
@@ -71,6 +83,18 @@ def get_console() -> YaiConsole:
     if _console is None:
         _console = YaiConsole()
     return _console
+
+
+def get_error_console() -> YaiConsole:
+    """Return the stderr console used for warnings/errors/progress.
+
+    The headless contract (v0.19) keeps stdout reserved for results/events, so
+    diagnostics must go through this console instead of :func:`get_console`.
+    """
+    global _error_console
+    if _error_console is None:
+        _error_console = YaiConsole(stderr=True)
+    return _error_console
 
 
 def strip_control_chars(text: Any) -> str:

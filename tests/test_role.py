@@ -6,7 +6,7 @@ import typer
 from pytest import raises
 
 from yaicli.config import cfg
-from yaicli.const import DEFAULT_ROLES
+from yaicli.const import DEFAULT_ROLES, DefaultRoleNames
 from yaicli.role import Role, RoleManager
 
 
@@ -96,18 +96,45 @@ class TestRoleManager:
             assert name in manager.roles
 
     @patch("yaicli.role.get_console")
-    def test_ensure_roles_dir(self, mock_get_console, mock_roles_dir, mock_console):
-        """Test ensuring roles directory exists"""
+    def test_init_does_not_write_role_files(self, mock_get_console, mock_roles_dir, mock_console):
+        """v0.19 K21: constructing RoleManager must not write role files (read-only HOME safe)."""
         mock_get_console.return_value = mock_console
 
-        RoleManager(roles_dir=mock_roles_dir, console=mock_console)
+        manager = RoleManager(roles_dir=mock_roles_dir, console=mock_console)
 
-        # Verify directory was created
-        assert mock_roles_dir.exists()
+        # Default roles are available from memory without seeding any JSON file.
+        assert len(manager.roles) >= len(DEFAULT_ROLES)
+        assert list(mock_roles_dir.glob("*.json")) == []
 
-        # Verify default role files were created
-        for role in DEFAULT_ROLES.values():
-            assert (mock_roles_dir / f"{role['name']}.json").exists()
+    @patch("yaicli.role.get_console")
+    def test_create_role_creates_dir_and_writes_file_on_demand(self, mock_get_console, mock_roles_dir, mock_console):
+        """Role JSON is written on create; the roles dir is created lazily."""
+        mock_get_console.return_value = mock_console
+        roles_dir = mock_roles_dir / "nested" / "roles"  # does not exist yet
+
+        manager = RoleManager(roles_dir=roles_dir, console=mock_console)
+        assert not roles_dir.exists()
+        assert list(roles_dir.glob("*.json")) == []
+
+        manager.create_role("custom_role", "Custom prompt")
+
+        assert roles_dir.exists()
+        assert (roles_dir / "custom_role.json").exists()
+
+    @patch("yaicli.role.get_console")
+    def test_create_role_survives_read_only_roles_dir(self, mock_get_console, mock_roles_dir, mock_console):
+        """A read-only roles directory only warns: the role still exists in memory."""
+        mock_get_console.return_value = mock_console
+        manager = RoleManager(roles_dir=mock_roles_dir, console=mock_console)
+        mock_roles_dir.chmod(0o500)
+        try:
+            role = manager.create_role("readonly_role", "Prompt")
+        finally:
+            mock_roles_dir.chmod(0o700)
+
+        assert role.name == "readonly_role"
+        assert "readonly_role" in manager.roles
+        assert mock_console.print.called
 
     @patch("yaicli.role.get_console")
     def test_load_user_roles(self, mock_get_console, mock_roles_dir, mock_console):
@@ -256,7 +283,11 @@ class TestRoleManager:
         mock_console.print.assert_not_called()
 
     def test_print_list_option(self, tmp_path):
-        """Test the print_list_option class method"""
+        """Test the print_list_option class method.
+
+        Built-in roles live in memory only (v0.19 K21) and are merged into the
+        listing, so user files plus the built-in roles are shown.
+        """
         # Create temporary roles directory and test files
         roles_dir = tmp_path / "roles"
         roles_dir.mkdir()
@@ -295,14 +326,39 @@ class TestRoleManager:
                 mock_table.add_column.assert_any_call("Name", style="dim")
                 mock_table.add_column.assert_any_call("Filepath", style="dim")
 
-                # Verify table row additions, using more flexible verification
-                assert mock_table.add_row.call_count == 2
+                # User files plus the in-memory built-in roles are listed.
+                assert mock_table.add_row.call_count == 2 + len(DEFAULT_ROLES)
+                rendered_names = {str(call.args[0]) for call in mock_table.add_row.call_args_list}
+                assert {"test_role1", "test_role2"} <= rendered_names
+                assert DefaultRoleNames.DEFAULT.value in rendered_names
 
                 # Verify console output
                 mock_console.print.assert_any_call(mock_table)
                 mock_console.print.assert_any_call("Use `ai --show-role <name>` to view a role.", style="dim")
         finally:
             # Restore original values
+            RoleManager.roles_dir = original_roles_dir
+            RoleManager.console = original_console
+
+    def test_print_list_option_fresh_home_lists_builtin_roles(self, tmp_path):
+        """A fresh HOME has no role files: the listing still shows built-in roles."""
+        roles_dir = tmp_path / "missing-roles"  # never created on init (K21)
+        mock_table = MagicMock()
+        mock_console = MagicMock()
+        original_roles_dir = RoleManager.roles_dir
+        original_console = RoleManager.console
+        try:
+            RoleManager.roles_dir = roles_dir
+            RoleManager.console = mock_console
+            with patch("yaicli.role.Table", return_value=mock_table):
+                try:
+                    RoleManager.print_list_option(1)
+                except typer.Exit:
+                    pass
+
+            assert mock_table.add_row.call_count == len(DEFAULT_ROLES)
+            assert not roles_dir.exists()
+        finally:
             RoleManager.roles_dir = original_roles_dir
             RoleManager.console = original_console
 

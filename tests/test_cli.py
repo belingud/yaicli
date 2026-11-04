@@ -130,6 +130,7 @@ class TestCLIInitialization:
         """Test CLI initialization with verbose flag."""
         with (
             patch("yaicli.cli.get_console") as mock_console_func,
+            patch("yaicli.cli.get_error_console") as mock_error_console_func,
             patch("yaicli.config.cfg", new=MagicMock()),
             patch("yaicli.cli.Printer"),
             patch("yaicli.cli.FileChatManager"),
@@ -138,14 +139,24 @@ class TestCLIInitialization:
         ):
             mock_console = MagicMock()
             mock_console_func.return_value = mock_console
+            mock_error_console = MagicMock()
+            mock_error_console_func.return_value = mock_error_console
 
             # Create a mock LLMClient and pass it directly to CLI
             mock_client = MagicMock()
-            cli = CLI(verbose=True, client=mock_client)
+            # Verbose output is a diagnostic: in a headless (non-TTY) run it goes
+            # to stderr, so make the TTY detection deterministic for this test.
+            with (
+                patch.object(CLI, "_stdin_is_tty", return_value=False),
+                patch.object(CLI, "_stdout_is_tty", return_value=False),
+            ):
+                cli = CLI(verbose=True, client=mock_client)
 
             assert cli.verbose is True
-            # Verify console.print was called for config display
-            mock_console.print.assert_any_call("Loading Configuration:", style="bold cyan")
+            # Verify console.print was called for config display (stderr console in
+            # headless mode, stdout console otherwise).
+            verbose_console = mock_error_console if cli.machine_output else mock_console
+            verbose_console.print.assert_any_call("Loading Configuration:", style="bold cyan")
 
     def test_get_prompt_tokens(self, cli_with_mocks):
         """Test prompt token generation for different modes."""
@@ -1031,9 +1042,7 @@ class TestCLICoverage:
         from yaicli.schemas import ChatMessage
 
         cli_with_mocks.context_manager = MagicMock()
-        cli_with_mocks.context_manager.get_context_messages.return_value = [
-            ChatMessage(role="system", content="ctx")
-        ]
+        cli_with_mocks.context_manager.get_context_messages.return_value = [ChatMessage(role="system", content="ctx")]
         cli_with_mocks.context_manager.parse_at_references.return_value = ("at refs", "cleaned", [])
         messages = cli_with_mocks._build_messages("hello @f.txt")
         contents = [m.content for m in messages]

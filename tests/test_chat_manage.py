@@ -429,11 +429,17 @@ class TestChatModel:
 class TestFileChatManagerCoverage:
     """Additional coverage for FileChatManager branches."""
 
-    def test_post_init_converts_str_path_and_creates_dir(self, tmp_path):
+    def test_post_init_converts_str_path_without_writing(self, tmp_path):
+        """v0.19 K21: constructing FileChatManager is write-free; save creates the dir."""
         sub = tmp_path / "newdir"
         mgr = FileChatManager(chat_dir=str(sub))
         assert isinstance(mgr.chat_dir, Path)
-        assert mgr.chat_dir.exists()
+        assert not sub.exists()
+
+        chat = Chat(title="Lazy")
+        chat.add_message("user", "hi")
+        mgr.save_chat(chat)
+        assert sub.exists()
 
     def test_load_chats_parse_error_raises(self, chat_manager):
         (chat_manager.chat_dir / "20230101-120000-title-X.json").write_text("{}")
@@ -708,7 +714,6 @@ class TestFullMessageSerialization:
         assert chat.path.exists()
         assert chat.path.parent == tmp_path
         assert not any(p.name.endswith(".tmp") for p in tmp_path.iterdir())
-
 
 
 class TestSaveChatReplacementSafety:

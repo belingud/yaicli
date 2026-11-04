@@ -315,7 +315,10 @@ class TestImageOptions:
         )
 
     def test_invalid_image_exits_before_cli_is_built(self, mock_cli_class):
-        """Bad image sources keep the existing error + exit(1) path."""
+        """Bad image sources keep the existing error + exit(1) path.
+
+        v0.19 K04: errors are diagnostics and go to stderr so stdout stays clean.
+        """
         with patch(
             "yaicli.image.process_image_source",
             side_effect=typer.BadParameter("Image file not found: missing.png"),
@@ -323,7 +326,8 @@ class TestImageOptions:
             result = runner.invoke(app, ["--image", "missing.png"])
 
         assert result.exit_code == 1
-        assert "Image file not found: missing.png" in result.stdout
+        assert "Image file not found: missing.png" in result.stderr
+        assert "Image file not found: missing.png" not in result.stdout
         mock_cli_class.assert_not_called()
 
     def test_no_prompt_no_image_still_prints_help(self, mock_cli_class):
