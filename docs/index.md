@@ -1,12 +1,10 @@
-# YAICLI: A lightweight agent in your terminal
+# YAICLI: Your AI Assistant in Command Line
 
 <p align="center">
   <img src="./assets/artwork/logo.png" width="150" alt="YAICLI Logo" />
 </p>
 
-YAICLI is a lightweight agent that runs in your terminal. Give it a task and it plans, calls
-built-in tools (read and edit files, search the web, run shell commands), checks the results, and
-keeps going until the job is done — no daemon, no index, no extra setup.
+YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (LLMs) like GPT-5.2 directly to your terminal. Interact with AI through multiple modes: have natural conversations, generate and execute shell commands, or get quick answers without leaving your workflow.
 
 **Supports both standard and deep reasoning models across all major LLM providers.**
 

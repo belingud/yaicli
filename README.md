@@ -1,4 +1,4 @@
-# YAICLI: A lightweight agent in your terminal.
+# YAICLI: Your AI assistant in command line.
 
 <p align="center">
   <img src="artwork/logo.png" width="150" alt="YAICLI Logo" />
@@ -11,9 +11,9 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/yaicli?logo=pypi&style=for-the-badge)
 ![Pepy Total Downloads](https://img.shields.io/pepy/dt/yaicli?style=for-the-badge&logo=python)
 
-YAICLI is a lightweight agent that runs in your terminal. Give it a task and it plans, calls
-built-in tools (read and edit files, search the web, run shell commands), checks the results, and
-keeps going until the job is done — no daemon, no index, no extra setup.
+YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (
+LLMs) like GPT-5 directly to your terminal. Interact with AI through multiple modes: have natural conversations,
+generate and execute shell commands, or get quick answers without leaving your workflow.
 
 - **Tools out of the box** — 12 built-in tools load straight from the installed package; there is
   no install step before the model can use them.
@@ -1356,4 +1356,4 @@ Contributions are welcome! Here's how you can help:
 
 ---
 
-<p align="center"><i>YAICLI — A lightweight agent in your terminal</i></p>
+<p align="center"><i>YAICLI - Your AI Command Line Interface</i></p>
