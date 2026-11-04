@@ -290,7 +290,7 @@ In addition to persistent context, you can temporarily reference files using the
 | Shortcut | Description |
 |----------|-------------|
 | `Shift+Tab` | Toggle between Chat/Execute modes |
-| `Ctrl+C` | Clear the current input line; during generation it cancels the turn |
+| `Ctrl+C` | Clear the current input line; during generation it cancels the turn; press twice quickly to exit |
 | `Ctrl+D` | Exit (exit code 0) |
 | `Ctrl+R` | Search history |
 | `↑/↓` | Navigate through history |

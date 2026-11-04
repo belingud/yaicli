@@ -1203,6 +1203,60 @@ class TestCLICoverage:
         printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
         assert any("KeyboardInterrupt" in t for t in printed)
 
+    def test_run_repl_double_ctrl_c_exits(self, cli_with_mocks):
+        """Two Ctrl-C presses in quick succession exit the REPL (K04 UX)."""
+        from unittest.mock import MagicMock, patch
+
+        mock_session = MagicMock()
+        mock_session.prompt.side_effect = [KeyboardInterrupt, KeyboardInterrupt]
+        with (
+            patch("yaicli.cli.PromptSession", return_value=mock_session),
+            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+            patch("yaicli.cli.AtPathCompleter"),
+            patch("yaicli.cli.LimitedFileHistory"),
+        ):
+            cli_with_mocks._run_repl()
+
+        assert mock_session.prompt.call_count == 2
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
+        assert any("Press Ctrl+C again to exit" in t for t in printed)
+
+    def test_run_repl_single_ctrl_c_keeps_session_alive(self, cli_with_mocks):
+        """A single Ctrl-C clears the line and keeps the REPL running until Ctrl-D."""
+        from unittest.mock import MagicMock, patch
+
+        mock_session = MagicMock()
+        mock_session.prompt.side_effect = [KeyboardInterrupt, EOFError]
+        with (
+            patch("yaicli.cli.PromptSession", return_value=mock_session),
+            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+            patch("yaicli.cli.AtPathCompleter"),
+            patch("yaicli.cli.LimitedFileHistory"),
+        ):
+            cli_with_mocks._run_repl()
+
+        assert mock_session.prompt.call_count == 2
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
+        assert any("Press Ctrl+C again to exit" in t for t in printed)
+
+    def test_run_repl_ctrl_c_counter_resets_after_input(self, cli_with_mocks):
+        """A fresh prompt resets the double-Ctrl-C window (blank input counts as a read)."""
+        from unittest.mock import MagicMock, patch
+
+        mock_session = MagicMock()
+        mock_session.prompt.side_effect = [KeyboardInterrupt, "", KeyboardInterrupt, EOFError]
+        with (
+            patch("yaicli.cli.PromptSession", return_value=mock_session),
+            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+            patch("yaicli.cli.AtPathCompleter"),
+            patch("yaicli.cli.LimitedFileHistory"),
+        ):
+            cli_with_mocks._run_repl()
+
+        # The third Ctrl-C must not exit (the window was reset by the blank read);
+        # only the trailing EOFError ends the loop.
+        assert mock_session.prompt.call_count == 4
+
     def test_run_repl_autosave_on_exit(self, cli_with_mocks):
         from unittest.mock import MagicMock, patch
 

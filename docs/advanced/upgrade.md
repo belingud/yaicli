@@ -56,7 +56,7 @@ YAICLI only warns about stale copies; it never silently overwrites your customis
 | Permissions | Risk classes, `tool_permissions.json` v2 rules (`argv_prefix`, `path_glob`), audit log (`TOOL_AUDIT`), `/permissions` command | Old `always_allow` string list stays valid; add rules for finer control |
 | Headless | New flags `-p/--print`, `--output-format`, `-q/--quiet`, `--max-turns`, `-y/--yes`, `--allowed-tools`, `--cwd`, `--fail-on-tool-denied`; clean stdout/stderr split; exit codes 0/1/2/3/130/141 | Update scripts that parsed decorated output; see [Headless & Scripting](../usage/headless.md) |
 | One-shot exit codes | Handled errors now exit non-zero in one-shot mode (previously 0); depth-limit exhaustion exits non-zero (`EXIT_ON_DEPTH_LIMIT`) | Add error handling to scripts that relied on exit 0 |
-| Interrupts | One-shot SIGINT exits 130; REPL prompt Ctrl+C clears the line instead of exiting; Ctrl+D exits | None |
+| Interrupts | One-shot SIGINT exits 130; REPL prompt Ctrl+C clears the line (press twice quickly to exit); Ctrl+D exits | None |
 | Startup | `--version` fast path: no config/role imports, zero filesystem writes, much faster; `--help`/`--template` no longer create state files | None |
 | Config & state paths | `YAI_CONFIG_DIR` / `XDG_CONFIG_HOME` (and `%APPDATA%` on Windows) are honoured; config dir 0700 / `config.ini` 0600; new files are created on demand | Move config if you want XDG locations; existing `~/.config/yaicli` keeps working |
 | History file | Uses `XDG_STATE_HOME/yaicli/history` when `XDG_STATE_HOME` is set, otherwise `~/.yaicli_history` | None |

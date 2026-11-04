@@ -921,7 +921,7 @@ ai --verbose "Explain quantum computing"
 **Keyboard Shortcuts**
 
 - `Shift+Tab` - Toggle between Chat/Execute modes
-- `Ctrl+C` - Clear the current input (during generation: cancel the turn)
+- `Ctrl+C` - Clear the current input (during generation: cancel the turn); press twice quickly to exit
 - `Ctrl+D` - Exit
 - `Ctrl+R` - Search history
 - `↑/↓` - Navigate through history
@@ -1001,7 +1001,8 @@ Press Shift+Tab to switch mode
 /save <title>      : Save current chat
 /load <index>      : Load a saved chat
 /del <index>       : Delete a saved chat
-/exit|Ctrl+D|Ctrl+C: Exit
+/exit|Ctrl+D       : Exit
+Ctrl+C             : Clear input / cancel turn; press twice to exit
 /mode chat|exec    : Switch mode (Case insensitive)
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 > /his
@@ -1183,7 +1184,8 @@ Press Shift+Tab to switch mode
 /load <index>      : Load a saved chat
 /del <index>       : Delete a saved chat
 !<command>         : Execute shell command directly (e.g., !ls -al)
-/exit|Ctrl+D|Ctrl+C: Exit
+/exit|Ctrl+D       : Exit
+Ctrl+C             : Clear input / cancel turn; press twice to exit
 /mode chat|exec    : Switch mode (Case insensitive)
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 > Tell me about the solar system

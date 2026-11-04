@@ -10,7 +10,7 @@ These shortcuts work in all interactive modes:
 
 | Shortcut             | Description                       |
 | -------------------- | --------------------------------- |
-| `Ctrl+C`             | Clear the current input line (during generation: cancel the turn) |
+| `Ctrl+C`             | Clear the current input line (during generation: cancel the turn); press twice quickly to exit |
 | `Ctrl+D`             | Exit the application              |
 | `Shift+Tab`          | Toggle between Chat/Execute modes |
 | `Ctrl+R`             | Search command history            |

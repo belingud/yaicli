@@ -122,9 +122,11 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   `Error initializing prompt session history: {e}`.
 - `_run_repl()` loop: separator → `session.prompt(self.get_prompt_tokens)` → strip → skip blank →
   `_handle_special_commands()` (tri-state `False`=exit, `True`=handled, `str`=prompt) →
-  `_process_user_input()`. SIGINT semantics (v0.19, consistent with the headless contract):
-  Ctrl-C at the prompt clears the current input and keeps the REPL alive; Ctrl-D exits 0; Ctrl-C
-  during a turn cancels that turn and keeps the REPL alive. One-shot runs exit 130 on SIGINT.
+  `_process_user_input()`. SIGINT semantics (v0.19, consistent with the headless contract): a single
+  Ctrl-C at the prompt clears the current input and keeps the REPL alive; a second Ctrl-C within
+  `DOUBLE_CTRL_C_WINDOW_SECONDS` (~2s) exits the REPL (a prompt read resets the window); Ctrl-D exits
+  0; Ctrl-C during a turn cancels that turn and keeps the REPL alive, with the next Ctrl-C at the
+  prompt exiting. One-shot runs exit 130 on SIGINT.
   Autosave on exit only when `not is_temp_session and chat.history`.
 - `sys.stdin.isatty()` appears exactly three times: `entry.main` (stdin merge, `--chat` warning), `CLI.__init__`
   (skip the first `PromptSession` when not interactive), and `_create_client(interactive=...)`

@@ -155,8 +155,9 @@ the request outcome.
 
 - **One-shot runs** (including while the answer is generating): interrupts, prints one short line
   to stderr and exits `130` — no traceback.
-- **REPL prompt**: clears the current input and stays in the REPL; it does **not** exit.
-- **REPL generation**: cancels the turn and returns to the prompt.
+- **REPL prompt**: a single Ctrl+C clears the current input and stays in the REPL; pressing it a
+  second time within ~2 seconds exits normally.
+- **REPL generation**: cancels the turn and returns to the prompt (a second Ctrl+C at the prompt exits).
 - **Ctrl+D** at the REPL prompt exits normally with `0`.
 
 ### EPIPE (`| head`, closed pipes)

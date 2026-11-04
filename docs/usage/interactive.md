@@ -28,7 +28,7 @@ Press Shift+Tab to switch mode
   Tip: Type '@' for path completion, use Tab/arrows to select
 !<command>         : Execute shell command directly (e.g., !ls -al)
 /exit|Ctrl+D       : Exit
-Ctrl+C             : Clear input / cancel current turn
+Ctrl+C             : Clear input / cancel turn; press twice to exit
 /mode chat|exec    : Switch mode (Case insensitive)
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 >
@@ -60,7 +60,7 @@ Press Shift+Tab to switch mode
   Tip: Type '@' for path completion, use Tab/arrows to select
 !<command>         : Execute shell command directly (e.g., !ls -al)
 /exit|Ctrl+D       : Exit
-Ctrl+C             : Clear input / cancel current turn
+Ctrl+C             : Clear input / cancel turn; press twice to exit
 /mode chat|exec    : Switch mode (Case insensitive)
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 >
@@ -86,7 +86,8 @@ Ctrl+C             : Clear input / cancel current turn
 ## Keyboard Shortcuts
 
 - `Shift+Tab` - Toggle between Chat/Execute modes
-- `Ctrl+C` - Clear the current input line; during generation it cancels the turn
+- `Ctrl+C` - Clear the current input line; during generation it cancels the turn. Press `Ctrl+C`
+  twice quickly to exit (single press keeps the session alive)
 - `Ctrl+D` - Exit (exit code 0)
 - `Ctrl+R` - Search history
 - `↑/↓` - Navigate through history

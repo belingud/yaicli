@@ -57,6 +57,10 @@ OUTPUT_FORMATS = ("text", "json", "stream-json")
 #: Content of the in-band tool result the client appends when a tool call is denied.
 TOOL_DENIED_MARKERS = ("declined to execute", "tool_denied")
 
+#: Ctrl-C twice within this many seconds exits the REPL (a single press only clears
+#: the current input line / cancels the current turn). Matches common shell/REPL UX.
+DOUBLE_CTRL_C_WINDOW_SECONDS = 2.0
+
 
 class CLI:
     __slots__ = (
@@ -1033,16 +1037,18 @@ class CLI:
         self.console.print(f"{'!<command>':<19}: Execute shell command directly (e.g., !ls -al)")
         cmd_exit = f"{CMD_EXIT}|Ctrl+D"
         self.console.print(f"{cmd_exit:<19}: Exit")
-        self.console.print(f"{'Ctrl+C':<19}: Clear input / cancel current turn")
+        self.console.print(f"{'Ctrl+C':<19}: Clear input / cancel turn; press twice to exit")
         cmd_mode = f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"
         self.console.print(f"{cmd_mode:<19}: Switch mode (Case insensitive)", style="dim")
 
     def _run_repl(self) -> None:
         """Run the main Read-Eval-Print Loop (REPL).
 
-        SIGINT semantics (v0.19 K04): Ctrl-C *at the prompt* discards the current
-        line and keeps the session alive; Ctrl-D exits 0; Ctrl-C during a turn
-        cancels that turn only. The REPL never turns an interrupt into exit 130.
+        SIGINT semantics (v0.19 K04): a single Ctrl-C clears the current input
+        line / cancels the current turn and keeps the session alive; a second
+        Ctrl-C within ``DOUBLE_CTRL_C_WINDOW_SECONDS`` exits the REPL normally
+        (Ctrl-D does the same). The REPL never turns a single interrupt into
+        exit 130; one-shot/generation interrupts keep their 130 contract.
         """
         self.prepare_chat_loop()
         # getattr fallbacks keep bare/legacy CLI objects (tests build them via
@@ -1053,6 +1059,17 @@ class CLI:
         if interactive and not quiet:
             self._print_welcome_message()
 
+        # SIGINT bookkeeping: only two interrupts in quick succession exit, so a
+        # stray Ctrl-C can never kill an interactive session.
+        last_interrupt_at = 0.0
+
+        def _is_second_interrupt() -> bool:
+            nonlocal last_interrupt_at
+            now = time.monotonic()
+            doubled = last_interrupt_at > 0.0 and (now - last_interrupt_at) <= DOUBLE_CTRL_C_WINDOW_SECONDS
+            last_interrupt_at = now
+            return doubled
+
         # Main REPL loop
         while True:
             if not machine_output:
@@ -1062,12 +1079,16 @@ class CLI:
             try:
                 user_input = self.session.prompt(self.get_prompt_tokens)
             except KeyboardInterrupt:
-                # Ctrl-C at the prompt: clear the input, stay in the REPL.
+                # Ctrl-C at the prompt: clear the input; press twice quickly to exit.
+                if _is_second_interrupt():
+                    break
+                self.console.print("Press Ctrl+C again to exit.", style="dim")
                 continue
             except EOFError:
                 # Ctrl-D: leave the REPL normally (exit code 0).
                 break
 
+            last_interrupt_at = 0.0
             user_input = user_input.strip()
             if not user_input:
                 continue
@@ -1076,7 +1097,10 @@ class CLI:
             try:
                 _continue = self._handle_special_commands(user_input)
             except KeyboardInterrupt:
-                # Ctrl-C while running a slash command cancels it only.
+                # Ctrl-C while running a slash command cancels it; twice exits.
+                if _is_second_interrupt():
+                    break
+                self.console.print("Press Ctrl+C again to exit.", style="dim")
                 continue
             except EOFError:
                 break
@@ -1093,8 +1117,11 @@ class CLI:
                 if not self._process_user_input(user_input):
                     break
             except KeyboardInterrupt:
-                # Generation Ctrl-C: cancel this turn and keep the session.
+                # Generation Ctrl-C: cancel this turn; press twice quickly to exit.
+                if _is_second_interrupt():
+                    break
                 self.console.print("KeyboardInterrupt", style="yellow")
+                self.console.print("Press Ctrl+C again to exit.", style="dim")
                 continue
             except EOFError:
                 break
