@@ -18,6 +18,7 @@ disables truncation entirely.
 Standard library only: this module runs inside the tool-call path.
 """
 
+import os
 import re
 import time
 import uuid
@@ -94,6 +95,10 @@ def resolve_output_cap(tool_name: str, max_chars: Optional[int] = None) -> int:
 def spill_tool_output(text: str, tool_name: str) -> Optional[Path]:
     """Write the full ``text`` to ``TOOL_OUTPUT_DIR``; return the path or ``None``.
 
+    The file is created with mode ``0600`` (best effort): tool output may contain
+    secrets read from files, the environment or command output, so it must not be
+    world-readable just because of the process umask.
+
     Every failure path (missing/read-only directory, permission error, bad
     config value) returns ``None``: truncation then proceeds without a path.
     """
@@ -105,6 +110,10 @@ def spill_tool_output(text: str, tool_name: str) -> Optional[Path]:
         filename = f"{time.strftime('%Y%m%d-%H%M%S')}-{safe_name}-{uuid.uuid4().hex[:8]}.txt"
         path = directory / filename
         path.write_text(text, encoding="utf-8")
+        try:
+            os.chmod(path, 0o600)
+        except OSError:  # pragma: no cover - Windows / exotic filesystems
+            pass
         return path
     except (OSError, ValueError):
         return None

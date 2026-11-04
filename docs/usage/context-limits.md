@@ -25,12 +25,26 @@ per-tool caps on top of the global default:
 | `web_search`, MCP tools, default | 32 KB |
 
 Full outputs are stored under `TOOL_OUTPUT_DIR`, which defaults to a `tool-outputs/` directory
-under the chat-history directory. The truncated text includes the path, and the model can read the
-rest with `fs_read_file` using `offset` / `limit`:
+under the chat-history directory. The truncated text includes the path so the model can read the
+rest:
 
 ```json
 {"file_paths": ["/path/to/tool-outputs/20261104-123456-execute_shell_command.txt"], "offset": 20000, "limit": 12000}
 ```
+
+`fs_read_file` accepts two optional paging arguments (character based, applied per file):
+
+| Argument | Meaning |
+| --- | --- |
+| `offset` | First character to return (`0` = beginning of the file). |
+| `limit` | Maximum number of characters to return (`0` = read to the end). |
+
+The response keeps the usual `path`/`success`/`content`/`size`/`error` fields and adds
+`offset`/`limit` (the requested window), `total_chars` (full file length), `returned_chars` and
+`truncated` (whether `content` is only a window of the file). Paging works on the original file as
+well as on a spilled tool output; when reading a spilled output, remember it is the JSON *text* of
+the tool result, not the original file. `fs_read_file` results are themselves capped at 64 KB, so
+pass a `limit` comfortably below that (e.g. `limit: 12000`) to avoid the page being truncated again.
 
 Notes:
 
@@ -39,6 +53,8 @@ Notes:
   so a 1 MB shell result does not flood your screen.
 - If the spill file cannot be written (read-only disk, permission error), YAICLI degrades to plain
   truncation without the path — the request still succeeds.
+- Spilled files are created with mode `0600` on POSIX (file output may contain secrets); clean the
+  `TOOL_OUTPUT_DIR` up periodically.
 
 ## 2. Token budget
 

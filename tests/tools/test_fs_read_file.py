@@ -382,6 +382,151 @@ class TestFSReadFileSchema:
         assert "one or more files" in description
         assert "single call" in description
 
+    def test_openai_schema_advertises_offset_and_limit(self):
+        """Large/spilled files are pageable: offset/limit are optional integers."""
+        parameters = Function.openai_schema["parameters"]
+        properties = parameters["properties"]
+
+        for name in ("offset", "limit"):
+            prop = properties[name]
+            assert prop["type"] == "integer"
+            assert prop["default"] == 0
+            assert name not in parameters["required"]
+
+        assert "offset" in properties["offset"]["description"].lower()
+        assert "limit" in properties["limit"]["description"].lower()
+
+    def test_anthropic_schema_advertises_offset_and_limit(self):
+        """The Anthropic input schema exposes the same paging arguments."""
+        input_schema = Function.anthropic_schema["input_schema"]
+        properties = input_schema["properties"]
+
+        for name in ("offset", "limit"):
+            assert properties[name]["type"] == "integer"
+            assert properties[name]["default"] == 0
+            assert name not in input_schema["required"]
+
+
+class TestFSReadFilePaging:
+    """offset/limit character paging (used by the truncation marker for spilled output)."""
+
+    @pytest.fixture
+    def sample_file(self, tmp_path):
+        path = tmp_path / "sample.txt"
+        path.write_text("".join(str(index % 10) for index in range(500)))
+        return path
+
+    def test_offset_and_limit_slice_content(self, sample_file):
+        content = sample_file.read_text()
+
+        result_dict = json.loads(Function.execute(str(sample_file), offset=10, limit=20))
+
+        assert result_dict["success"] is True
+        assert result_dict["content"] == content[10:30]
+        assert result_dict["offset"] == 10
+        assert result_dict["limit"] == 20
+        assert result_dict["total_chars"] == len(content)
+        assert result_dict["returned_chars"] == 20
+        assert result_dict["truncated"] is True
+
+    def test_offset_only_reads_to_end(self, sample_file):
+        content = sample_file.read_text()
+
+        result_dict = json.loads(Function.execute(str(sample_file), offset=400))
+
+        assert result_dict["success"] is True
+        assert result_dict["content"] == content[400:]
+        assert result_dict["limit"] == 0
+        assert result_dict["truncated"] is True
+
+    def test_limit_only_reads_from_start(self, sample_file):
+        content = sample_file.read_text()
+
+        result_dict = json.loads(Function.execute(str(sample_file), limit=15))
+
+        assert result_dict["success"] is True
+        assert result_dict["content"] == content[:15]
+        assert result_dict["offset"] == 0
+        assert result_dict["truncated"] is True
+
+    def test_default_returns_full_content_and_marks_not_truncated(self, sample_file):
+        content = sample_file.read_text()
+
+        result_dict = json.loads(Function.execute(str(sample_file)))
+
+        assert result_dict["content"] == content
+        assert result_dict["offset"] == 0
+        assert result_dict["limit"] == 0
+        assert result_dict["total_chars"] == len(content)
+        assert result_dict["returned_chars"] == len(content)
+        assert result_dict["truncated"] is False
+
+    def test_limit_larger_than_file_returns_everything(self, sample_file):
+        content = sample_file.read_text()
+
+        result_dict = json.loads(Function.execute(str(sample_file), limit=100_000))
+
+        assert result_dict["content"] == content
+        assert result_dict["returned_chars"] == len(content)
+        assert result_dict["truncated"] is False
+
+    def test_offset_beyond_end_returns_empty_success(self, sample_file):
+        result_dict = json.loads(Function.execute(str(sample_file), offset=100_000, limit=10))
+
+        assert result_dict["success"] is True
+        assert result_dict["content"] == ""
+        assert result_dict["returned_chars"] == 0
+        assert result_dict["total_chars"] == 500
+        assert result_dict["truncated"] is True
+
+    def test_negative_values_are_clamped(self, sample_file):
+        content = sample_file.read_text()
+
+        result_dict = json.loads(Function.execute(str(sample_file), offset=-5, limit=-10))
+
+        assert result_dict["success"] is True
+        assert result_dict["offset"] == 0
+        assert result_dict["limit"] == 0
+        assert result_dict["content"] == content
+
+    def test_non_integer_paging_arguments_return_error_json(self, sample_file):
+        result_dict = json.loads(Function.execute(str(sample_file), offset="abc"))
+
+        assert "error" in result_dict
+        assert "offset/limit must be integers" in result_dict["error"]
+
+    def test_paging_applies_per_file(self, tmp_path):
+        file1 = tmp_path / "file1.txt"
+        file1.write_text("ABCDEFGHIJ")
+        file2 = tmp_path / "file2.txt"
+        file2.write_text("0123456789")
+
+        result_dict = json.loads(Function.execute([str(file1), str(file2)], offset=2, limit=3))
+
+        assert result_dict["success_count"] == 2
+        assert [item["content"] for item in result_dict["files"]] == ["CDE", "234"]
+        assert [item["returned_chars"] for item in result_dict["files"]] == [3, 3]
+        assert [item["truncated"] for item in result_dict["files"]] == [True, True]
+        assert [item["total_chars"] for item in result_dict["files"]] == [10, 10]
+
+    def test_paging_with_legacy_single_path_string(self, sample_file):
+        content = sample_file.read_text()
+
+        result_dict = json.loads(Function.execute(str(sample_file), encoding="utf-8", offset=100, limit=5))
+
+        assert result_dict["success"] is True
+        assert result_dict["content"] == content[100:105]
+        assert "files" not in result_dict
+
+    def test_error_entry_still_reports_requested_window(self):
+        result_dict = json.loads(Function.execute("/nonexistent/file.txt", offset=10, limit=20))
+
+        assert result_dict["success"] is False
+        assert "File does not exist" in result_dict["error"]
+        assert result_dict["offset"] == 10
+        assert result_dict["limit"] == 20
+        assert result_dict["truncated"] is False
+
 
 class TestFSReadFileToolCall:
     """End-to-end coverage through the runtime tool-call executor."""
@@ -453,6 +598,33 @@ class TestFSReadFileToolCall:
         result_dict = json.loads(result)
         assert "error" in result_dict
         assert "file_paths must be a list" in result_dict["error"]
+
+    def test_tool_call_pages_a_file_with_offset_and_limit(self, tmp_path):
+        """End-to-end: model-facing arguments offset/limit reach execute() and slice."""
+        test_file = tmp_path / "big.txt"
+        content = "".join(f"line {index:04d}\n" for index in range(1000))
+        test_file.write_text(content)
+
+        tool = ToolFunction(function=Function)
+        tool_call = ToolCall(
+            id="1",
+            name="fs_read_file",
+            arguments=json.dumps({"file_paths": [str(test_file)], "offset": 100, "limit": 250}),
+        )
+        with (
+            patch("yaicli.tools.cfg", FAKE_CFG),
+            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.console", MagicMock()),
+        ):
+            result, ok = execute_tool_call(tool_call)
+
+        assert ok is True
+        result_dict = json.loads(result)
+        assert result_dict["success"] is True
+        assert result_dict["content"] == content[100:350]
+        assert result_dict["offset"] == 100
+        assert result_dict["limit"] == 250
+        assert result_dict["truncated"] is True
 
 
 class TestFSReadFileInputCompatibility:
@@ -560,10 +732,21 @@ class TestFSReadFileGeminiSchema:
         assert "file_paths" in declaration.parameters.required
 
     def test_gemini_declaration_keeps_encoding_optional_string(self, declaration):
-        """The array fix leaves the remaining parameter untouched."""
+        """The array/paging arguments leave the remaining parameter untouched."""
         properties = declaration.parameters.properties
 
-        assert set(properties) == {"file_paths", "encoding"}
+        assert set(properties) == {"file_paths", "encoding", "offset", "limit"}
         assert self._type_name(properties["encoding"].type) == "STRING"
         assert properties["encoding"].default == "utf-8"
         assert "encoding" not in declaration.parameters.required
+
+    def test_gemini_declaration_paging_arguments_are_optional_integers(self, declaration):
+        """Gemini sees offset/limit as optional INTEGERs with a 0 default."""
+        properties = declaration.parameters.properties
+        required = declaration.parameters.required or []
+
+        for name in ("offset", "limit"):
+            prop = properties[name]
+            assert self._type_name(prop.type) == "INTEGER"
+            assert prop.default == 0
+            assert name not in required

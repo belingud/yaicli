@@ -14,6 +14,7 @@ import os
 import random
 import re
 from dataclasses import asdict
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -440,6 +441,65 @@ class TestToolOutputLimits:
         spilled = open(spill_path, encoding="utf-8").read()
         assert spilled == big
 
+    def test_spill_file_is_private(self, tool_output_config):
+        """Spilled tool output may contain secrets: create it with mode 0600."""
+        result = truncate_tool_output("S" * 100_000, "execute_shell_command")
+        match = re.search(r"full output saved to (.*?); use fs_read_file", result)
+        assert match is not None
+        spill_path = Path(match.group(1))
+        assert spill_path.exists()
+        if os.name != "posix":  # pragma: no cover - Windows chmod semantics differ
+            return
+        assert (spill_path.stat().st_mode & 0o777) == 0o600
+
+    def test_truncated_output_can_be_paged_with_fs_read_file(self, tmp_path, tool_output_config, monkeypatch):
+        """Manual-probe flow: a huge fs_read_file result is truncated, then pageable.
+
+        The truncation marker tells the model to "use fs_read_file with offset/limit
+        to read more"; this test proves that call actually works (on the spilled full
+        output *and* on the original file) instead of erroring on unknown arguments.
+        """
+        from yaicli.functions.buildin.fs_read_file import Function as FSReadFileFunction
+        from yaicli.tools.function import Function as ToolFunction
+
+        big_path = tmp_path / "big.log"
+        content = ("0123456789abcdef" * (8 * 1024 * 1024 // 16))[: 8 * 1024 * 1024]
+        big_path.write_text(content)
+        monkeypatch.setitem(tools_module.cfg, "SHOW_FUNCTION_OUTPUT", False)
+        monkeypatch.setitem(tools_module.cfg, "SHOW_MCP_OUTPUT", False)
+
+        tool = ToolFunction(function=FSReadFileFunction)
+        tool_call = ToolCall(
+            id="c-big",
+            name="fs_read_file",
+            arguments=json.dumps({"file_paths": [str(big_path)]}),
+        )
+        with patch("yaicli.tools.get_function", return_value=tool):
+            result, ok = execute_tool_call(tool_call)
+
+        # 1. The model-facing result is capped and points at the spilled full text.
+        assert ok is True
+        assert len(result) <= 64000
+        assert "full output saved to" in result
+        match = re.search(r"full output saved to (.*?); use fs_read_file", result)
+        assert match is not None
+        spill_path = match.group(1)
+
+        # 2. Paging the spilled full output returns exactly the requested window.
+        spilled_text = Path(spill_path).read_text(encoding="utf-8")
+        paged_spill = json.loads(FSReadFileFunction.execute(spill_path, offset=100, limit=500))
+        assert paged_spill["success"] is True
+        assert paged_spill["content"] == spilled_text[100:600]
+        assert paged_spill["truncated"] is True
+
+        # 3. Paging the original file works too - no "unknown argument" failure.
+        paged_original = json.loads(FSReadFileFunction.execute(str(big_path), offset=123456, limit=100))
+        assert paged_original["success"] is True
+        assert paged_original["error"] is None
+        assert paged_original["content"] == content[123456:123556]
+        assert paged_original["total_chars"] == len(content)
+        assert paged_original["returned_chars"] == 100
+
     def test_per_tool_caps_apply_to_large_outputs(self, tool_output_config):
         payload = "B" * 500_000
         assert len(truncate_tool_output(payload, "fs_read_file")) <= 64000
@@ -699,12 +759,13 @@ class TestShellGuardrailPropagation:
         assert os.environ["YAI_WORKSPACE_ROOT"] == "/tmp/workspace"
         assert os.environ["YAI_TOOL_OUTPUT_MAX_CHARS"] == "1234"
 
-    def test_explicit_env_value_is_not_clobbered(self, clean_shell_env):
+    def test_exported_env_value_is_consistent_with_config(self, clean_shell_env):
+        """cfg is env-first, so an exported value is written back unchanged."""
         clean_shell_env.setenv("YAI_TOOL_TIMEOUT", "99")
         tool = MagicMock()
         tool.execute.return_value = "ok"
         tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "ls"}')
-        fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "TOOL_TIMEOUT": 7}
+        fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "TOOL_TIMEOUT": 99}
         with (
             patch("yaicli.tools.cfg", fake_cfg),
             patch("yaicli.tools.get_function", return_value=tool),
@@ -712,6 +773,48 @@ class TestShellGuardrailPropagation:
             execute_tool_call(tool_call)
 
         assert os.environ["YAI_TOOL_TIMEOUT"] == "99"
+
+    def test_config_wins_over_stale_env_workspace_root(self, clean_shell_env):
+        """--cwd sets cfg["WORKSPACE_ROOT"] after config load; it must win over env.
+
+        Regression for the gap where an exported ``YAI_WORKSPACE_ROOT`` made
+        ``--cwd`` silently ignored: entry._apply_cwd() writes the resolved directory
+        to cfg, and the propagation step now exports the *config* value.
+        """
+        clean_shell_env.setenv("YAI_WORKSPACE_ROOT", "/old/exported/root")
+        clean_shell_env.setenv("YAI_TOOL_TIMEOUT", "99")
+        tool = MagicMock()
+        tool.execute.return_value = "ok"
+        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "ls"}')
+        fake_cfg = {
+            "SHOW_FUNCTION_OUTPUT": False,
+            "SHOW_MCP_OUTPUT": False,
+            "TOOL_TIMEOUT": 7,
+            "WORKSPACE_ROOT": "/tmp/new-cwd-root",
+            "TOOL_ENV_INHERIT": False,
+        }
+        with (
+            patch("yaicli.tools.cfg", fake_cfg),
+            patch("yaicli.tools.get_function", return_value=tool),
+        ):
+            execute_tool_call(tool_call)
+
+        assert os.environ["YAI_WORKSPACE_ROOT"] == "/tmp/new-cwd-root"
+        assert os.environ["YAI_TOOL_TIMEOUT"] == "7"
+
+    def test_empty_config_values_are_not_exported(self, clean_shell_env):
+        """Unset/empty config values keep the tool's built-in defaults."""
+        tool = MagicMock()
+        tool.execute.return_value = "ok"
+        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "ls"}')
+        fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "WORKSPACE_ROOT": ""}
+        with (
+            patch("yaicli.tools.cfg", fake_cfg),
+            patch("yaicli.tools.get_function", return_value=tool),
+        ):
+            execute_tool_call(tool_call)
+
+        assert "YAI_WORKSPACE_ROOT" not in os.environ
 
     def test_non_shell_tools_do_not_touch_the_env(self, clean_shell_env):
         tool = MagicMock()

@@ -63,15 +63,17 @@ _SHELL_GUARDRAIL_ENV = (
 def _sync_shell_guardrail_env() -> None:
     """Best-effort: expose config shell guardrails to the shell tool via env vars.
 
-    ``cfg`` is already env-first (``YAI_*`` > config.ini > defaults), so setting the
-    variable from ``cfg`` is consistent with an explicitly exported value. An env
-    var that is already present is left untouched; an empty/unset config value is
-    skipped (the tool's own default then applies).
+    The shell tool is a standalone module executed in a child process tree, so the
+    only way to pass it configuration is the environment. ``cfg`` is env-first
+    (``YAI_*`` > config.ini > defaults): for a user-exported variable the value
+    written back is the same one that was loaded from the environment. When the CLI
+    overrides configuration at runtime — notably ``--cwd``, which writes the
+    resolved directory to ``cfg["WORKSPACE_ROOT"]`` — the config value deliberately
+    wins over a stale environment variable. Empty/unset values are skipped so the
+    tool's own defaults apply.
     """
     try:
         for config_key, env_key in _SHELL_GUARDRAIL_ENV:
-            if os.environ.get(env_key, "").strip():
-                continue  # user explicitly exported it; cfg already reflects it
             try:
                 value = cfg.get(config_key)
             except Exception:  # pragma: no cover - mocked/broken config mapping
@@ -80,7 +82,10 @@ def _sync_shell_guardrail_env() -> None:
                 continue
             if isinstance(value, bool):
                 value = "true" if value else "false"
-            os.environ[env_key] = str(value)
+            try:
+                os.environ[env_key] = str(value)
+            except (OSError, ValueError):  # pragma: no cover - exotic environments
+                continue
     except Exception:  # pragma: no cover - env propagation must never block tool calls
         pass
 

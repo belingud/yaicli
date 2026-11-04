@@ -26,12 +26,38 @@ class Function(OpenAISchema):
         },
         description="File encoding (default: utf-8).",
     )
+    offset: int = Field(
+        default=0,
+        json_schema_extra={
+            "example": 0,
+        },
+        description=(
+            "Start reading at this character offset (0 = beginning of the file). "
+            "Use together with limit to page through large files or spilled tool outputs."
+        ),
+    )
+    limit: int = Field(
+        default=0,
+        json_schema_extra={
+            "example": 12000,
+        },
+        description=(
+            "Maximum number of characters to return per file (0 = no limit, read to the end). "
+            "Applied after offset; the response reports total_chars/returned_chars/truncated."
+        ),
+    )
 
     class Config:
         title = "fs_read_file"
 
     @classmethod
-    def execute(cls, file_paths: List[str], encoding: str = "utf-8") -> str:
+    def execute(
+        cls,
+        file_paths: List[str],
+        encoding: str = "utf-8",
+        offset: int = 0,
+        limit: int = 0,
+    ) -> str:
         """
         Read one or more files in a single call and return their contents as JSON.
 
@@ -39,6 +65,8 @@ class Function(OpenAISchema):
             file_paths: List of file paths to read in a single call. A single path
                 string is also accepted for backward compatibility.
             encoding: File encoding (default: utf-8).
+            offset: Character offset to start reading from (0 = beginning).
+            limit: Maximum characters to return per file (0 = read to the end).
 
         Returns:
             str: JSON string with file contents or error information.
@@ -63,6 +91,18 @@ class Function(OpenAISchema):
         if not paths_list:
             return json.dumps({"error": "No file paths provided"}, ensure_ascii=False)
 
+        # Paging arguments are model-provided: coerce defensively (tool-call arguments
+        # bypass pydantic validation at execution time). Negative values mean "from the
+        # start" / "no limit" rather than an error.
+        try:
+            offset = max(0, int(offset or 0))
+            limit = max(0, int(limit or 0))
+        except (TypeError, ValueError):
+            return json.dumps(
+                {"error": f"offset/limit must be integers, got offset={offset!r}, limit={limit!r}"},
+                ensure_ascii=False,
+            )
+
         # Limits
         max_files = 50
         max_file_size = 10 * 1024 * 1024  # 10 MB per file
@@ -80,7 +120,19 @@ class Function(OpenAISchema):
         total_size = 0
 
         for file_path in paths_list:
-            file_info = {"path": file_path, "success": False, "content": None, "size": 0, "error": None}
+            file_info = {
+                "path": file_path,
+                "success": False,
+                "content": None,
+                "size": 0,
+                "error": None,
+                # Paging metadata: the requested window + what was actually returned.
+                "offset": offset,
+                "limit": limit,
+                "total_chars": 0,
+                "returned_chars": 0,
+                "truncated": False,
+            }
 
             try:
                 path = Path(file_path).expanduser().resolve()
@@ -115,14 +167,25 @@ class Function(OpenAISchema):
 
                 # Read file
                 with open(path, "r", encoding=encoding) as f:
-                    content = f.read()
+                    full_content = f.read()
+
+                # Apply paging per file: offset first, then limit (0 = to the end).
+                total_chars = len(full_content)
+                if limit > 0:
+                    page = full_content[offset : offset + limit]
+                else:
+                    page = full_content[offset:]
+                truncated = offset > 0 or len(page) < total_chars
 
                 total_size += file_size
                 success_count += 1
 
                 file_info["success"] = True
-                file_info["content"] = content
+                file_info["content"] = page
                 file_info["size"] = file_size
+                file_info["total_chars"] = total_chars
+                file_info["returned_chars"] = len(page)
+                file_info["truncated"] = truncated
                 files_data.append(file_info)
 
             except UnicodeDecodeError:
