@@ -15,6 +15,7 @@ from cohere.types.tool_call_v2function import ToolCallV2Function
 
 from ...config import cfg
 from ...console import get_console
+from ...errors import wrap_provider_exception
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_schemas
 from ..provider import Provider
@@ -269,7 +270,9 @@ class CohereProvider(Provider):
             console=self.console,
         )
 
-        # Call Cohere API
+        # Call Cohere API. API/network failures (including mid-stream breakage while
+        # iterating the response stream) are raised as classified AgentErrors: an
+        # error must never be yielded as assistant content.
         try:
             if stream:
                 # Streaming mode
@@ -281,13 +284,11 @@ class CohereProvider(Provider):
                 yield from self._handle_normal_response(response)
 
         except Exception as e:
-            error_msg = f"Error in Cohere API call: {e}"
             if self.verbose:
                 import traceback
 
-                self.console.print("Error in Cohere completion:")
                 traceback.print_exc()
-            yield LLMResponse(content=error_msg)
+            raise wrap_provider_exception(e, "Cohere") from e
 
 
 class CohereBadrockProvider(CohereProvider):

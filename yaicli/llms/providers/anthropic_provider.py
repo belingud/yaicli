@@ -9,6 +9,7 @@ from json_repair import repair_json
 
 from ...config import cfg
 from ...console import get_console
+from ...errors import provider_response_error, wrap_provider_exception
 from ...exceptions import ConfigMissingError, MCPToolsError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ..provider import Provider
@@ -176,8 +177,11 @@ class AnthropicProvider(Provider):
                 response = self.client.messages.create(**params)
                 yield from self._handle_normal_response(response)
         except Exception as e:
-            self.console.print(f"Error: {e}", style="red")
-            raise
+            # Never let a raw SDK/httpx exception escape unclassified and never
+            # turn it into assistant text; the client/CLI can act on the kind.
+            if self.verbose:
+                self.console.print(f"Anthropic API error: {e}", style="red")
+            raise wrap_provider_exception(e, "Anthropic") from e
 
     def _extract_system_prompt(self, messages: List[ChatMessage]) -> Tuple[Optional[str], Optional[int]]:
         """Extract system prompt from messages"""
@@ -189,8 +193,9 @@ class AnthropicProvider(Provider):
     def _handle_normal_response(self, response: Message) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response"""
         if not response.content:
-            yield LLMResponse(content=json.dumps(response.model_dump()), finish_reason="stop")
-            return
+            # An HTTP-200 response without content blocks is an in-band failure
+            # (proxy/auth/filter): raise classified instead of faking an answer.
+            raise provider_response_error("Anthropic", response.model_dump())
 
         # Extract content from all blocks in a single pass
         text_content = ""

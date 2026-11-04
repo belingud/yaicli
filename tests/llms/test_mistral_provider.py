@@ -1,10 +1,12 @@
 # type: ignore
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from mistralai.models import ChatCompletionResponse
 from mistralai.utils.eventstreaming import EventStream
 
+from yaicli.errors import AgentError, ErrorKind
 from yaicli.exceptions import MCPToolsError
 from yaicli.llms.providers.mistral_provider import MistralProvider
 from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
@@ -464,7 +466,7 @@ class TestMistralProvider:
                 assert responses[1].tool_call.arguments == '{"location": "New York"}'
 
     def test_handle_normal_response_edge_case(self, mock_config):
-        """Test _handle_normal_response method with empty or invalid response"""
+        """_handle_normal_response raises a classified error for an empty response"""
         with patch("mistralai.Mistral"):
             with patch("warnings.filterwarnings"):
                 provider = MistralProvider(config=mock_config)
@@ -475,12 +477,11 @@ class TestMistralProvider:
                 mock_response.model_dump_json = MagicMock(return_value='{"error": "no choices"}')
 
                 # Process the response
-                responses = list(provider._handle_normal_response(mock_response))
+                with pytest.raises(AgentError) as excinfo:
+                    list(provider._handle_normal_response(mock_response))
 
-                # Verify response handling for edge case
-                assert len(responses) == 1
-                assert responses[0].content == '{"error": "no choices"}'
-                assert responses[0].finish_reason == "stop"
+                assert "Mistral API error" in str(excinfo.value)
+                assert "no choices" in str(excinfo.value)
 
     def test_completion_with_verbose(self, mock_config):
         """Test completion method with verbose flag enabled"""
@@ -566,3 +567,36 @@ class TestMistralProvider:
                 assert result.id == "call_123"
                 assert result.name == "valid_function"
                 assert result.arguments == '{"valid": true}'
+
+    def test_completion_api_error_raises_classified(self, mock_config, mock_mistral_client):
+        """A Mistral request failure raises a classified AgentError, never assistant text."""
+        with patch("mistralai.Mistral"), patch("warnings.filterwarnings"):
+            provider = MistralProvider(config=mock_config)
+        mock_mistral_client.chat.complete.side_effect = httpx.ConnectError("connection refused")
+        provider.client = mock_mistral_client
+
+        with pytest.raises(AgentError) as excinfo:
+            list(provider.completion([ChatMessage(role="user", content="hi")], stream=False))
+
+        assert excinfo.value.kind is ErrorKind.NETWORK
+        assert excinfo.value.retryable is True
+        assert "Mistral API error" in str(excinfo.value)
+
+    def test_completion_stream_midstream_error_raises_classified(self, mock_config, mock_mistral_client):
+        """A stream that breaks mid-iteration raises a classified error, not an empty success."""
+
+        def broken_stream():
+            raise httpx.ReadTimeout("read timed out")
+            yield  # pragma: no cover - generator marker
+
+        mock_mistral_client.chat.stream.return_value = broken_stream()
+
+        with patch("mistralai.Mistral"), patch("warnings.filterwarnings"):
+            provider = MistralProvider(config=mock_config)
+        provider.client = mock_mistral_client
+
+        with pytest.raises(AgentError) as excinfo:
+            list(provider.completion([ChatMessage(role="user", content="hi")], stream=True))
+
+        assert excinfo.value.kind is ErrorKind.TIMEOUT
+        assert excinfo.value.retryable is True

@@ -21,6 +21,7 @@ class ChatglmProvider(OpenAIProvider):
         "top_p": "TOP_P",
         "max_tokens": "MAX_TOKENS",
         "do_sample": "DO_SAMPLE",
+        "timeout": "TIMEOUT",
         "extra_body": "EXTRA_BODY",
         "frequency_penalty": "FREQUENCY_PENALTY",
     }

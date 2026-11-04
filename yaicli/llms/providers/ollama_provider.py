@@ -7,6 +7,7 @@ from ollama import ChatResponse
 
 from ...config import cfg
 from ...console import get_console
+from ...errors import wrap_provider_exception
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_schemas
 from ...utils import str2bool
@@ -134,8 +135,9 @@ class OllamaProvider(Provider):
                 yield from self._handle_normal_response(response, effective_tool_policy.enable_functions)
 
         except Exception as e:
-            self.console.print(f"Ollama API error: {e}", style="red")
-            yield LLMResponse(content=f"Error calling Ollama API: {str(e)}")
+            # Never swallow Ollama API/network failures (including a stream that
+            # breaks mid-iteration) as assistant content: raise classified instead.
+            raise wrap_provider_exception(e, "Ollama") from e
 
     def _handle_normal_response(
         self,

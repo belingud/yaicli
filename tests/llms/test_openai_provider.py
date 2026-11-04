@@ -1,9 +1,12 @@
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from openai.types.chat.chat_completion import ChatCompletion
 
+from yaicli.errors import AgentError, ErrorKind
 from yaicli.exceptions import ProviderError
+from yaicli.llms.providers.deepseek_provider import DeepSeekProvider
 from yaicli.llms.providers.openai_provider import OpenAIAzure, OpenAIProvider
 from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
 
@@ -201,6 +204,106 @@ class TestOpenAIProvider:
         printed = [str(c.args[0]) for c in provider.console.print.call_args_list if c.args]
         assert any("Error Response" in text for text in printed)
 
+    def test_completion_request_time_api_error_raises_classified(self, mock_config, mock_openai_client):
+        """A request-time APIStatusError (create()) is classified, not leaked raw."""
+        import openai
+
+        request = httpx.Request("POST", "https://fake-api.openai.com/v1/chat/completions")
+        response = httpx.Response(401, json={"error": {"message": "invalid api key"}}, request=request)
+        api_error = openai.AuthenticationError(
+            "invalid api key", response=response, body={"error": {"message": "invalid api key"}}
+        )
+        mock_openai_client.chat.completions.create.side_effect = api_error
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+            provider.console = MagicMock()
+
+            with pytest.raises(AgentError) as excinfo:
+                list(provider.completion([ChatMessage(role="user", content="Hello")], stream=False))
+
+        assert excinfo.value.kind is ErrorKind.AUTH
+        assert excinfo.value.status_code == 401
+        assert excinfo.value.retryable is False
+        assert "OpenAI API error" in str(excinfo.value)
+        assert "invalid api key" in str(excinfo.value)
+
+    def test_completion_request_time_network_error_raises_classified(self, mock_config, mock_openai_client):
+        """A connection failure while sending the request is classified as network."""
+        mock_openai_client.chat.completions.create.side_effect = httpx.ConnectError("connection refused")
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+
+            with pytest.raises(AgentError) as excinfo:
+                list(provider.completion([ChatMessage(role="user", content="Hello")], stream=False))
+
+        assert excinfo.value.kind is ErrorKind.NETWORK
+        assert excinfo.value.retryable is True
+
+    def test_completion_midstream_error_raises_classified(self, mock_config, mock_openai_client):
+        """A stream that breaks mid-iteration is surfaced as a classified error."""
+        mock_openai_client.chat.completions.create.return_value = MagicMock()
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+            provider.console = MagicMock()
+
+            with patch.object(provider, "_handle_stream_response", side_effect=httpx.ReadTimeout("read timed out")):
+                with pytest.raises(AgentError) as excinfo:
+                    list(provider.completion([ChatMessage(role="user", content="Hello")], stream=True))
+
+        assert excinfo.value.kind is ErrorKind.TIMEOUT
+        assert excinfo.value.retryable is True
+        assert "OpenAI API error" in str(excinfo.value)
+
+    def test_completion_passes_timeout_to_request(self, mock_config, mock_openai_client):
+        """The config TIMEOUT is forwarded to the API request."""
+        mock_response = MagicMock(spec=ChatCompletion)
+        mock_response.choices = []
+        mock_response.to_dict.return_value = {"error": "boom"}
+        mock_openai_client.chat.completions.create.return_value = mock_response
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            provider.client = mock_openai_client
+
+            with pytest.raises(AgentError):
+                list(provider.completion([ChatMessage(role="user", content="Hello")], stream=False))
+
+        call_kwargs = mock_openai_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["timeout"] == mock_config["TIMEOUT"]
+
+    def test_normal_response_without_choices_raises_classified(self, mock_config):
+        """An HTTP-200 response without choices must not be rendered as assistant content."""
+        response = MagicMock()
+        response.choices = []
+        response.to_dict.return_value = {"error": "no choices"}
+        response.base_resp = None
+
+        with patch("openai.OpenAI"):
+            provider = OpenAIProvider(config=mock_config)
+            with pytest.raises(AgentError) as excinfo:
+                list(provider._handle_normal_response(response))
+
+        assert excinfo.value.kind is ErrorKind.PROVIDER
+        assert "OpenAI API error" in str(excinfo.value)
+        assert "no choices" in str(excinfo.value)
+
+    def test_subclass_error_label_is_used(self, mock_config):
+        """Provider errors carry the concrete provider name, not always 'OpenAI'."""
+        with patch.object(DeepSeekProvider, "CLIENT_CLS", MagicMock()):
+            provider = DeepSeekProvider(config=mock_config)
+        provider.client.chat.completions.create.side_effect = httpx.ConnectError("connection refused")
+
+        with pytest.raises(AgentError) as excinfo:
+            list(provider.completion([ChatMessage(role="user", content="Hello")], stream=False))
+
+        assert "DeepSeek API error" in str(excinfo.value)
+
     @patch("yaicli.tools.get_openai_schemas")
     def test_completion_tool_call(self, mock_get_schemas, mock_config, mock_openai_client):
         """Test completion with tool call response"""
@@ -248,9 +351,7 @@ class TestOpenAIProvider:
             assert responses[0].tool_call.arguments == '{"location": "New York"}'
 
     @patch("yaicli.tools.get_openai_schemas")
-    def test_completion_multiple_tool_calls_non_streaming(
-        self, mock_get_schemas, mock_config, mock_openai_client
-    ):
+    def test_completion_multiple_tool_calls_non_streaming(self, mock_get_schemas, mock_config, mock_openai_client):
         """Every parallel tool call in a non-streaming response must be surfaced.
 
         Regression test: only `tool_calls[0]` used to be returned, silently dropping
@@ -294,9 +395,7 @@ class TestOpenAIProvider:
             provider = OpenAIProvider(config=mock_config)
             provider.client = mock_openai_client
 
-            responses = list(
-                provider.completion([ChatMessage(role="user", content="read a and b")], stream=False)
-            )
+            responses = list(provider.completion([ChatMessage(role="user", content="read a and b")], stream=False))
 
         tool_responses = [response for response in responses if response.tool_call]
         assert len(tool_responses) == 2
@@ -353,9 +452,7 @@ class TestOpenAIProvider:
             provider = OpenAIProvider(config=mock_config)
             provider.client = mock_openai_client
 
-            responses = list(
-                provider.completion([ChatMessage(role="user", content="read a and b")], stream=False)
-            )
+            responses = list(provider.completion([ChatMessage(role="user", content="read a and b")], stream=False))
 
         tool_responses = [response for response in responses if response.tool_call]
         assert len(tool_responses) == 2

@@ -1,13 +1,22 @@
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
+from yaicli.errors import AgentError, ErrorKind
 from yaicli.llms.providers.cohere_provider import (
     CohereBadrockProvider,
     CohereProvider,
     CohereSagemakerProvider,
 )
 from yaicli.schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
+
+
+def _http_error(status: int, message: str = "boom") -> httpx.HTTPStatusError:
+    """Build an httpx status error the way an SDK/HTTP layer would."""
+    request = httpx.Request("POST", "https://api.cohere.com/v2/chat")
+    response = httpx.Response(status, json={"message": message}, request=request)
+    return httpx.HTTPStatusError(message, request=request, response=response)
 
 
 class TestCohereProvider:
@@ -520,36 +529,64 @@ class TestCohereProviderMissingBranches:
         assert responses[0].content == "stream"
 
     @patch("yaicli.tools.get_openai_schemas")
-    def test_completion_exception_handling(self, mock_get_schemas, mock_config, mock_client):
-        """Test completion exception is caught and yields error response"""
+    def test_completion_exception_raises_classified(self, mock_get_schemas, mock_config, mock_client):
+        """A Cohere API error must raise a classified AgentError, not assistant content."""
         mock_get_schemas.return_value = []
-        mock_client.chat.side_effect = RuntimeError("API error")
+        mock_client.chat.side_effect = _http_error(429)
 
         with patch.object(CohereProvider, "create_client", return_value=mock_client):
             provider = CohereProvider(config=mock_config)
-            responses = list(provider.completion([ChatMessage(role="user", content="hi")], stream=False))
+            with pytest.raises(AgentError) as excinfo:
+                list(provider.completion([ChatMessage(role="user", content="hi")], stream=False))
 
-        assert len(responses) == 1
-        assert "Error in Cohere API call" in responses[0].content
+        assert excinfo.value.kind is ErrorKind.RATE_LIMIT
+        assert excinfo.value.status_code == 429
+        assert excinfo.value.retryable is True
+        assert "Cohere API error" in str(excinfo.value)
+        # Backward compatible: AgentError still is a ProviderError/YaicliError.
+        from yaicli.exceptions import ProviderError
+
+        assert isinstance(excinfo.value, ProviderError)
+
+    @patch("yaicli.tools.get_openai_schemas")
+    def test_completion_stream_midstream_error_raises_classified(self, mock_get_schemas, mock_config, mock_client):
+        """A stream that breaks mid-iteration raises classified instead of a fake answer."""
+        mock_get_schemas.return_value = []
+
+        def broken_stream():
+            chunk = MagicMock()
+            chunk.type = "content-delta"
+            chunk.delta.message.content.text = "partial"
+            yield chunk
+            raise httpx.ConnectError("connection refused")
+
+        mock_client.chat_stream.return_value = broken_stream()
+
+        with patch.object(CohereProvider, "create_client", return_value=mock_client):
+            provider = CohereProvider(config=mock_config)
+            collected = []
+            with pytest.raises(AgentError) as excinfo:
+                for response in provider.completion([ChatMessage(role="user", content="hi")], stream=True):
+                    collected.append(response)
+
+        # The partial chunk may have been streamed, but the failure is surfaced.
+        assert [r.content for r in collected] == ["partial"]
+        assert excinfo.value.kind is ErrorKind.NETWORK
+        assert excinfo.value.retryable is True
 
     @patch("yaicli.tools.get_openai_schemas")
     def test_completion_exception_handling_verbose(self, mock_get_schemas, mock_config, mock_client):
-        """Test completion exception with verbose=True prints traceback"""
+        """Verbose mode keeps the diagnostic traceback but still raises the classified error."""
         mock_get_schemas.return_value = []
-        mock_client.chat.side_effect = RuntimeError("API error")
-        mock_console = MagicMock()
+        mock_client.chat.side_effect = _http_error(500)
 
-        with (
-            patch.object(CohereProvider, "create_client", return_value=mock_client),
-            patch("yaicli.llms.providers.cohere_provider.get_console", return_value=mock_console),
-        ):
+        with patch.object(CohereProvider, "create_client", return_value=mock_client):
             provider = CohereProvider(config=mock_config, verbose=True)
-            responses = list(provider.completion([ChatMessage(role="user", content="hi")], stream=False))
+            with pytest.raises(AgentError) as excinfo:
+                list(provider.completion([ChatMessage(role="user", content="hi")], stream=False))
 
-        assert "Error in Cohere API call" in responses[0].content
-        # Verify verbose error output
-        printed = [str(call.args[0]) for call in mock_console.print.call_args_list]
-        assert any("Error in Cohere completion" in text for text in printed)
+        assert excinfo.value.kind is ErrorKind.PROVIDER
+        assert excinfo.value.retryable is True
 
     @pytest.fixture
     def bedrock_config(self):

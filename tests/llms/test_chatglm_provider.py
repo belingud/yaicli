@@ -7,6 +7,7 @@ from openai.types.chat.chat_completion import (
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk, ChoiceDelta
 
 from yaicli.llms.providers.chatglm_provider import ChatglmProvider
+from yaicli.schemas import ChatMessage
 
 
 class TestChatglmProvider:
@@ -47,6 +48,21 @@ class TestChatglmProvider:
             assert provider.completion_params["model"] == mock_config["MODEL"]
             assert provider.completion_params["temperature"] == mock_config["TEMPERATURE"]
             assert provider.enable_function == mock_config["ENABLE_FUNCTIONS"]
+
+    def test_timeout_is_forwarded_to_request(self, mock_config):
+        """ChatGLM used to ignore config TIMEOUT; it must be sent with the request."""
+        mock_client = MagicMock()
+        with patch.object(ChatglmProvider, "CLIENT_CLS", MagicMock(return_value=mock_client)):
+            provider = ChatglmProvider(config=mock_config)
+
+        assert provider.completion_params["timeout"] == mock_config["TIMEOUT"]
+        provider.client.chat.completions.create.return_value = MagicMock()
+
+        with patch.object(provider, "_handle_normal_response", return_value=[]):
+            list(provider.completion([ChatMessage(role="user", content="hi")], stream=False))
+
+        call_kwargs = provider.client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["timeout"] == mock_config["TIMEOUT"]
 
     def test_handle_normal_response_with_content(self, mock_config):
         """Test handling of normal response with content"""

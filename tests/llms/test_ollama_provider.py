@@ -1,9 +1,18 @@
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
+from yaicli.errors import AgentError, ErrorKind
 from yaicli.llms.providers.ollama_provider import OllamaProvider
 from yaicli.schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
+
+
+def _http_error(status: int, message: str = "boom") -> httpx.HTTPStatusError:
+    """Build an httpx status error the way the Ollama SDK/HTTP layer would."""
+    request = httpx.Request("POST", "http://localhost:11434/api/chat")
+    response = httpx.Response(status, json={"error": message}, request=request)
+    return httpx.HTTPStatusError(message, request=request, response=response)
 
 
 class TestOllamaProvider:
@@ -287,3 +296,56 @@ class TestOllamaProvider:
         assert responses[3].tool_call is not None
         assert responses[3].tool_call.name == "get_weather"
         assert responses[3].tool_call.arguments == '{"location": "New York"}'
+
+    @patch("yaicli.llms.providers.ollama_provider.get_openai_schemas", return_value=[])
+    def test_completion_api_error_raises_classified(self, mock_get_schemas, mock_config, mock_client):
+        """An Ollama API error must raise a classified AgentError, never assistant content."""
+        mock_client.chat.side_effect = _http_error(429)
+
+        provider = OllamaProvider(config=mock_config)
+        with pytest.raises(AgentError) as excinfo:
+            list(provider.completion([ChatMessage(role="user", content="hi")], stream=False))
+
+        assert excinfo.value.kind is ErrorKind.RATE_LIMIT
+        assert excinfo.value.status_code == 429
+        assert excinfo.value.retryable is True
+        assert "Ollama API error" in str(excinfo.value)
+
+    @patch("yaicli.llms.providers.ollama_provider.get_openai_schemas", return_value=[])
+    def test_completion_error_does_not_write_assistant_history_content(
+        self, mock_get_schemas, mock_config, mock_client
+    ):
+        """Regression: the error text is never yielded as an assistant message."""
+        mock_client.chat.side_effect = RuntimeError("model not found")
+
+        provider = OllamaProvider(config=mock_config)
+        collected = []
+        with pytest.raises(AgentError):
+            for response in provider.completion([ChatMessage(role="user", content="hi")], stream=False):
+                collected.append(response)
+
+        assert collected == []
+
+    @patch("yaicli.llms.providers.ollama_provider.get_openai_schemas", return_value=[])
+    def test_completion_stream_midstream_error_raises_classified(self, mock_get_schemas, mock_config, mock_client):
+        """A stream that breaks mid-iteration is surfaced as a classified timeout."""
+
+        def broken_stream():
+            chunk = MagicMock()
+            chunk.message.content = "partial"
+            chunk.message.thinking = None
+            chunk.message.tool_calls = None
+            yield chunk
+            raise httpx.ReadTimeout("read timed out")
+
+        mock_client.chat.return_value = broken_stream()
+
+        provider = OllamaProvider(config=mock_config)
+        collected = []
+        with pytest.raises(AgentError) as excinfo:
+            for response in provider.completion([ChatMessage(role="user", content="hi")], stream=True):
+                collected.append(response)
+
+        assert [r.content for r in collected] == ["partial"]
+        assert excinfo.value.kind is ErrorKind.TIMEOUT
+        assert excinfo.value.retryable is True

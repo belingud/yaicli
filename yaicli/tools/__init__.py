@@ -1,13 +1,16 @@
+import os
+import sys
 from typing import Any, Dict, List, Tuple, cast
 
 from json_repair import repair_json
 from rich.panel import Panel
 
 from ..config import cfg
-from ..console import get_console, safe_text, untrusted_text
+from ..console import get_console, get_error_console, safe_text, untrusted_text
 from ..exceptions import MCPToolsError
 from ..schemas import ToolCall
 from .function import get_function, list_functions
+from .limits import truncate_tool_output
 
 # Lazy import MCP-related items to improve startup time
 # These constants are safe to define without importing fastmcp
@@ -33,7 +36,54 @@ def get_mcp(name: str):
     return _get_mcp(name)
 
 
-console = get_console()
+def _stdout_is_tty() -> bool:
+    """Best-effort ``sys.stdout.isatty()`` that never raises."""
+    try:
+        return bool(sys.stdout.isatty())
+    except (AttributeError, ValueError):  # pragma: no cover - exotic stdout wrappers
+        return False
+
+
+# Tool announcements and output panels are diagnostics: when stdout is piped/headless
+# they belong on stderr so machine-readable stdout (``--output-format json``) stays
+# clean. The CLI re-points this to its own console once the output mode is known.
+console = get_console() if _stdout_is_tty() else get_error_console()
+
+#: Config keys that the standalone shell tool reads from the environment. They are
+#: propagated from ``cfg`` right before the shell tool runs so config.ini / ``--cwd``
+#: control the guardrails (the tool runs as a separate module and cannot see cfg).
+_SHELL_GUARDRAIL_ENV = (
+    ("TOOL_TIMEOUT", "YAI_TOOL_TIMEOUT"),
+    ("TOOL_ENV_INHERIT", "YAI_TOOL_ENV_INHERIT"),
+    ("WORKSPACE_ROOT", "YAI_WORKSPACE_ROOT"),
+    ("TOOL_OUTPUT_MAX_CHARS", "YAI_TOOL_OUTPUT_MAX_CHARS"),
+)
+
+
+def _sync_shell_guardrail_env() -> None:
+    """Best-effort: expose config shell guardrails to the shell tool via env vars.
+
+    ``cfg`` is already env-first (``YAI_*`` > config.ini > defaults), so setting the
+    variable from ``cfg`` is consistent with an explicitly exported value. An env
+    var that is already present is left untouched; an empty/unset config value is
+    skipped (the tool's own default then applies).
+    """
+    try:
+        for config_key, env_key in _SHELL_GUARDRAIL_ENV:
+            if os.environ.get(env_key, "").strip():
+                continue  # user explicitly exported it; cfg already reflects it
+            try:
+                value = cfg.get(config_key)
+            except Exception:  # pragma: no cover - mocked/broken config mapping
+                continue
+            if value is None or value == "":
+                continue
+            if isinstance(value, bool):
+                value = "true" if value else "false"
+            os.environ[env_key] = str(value)
+    except Exception:  # pragma: no cover - env propagation must never block tool calls
+        pass
+
 
 _openai_schemas_cache: List[Dict[str, Any]] | None = None
 _anthropic_schemas_cache: List[Dict[str, Any]] | None = None
@@ -159,7 +209,14 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
 
     # 3. Execute the tool
     try:
+        # K03 integration: the standalone shell tool reads its guardrails from the
+        # environment, so propagate the (env-first) config values right before use.
+        if is_function_call and tool_call.name == "execute_shell_command":
+            _sync_shell_guardrail_env()
         result = tool.execute(**arguments)
+        # K02: bound what enters the conversation. The same truncated text is shown
+        # in the terminal panel, so a huge result can not flood either channel.
+        result = truncate_tool_output(result, tool_call.name)
         if show_output:
             panel = Panel(
                 # Tool output is arbitrary file/command content: render literally

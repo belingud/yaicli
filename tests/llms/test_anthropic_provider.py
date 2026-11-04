@@ -1,8 +1,10 @@
 import sys
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
+from yaicli.errors import AgentError, ErrorKind
 from yaicli.exceptions import ConfigMissingError, MCPToolsError
 from yaicli.llms.providers.anthropic_provider import (
     AnthropicBedrockProvider,
@@ -459,32 +461,56 @@ class TestAnthropicProviderCoverage:
         assert any("Extra body:" in t for t in printed)
 
     def test_completion_api_error_raises(self, mock_config):
-        """API errors are printed and re-raised."""
+        """API errors raise a classified AgentError (never assistant content)."""
         mock_config["ENABLE_FUNCTIONS"] = False
         with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
             provider = AnthropicProvider(config=mock_config)
-            provider.client.messages.create.side_effect = RuntimeError("api down")
+            provider.client.messages.create.side_effect = httpx.ConnectError("connection refused")
             mock_console = MagicMock()
             provider.console = mock_console
-            with pytest.raises(RuntimeError, match="api down"):
+            with pytest.raises(AgentError) as excinfo:
                 list(provider.completion([ChatMessage(role="user", content="hi")]))
 
+        assert excinfo.value.kind is ErrorKind.NETWORK
+        assert excinfo.value.retryable is True
+        assert "Anthropic API error" in str(excinfo.value)
+        # Non-verbose runs must not print API errors to stdout; the CLI renders them.
+        assert mock_console.print.call_args_list == []
+
+    def test_completion_api_error_verbose_prints(self, mock_config):
+        """Verbose mode keeps a diagnostic line but still raises the classified error."""
+        mock_config["ENABLE_FUNCTIONS"] = False
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            provider = AnthropicProvider(config=mock_config, verbose=True)
+            runtime = RuntimeError("api down")
+            provider.client.messages.create.side_effect = runtime
+            mock_console = MagicMock()
+            provider.console = mock_console
+            messages = [
+                ChatMessage(role="system", content="be helpful"),
+                ChatMessage(role="user", content="hi"),
+            ]
+            with pytest.raises(AgentError) as excinfo:
+                list(provider.completion(messages))
+
+        assert excinfo.value.kind is ErrorKind.UNKNOWN
+        assert excinfo.value.cause is runtime
         printed = [str(c.args[0]) for c in mock_console.print.call_args_list]
-        assert any("Error:" in t for t in printed)
+        assert any("Anthropic API error" in t for t in printed)
 
     def test_normal_response_empty_content(self, mock_config):
-        """_handle_normal_response yields a serialized dump when content is empty."""
+        """_handle_normal_response raises a classified error when content is empty."""
         with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
             provider = AnthropicProvider(config=mock_config)
 
         resp = MagicMock()
         resp.content = []
-        resp.model_dump.return_value = {"id": "msg_1"}
-        responses = list(provider._handle_normal_response(resp))
+        resp.model_dump.return_value = {"id": "msg_1", "error": "blocked"}
+        with pytest.raises(AgentError) as excinfo:
+            list(provider._handle_normal_response(resp))
 
-        assert len(responses) == 1
-        assert responses[0].finish_reason == "stop"
-        assert "msg_1" in responses[0].content
+        assert "Anthropic API error" in str(excinfo.value)
+        assert "blocked" in str(excinfo.value)
 
     def test_stream_tool_use_full_flow(self, mock_config):
         """Streaming tool_use: message_start, block_start, partial_json deltas, stop, message_delta, message_stop."""

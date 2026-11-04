@@ -1,11 +1,29 @@
 import json
 from unittest.mock import MagicMock, call, patch
 
+import httpx
 import pytest
 
+from yaicli.errors import AgentError, ErrorKind
 from yaicli.llms.providers.gemini_provider import GeminiProvider
 from yaicli.schemas import ChatMessage, ImageData, ToolCall, ToolPolicy
 from yaicli.tools.function import wrap_gemini_function
+
+
+def _make_text_response(text: str = "ok"):
+    """Build a minimal valid Gemini (non-streaming) response."""
+    part = MagicMock()
+    part.function_call = None
+    part.thought = None
+    part.text = text
+    content = MagicMock()
+    content.parts = [part]
+    candidate = MagicMock()
+    candidate.content = content
+    candidate.finish_reason = "stop"
+    response = MagicMock()
+    response.candidates = [candidate]
+    return response
 
 
 class TestGeminiProvider:
@@ -404,7 +422,7 @@ class TestGeminiProvider:
 
     @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
     def test_completion_empty_response(self, mock_get_functions, mock_config, mock_gemini_client):
-        """Test handling of empty/invalid response"""
+        """A response with no candidates raises a classified error instead of assistant text"""
         # Set up mock functions
         mock_get_functions.return_value = []
 
@@ -428,12 +446,12 @@ class TestGeminiProvider:
                 ChatMessage(role="system", content="You are a helpful assistant"),
                 ChatMessage(role="user", content="Hello"),
             ]
-            responses = list(provider.completion(messages, stream=False))
+            with pytest.raises(AgentError) as excinfo:
+                list(provider.completion(messages, stream=False))
 
-            # Verify response handling
-            assert len(responses) == 1
-            assert responses[0].content == json.dumps({"error": "No candidates"})
-            assert responses[0].finish_reason == "stop"
+        assert excinfo.value.kind is ErrorKind.PROVIDER
+        assert "Gemini API error" in str(excinfo.value)
+        assert "No candidates" in str(excinfo.value)
 
     def test_detect_tool_role(self, mock_config):
         """Test detect_tool_role returns the expected role"""
@@ -888,9 +906,7 @@ class TestGeminiProvider:
         """The final user message is sent exactly once (via send_message), not also in history."""
         mock_get_functions.return_value = []
 
-        mock_response = MagicMock()
-        mock_response.candidates = []
-        mock_response.to_json_dict.return_value = {"error": "No candidates"}
+        mock_response = _make_text_response("ok")
 
         mock_chat = MagicMock()
         mock_chat.send_message.return_value = mock_response
@@ -946,9 +962,7 @@ class TestGeminiProvider:
         """A tool round sends the tool result as function_response parts, not plain user text."""
         mock_get_functions.return_value = []
 
-        mock_response = MagicMock()
-        mock_response.candidates = []
-        mock_response.to_json_dict.return_value = {"error": "No candidates"}
+        mock_response = _make_text_response("ok")
 
         mock_chat = MagicMock()
         mock_chat.send_message.return_value = mock_response
@@ -1033,9 +1047,7 @@ class TestGeminiProvider:
         """De-duplication must not drop image parts of the final user message."""
         mock_get_functions.return_value = []
 
-        mock_response = MagicMock()
-        mock_response.candidates = []
-        mock_response.to_json_dict.return_value = {"error": "No candidates"}
+        mock_response = _make_text_response("ok")
 
         mock_chat = MagicMock()
         mock_chat.send_message.return_value = mock_response
@@ -1129,9 +1141,7 @@ class TestGeminiProvider:
         """Two parallel calls: history excludes the grouped tool turn, send carries both parts."""
         mock_get_functions.return_value = []
 
-        mock_response = MagicMock()
-        mock_response.candidates = []
-        mock_response.to_json_dict.return_value = {"error": "No candidates"}
+        mock_response = _make_text_response("ok")
 
         mock_chat = MagicMock()
         mock_chat.send_message.return_value = mock_response
@@ -1187,3 +1197,67 @@ class TestGeminiProvider:
             {"result": "contents A"},
             {"result": "contents B"},
         ]
+
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format", return_value=[])
+    def test_completion_api_error_raises_classified(self, mock_get_functions, mock_config, mock_gemini_client):
+        """A Gemini request failure raises a classified AgentError, never assistant text."""
+        mock_chat = MagicMock()
+        mock_chat.send_message.side_effect = httpx.ConnectError("connection refused")
+        mock_gemini_client.chats.create.return_value = mock_chat
+
+        with patch("google.genai.Client", return_value=mock_gemini_client):
+            provider = GeminiProvider(config=mock_config)
+            provider.client = mock_gemini_client
+
+            messages = [
+                ChatMessage(role="system", content="sys"),
+                ChatMessage(role="user", content="Hello"),
+            ]
+            with pytest.raises(AgentError) as excinfo:
+                list(provider.completion(messages, stream=False))
+
+        assert excinfo.value.kind is ErrorKind.NETWORK
+        assert excinfo.value.retryable is True
+        assert "Gemini API error" in str(excinfo.value)
+
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format", return_value=[])
+    def test_completion_stream_midstream_error_raises_classified(
+        self, mock_get_functions, mock_config, mock_gemini_client
+    ):
+        """A stream that breaks mid-iteration raises a classified error, not an empty success."""
+        good_part = MagicMock()
+        good_part.function_call = None
+        good_part.thought = None
+        good_part.text = "partial"
+        good_content = MagicMock()
+        good_content.parts = [good_part]
+        good_candidate = MagicMock()
+        good_candidate.content = good_content
+        good_candidate.finish_reason = "STOP"
+        good_chunk = MagicMock()
+        good_chunk.candidates = [good_candidate]
+
+        def broken_stream():
+            yield good_chunk
+            raise httpx.ReadTimeout("read timed out")
+
+        mock_chat = MagicMock()
+        mock_chat.send_message_stream.return_value = broken_stream()
+        mock_gemini_client.chats.create.return_value = mock_chat
+
+        with patch("google.genai.Client", return_value=mock_gemini_client):
+            provider = GeminiProvider(config=mock_config)
+            provider.client = mock_gemini_client
+
+            messages = [
+                ChatMessage(role="system", content="sys"),
+                ChatMessage(role="user", content="Hello"),
+            ]
+            collected = []
+            with pytest.raises(AgentError) as excinfo:
+                for response in provider.completion(messages, stream=True):
+                    collected.append(response)
+
+        assert [r.content for r in collected] == ["partial"]
+        assert excinfo.value.kind is ErrorKind.TIMEOUT
+        assert excinfo.value.retryable is True

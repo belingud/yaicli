@@ -14,6 +14,7 @@ from mistralai.utils.eventstreaming import EventStream
 
 from ...config import cfg
 from ...console import get_console
+from ...errors import provider_response_error, wrap_provider_exception
 from ...exceptions import MCPToolsError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_mcp_tools, get_openai_schemas
@@ -122,19 +123,24 @@ class MistralProvider(Provider):
         params = self.get_completion_params(tool_policy=tool_policy)
         params["messages"] = mistral_messages
 
-        if stream:
-            response = self.client.chat.stream(**params)
-            yield from self._handle_stream_response(response)
-        else:
-            response = self.client.chat.complete(**params)
-            yield from self._handle_normal_response(response)
+        try:
+            if stream:
+                response = self.client.chat.stream(**params)
+                yield from self._handle_stream_response(response)
+            else:
+                response = self.client.chat.complete(**params)
+                yield from self._handle_normal_response(response)
+        except Exception as e:
+            # Request-time and mid-stream failures surface as classified errors,
+            # never as a truncated or fake answer.
+            raise wrap_provider_exception(e, "Mistral") from e
 
     def _handle_normal_response(self, response: ChatCompletionResponse) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response"""
         if not response.choices or not response.choices[0].message:
-            content = response.model_dump_json()
-            yield LLMResponse(content=content, finish_reason="stop")
-            return
+            # HTTP 200 without a usable choice is an in-band failure document:
+            # raise classified instead of rendering it as assistant content.
+            raise provider_response_error("Mistral", response.model_dump_json())
 
         choice = response.choices[0]
         finish_reason = choice.finish_reason

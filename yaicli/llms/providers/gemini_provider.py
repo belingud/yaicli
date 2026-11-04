@@ -10,6 +10,7 @@ from yaicli.tools.mcp import get_mcp_manager
 
 from ...config import cfg
 from ...console import get_console
+from ...errors import provider_response_error, wrap_provider_exception
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools.function import get_functions_gemini_format
 from ..provider import Provider
@@ -210,15 +211,22 @@ class GeminiProvider(Provider):
         # stay out of `history`: google-genai appends the new message to the curated
         # history before calling the API, so keeping it here would send that turn twice.
         history = gemini_messages[:-1]
-        chat = self.client.chats.create(model=self.config["MODEL"], history=history, config=chat_config)  # type: ignore
         message = self._build_new_message(messages[-1], gemini_messages[-1] if gemini_messages else None)
 
-        if stream:
-            response = chat.send_message_stream(message=message)  # type: ignore
-            yield from self._handle_stream_response(response)
-        else:
-            response = chat.send_message(message=message)  # type: ignore
-            yield from self._handle_normal_response(response)
+        try:
+            chat = self.client.chats.create(  # type: ignore
+                model=self.config["MODEL"], history=history, config=chat_config
+            )
+            if stream:
+                response = chat.send_message_stream(message=message)  # type: ignore
+                yield from self._handle_stream_response(response)
+            else:
+                response = chat.send_message(message=message)  # type: ignore
+                yield from self._handle_normal_response(response)
+        except Exception as e:
+            # Request-time and mid-stream API/network failures must surface as a
+            # classified error, never as a silently truncated (or fake) answer.
+            raise wrap_provider_exception(e, "Gemini") from e
 
     @staticmethod
     def _build_new_message(last_message: ChatMessage, converted_last: Optional[types.Content]) -> Any:
@@ -253,11 +261,11 @@ class GeminiProvider(Provider):
     def _handle_normal_response(self, response) -> Generator[LLMResponse, None, None]:
         """Handle normal (non-streaming) response"""
         if not response or not response.candidates:
-            yield LLMResponse(
-                content=json.dumps(response.to_json_dict()),
-                finish_reason="stop",
-            )
-            return
+            # HTTP 200 with no candidates is an in-band failure (proxy error,
+            # blocked prompt, bad model): raise classified instead of echoing the
+            # error document as assistant text.
+            body = response.to_json_dict() if response is not None else {}
+            raise provider_response_error("Gemini", body)
         for part in response.candidates[0].content.parts:
             if part.function_call:
                 fc = part.function_call

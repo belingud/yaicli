@@ -1,4 +1,3 @@
-import json
 import os
 from copy import deepcopy
 from typing import Any, Dict, Generator, List, Optional, cast
@@ -11,6 +10,7 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from ...config import cfg
 from ...console import get_console, print_untrusted
+from ...errors import provider_response_error, wrap_provider_exception
 from ...exceptions import MCPToolsError, ProviderError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_mcp_tools, get_openai_schemas
@@ -126,6 +126,11 @@ class OpenAIProvider(Provider):
             tools.extend(mcp_tools)
         return tools
 
+    def _error_label(self) -> str:
+        """Human-readable provider name used in classified error messages."""
+        name = type(self).__name__
+        return name[: -len("Provider")] if name.endswith("Provider") else name
+
     def completion(
         self,
         messages: List[ChatMessage],
@@ -144,7 +149,7 @@ class OpenAIProvider(Provider):
 
         Raises:
             ValueError: If messages is empty or invalid
-            openai.APIError: If API request fails
+            AgentError: classified provider/network failure (see ``yaicli.errors``)
         """
         openai_messages = self._convert_messages(messages)
 
@@ -159,8 +164,8 @@ class OpenAIProvider(Provider):
             if params.get("tools"):
                 self.console.print("Tools:")
                 self.console.print(params["tools"])
-        response = self.client.chat.completions.create(**params, stream=stream)
         try:
+            response = self.client.chat.completions.create(**params, stream=stream)
             if stream:
                 yield from self._handle_stream_response(cast(Stream[ChatCompletionChunk], response))
             else:
@@ -174,8 +179,14 @@ class OpenAIProvider(Provider):
             # no terminal control sequences.
             print_untrusted(self.console, f"Error Response: {body}")
             # Do not swallow API errors: callers (and the process exit code) need to
-            # know the request failed. The REPL catches this and keeps the session.
-            raise ProviderError(f"OpenAI API error: {body}") from e
+            # know the request failed. The error is classified so the client can
+            # retry transient failures and the CLI can print an actionable message.
+            raise wrap_provider_exception(e, self._error_label(), detail=str(body)) from e
+        except Exception as e:
+            # Covers request-time and mid-stream network/timeout failures. Letting
+            # the generator end quietly here would report a broken request as a
+            # successful (truncated) answer.
+            raise wrap_provider_exception(e, self._error_label()) from e
 
     @staticmethod
     def _generate_tool_call_id() -> str:
@@ -191,10 +202,10 @@ class OpenAIProvider(Provider):
         accumulated multiple times.
         """
         if not response.choices:
-            yield LLMResponse(
-                content=json.dumps(getattr(response, "base_resp", None) or response.to_dict()), finish_reason="stop"
-            )
-            return
+            # Some proxies return the provider error document with HTTP 200 and no
+            # choices. Never render it as assistant content: raise classified.
+            body = getattr(response, "base_resp", None) or response.to_dict()
+            raise provider_response_error(self._error_label(), body)
         choice = response.choices[0]
         content = choice.message.content or ""
         reasoning = getattr(choice.message, "reasoning_content", "")
@@ -225,13 +236,21 @@ class OpenAIProvider(Provider):
 
     def _first_chunk_error(self, chunk) -> Optional[LLMResponse]:
         """
-        Return error LLMResponse if first chunk is error message
+        Handle a first stream chunk without choices.
+
+        Some API proxies return the provider error document as the first SSE
+        chunk instead of raising: ``{"error": {...}}``. Such an error must not be
+        silently skipped (that ends the stream as an empty success), so raise a
+        classified error. A no-choice chunk without an error payload is treated
+        as a keep-alive/usage chunk and skipped by the caller.
         """
-        # Some api could return error message in the first chunk, no choices to handle, return raw response to show the message
-        # TODO: check which provider should do this
-        # LLMResponse(
-        #     content=json.dumps(getattr(chunk, "base_resp", None) or chunk.to_dict()), finish_reason="stop"
-        # )
+        payload = chunk.get("error") if isinstance(chunk, dict) else None
+        if payload is None:
+            model_extra = getattr(chunk, "model_extra", None)
+            if isinstance(model_extra, dict):
+                payload = model_extra.get("error")
+        if payload is not None:
+            raise provider_response_error(self._error_label(), payload)
         return None
 
     def _handle_stream_response(self, response: Stream[ChatCompletionChunk]) -> Generator[LLMResponse, None, None]:
@@ -276,9 +295,7 @@ class OpenAIProvider(Provider):
                 tool_calls = self._finalize_tool_calls(accumulated_tool_calls)
                 accumulated_tool_calls = {}
                 if not tool_calls:
-                    yield LLMResponse(
-                        reasoning=reasoning, content=content, finish_reason=finish_reason, tool_call=None
-                    )
+                    yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason, tool_call=None)
                     continue
                 for tool_call_index, tool_call in enumerate(tool_calls):
                     yield LLMResponse(
@@ -330,6 +347,7 @@ class OpenAIProvider(Provider):
 
     def _finalize_tool_calls(self, accumulated: Dict[Any, ToolCall]) -> List[ToolCall]:
         """Return the accumulated tool calls in index order with unique ids."""
+
         def sort_key(item):
             index = item[0]
             if isinstance(index, int):
