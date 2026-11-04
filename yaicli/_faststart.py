@@ -63,11 +63,24 @@ def _silence_broken_pipe() -> None:
         pass
 
 
+def _is_version_request(args: list[str]) -> bool:
+    """Return True when ``args`` asks for the version (before any ``--`` separator).
+
+    ``ai -- --version`` passes ``--version`` as the prompt argument, so flags after
+    the conventional end-of-options marker must not trigger the fast path.
+    """
+    try:
+        separator = args.index("--")
+    except ValueError:
+        separator = len(args)
+    return any(arg in _VERSION_FLAGS for arg in args[:separator])
+
+
 def main(argv=None) -> None:
     """Entry point used by the ``ai``/``yaicli`` console scripts and ``-m yaicli``."""
     try:
         args = list(sys.argv[1:] if argv is None else argv)
-        if any(arg in _VERSION_FLAGS for arg in args):
+        if _is_version_request(args):
             _print_version()
             return
 

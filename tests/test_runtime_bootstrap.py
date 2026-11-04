@@ -363,3 +363,44 @@ class TestFaststartModule:
 
         assert scripts["ai"] == "yaicli._faststart:main"
         assert scripts["yaicli"] == "yaicli._faststart:main"
+
+
+class TestConfigMigration:
+    def test_legacy_config_is_not_mutated_at_import(self, tmp_path):
+        """D7: importing config / running --help must not append migrations to disk."""
+        home = tmp_path / "home"
+        config_dir = home / ".config" / "yaicli"
+        config_dir.mkdir(parents=True)
+        config_file = config_dir / "config.ini"
+        legacy = "[core]\nPROVIDER=openai\n"
+        config_file.write_text(legacy, encoding="utf-8")
+
+        result = _run([sys.executable, "-c", "import yaicli.config"], home=home)
+        assert result.returncode == 0, result.stderr
+        _assert_no_traceback(result)
+        assert config_file.read_text(encoding="utf-8") == legacy
+
+        result = _run([sys.executable, "-m", "yaicli", "--help"], home=home)
+        assert result.returncode == 0, result.stderr
+        _assert_no_traceback(result)
+        assert config_file.read_text(encoding="utf-8") == legacy
+
+        # The deferred migration runs only from ensure_config_file() on a real run.
+        code = "from yaicli.config import ensure_config_file; print(ensure_config_file())"
+        result = _run([sys.executable, "-c", code], home=home)
+        assert result.returncode == 0, result.stderr
+        content = config_file.read_text(encoding="utf-8")
+        assert content.startswith(legacy)
+        assert "CHAT_HISTORY_DIR=" in content
+
+
+class TestVersionFlagParsing:
+    def test_version_flag_after_double_dash_is_a_prompt(self):
+        """``ai -- --version`` passes --version as a prompt, not as the eager flag."""
+        from yaicli._faststart import _is_version_request
+
+        assert _is_version_request(["--version"]) is True
+        assert _is_version_request(["-v"]) is True
+        assert _is_version_request(["hi", "-v"]) is True
+        assert _is_version_request(["--", "--version"]) is False
+        assert _is_version_request(["-p", "hi", "--", "-v"]) is False

@@ -29,6 +29,12 @@ from .utils import str2bool
 # first), so this is a plain lazily-created Rich console.
 _error_console: Optional[Console] = None
 _warned_keys: set = set()
+# Key migrations for pre-existing config files are discovered during the (read-only)
+# import-time load and appended only when ensure_config_file() runs a real command.
+# Keyed by CONFIG_PATH so tests that patch the path (and multiple Config loads) never
+# apply another file's pending migration to the active path.
+_PENDING_CONFIG_MIGRATIONS: dict[Path, list[str]] = {}
+_PENDING_MIGRATION_KEY = "migrate:CHAT_HISTORY_DIR"
 
 
 def _get_error_console() -> Console:
@@ -114,26 +120,18 @@ class Config(dict):
         for key, config_info in DEFAULT_CONFIG_MAP.items():
             self[key] = config_info["value"]
 
-    def _ensure_version_updated_config_keys(self, config_parser: CasePreservingConfigParser) -> None:
-        """Ensure configuration keys added in version updates exist in the config file.
+    def _pending_version_updated_config_keys(self, config_parser: CasePreservingConfigParser) -> list[str]:
+        """Return config-file migration lines for keys added in version updates.
 
-        Uses config parser to check for missing keys instead of full text search.
-        Only writes to file if keys are actually missing. Appending is best effort:
-        a read-only config directory only produces one stderr warning, the typed
-        default is already loaded in memory.
+        Detection is read-only: importing :mod:`yaicli.config` must not touch the
+        filesystem (``--version``/``--help``/read-only HOME). The pending lines are
+        appended by :func:`ensure_config_file` on the first real run instead.
         """
-        # Check using config parser instead of full text search
         core_section = config_parser["core"] if config_parser.has_section("core") else {}
-
+        pending: list[str] = []
         if "CHAT_HISTORY_DIR" not in core_section:
-            try:
-                with open(CONFIG_PATH, "a", encoding="utf-8") as f:
-                    f.write(f"\nCHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}\n")
-            except OSError as e:
-                _warn_once(
-                    f"append:{CONFIG_PATH}",
-                    f"Could not update configuration file {CONFIG_PATH}: {e}. Continuing with the in-memory defaults.",
-                )
+            pending.append(f"CHAT_HISTORY_DIR={DEFAULT_CHAT_HISTORY_DIR}")
+        return pending
 
     def _load_from_file(self) -> None:
         """Load configuration from the config file.
@@ -180,8 +178,15 @@ class Config(dict):
 
         # Only migrate a file that already exists: a first run has no file yet and
         # must stay write-free (the created template already contains every key).
+        # The actual append is deferred to ensure_config_file() (D7): importing
+        # config must never write, even for a legacy config.ini.
         if file_existed:
-            self._ensure_version_updated_config_keys(config_parser)
+            pending = self._pending_version_updated_config_keys(config_parser)
+            if pending:
+                queued = _PENDING_CONFIG_MIGRATIONS.setdefault(CONFIG_PATH, [])
+                for line in pending:
+                    if line not in queued:
+                        queued.append(line)
 
     def _load_from_env(self) -> None:
         """Load configuration from environment variables.
@@ -283,23 +288,10 @@ def ensure_config_file() -> Optional[Path]:
         already present), or ``None`` when it could not be created.
     """
     try:
-        if CONFIG_PATH.exists():
-            return CONFIG_PATH
-
-        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _chmod(CONFIG_PATH.parent, 0o700)
-        try:
-            fd = os.open(CONFIG_PATH, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        except FileExistsError:  # pragma: no cover - concurrent creator won the race
-            return CONFIG_PATH
-        try:
-            payload = DEFAULT_CONFIG_INI.encode("utf-8")
-            while payload:
-                payload = payload[os.write(fd, payload) :]
-        finally:
-            os.close(fd)
-        _chmod(CONFIG_PATH, 0o600)
-        return CONFIG_PATH
+        if not CONFIG_PATH.exists():
+            _create_config_file()
+        _apply_pending_config_migrations()
+        return CONFIG_PATH if CONFIG_PATH.exists() else None
     except OSError as e:
         _warn_once(
             f"create:{CONFIG_PATH}",
@@ -307,6 +299,66 @@ def ensure_config_file() -> Optional[Path]:
             "Continuing with the in-memory defaults (read-only HOME/container).",
         )
         return None
+
+
+def _create_config_file() -> None:
+    """Create the config file from the template (0600 file, 0700 dir)."""
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _chmod(CONFIG_PATH.parent, 0o700)
+    try:
+        fd = os.open(CONFIG_PATH, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:  # pragma: no cover - concurrent creator won the race
+        return
+    try:
+        payload = DEFAULT_CONFIG_INI.encode("utf-8")
+        while payload:
+            payload = payload[os.write(fd, payload) :]
+    finally:
+        os.close(fd)
+    _chmod(CONFIG_PATH, 0o600)
+
+
+def _apply_pending_config_migrations() -> None:
+    """Append deferred key migrations to an existing config file (best effort).
+
+    Called only from :func:`ensure_config_file`, i.e. on a real CLI run. A
+    read-only config directory reports one stderr warning and continues with the
+    in-memory defaults. The pending list is cleared once the append succeeds.
+    """
+    if not CONFIG_PATH.exists():
+        return
+    lines = _PENDING_CONFIG_MIGRATIONS.pop(CONFIG_PATH, None)
+    if not lines:
+        return
+
+    # Skip migrations whose key is already present: the file may be a freshly
+    # created template (which contains every default key) or another load may have
+    # appended the same line already. Without this a duplicate option would make
+    # the config file unreadable (configparser DuplicateOptionError).
+    parser = CasePreservingConfigParser()
+    try:
+        parser.read(CONFIG_PATH, encoding="utf-8")
+    except (OSError, configparser.Error):  # pragma: no cover - unreadable file: append blind
+        parser = CasePreservingConfigParser()
+    core_section = parser["core"] if parser.has_section("core") else {}
+    to_append = [line for line in lines if line.split("=", 1)[0] not in core_section]
+    if not to_append:
+        return
+
+    try:
+        with open(CONFIG_PATH, "a", encoding="utf-8") as f:
+            for line in to_append:
+                f.write(f"\n{line}\n")
+    except OSError as e:
+        # Keep them pending for the next explicit call; a read-only config dir only warns.
+        queued = _PENDING_CONFIG_MIGRATIONS.setdefault(CONFIG_PATH, [])
+        for line in to_append:
+            if line not in queued:
+                queued.append(line)
+        _warn_once(
+            _PENDING_MIGRATION_KEY,
+            f"Could not update configuration file {CONFIG_PATH}: {e}. Continuing with the in-memory defaults.",
+        )
 
 
 @lru_cache(1)
