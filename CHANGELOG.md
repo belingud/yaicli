@@ -19,8 +19,37 @@ K21: new _faststart console entry answers --version from the static __version__ 
 
 K01/K15: load the 12 packaged builtins directly, let same-named user copies override them, and warn about stale exported copies via functions_manifest.json (version+sha256). A broken function file is skipped with one warning instead of bricking every tool. --install-functions now exports editable copies; --reinstall-functions refreshes them. K03: shell tool gains timeout (default 120s, process-group kill), workspace-bounded cwd, env allowlist (TOOL_ENV_INHERIT opt-in), output cap and exits 124 on timeout; the old 3-substring danger blacklist is replaced by shlex/argv classification in tools/risk.py. - ([77bd086](https://github.com/belingud/yaicli/commit/77bd086bb83c89faaefa278eb7ddc497b816b674)) - Belingud
 
+### 🐛 Bug Fixes
+
+- fix(runtime): keep config imports write-free and make tests environment-safe
+
+D7: key migrations for legacy config files are detected read-only at import and appended only by ensure_config_file() on a real run (deduped per CONFIG_PATH, skipped when the key already exists), so 'import yaicli.config' and '--help' no longer mutate an existing config.ini.
+T1: tests/conftest.py now sets the mock provider/credential environment before any yaicli module is imported, so the full suite is green in a fresh HOME/clean CI environment instead of failing five test_image tests with 'API_KEY is required'; the original environment is restored at session teardown.
+_faststart: flags after '--' are no longer treated as --version/-v (ai -- --version is a prompt).
+New regression tests for deferred migration, --help write-freedom and --/version parsing. - ([bf39624](https://github.com/belingud/yaicli/commit/bf39624a1e1572df14bbde7aaf46c8d98f626e9e)) - Belingud
+- fix(agent): implement tool-output paging and harden shell env/spill handling
+
+D6: fs_read_file gains optional offset/limit (characters, 0 = start/no limit) with per-file paging metadata (total_chars/returned_chars/truncated), so the truncation marker and docs that point the model at fs_read_file(offset/limit) for spilled tool output are truthful; legacy single-string/tuple inputs and the existing single/multi-file JSON shapes stay compatible.
+--cwd now wins over a stale exported YAI_WORKSPACE_ROOT: shell guardrail config is exported from cfg unconditionally (empty values skipped), matching entry._apply_cwd.
+Spill files for full tool outputs are created with 0600 permissions (best effort).
+Docs: context-limits paging table/semantics. Tests: schema contracts (OpenAI/Anthropic/Gemini), paging/edge cases, end-to-end tool-call paging, env precedence and spill mode. - ([f19cac6](https://github.com/belingud/yaicli/commit/f19cac6d25211264cc45b8b556fbf6606419d814)) - Belingud
+- fix(permissions): block path-glob traversal and shell-syntax rule bypasses
+
+D4: path_glob candidates are derived only from normalized paths (workspace-resolved with strict=False); the raw '..'-containing string is never a candidate and workspace-relative candidates that escape the workspace are rejected, so a rule like allowed/* can no longer be bypassed with allowed/../../victim.txt. Legitimate relative/absolute matches and the every-path-argument-must-match semantics are preserved.
+D5: argv_prefix rules only match a single simple command; the raw command is rejected when it contains shell control/expansion syntax (; | & < > backtick $( ${ <( >( CR/LF), so 'git status $(touch /tmp/x)' or piped/backtick variants require normal confirmation.
+17 new regression tests (traversal/absolute/symlink escapes, parametrized control/substitution cases, legit plain args). - ([4735f3d](https://github.com/belingud/yaicli/commit/4735f3d267979e54246f54b552acf8a468bc252f)) - Belingud
+- fix(cli): keep machine-readable stdout clean in headless modes
+
+D1/D2: re-point both the LLM client and its provider at the stderr console in machine-output mode, so provider verbose dumps ('Messages:', tools JSON) and API error bodies ('Error Response: {...}') can no longer corrupt --json/stream-json stdout; client/provider construction warnings are redirected to stderr as well.
+D3: compute headless intent in the CLI constructor (new defaulted print_mode/output_format/quiet kwargs) before the console, printer, client and prompt_toolkit session are created, so '-p --json' on a TTY never builds a PromptSession nor prints verbose config to stdout; entry.main passes the flags.
+D8: move the Gemini/MCP '@Function call'/'@MCP call' debug prints to stderr and drop ANSI escapes.
+Regression tests: polluting provider/client consoles under json/stream-json/--verbose, construction redirect, simulated-TTY constructor behaviour. - ([5fd62bc](https://github.com/belingud/yaicli/commit/5fd62bc9f3c4305c004172b078b75d6bf5caaf13)) - Belingud
+
 ### 📚 Documentation
 
+- docs: restore "Your AI assistant in command line" positioning
+
+Revert the first-screen positioning copy to the v0.18 assistant wording kept by the project: README title/intro/footer, docs index title/intro, the PyPI description (A simple CLI tool to interact with LLM) and mkdocs site_description (An advanced CLI tool for interacting with AI models). The v0.19 functional documentation is unchanged and still shipped: headless/scripting, permissions, context & limits, upgrade pages, quick start, and the measured lightweight table. - ([bc8d7fb](https://github.com/belingud/yaicli/commit/bc8d7fb90953c3bb992c25933ad2de49f7ddb2d5)) - Belingud
 - docs: reposition YAICLI as a lightweight agent and document v0.19
 
 Rewrite README/docs index around the agent-first, lightweight-first positioning; add a 3-step quick start and the measured footprint table (with the sandbox measurement caveat). New pages: usage/headless (stdout/stderr contract, JSON/NDJSON, exit codes), usage/permissions (risk classes, rules v2, audit, /permissions), usage/context-limits (truncation, budget, /context, /compact), advanced/upgrade (v0.19 changes, reinstall, XDG config dirs). Move the 30+ provider matrix to a Compatibility section and sync mkdocs nav. - ([dbd0a0b](https://github.com/belingud/yaicli/commit/dbd0a0b4a95dd30e15b54484721705baa4153a7c)) - Belingud
@@ -29,9 +58,17 @@ Rewrite README/docs index around the agent-first, lightweight-first positioning;
 
 ### ⚙️ Miscellaneous Tasks
 
+- chore(release): sync uv.lock with v0.19.0
+
+Refresh the editable package version recorded in uv.lock (0.18.0 -> 0.19.0) after the release bump; no dependency changes. - ([42643ea](https://github.com/belingud/yaicli/commit/42643ea97b9ce55389364866258b0a03a247c829)) - Belingud
+- chore: record journal - ([3d0b28e](https://github.com/belingud/yaicli/commit/3d0b28ebafdb77e95e019863498ad0fa0fea6502)) - Belingud
+- chore(task): archive 11-04-v019-lightweight-agent - ([a5b7d84](https://github.com/belingud/yaicli/commit/a5b7d8438f7f08a00301efb9be6988c7d87e9bb0)) - Belingud
+- chore(trellis): record v0.19 lightweight-agent task and refresh specs
+
+Add the v0.19.0 PRD/design/implement plan-of-record and update the py-layer specs for the new behavior: builtin direct-load + manifest, headless/exit-code contract, lazy write-free config/role/chat startup, error taxonomy/retries, context budget/truncation, risk-aware permissions and audit, and the new module map. - ([b928de8](https://github.com/belingud/yaicli/commit/b928de8510ef5dc45a2038f8817f77750272a4b7)) - Belingud
 - chore(release): v0.19.0
 
-Bump to 0.19.0 and point ai/yaicli console scripts at yaicli._faststart:main; update the PyPI description to 'A lightweight agent in your terminal'. The static __version__ in yaicli/__init__.py is now kept in sync with pyproject.toml by bump2version. - ([fe62929](https://github.com/belingud/yaicli/commit/fe62929cf9d32fcee9bcd3df54214ab1fc3e4985)) - Belingud
+Bump to 0.19.0 and point ai/yaicli console scripts at yaicli._faststart:main; update the PyPI description to 'A lightweight agent in your terminal'. The static __version__ in yaicli/__init__.py is now kept in sync with pyproject.toml by bump2version. - ([e9eb123](https://github.com/belingud/yaicli/commit/e9eb1238b2562478edd6901f339db6d7d4f5c214)) - Belingud
 - chore: refresh uv.lock for v0.18.0 release - ([b7b868f](https://github.com/belingud/yaicli/commit/b7b868fc2359712c7d042cf4cc7999897b9d2d9e)) - Belingud
 
 ---

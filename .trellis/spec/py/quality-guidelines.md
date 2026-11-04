@@ -59,6 +59,11 @@ there is no `just check`; lint is bare `ruff check` or `tox -e lint`. `CLAUDE.md
   `FIREWORKS_API_KEY`, restored at teardown — mutations leak for the whole session),
   `cli()` (function-scoped `CLI()` on the patched config path, as used by `tests/test_image.py`), and
   `mock_console()` (function-scoped `MagicMock`).
+- Test credentials must be in the environment **before** any `yaicli` import: `tests/conftest.py`
+  installs `YAI_PROVIDER`/`YAI_API_KEY`/`YAI_MODEL`/AWS/Fireworks values at module import (before
+  importing `yaicli.config`/`CLI`, which are now imported inside fixtures) and restores the original
+  values at session teardown. A session-scoped fixture is too late — the config singleton is created at
+  import, and a fresh HOME would then fail real-provider tests with "API_KEY is required".
 - Process-level tests (headless contract, faststart, config-dir resolution) run `sys.executable`
   subprocesses with a private `HOME` + `YAI_CONFIG_DIR` under `tmp_path`, `stdin=DEVNULL`, and the
   inherited `YAI_*`/`XDG_*` variables stripped (`tests/test_runtime_bootstrap.py`,
@@ -154,7 +159,10 @@ Before reporting a Python change complete:
       `tests/test_context_budget.py tests/llms/test_client.py`; permissions → `tests/test_permissions.py
       tests/llms/test_tool_confirmation.py tests/tools/test_approval.py`.
 - [ ] Full suite `uv run pytest` green before finishing cross-cutting changes (client, config, function
-      registry, schemas).
+      registry, schemas), and at least once with a **fresh HOME and no ambient `YAI_*`/`XDG_*`**
+      (`env -u YAI_API_KEY -u YAI_PROVIDER ... HOME=$(mktemp -d) uv run pytest`) so the suite is
+      environment-safe (the five `test_image.py` errors found by v0.19 verification came from test
+      credentials being set too late).
 - [ ] New built-in function in `yaicli/functions/buildin/` has `tests/tools/test_<name>.py` covering
       execute + schema contract, and user-facing docs are updated where behavior is visible:
       `README.md` "Function Call" and `docs/usage/advanced.md` (as done for `fs_read_file`).

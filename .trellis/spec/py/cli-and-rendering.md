@@ -57,8 +57,13 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   → `current_mode = EXEC_MODE`.
 - `CLI.__init__` derives `interactive` from stdin+stdout TTY and skips `PromptSession` creation and the
   welcome banner when not interactive (headless runs stay cheap and quiet; the REPL builds its own
-  session in `prepare_chat_loop()`). `configure_headless(...)` applies the headless flags and rebuilds
-  console/printer for the effective machine/text mode.
+  session in `prepare_chat_loop()`). It accepts defaulted `print_mode`/`output_format`/`quiet` kwargs so
+  ``entry.main`` can pass the headless intent *before* any console/printer/client/prompt-toolkit object
+  is built (D3: `-p --json` on a TTY must not create a PromptSession or print to stdout).
+  `configure_headless(...)` then applies the remaining flags (yes/allowed-tools/fail-on-denied/
+  max-turns/cwd) and is idempotent. `_sync_client_console()` re-points both `client.console` and
+  `client.provider.console` at the stderr console in machine mode (D1/D2) — provider verbose dumps and
+  error bodies must never reach structured stdout.
 - Public state contract consumed by `entry.py` (keep these names): `interactive`, `exit_code`,
   `had_error`, `interrupted`, `depth_limit_reached`, `tool_denied`, plus `yes`, `allowed_tools`,
   `fail_on_tool_denied`, `output_format`, `quiet`, `machine_output`. `_finalize_exit_code()` maps them:

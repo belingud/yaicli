@@ -142,9 +142,14 @@ are parsed with `json_repair.repair_json(..., return_objects=True)` and must be 
 Every result passes through `yaicli/tools/limits.py::truncate_tool_output()` before it is appended
 to the model messages (and before the panel is rendered): per-tool caps (shell 32KB, `fs_read_file`
 64KB, search/list 48KB, fetch 100KB, MCP/default 32KB; `TOOL_OUTPUT_MAX_CHARS` overrides, `0`
-disables), head+tail with a marker pointing at the full text spilled to `TOOL_OUTPUT_DIR`. A spill
-failure degrades to plain truncation. Keep this the single truncation point — do not truncate again
-in `client.py`/`printer.py`. Tool announce/output panels use `get_error_console()` when stdout is not
+disables), head+tail with a marker pointing at the full text spilled to `TOOL_OUTPUT_DIR`; spill files
+are written 0600 (best effort) because they may contain secrets. A spill failure degrades to plain
+truncation. Keep this the single truncation point — do not truncate again in `client.py`/`printer.py`.
+`fs_read_file` implements the paging the marker promises (`offset`/`limit` characters, `0` = start /
+to end) and reports `total_chars`/`returned_chars`/`truncated`; keep marker, docs and signature in
+sync. The standalone shell tool reads its guardrails from `YAI_*` env; `execute_tool_call` exports the
+effective `cfg` values (TOOL_TIMEOUT/TOOL_ENV_INHERIT/WORKSPACE_ROOT/TOOL_OUTPUT_MAX_CHARS)
+unconditionally (empty skipped), so `--cwd`/config.ini win over a stale exported value. Tool announce/output panels use `get_error_console()` when stdout is not
 a TTY (headless JSON purity), the Rich console otherwise.
 
 `ok=True` means the call reached the tool, including in-band errors such as

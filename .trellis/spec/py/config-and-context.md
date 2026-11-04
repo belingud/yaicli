@@ -55,8 +55,11 @@ on demand by `ensure_config_file()` (first real run, never for `--version`/`--he
 2. Add the line + comment to `DEFAULT_CONFIG_INI` — config files are written from that template by
    `ensure_config_file()` only.
 3. Read it as `cfg["KEY"]` at the use site; only `Config._load_from_env` may read the env var for a key.
-4. Update `_ensure_version_updated_config_keys()` (`config.py`) if installed config files need the key appended
-   (today hardcoded for `CHAT_HISTORY_DIR`; OSError-tolerant, only for an existing file).
+4. Update `_pending_version_updated_config_keys()` (`config.py`) if installed config files need the key
+   appended (today hardcoded for `CHAT_HISTORY_DIR`). Detection is read-only at import: lines are queued
+   per `CONFIG_PATH` and appended only by `ensure_config_file()` on a real run, deduped and skipped when
+   the key already exists (a freshly created template already contains every default key); OSError only
+   warns and keeps them pending.
 5. Update `docs/usage/configuration.md` and any `entry.py` option default mirroring it.
 6. Test in `tests/test_config.py` with `patch("yaicli.config.getenv")` + `mock_open`/`Path.exists` patch.
 
