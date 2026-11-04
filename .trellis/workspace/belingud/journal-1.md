@@ -63,3 +63,54 @@ Fixed the seven defects recorded during the Trellis spec bootstrap: first-run co
 ### Status
 
 [OK] **Completed**
+
+
+## Session 3: v0.19.0 lightweight agent implementation
+<!-- trellis-session: v=2 fp=90f68b5a72b8c1ec -->
+
+**Date**: 2026-11-04
+**Task**: v0.19.0 lightweight agent implementation
+**Branch**: `release/v0.19.0`
+
+### Summary
+
+Implemented all v0.19 P0 items from var/lightweight-audit/09-roadmap.md (K01, K02, K03, K04, K05, K06, K07, K21) on release/v0.19.0 with tests, docs and release-prep commits.
+
+### Main Changes
+
+- K01/K15: built-in tools load from the installed package out of the box (user copies override), functions_manifest.json stale-copy warning, per-file robustness, shell install/reinstall/list lifecycle
+- K03: shell tool timeout/cwd/env-allowlist/output-cap/process-group-kill; tools/risk.py shlex argv danger classification replaces the substring blacklist
+- K04: headless contract (-p/--print, --output-format text|json|stream-json, --json, -q, --max-turns, -y, --allowed-tools, --cwd, --fail-on-tool-denied), clean stdout/stderr split, exit codes 0/1/2/3/130/141, EPIPE/SIGINT handling, REPL Ctrl-C semantics
+- K21: _faststart --version fast path (static version, zero writes, ~45ms vs ~500ms), python -m yaicli, write-free imports, ensure_config_file (0600/0700, lazy), YAI_CONFIG_DIR/XDG resolution, read-only HOME tolerance
+- K02: tool-output truncation+spill, token estimator/budget, turn-group-aligned trimming (no orphan tool messages), context-length self-heal, /context and /compact, depth-limit flag
+- K05: yaicli/errors.py taxonomy + retry/backoff; all 39 provider registry keys raise classified AgentError instead of swallowing API errors or returning them as assistant content
+- K06: risk-aware approval gate (danger double-confirm, --yes read-only, --allowed-tools), tool_permissions.json v2 rules, faithful prompt previews, structured deny results, audit JSONL, /permissions
+- K07: agent-first positioning, 3-step quick start, footprint table with caveat, new headless/permissions/context-limits/upgrade pages, mkdocs nav sync
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dbd0a0b` | docs: reposition YAICLI as a lightweight agent and document v0.19 |
+| `77bd086` | feat(functions): load built-in tools out of the box and harden shell execution |
+| `978eec5` | feat(cli): headless scripting contract and side-effect-free startup |
+| `3b8e27d` | feat(agent): context economy, retries and classified provider errors |
+| `c83c87c` | feat(permissions): risk-aware confirmation, rule-based allowlist and audit log |
+| `e9eb123` | chore(release): v0.19.0 |
+| `b928de8` | chore(trellis): record v0.19 lightweight-agent task and refresh specs |
+| `a5b7d84` | chore(task): archive 11-04-v019-lightweight-agent |
+
+### Testing
+
+- [OK] full suite: 1729 passed (baseline 1195)
+- [OK] new suites: test_context_budget 51, test_errors 210, test_headless_contract 36, test_permissions 53, test_runtime_bootstrap 20, test_shell_tool 94
+- [OK] ruff check yaicli tests clean; mkdocs build --strict passes
+- [OK] Lead acceptance probe matrix: 28/28 checks (fast version zero writes, list-functions 12 builtins, JSON headless contract, read-only HOME, config 0600/0700, shell guardrails, 8MB truncation+spill, permissions v1/v2)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- v0.20: startup/footprint work K08-K15 (one-shot <=1.2s, dependency extras split, permission policy v2, workspace writes/undo, AGENTS.md, session isolation), then publish/tag v0.19.0 via the existing release flow
