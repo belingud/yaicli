@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -327,6 +327,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1349,6 +1424,8 @@
       
         
       
+        
+      
     
     
     
@@ -1418,6 +1495,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1726,6 +1826,9 @@
 <h1 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h1>
 <p>YAICLI offers multiple ways to interact with AI models directly from your command line.</p>
 <h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<p>Give the agent a multi-step task (it picks and runs tools itself):</p>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span><span class="s2">&quot;Use your tools to find the 3 largest files here and write a summary to REPORT.md&quot;</span>
+</code></pre></div>
 <p>Get a quick answer.</p>
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span><span class="s2">&quot;What is the capital of France?&quot;</span>
 </code></pre></div>
@@ -1746,7 +1849,8 @@
 </code></pre></div></p>
 <blockquote>
 <p>This help snapshot is abbreviated; run <code>ai --help</code> for the authoritative current
-options (see also <a href="../commands/">Command Overview</a>).</p>
+options (see also <a href="../commands/">Command Reference</a> and
+<a href="../headless/">Headless &amp; Scripting</a>).</p>
 </blockquote>
 <h2 id="image-input">Image Input<a class="headerlink" href="#image-input" title="Permanent link">&para;</a></h2>
 <p>Send images to vision-capable models directly from the command line using <code>--image</code> / <code>-i</code>:</p>
@@ -1769,72 +1873,136 @@ or <code>Describe these images.</code> for several images) together with the ima
 <p><strong>Note</strong>: Image input works in single-shot mode only (not <code>--chat</code>). Providers without vision support will show a warning and ignore the images.</p>
 </blockquote>
 <h2 id="command-line-reference">Command Line Reference<a class="headerlink" href="#command-line-reference" title="Permanent link">&para;</a></h2>
+<p>The authoritative list is <code>ai --help</code>. A representative snapshot (stable defaults; your config may
+change default values):</p>
 <div class="highlight"><pre><span></span><code> Usage: ai [OPTIONS] [PROMPT]
 
- YAICLI: Your AI assistant in the command line.
+ YAICLI: a lightweight agent in your terminal.
 
- Call with a PROMPT to get a direct answer, use --shell to execute as command, or use --chat for an interactive session.
+ Call with a PROMPT to get a direct answer, use --shell to generate a command, or use
+ --chat for an interactive session.
 
-╭─ Arguments ────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available. [default: None]                  │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --install-completion            Install completion for the current shell.                                              │
-│ --show-completion               Show completion for the current shell, to copy it or customize the installation.       │
-│ --help                -h        Show this message and exit.                                                            │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --model        -M                 TEXT                       Specify the model to use.                                 │
-│ --temperature  -T                 FLOAT RANGE [0.0&lt;=x&lt;=2.0]  Specify the temperature to use. [default: 0.3]            │
-│ --top-p        -P                 FLOAT RANGE [0.0&lt;=x&lt;=1.0]  Specify the top-p to use. [default: 1.0]                  │
-│ --max-tokens                      INTEGER RANGE [x&gt;=1]       Specify the max tokens to use. [default: 1024]            │
-│ --stream           --no-stream                               Specify whether to stream the response. (default: stream) │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Role Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --role         -r      TEXT  Specify the assistant role to use. [default: DEFAULT]                                     │
-│ --create-role          TEXT  Create a new role with the specified name.                                                │
-│ --delete-role          TEXT  Delete a role with the specified name.                                                    │
-│ --list-roles                 List all available roles.                                                                 │
-│ --show-role            TEXT  Show the role with the specified name.                                                    │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Chat Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --chat        -c        Start in interactive chat mode.                                                                │
-│ --list-chats            List saved chat sessions.                                                                      │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Shell Options ────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --shell  -s        Generate and optionally execute a shell command (non-interactive).                                  │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Code Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --code          Generate code in plaintext (non-interactive).                                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Other Options ────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --verbose         -V                                                        Show verbose output (e.g., loaded config). │
-│ --template                                                                  Show the default config file template and  │
-│                                                                             exit.                                      │
-│ --show-reasoning      --hide-reasoning                                      Show reasoning content from the LLM.       │
-│                                                                             (default: show)                            │
-│ --justify         -j                      [default|left|center|right|full]  Specify the justify to use.                │
-│                                                                             [default: default]                         │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Function Options ─────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --install-functions                                   Install default functions.                                       │
-│ --list-functions                                      List all available functions.                                    │
-│ --reinstall-functions                                 Reinstall builtin functions (overwrites existing builtin files,  │
-│                                                       preserves custom ones).                                          │
-│ --enable-functions        --disable-functions         Enable/disable function calling in API requests (default:        │
-│                                                       enabled)                                                         │
-│ --show-function-output    --hide-function-output      Show the output of functions (default: show)                     │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ MCP Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --enable-mcp         --disable-mcp          Enable/disable MCP in API requests (default: disabled)                     │
-│                                             [default: disable-mcp]                                                     │
-│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: hide)                                     │
-│ --list-mcp                                  List all available mcp.                                                    │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Image Options ───────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --image  -i      TEXT  Image file path or URL to include with the prompt. Can be specified multiple times.            │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ Scripting: stdout only carries the result, diagnostics go to stderr, and the exit code
+ is script-friendly (0 ok / 1 error / 2 usage / 3 denied / 130 SIGINT / 141 EPIPE).
+ Use -p/--print with --output-format json (or stream-json) for machine-readable output.
+
+ Example:
+     ai &quot;What is the capital of France?&quot;
+     ai -p &quot;Summarize this file&quot; &gt; summary.md
+     ai -p &quot;List the TODO comments in src&quot; --output-format json | jq -r .content
+     echo &quot;error log&quot; | ai -p &quot;Explain these errors&quot;
+     ai -p &quot;Run the tests and summarize failures&quot; -y --fail-on-tool-denied
+     ai --code &quot;Write a fibonacci generator in Python&quot;
+     ai --chat &quot;What&#39;s the meaning of life&quot;  # Start a chat session with a title
+     ai --chat  # Start a temporary chat session
+     ai --shell &quot;Start docker image python:3.13.5-alpine3.22 with ports 8080&quot;
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│   prompt      [PROMPT]  The prompt to send to the LLM. Reads from stdin if available.            │
+│                         [default: None]                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --install-completion            Install completion for the current shell.                        │
+│ --show-completion               Show completion for the current shell, to copy it or customize   │
+│                                 the installation.                                                │
+│ --help                -h        Show this message and exit.                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Options ────────────────────────────────────────────────────────────────────────────────────╮
+│ --model        -M                 TEXT                       Specify the model to use.           │
+│ --temperature  -T                 FLOAT RANGE [0.0&lt;=x&lt;=2.0]  Specify the temperature to use.     │
+│                                                              [default: 0.3]                      │
+│ --top-p        -P                 FLOAT RANGE [0.0&lt;=x&lt;=1.0]  Specify the top-p to use.           │
+│                                                              [default: 1.0]                      │
+│ --max-tokens                      INTEGER RANGE [x&gt;=1]       Specify the max tokens to use.      │
+│                                                              [default: 1024]                     │
+│ --stream           --no-stream                               Specify whether to stream the       │
+│                                                              response. (default: stream)         │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Role Options ───────────────────────────────────────────────────────────────────────────────────╮
+│ --role         -r      TEXT  Specify the assistant role to use. [default: DEFAULT]               │
+│ --create-role          TEXT  Create a new role with the specified name.                          │
+│ --delete-role          TEXT  Delete a role with the specified name.                              │
+│ --list-roles                 List all available roles.                                           │
+│ --show-role            TEXT  Show the role with the specified name.                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Chat Options ───────────────────────────────────────────────────────────────────────────────────╮
+│ --chat        -c        Start in interactive chat mode.                                          │
+│ --list-chats            List saved chat sessions.                                                │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Headless Options ───────────────────────────────────────────────────────────────────────────────╮
+│ --print                -p                               Explicit one-shot run: print the result  │
+│                                                         only (no REPL, no prompts).              │
+│ --output-format                [text|json|stream-json]  Output format: text, json or stream-json │
+│                                                         (NDJSON events).                         │
+│                                                         [default: text]                          │
+│ --quiet                -q                               Only print the answer on stdout (no      │
+│                                                         labels, panels or progress).             │
+│ --max-turns                    INTEGER RANGE [x&gt;=1]     Override the maximum number of tool-call │
+│                                                         rounds (MAX_TOOL_CALL_DEPTH).            │
+│                                                         [default: None]                          │
+│ --yes                  -y                               Non-interactive approval: auto-allow     │
+│                                                         read-level tools only.                   │
+│ --allowed-tools                TEXT                     Comma-separated per-run tool allowlist,  │
+│                                                         glob patterns allowed (e.g.              │
+│                                                         &quot;fs_*,execute_shell_command&quot;).           │
+│ --cwd                          TEXT                     Run as if started in DIR; also used as   │
+│                                                         the tool workspace root.                 │
+│                                                         [default: None]                          │
+│ --fail-on-tool-denied                                   Exit with code 3 when a tool call was    │
+│                                                         denied.                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Shell Options ──────────────────────────────────────────────────────────────────────────────────╮
+│ --shell  -s        Generate a shell command; in a non-interactive run only print it (execute     │
+│                    with --yes).                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Code Options ───────────────────────────────────────────────────────────────────────────────────╮
+│ --code          Generate code in plaintext (non-interactive).                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Other Options ──────────────────────────────────────────────────────────────────────────────────╮
+│ --version         -v                                                  Show version and exit.     │
+│ --verbose         -V                                                  Show verbose output (e.g., │
+│                                                                       loaded config).            │
+│ --template                                                            Show the default config    │
+│                                                                       file template and exit.    │
+│ --list-providers                                                      List the available         │
+│                                                                       providers and exit.        │
+│ --show-reasoning      --hide-reasoning                                Show reasoning content     │
+│                                                                       from the LLM. (default:    │
+│                                                                       show)                      │
+│ --justify         -j                      [default|left|center|right  Specify the justify to     │
+│                                           |full]                      use.                       │
+│                                                                       [default: default]         │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Function Options ───────────────────────────────────────────────────────────────────────────────╮
+│ --install-functions                                   Export editable copies of builtin          │
+│                                                       functions (builtins load automatically;    │
+│                                                       existing files are skipped).               │
+│ --reinstall-functions                                 Refresh exported builtin function copies   │
+│                                                       (preserves user-defined functions).        │
+│ --list-functions                                      List loaded tools and their source         │
+│                                                       (builtin/user).                            │
+│ --enable-functions        --disable-functions         Enable/disable function calling in API     │
+│                                                       requests (default: enabled)                │
+│ --show-function-output    --hide-function-output      Show the output of functions (default:     │
+│                                                       show)                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ MCP Options ────────────────────────────────────────────────────────────────────────────────────╮
+│ --enable-mcp         --disable-mcp          Enable/disable MCP in API requests (default:         │
+│                                             disabled)                                            │
+│                                             [default: disable-mcp]                               │
+│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: hide)               │
+│ --list-mcp                                  List all available mcp.                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Image Options ──────────────────────────────────────────────────────────────────────────────────╮
+│ --image  -i      TEXT  Image file path or URL to include with the prompt. Can be specified       │
+│                        multiple times.                                                           │
+│                        [default: None]                                                           │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 </code></pre></div>
+<blockquote>
+<p>See <a href="../commands/">Command Reference</a> for the option tables with short descriptions, and
+<a href="../headless/">Headless &amp; Scripting</a> for the machine-output contract.</p>
+</blockquote>
 
 
 

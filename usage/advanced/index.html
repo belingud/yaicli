@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -327,6 +327,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -645,9 +720,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#installing-and-updating-functions" class="md-nav__link">
+  <a href="#built-in-tools-load-out-of-the-box" class="md-nav__link">
     <span class="md-ellipsis">
-      Installing and updating functions
+      Built-in tools load out of the box
     </span>
   </a>
   
@@ -1562,6 +1637,8 @@
       
         
       
+        
+      
     
     
     
@@ -1631,6 +1708,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1943,9 +2043,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#installing-and-updating-functions" class="md-nav__link">
+  <a href="#built-in-tools-load-out-of-the-box" class="md-nav__link">
     <span class="md-ellipsis">
-      Installing and updating functions
+      Built-in tools load out of the box
     </span>
   </a>
   
@@ -2195,10 +2295,18 @@ ai<span class="w"> </span>--role<span class="w"> </span><span class="s2">&quot;P
 <p>YAICLI supports function calling: the model can ask YAICLI to execute a local
 function/tool (for example <code>fs_read_file</code>, <code>web_search</code>, or <code>execute_shell_command</code>)
 and then continue the conversation with the result.</p>
-<h3 id="installing-and-updating-functions">Installing and updating functions<a class="headerlink" href="#installing-and-updating-functions" title="Permanent link">&para;</a></h3>
-<p>Built-in function definitions ship inside the installed package, but they are <strong>not</strong>
-used from there. They must be copied into your config directory once and re-copied
-after upgrades.</p>
+<h3 id="built-in-tools-load-out-of-the-box">Built-in tools load out of the box<a class="headerlink" href="#built-in-tools-load-out-of-the-box" title="Permanent link">&para;</a></h3>
+<p>Since v0.19 the 12 built-in tool definitions are loaded <strong>directly from the installed package</strong>, so
+the model can call them on the first run with no setup step. <code>ai --install-functions</code> is no longer
+required (it remains available as an export command, see below).</p>
+<p>Loading precedence:</p>
+<ol>
+<li>the built-in definitions shipped in the package;</li>
+<li>then Python files in the functions directory (<code>&lt;config-dir&gt;/functions/</code>, normally
+   <code>~/.config/yaicli/functions/</code>); a user file whose tool name matches a built-in <strong>overrides</strong> it.</li>
+<li>A broken function file only disables that file: a warning is printed to stderr and the other
+   tools keep working.</li>
+</ol>
 <table>
 <thead>
 <tr>
@@ -2209,29 +2317,29 @@ after upgrades.</p>
 </thead>
 <tbody>
 <tr>
-<td>First-time install</td>
-<td><code>ai --install-functions</code></td>
-<td>Copies every built-in definition into <code>~/.config/yaicli/functions/</code>. Files that already exist are skipped.</td>
-</tr>
-<tr>
-<td>List installed functions</td>
+<td>List tools</td>
 <td><code>ai --list-functions</code></td>
-<td>Prints the function files currently loaded by YAICLI.</td>
+<td>Prints every loaded tool with its source (<code>builtin</code>/<code>user</code>) and warns about stale copies.</td>
 </tr>
 <tr>
-<td>Update after an upgrade</td>
+<td>Export editable copies</td>
+<td><code>ai --install-functions</code></td>
+<td>Copies every built-in definition into the functions directory. Existing files are skipped, so your customisations are never overwritten.</td>
+</tr>
+<tr>
+<td>Refresh exported copies</td>
 <td><code>ai --reinstall-functions</code></td>
-<td>Overwrites the files whose names match the current built-ins with the definitions from the new version. Custom files (different file names) are preserved.</td>
+<td>Overwrites files matching current built-ins with the new version; custom files (different names) are preserved.</td>
 </tr>
 </tbody>
 </table>
-<p>Paths on Windows: <code>C:\Users\&lt;user&gt;\.config\yaicli\functions</code> (the non-Windows path is
+<p><strong>When do I need <code>ai --reinstall-functions</code>?</strong> Only when you have exported copies in the functions
+directory and want the definitions from the new version. If you never ran <code>--install-functions</code>,
+an upgrade needs no extra step. A stale exported copy is reported once by <code>--list-functions</code>, and
+the built-in stays active for tool names you did not customise.</p>
+<p>Paths on Windows: <code>%APPDATA%\yaicli\functions</code> when <code>APPDATA</code> is set, otherwise
+<code>C:\Users\&lt;user&gt;\.config\yaicli\functions</code> (the non-Windows path is
 <code>~/.config/yaicli/functions/</code>).</p>
-<p><strong>After every <code>pip install -U yaicli</code>, <code>uv tool upgrade yaicli</code>, or other package-manager
-upgrade, run <code>ai --reinstall-functions</code>.</strong> Built-in schemas do change between releases —
-for example <code>fs_read_file</code> and <code>fs_read_image</code> now take lists, and <code>fs_edit_file</code> validates
-its operations — and the copy in your config directory is what the model actually sees.
-<code>ai --install-functions</code> will <em>not</em> refresh files that already exist.</p>
 <h3 id="writing-custom-functions">Writing custom functions<a class="headerlink" href="#writing-custom-functions" title="Permanent link">&para;</a></h3>
 <p>Add a Python file to <code>~/.config/yaicli/functions/</code> (files starting with <code>_</code> are ignored).
 It must define a class named <code>Function</code> that subclasses <code>yaicli.function_schema.OpenAISchema</code>
@@ -2264,25 +2372,27 @@ files, and <code>ai --install-functions</code> only adds built-in files that are
 <li>Function calling is enabled by default (<code>ENABLE_FUNCTIONS=true</code>). Toggle it per run with
   <code>--enable-functions</code> / <code>--disable-functions</code>, or set <code>ENABLE_FUNCTIONS=false</code> in the config file.</li>
 <li>Function output is displayed by default; use <code>--hide-function-output</code> or set
-  <code>SHOW_FUNCTION_OUTPUT=false</code> to hide it.</li>
+  <code>SHOW_FUNCTION_OUTPUT=false</code> to hide it. Long output is truncated in the terminal exactly as it
+  is in the model context (see <a href="../context-limits/">Context &amp; Limits</a>).</li>
 <li>Every call asks for confirmation by default (<code>TOOL_CONFIRM=true</code>); see
-  <a href="#tool-execution-confirmation">Tool Execution Confirmation</a> below for the four choices.</li>
-<li><code>MAX_TOOL_CALL_DEPTH</code> (default <code>8</code>) bounds recursive tool-call rounds in one request.</li>
+  <a href="../permissions/">Permissions &amp; Safety</a> for the prompt, risk levels, rules and audit log.</li>
+<li><code>MAX_TOOL_CALL_DEPTH</code> (default <code>8</code>) bounds recursive tool-call rounds in one request; override
+  per run with <code>--max-turns N</code>.</li>
 </ul>
 <h3 id="reading-multiple-files-in-one-call">Reading Multiple Files in One Call<a class="headerlink" href="#reading-multiple-files-in-one-call" title="Permanent link">&para;</a></h3>
 <p>The built-in <code>fs_read_file</code> function accepts a list of file paths, so several
 files can be read with a single tool call instead of one call per file:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;file_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/main.py&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;src/config.py&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;encoding&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;utf-8&quot;</span><span class="p">}</span>
 </code></pre></div>
-<p>A single path string is still accepted for backward compatibility. The list contract is a
-built-in schema change: run <code>ai --reinstall-functions</code> after upgrading to pick it up.</p>
+<p>A single path string is still accepted for backward compatibility. If you keep exported copies of
+the built-in definitions, refresh them with <code>ai --reinstall-functions</code> after upgrading.</p>
 <h3 id="reading-multiple-images-in-one-call">Reading Multiple Images in One Call<a class="headerlink" href="#reading-multiple-images-in-one-call" title="Permanent link">&para;</a></h3>
 <p>The built-in <code>fs_read_image</code> function follows the same list-based contract, so several
 images can be read and base64-encoded in one tool call:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;image_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;artwork/before.png&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;artwork/after.png&quot;</span><span class="p">]}</span>
 </code></pre></div>
 <p>A single path string is still accepted for backward compatibility. The same
-<code>ai --reinstall-functions</code> rule applies after upgrading.</p>
+<code>ai --reinstall-functions</code> rule applies to exported copies.</p>
 <h3 id="built-in-function-safety">Built-in Function Safety<a class="headerlink" href="#built-in-function-safety" title="Permanent link">&para;</a></h3>
 <p>The built-in functions run with your local permissions, so the shipped implementations apply
 their own guard rails. These are user-visible contracts — if you see different behaviour,
@@ -2342,7 +2452,7 @@ Execute tool? [y]once, [a]session, [A]always, [n]o:
 </tr>
 <tr>
 <td><code>A</code></td>
-<td>Always allow — saved to <code>~/.config/yaicli/tool_permissions.json</code></td>
+<td>Always allow — saved to <code>tool_permissions.json</code></td>
 </tr>
 <tr>
 <td><code>n</code></td>
@@ -2351,16 +2461,14 @@ Execute tool? [y]once, [a]session, [A]always, [n]o:
 </tbody>
 </table>
 <p>Pressing Ctrl-C or sending EOF at the prompt is treated as a denial.</p>
-<p>In non-interactive sessions (piped stdin / no TTY), tools already in the persistent
-allowlist run automatically; all others are denied with a hint telling you to pre-approve
-them or set <code>TOOL_CONFIRM=false</code>.</p>
-<p>To disable confirmation and restore silent execution:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># config.ini</span>
-<span class="na">TOOL_CONFIRM</span><span class="o">=</span><span class="s">false</span>
-</code></pre></div>
-<p>or:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">YAI_TOOL_CONFIRM</span><span class="o">=</span><span class="nb">false</span>
-</code></pre></div>
+<p>In non-interactive sessions (piped stdin / no TTY), unapproved tools are denied; pre-approve them
+with <code>--allowed-tools</code>, <code>--yes</code> (read-level tools only), or persistent rules in
+<code>tool_permissions.json</code>. Dangerous shell commands always need an explicit confirmation and are
+refused non-interactively.</p>
+<p>This section is only a summary. The full model — risk classes, persistent rules
+(<code>argv_prefix</code> / <code>path_glob</code>), audit log, and headless approval flags — is documented in
+<a href="../permissions/">Permissions &amp; Safety</a>; the <code>TOOL_CONFIRM=false</code> escape hatch is described there as
+well.</p>
 <h2 id="mcp-model-context-protocol">MCP (Model Context Protocol)<a class="headerlink" href="#mcp-model-context-protocol" title="Permanent link">&para;</a></h2>
 <p>MCP allows AI models to use external tools:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Enable MCP in queries</span>

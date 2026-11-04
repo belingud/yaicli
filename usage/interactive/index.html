@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -327,6 +327,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1367,6 +1442,8 @@
       
         
       
+        
+      
     
     
     
@@ -1436,6 +1513,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1771,17 +1871,21 @@
 <span class="w">    </span>██<span class="w">    </span>██<span class="w">   </span>██<span class="w"> </span>██<span class="w">  </span>██████<span class="w"> </span>███████<span class="w"> </span>██
 
 Welcome<span class="w"> </span>to<span class="w"> </span>YAICLI!
-Current:<span class="w"> </span>Persistent<span class="w"> </span>Session:<span class="w"> </span>What<span class="err">&#39;</span>s<span class="w"> </span>the<span class="w"> </span>meaning<span class="w"> </span>of<span class="w"> </span>life
-Press<span class="w"> </span>Shift+Tab<span class="w"> </span>to<span class="w"> </span>switch<span class="w"> </span>mode
-/help<span class="p">|</span>?<span class="w">            </span>:<span class="w"> </span>Show<span class="w"> </span><span class="nb">help</span><span class="w"> </span>message
-/clear<span class="w">             </span>:<span class="w"> </span>Clear<span class="w"> </span>chat<span class="w"> </span><span class="nb">history</span>
-/his<span class="w">               </span>:<span class="w"> </span>Show<span class="w"> </span>chat<span class="w"> </span><span class="nb">history</span>
-/list<span class="w">              </span>:<span class="w"> </span>List<span class="w"> </span>saved<span class="w"> </span>chats
-/save<span class="w"> </span>&lt;title&gt;<span class="w">      </span>:<span class="w"> </span>Save<span class="w"> </span>current<span class="w"> </span>chat
-/load<span class="w"> </span>&lt;index&gt;<span class="w">      </span>:<span class="w"> </span>Load<span class="w"> </span>a<span class="w"> </span>saved<span class="w"> </span>chat
-/del<span class="w"> </span>&lt;index&gt;<span class="w">       </span>:<span class="w"> </span>Delete<span class="w"> </span>a<span class="w"> </span>saved<span class="w"> </span>chat
+Current:<span class="w"> </span>Persistent<span class="w"> </span>Session:<span class="w"> </span>What<span class="s1">&#39;s the meaning of life</span>
+<span class="s1">Press Shift+Tab to switch mode</span>
+<span class="s1">/help|?            : Show help message</span>
+<span class="s1">/clear             : Clear chat history</span>
+<span class="s1">/his               : Show chat history</span>
+<span class="s1">/list              : List saved chats</span>
+<span class="s1">/save &lt;title&gt;      : Save current chat</span>
+<span class="s1">/load &lt;index&gt;      : Load a saved chat</span>
+<span class="s1">/del &lt;index&gt;       : Delete a saved chat</span>
+<span class="s1">/add &lt;path&gt;        : Add @file/dir to context</span>
+<span class="s1">/context, /ctx     : Manage context (list, add, remove, clear)</span>
+<span class="s1">  Tip: Type &#39;</span>@<span class="err">&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span>completion,<span class="w"> </span>use<span class="w"> </span>Tab/arrows<span class="w"> </span>to<span class="w"> </span><span class="k">select</span>
 !&lt;command&gt;<span class="w">         </span>:<span class="w"> </span>Execute<span class="w"> </span>shell<span class="w"> </span><span class="nb">command</span><span class="w"> </span>directly<span class="w"> </span><span class="o">(</span>e.g.,<span class="w"> </span>!ls<span class="w"> </span>-al<span class="o">)</span>
-/exit<span class="p">|</span>Ctrl+D<span class="p">|</span>Ctrl+C:<span class="w"> </span>Exit
+/exit<span class="p">|</span>Ctrl+D<span class="w">       </span>:<span class="w"> </span>Exit
+Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span class="w"> </span>input<span class="w"> </span>/<span class="w"> </span>cancel<span class="w"> </span>turn<span class="p">;</span><span class="w"> </span>press<span class="w"> </span>twice<span class="w"> </span>to<span class="w"> </span><span class="nb">exit</span>
 /mode<span class="w"> </span>chat<span class="p">|</span><span class="nb">exec</span><span class="w">    </span>:<span class="w"> </span>Switch<span class="w"> </span>mode<span class="w"> </span><span class="o">(</span>Case<span class="w"> </span>insensitive<span class="o">)</span>
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 <span class="w"> </span>💬<span class="w"> </span>&gt;
@@ -1805,8 +1909,12 @@ Press<span class="w"> </span>Shift+Tab<span class="w"> </span>to<span class="w">
 /save<span class="w"> </span>&lt;title&gt;<span class="w">      </span>:<span class="w"> </span>Save<span class="w"> </span>current<span class="w"> </span>chat
 /load<span class="w"> </span>&lt;index&gt;<span class="w">      </span>:<span class="w"> </span>Load<span class="w"> </span>a<span class="w"> </span>saved<span class="w"> </span>chat
 /del<span class="w"> </span>&lt;index&gt;<span class="w">       </span>:<span class="w"> </span>Delete<span class="w"> </span>a<span class="w"> </span>saved<span class="w"> </span>chat
+/add<span class="w"> </span>&lt;path&gt;<span class="w">        </span>:<span class="w"> </span>Add<span class="w"> </span>@file/dir<span class="w"> </span>to<span class="w"> </span>context
+/context,<span class="w"> </span>/ctx<span class="w">     </span>:<span class="w"> </span>Manage<span class="w"> </span>context<span class="w"> </span><span class="o">(</span>list,<span class="w"> </span>add,<span class="w"> </span>remove,<span class="w"> </span>clear<span class="o">)</span>
+<span class="w">  </span>Tip:<span class="w"> </span>Type<span class="w"> </span><span class="s1">&#39;@&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span>completion,<span class="w"> </span>use<span class="w"> </span>Tab/arrows<span class="w"> </span>to<span class="w"> </span><span class="k">select</span>
 !&lt;command&gt;<span class="w">         </span>:<span class="w"> </span>Execute<span class="w"> </span>shell<span class="w"> </span><span class="nb">command</span><span class="w"> </span>directly<span class="w"> </span><span class="o">(</span>e.g.,<span class="w"> </span>!ls<span class="w"> </span>-al<span class="o">)</span>
-/exit<span class="p">|</span>Ctrl+D<span class="p">|</span>Ctrl+C:<span class="w"> </span>Exit
+/exit<span class="p">|</span>Ctrl+D<span class="w">       </span>:<span class="w"> </span>Exit
+Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span class="w"> </span>input<span class="w"> </span>/<span class="w"> </span>cancel<span class="w"> </span>turn<span class="p">;</span><span class="w"> </span>press<span class="w"> </span>twice<span class="w"> </span>to<span class="w"> </span><span class="nb">exit</span>
 /mode<span class="w"> </span>chat<span class="p">|</span><span class="nb">exec</span><span class="w">    </span>:<span class="w"> </span>Switch<span class="w"> </span>mode<span class="w"> </span><span class="o">(</span>Case<span class="w"> </span>insensitive<span class="o">)</span>
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 <span class="w"> </span>💬<span class="w"> </span>&gt;
@@ -1820,13 +1928,20 @@ Press<span class="w"> </span>Shift+Tab<span class="w"> </span>to<span class="w">
 <li><code>/save &lt;title&gt;</code> - Save current chat with title</li>
 <li><code>/load &lt;index&gt;</code> - Load a saved chat</li>
 <li><code>/del &lt;index&gt;</code> - Delete a saved chat</li>
+<li><code>/add &lt;path&gt;</code> - Add a file or directory to the persistent context</li>
+<li><code>/context</code> or <code>/ctx</code> - Show context/token usage, or manage file context (<code>list</code>, <code>add</code>, <code>remove</code>, <code>clear</code>)</li>
+<li><code>/compact [keep_rounds]</code> - Compact the conversation, keeping the last N turns</li>
+<li><code>/permissions</code> - List (and revoke) persistent tool approval rules</li>
+<li><code>!&lt;command&gt;</code> - Execute a shell command directly</li>
 <li><code>/exit</code> - Exit the application</li>
 <li><code>/mode chat|exec</code> - Switch modes</li>
 </ul>
 <h2 id="keyboard-shortcuts">Keyboard Shortcuts<a class="headerlink" href="#keyboard-shortcuts" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>Shift+Tab</code> - Toggle between Chat/Execute modes</li>
-<li><code>Ctrl+C</code> or <code>Ctrl+D</code> - Exit</li>
+<li><code>Ctrl+C</code> - Clear the current input line; during generation it cancels the turn. Press <code>Ctrl+C</code>
+  twice quickly to exit (single press keeps the session alive)</li>
+<li><code>Ctrl+D</code> - Exit (exit code 0)</li>
 <li><code>Ctrl+R</code> - Search history</li>
 <li><code>↑/↓</code> - Navigate through history</li>
 </ul>

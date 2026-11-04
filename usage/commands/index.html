@@ -16,7 +16,7 @@
         <link rel="prev" href="../../install/">
       
       
-        <link rel="next" href="../context/">
+        <link rel="next" href="../headless/">
       
       
       <link rel="icon" href="../../assets/artwork/logo.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Command Overview - YAICLI</title>
+        <title>Command Reference - YAICLI</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#command-overview" class="md-skip">
+        <a href="#command-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Command Overview
+              Command Reference
             
           </span>
         </div>
@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -327,6 +327,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -396,7 +402,7 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
     
   </span>
   
@@ -409,7 +415,7 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
     
   </span>
   
@@ -454,6 +460,15 @@
   <a href="#core-options" class="md-nav__link">
     <span class="md-ellipsis">
       Core Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#headless-scripting-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Headless / Scripting Options
     </span>
   </a>
   
@@ -600,6 +615,75 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1487,6 +1571,8 @@
       
         
       
+        
+      
     
     
     
@@ -1556,6 +1642,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1844,6 +1953,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#headless-scripting-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Headless / Scripting Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#mode-options" class="md-nav__link">
     <span class="md-ellipsis">
       Mode Options
@@ -1999,12 +2117,14 @@
   
 
 
-<h1 id="command-overview">Command Overview<a class="headerlink" href="#command-overview" title="Permanent link">&para;</a></h1>
+<h1 id="command-reference">Command Reference<a class="headerlink" href="#command-reference" title="Permanent link">&para;</a></h1>
 <p>YAICLI provides a versatile command-line interface with multiple options and modes. This page covers all available commands and options.</p>
 <h2 id="basic-syntax">Basic Syntax<a class="headerlink" href="#basic-syntax" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>ai [OPTIONS] [PROMPT]
 </code></pre></div>
-<p>Where <code>PROMPT</code> is the text input for the AI assistant. If not provided, YAICLI will read from stdin if available.</p>
+<p>Where <code>PROMPT</code> is the text input for the agent. If not provided, YAICLI reads from stdin when it is
+piped; with no prompt and no stdin it starts the interactive REPL. Use <code>-p/--print</code> to force a
+single one-shot run, and see <a href="../headless/">Headless &amp; Scripting</a> for the full scripting contract.</p>
 <h2 id="command-line-reference">Command Line Reference<a class="headerlink" href="#command-line-reference" title="Permanent link">&para;</a></h2>
 <p>Here's a comprehensive list of all available options:</p>
 <h3 id="core-options">Core Options<a class="headerlink" href="#core-options" title="Permanent link">&para;</a></h3>
@@ -2030,7 +2150,7 @@
 <tr>
 <td><code>--version</code></td>
 <td><code>-v</code></td>
-<td>Show version and exit</td>
+<td>Show version and exit (fast path; does not read config)</td>
 </tr>
 <tr>
 <td><code>--template</code></td>
@@ -2044,6 +2164,60 @@
 </tr>
 </tbody>
 </table>
+<h3 id="headless-scripting-options">Headless / Scripting Options<a class="headerlink" href="#headless-scripting-options" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Short</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--print</code></td>
+<td><code>-p</code></td>
+<td>Explicit one-shot mode: run once, never start the REPL</td>
+</tr>
+<tr>
+<td><code>--output-format text\|json\|stream-json</code></td>
+<td></td>
+<td>Output format for the result (default <code>text</code>; <code>stream-json</code> is NDJSON events)</td>
+</tr>
+<tr>
+<td><code>--quiet</code></td>
+<td><code>-q</code></td>
+<td>Only print the answer to stdout (no labels/progress)</td>
+</tr>
+<tr>
+<td><code>--max-turns N</code></td>
+<td></td>
+<td>Maximum tool-call rounds for this run (overrides <code>MAX_TOOL_CALL_DEPTH</code>)</td>
+</tr>
+<tr>
+<td><code>--yes</code></td>
+<td><code>-y</code></td>
+<td>Auto-approve <code>read</code>-level tools only; write/exec tools still need a rule</td>
+</tr>
+<tr>
+<td><code>--allowed-tools "a,b*"</code></td>
+<td></td>
+<td>Per-run tool allowlist, comma-separated names or globs</td>
+</tr>
+<tr>
+<td><code>--cwd DIR</code></td>
+<td></td>
+<td>Working directory / workspace root for the run</td>
+</tr>
+<tr>
+<td><code>--fail-on-tool-denied</code></td>
+<td></td>
+<td>Exit with code <code>3</code> when a tool was denied</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../headless/">Headless &amp; Scripting</a> for JSON schemas, exit codes and signal handling, and
+<a href="../permissions/">Permissions &amp; Safety</a> for <code>--yes</code> / <code>--allowed-tools</code> semantics.</p>
 <h3 id="mode-options">Mode Options<a class="headerlink" href="#mode-options" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2062,12 +2236,17 @@
 <tr>
 <td><code>--shell</code></td>
 <td><code>-s</code></td>
-<td>Generate and optionally execute shell commands</td>
+<td>Generate and optionally execute shell commands (in a non-TTY: print only)</td>
 </tr>
 <tr>
 <td><code>--code</code></td>
 <td></td>
 <td>Generate code in plaintext</td>
+</tr>
+<tr>
+<td><code>--print</code></td>
+<td><code>-p</code></td>
+<td>Explicit one-shot mode (see above)</td>
 </tr>
 </tbody>
 </table>
@@ -2203,17 +2382,17 @@
 <tbody>
 <tr>
 <td><code>--install-functions</code></td>
-<td>Install built-in functions (files that already exist are skipped)</td>
+<td>Export editable copies of the built-in functions into the config dir (built-ins work without this; existing files are skipped)</td>
 <td></td>
 </tr>
 <tr>
 <td><code>--reinstall-functions</code></td>
-<td>Overwrite built-in function files with the current version; custom files are kept</td>
+<td>Overwrite exported built-in copies with the current version; custom files are kept</td>
 <td></td>
 </tr>
 <tr>
 <td><code>--list-functions</code></td>
-<td>List installed functions</td>
+<td>List loaded tools, their source (<code>builtin</code>/<code>user</code>) and stale-copy warnings</td>
 <td></td>
 </tr>
 <tr>
@@ -2228,8 +2407,9 @@
 </tr>
 </tbody>
 </table>
-<p>See <a href="../advanced/#function-calling">Advanced Usage — Function Calling</a> for installing,
-updating after an upgrade, writing custom functions, and the confirmation protocol.</p>
+<p>See <a href="../advanced/#function-calling">Advanced Usage — Function Calling</a> for custom functions,
+updating after an upgrade, and built-in safety contracts. See
+<a href="../permissions/">Permissions &amp; Safety</a> for the confirmation protocol, rules and audit log.</p>
 <h3 id="mcp-options">MCP Options<a class="headerlink" href="#mcp-options" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2275,7 +2455,16 @@ updating after an upgrade, writing custom functions, and the confirmation protoc
 </tbody>
 </table>
 <h2 id="common-command-examples">Common Command Examples<a class="headerlink" href="#common-command-examples" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Get a quick answer</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Agent task: let the model pick and run tools</span>
+ai<span class="w"> </span><span class="s2">&quot;Use your tools to find the 3 largest files here and write a summary to REPORT.md&quot;</span>
+
+<span class="c1"># One-shot with machine-readable output</span>
+ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;summarize the git log&quot;</span><span class="w"> </span>--output-format<span class="w"> </span>json
+
+<span class="c1"># Answer-only output (for pipelines)</span>
+ai<span class="w"> </span>-q<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;list the open TODOs in src/&quot;</span>
+
+<span class="c1"># Get a quick answer</span>
 ai<span class="w"> </span><span class="s2">&quot;What is the capital of France?&quot;</span>
 
 <span class="c1"># Start an interactive chat session</span>
@@ -2368,8 +2557,24 @@ ai<span class="w"> </span>--image<span class="w"> </span>diagram.png
 <td>Add file or directory to context</td>
 </tr>
 <tr>
+<td><code>/context</code> or <code>/ctx</code></td>
+<td>Show estimated context/token usage for the current conversation</td>
+</tr>
+<tr>
 <td><code>/context &lt;subcmd&gt;</code></td>
-<td>Manage context (alias: <code>/ctx</code>)</td>
+<td>Manage file context (<code>list</code>, <code>add</code>, <code>remove</code>, <code>clear</code>)</td>
+</tr>
+<tr>
+<td><code>/compact [keep_rounds]</code></td>
+<td>Compact the conversation, keeping the last N turns</td>
+</tr>
+<tr>
+<td><code>/permissions</code></td>
+<td>List session approvals, the persistent allowlist and the numbered rules</td>
+</tr>
+<tr>
+<td><code>/permissions revoke &lt;tool-or-index&gt;</code></td>
+<td>Remove a persistent permission by tool name or rule number (the tool will ask again)</td>
 </tr>
 </tbody>
 </table>
@@ -2515,8 +2720,12 @@ Context<span class="w"> </span>cleared.
 <td>Toggle between Chat/Execute modes</td>
 </tr>
 <tr>
-<td><code>Ctrl+C</code> or <code>Ctrl+D</code></td>
-<td>Exit</td>
+<td><code>Ctrl+C</code></td>
+<td>Clear the current input line; during generation it cancels the turn; press twice quickly to exit</td>
+</tr>
+<tr>
+<td><code>Ctrl+D</code></td>
+<td>Exit (exit code 0)</td>
 </tr>
 <tr>
 <td><code>Ctrl+R</code></td>

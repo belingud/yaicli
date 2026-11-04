@@ -16,7 +16,7 @@
         <link rel="prev" href="../prompts/">
       
       
-        <link rel="next" href="../debugging/">
+        <link rel="next" href="../upgrade/">
       
       
       <link rel="icon" href="../../assets/artwork/logo.png">
@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -325,6 +325,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1282,6 +1357,8 @@
       
         
       
+        
+      
     
     
     
@@ -1618,6 +1695,29 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -2121,9 +2221,8 @@
 - Reuse past queries
 - Keep track of your AI conversations</p>
 <h3 id="history-storage">History Storage<a class="headerlink" href="#history-storage" title="Permanent link">&para;</a></h3>
-<p>By default, command history is stored in:
-- Linux/macOS: <code>~/.yaicli_history</code>
-- Windows: <code>%USERPROFILE%\.yaicli_history</code></p>
+<p>By default, command history is stored in <code>$XDG_STATE_HOME/yaicli/history</code> when <code>XDG_STATE_HOME</code> is
+set, otherwise in <code>~/.yaicli_history</code> (<code>%USERPROFILE%\.yaicli_history</code> on Windows).</p>
 <p>The history file uses a simple text format with each command on a new line.</p>
 <h3 id="history-size">History Size<a class="headerlink" href="#history-size" title="Permanent link">&para;</a></h3>
 <p>You can configure the maximum number of history entries to retain:</p>

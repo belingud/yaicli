@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -327,6 +327,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1478,6 +1553,8 @@
       
         
       
+        
+      
     
     
     
@@ -1547,6 +1624,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1995,7 +2095,11 @@
 </thead>
 <tbody>
 <tr>
-<td><code>Ctrl+C</code> or <code>Ctrl+D</code></td>
+<td><code>Ctrl+C</code></td>
+<td>Clear the current input line (during generation: cancel the turn); press twice quickly to exit</td>
+</tr>
+<tr>
+<td><code>Ctrl+D</code></td>
 <td>Exit the application</td>
 </tr>
 <tr>
@@ -2234,7 +2338,23 @@ tell success from failure:</p>
 </tr>
 <tr>
 <td><code>1</code></td>
-<td>A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, no input/aborted action, or an unexpected error printed as <code>Unknown error: ...</code>.</td>
+<td>A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, retry exhaustion, no input/aborted action, or an unexpected error printed as <code>Unknown error: ...</code>.</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Usage error: an invalid option or argument.</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td>A tool call was denied and <code>--fail-on-tool-denied</code> was set.</td>
+</tr>
+<tr>
+<td><code>130</code></td>
+<td>Interrupted by SIGINT (Ctrl+C) during a one-shot run or generation.</td>
+</tr>
+<tr>
+<td><code>141</code></td>
+<td>Broken pipe (EPIPE); <code>ai --help \| head -1</code> is safe and exits <code>0</code>/<code>141</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -2244,8 +2364,10 @@ build with:</p>
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--version<span class="p">;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;exit=</span><span class="nv">$?</span><span class="s2">&quot;</span>
 </code></pre></div>
 <p>Inside the interactive <code>--chat</code> REPL, an error during one turn is printed and the session
-continues; the process exits <code>0</code> when you leave the REPL normally. Use single-shot mode when
-you need the exit code to reflect the request outcome.</p>
+continues; the process exits <code>0</code> when you leave the REPL normally. Use single-shot mode (<code>-p</code> or a
+prompt argument) when you need the exit code to reflect the request outcome. The full scripting
+contract (JSON output, signals, non-interactive approvals) is in
+<a href="../headless/">Headless &amp; Scripting</a>.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Learn about different <a href="../modes/">interaction modes</a></li>

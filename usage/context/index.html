@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://belingud.github.io/yaicli/usage/context/">
       
       
-        <link rel="prev" href="../commands/">
+        <link rel="prev" href="../context-limits/">
       
       
         <link rel="next" href="../configuration/">
@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -327,6 +327,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1655,6 +1730,8 @@
       
         
       
+        
+      
     
     
     
@@ -1724,6 +1801,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -2611,11 +2711,16 @@ Warning:<span class="w"> </span>Cannot<span class="w"> </span>include<span class
 </code></pre></div>
 <p><strong>Solution</strong>: Split the file or extract relevant portions</p>
 <h3 id="context-too-long">Context Too Long<a class="headerlink" href="#context-too-long" title="Permanent link">&para;</a></h3>
-<p>If the AI stops responding or behaves unexpectedly, your context may be too large.</p>
+<p>If the AI stops responding or behaves unexpectedly, the request may be over the token budget.
+YAICLI trims old conversation turns automatically and retries once when a provider rejects the
+request as too long; if it still fails it prints an actionable error.</p>
 <p><strong>Solution</strong>:
-<div class="highlight"><pre><span></span><code>/context<span class="w"> </span>list
-/context<span class="w"> </span>remove<span class="w"> </span>&lt;unnecessary-files&gt;
+<div class="highlight"><pre><span></span><code>/context<span class="w">            </span><span class="c1"># show estimated token usage and remaining budget</span>
+/compact<span class="w"> </span><span class="m">5</span><span class="w">          </span><span class="c1"># keep only the 5 most recent turns</span>
+/context<span class="w"> </span>list<span class="w">       </span><span class="c1"># remove unnecessary context files</span>
+/context<span class="w"> </span>remove<span class="w"> </span>&lt;path&gt;
 </code></pre></div></p>
+<p>See <a href="../context-limits/">Context &amp; Limits</a> for truncation, the token budget and self-healing.</p>
 <h2 id="related-features">Related Features<a class="headerlink" href="#related-features" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Function Calling</strong>: Use functions to interact with the file system</li>

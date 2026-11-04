@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -325,6 +325,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1280,6 +1355,8 @@
       
         
       
+        
+      
     
     
     
@@ -1349,6 +1426,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1839,7 +1939,7 @@ into bug reports without checking it: only <code>API_KEY</code> is masked, other
 </tr>
 <tr>
 <td>Functions behave like an old version</td>
-<td>Built-in definitions are copied to <code>~/.config/yaicli/functions/</code>; run <code>ai --reinstall-functions</code>.</td>
+<td>Built-in definitions load from the package; stale exported copies live in <code>~/.config/yaicli/functions/</code>. Run <code>ai --list-functions</code> (reports source + stale copies), then <code>ai --reinstall-functions</code>.</td>
 </tr>
 <tr>
 <td>Markup/render crash</td>
@@ -1852,9 +1952,11 @@ into bug reports without checking it: only <code>API_KEY</code> is masked, other
 </tbody>
 </table>
 <h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
-<p><code>0</code> on success, <code>1</code> on handled failures (config/provider/API/no-input). In <code>--chat</code> mode an
-error in one turn keeps the REPL alive; the exit code reflects leaving the REPL. See
-<a href="../../usage/cli/#exit-codes">Exit codes</a>.</p>
+<p><code>0</code> on success, <code>1</code> on handled failures (config/provider/API/no-input/depth), <code>2</code> on usage errors,
+<code>3</code> when a denied tool is fatal (<code>--fail-on-tool-denied</code>), <code>130</code> on SIGINT, <code>141</code>/<code>0</code> on a broken
+pipe. In <code>--chat</code> mode an error in one turn keeps the REPL alive; the exit code reflects leaving
+the REPL. See <a href="../../usage/cli/#exit-codes">Exit codes</a> and
+<a href="../../usage/headless/">Headless &amp; Scripting</a>.</p>
 <h2 id="isolate-components">Isolate components<a class="headerlink" href="#isolate-components" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Config</strong>: import <code>yaicli.config.cfg</code> and print it; the singleton is built at import time.</li>

@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -463,6 +463,30 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#upgrading" class="md-nav__link">
+    <span class="md-ellipsis">
+      Upgrading
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#do-i-need-reinstall-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do I need --reinstall-functions?
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       Next Steps
@@ -487,6 +511,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -549,7 +579,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1442,6 +1541,8 @@
       
         
       
+        
+      
     
     
     
@@ -1511,6 +1612,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1882,6 +2006,30 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#upgrading" class="md-nav__link">
+    <span class="md-ellipsis">
+      Upgrading
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#do-i-need-reinstall-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do I need --reinstall-functions?
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       Next Steps
@@ -1952,22 +2100,52 @@ pip<span class="w"> </span>install<span class="w"> </span>.
 </code></pre></div>
 <h2 id="verifying-installation">Verifying Installation<a class="headerlink" href="#verifying-installation" title="Permanent link">&para;</a></h2>
 <p>To verify that YAICLI was installed correctly:</p>
-<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--help
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--version<span class="w">            </span><span class="c1"># fast path: prints the version, no config writes</span>
+ai<span class="w"> </span>--help<span class="w">               </span><span class="c1"># full command reference</span>
+ai<span class="w"> </span>--list-functions<span class="w">     </span><span class="c1"># should list 12 builtin tools (they work out of the box)</span>
+ai<span class="w"> </span>--list-providers<span class="w">     </span><span class="c1"># should list the provider keys</span>
 </code></pre></div>
-<p>This should display the help information for YAICLI.</p>
+<p><code>python -m yaicli --version</code> works as well if the <code>ai</code> script is not on your <code>PATH</code>.</p>
 <h2 id="first-time-setup">First-Time Setup<a class="headerlink" href="#first-time-setup" title="Permanent link">&para;</a></h2>
-<p>After installation, run the tool once to generate the default configuration file:</p>
-<div class="highlight"><pre><span></span><code>ai
+<p>After installation, run a real command once (for example <code>ai "hi"</code>); the default configuration file
+is created on first use:</p>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span><span class="s2">&quot;hi&quot;</span>
 </code></pre></div>
-<p>Then edit the configuration file located at <code>~/.config/yaicli/config.ini</code> to add your API key and customize settings:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Open with your preferred editor</span>
+<p>Then edit the configuration file to add your API key and customize settings. The config directory
+is resolved in this order: <code>YAI_CONFIG_DIR</code> → <code>XDG_CONFIG_HOME/yaicli</code> → <code>%APPDATA%/yaicli</code>
+(Windows) → <code>~/.config/yaicli</code>. The file is created with mode <code>0600</code> because it may contain an API
+key; alternatively export the key and skip editing the file (plain <code>ai</code> with no prompt only prints
+help and does not create state):</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">YAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-...&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Open the config with your preferred editor (default path on Linux/macOS)</span>
 nano<span class="w"> </span>~/.config/yaicli/config.ini
 </code></pre></div>
+<h2 id="upgrading">Upgrading<a class="headerlink" href="#upgrading" title="Permanent link">&para;</a></h2>
+<p>Upgrade the package the same way you installed it:</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>yaicli<span class="w">        </span><span class="c1"># pip</span>
+pipx<span class="w"> </span>upgrade<span class="w"> </span>yaicli<span class="w">          </span><span class="c1"># pipx</span>
+uv<span class="w"> </span>tool<span class="w"> </span>upgrade<span class="w"> </span>yaicli<span class="w">       </span><span class="c1"># uv</span>
+</code></pre></div>
+<h3 id="do-i-need-reinstall-functions">Do I need <code>--reinstall-functions</code>?<a class="headerlink" href="#do-i-need-reinstall-functions" title="Permanent link">&para;</a></h3>
+<p><strong>Not for a normal upgrade.</strong> Since v0.19 the built-in tool definitions load directly from the
+installed package, so new versions take effect immediately.</p>
+<p>You only need to refresh function files if you previously <strong>exported copies</strong> into the functions
+directory (<code>ai --install-functions</code>) or edited a built-in tool:</p>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--reinstall-functions<span class="w">    </span><span class="c1"># refresh exported built-in copies (custom files are kept)</span>
+ai<span class="w"> </span>--list-functions<span class="w">         </span><span class="c1"># verify sources and stale-copy warnings</span>
+</code></pre></div>
+<p>A user function file with the same tool name as a built-in wins over the built-in. If a stale copy
+is detected, YAICLI prints a one-line warning but keeps working.</p>
+<p>See <a href="../advanced/upgrade/">Upgrade Notes</a> for the complete v0.19 change list (new config keys,
+environment filtering for shell tools, output truncation, permissions v2, headless flags, state
+paths) and rollback instructions.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Learn how to <a href="../getting-started/">get started</a> with YAICLI</li>
+<li>Learn how to <a href="../getting-started/">get started</a> with the 3-step agent quick start</li>
 <li>Explore <a href="../usage/configuration/">configuration options</a></li>
 <li>Check out <a href="../providers/overview/">available providers</a></li>
+<li>Read the <a href="../usage/headless/">page for headless and CI usage</a></li>
 </ul>
 
 

@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://belingud.github.io/yaicli/advanced/debugging/">
       
       
-        <link rel="prev" href="../history/">
+        <link rel="prev" href="../upgrade/">
       
       
         <link rel="next" href="../../dev/architecture/">
@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -325,6 +325,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1282,6 +1357,8 @@
       
         
       
+        
+      
     
     
     
@@ -1349,6 +1426,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1733,8 +1833,10 @@ messages/tools, and tracebacks for handled errors. Only <code>API_KEY</code> is 
 sharing the output because provider-specific credentials may appear.</p>
 <h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
 <p>Successful runs exit <code>0</code>; handled failures exit <code>1</code> (configuration errors, provider/API errors,
-missing credentials, no input). See <a href="../../usage/cli/#exit-codes">Exit Codes</a>. In <code>--chat</code> mode, a
-failed turn prints the error and keeps the session alive instead of exiting.</p>
+retry exhaustion, missing credentials, no input, depth limit). Usage errors exit <code>2</code>, a denied
+tool with <code>--fail-on-tool-denied</code> exits <code>3</code>, SIGINT exits <code>130</code> and a broken pipe exits <code>0</code>/<code>141</code>.
+See <a href="../../usage/cli/#exit-codes">Exit Codes</a> and <a href="../../usage/headless/">Headless &amp; Scripting</a>. In
+<code>--chat</code> mode, a failed turn prints the error and keeps the session alive instead of exiting.</p>
 <h2 id="isolate-the-environment">Isolate the environment<a class="headerlink" href="#isolate-the-environment" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># fresh config/roles/functions in a temp HOME</span>
 <span class="nv">HOME</span><span class="o">=</span>/tmp/yaicli-debug<span class="w"> </span>ai<span class="w"> </span>--verbose<span class="w"> </span><span class="s2">&quot;hello&quot;</span>
@@ -1748,8 +1850,10 @@ ai<span class="w"> </span>--template
 <ul>
 <li><strong>Provider errors</strong>: verify <code>PROVIDER</code> with <code>ai --list-providers</code>, then check <code>MODEL</code>,
   <code>BASE_URL</code> and the API key.</li>
-<li><strong>Function changes not taking effect</strong>: built-in function definitions are copied into
-  <code>~/.config/yaicli/functions/</code>; run <code>ai --reinstall-functions</code> after upgrading.</li>
+<li><strong>Function changes not taking effect</strong>: built-in definitions load directly from the installed
+  package; only exported copies in <code>~/.config/yaicli/functions/</code> can be stale. Run
+  <code>ai --list-functions</code> (it reports sources and stale copies), then <code>ai --reinstall-functions</code> to
+  refresh exported built-in copies.</li>
 <li><strong>Network/proxy</strong>: <code>HTTPS_PROXY</code>/<code>HTTP_PROXY</code> are honoured by the HTTP stack; an invalid
   <code>BASE_URL</code> causes connection errors.</li>
 <li><strong>MCP</strong>: <code>~/.config/yaicli/mcp.json</code> must be valid JSON; run <code>ai --list-mcp</code>.</li>

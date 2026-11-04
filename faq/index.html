@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -325,6 +325,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1280,6 +1355,8 @@
       
         
       
+        
+      
     
     
     
@@ -1349,6 +1426,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -2249,7 +2349,7 @@
 <p>This page addresses common questions and issues encountered when using YAICLI.</p>
 <h2 id="general-questions">General Questions<a class="headerlink" href="#general-questions" title="Permanent link">&para;</a></h2>
 <h3 id="what-is-yaicli">What is YAICLI?<a class="headerlink" href="#what-is-yaicli" title="Permanent link">&para;</a></h3>
-<p>YAICLI is a command-line interface for interacting with Large Language Models (LLMs). It allows you to chat with AI assistants, generate shell commands, and get quick answers directly from your terminal.</p>
+<p>YAICLI is a lightweight agent that runs in your terminal. Given a task, it can plan, call its built-in tools (read/write files, search the web, run shell commands), read the results and continue until the task is done. It also works as a classic chat/quick-answer CLI and supports 30+ LLM providers.</p>
 <h3 id="what-llm-providers-are-supported">What LLM providers are supported?<a class="headerlink" href="#what-llm-providers-are-supported" title="Permanent link">&para;</a></h3>
 <p>YAICLI supports multiple providers including:
 - OpenAI (GPT-5.1, GPT-5.2, etc.)
@@ -2274,8 +2374,10 @@ which<span class="w"> </span>ai
 </code></pre></div>
 <h3 id="how-do-i-set-up-my-api-key">How do I set up my API key?<a class="headerlink" href="#how-do-i-set-up-my-api-key" title="Permanent link">&para;</a></h3>
 <p>You can set your API key in two ways:
-1. In the config file (<code>~/.config/yaicli/config.ini</code>)
-2. As an environment variable (<code>export YAI_API_KEY="your-key"</code>)</p>
+1. In the config file (<code>config.ini</code> inside the config directory — <code>~/.config/yaicli</code> by default,
+   or <code>$YAI_CONFIG_DIR</code> / <code>$XDG_CONFIG_HOME/yaicli</code> when set)
+2. As an environment variable (<code>export YAI_API_KEY="your-key"</code>) — preferred for scripts and
+   shared machines</p>
 <p>YAICLI does not load <code>.env</code> files; use one of the options above (a <code>.env</code> file has no effect).</p>
 <h3 id="can-i-use-multiple-api-keys-for-different-providers">Can I use multiple API keys for different providers?<a class="headerlink" href="#can-i-use-multiple-api-keys-for-different-providers" title="Permanent link">&para;</a></h3>
 <p>Yes! You can create separate configuration sections or switch providers using environment variables:</p>
@@ -2300,6 +2402,8 @@ which<span class="w"> </span>ai
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--justify<span class="w"> </span>center<span class="w"> </span><span class="s2">&quot;Write a poem about AI&quot;</span>
 </code></pre></div></p>
 <p>Options include: <code>default</code>, <code>left</code>, <code>center</code>, <code>right</code>, and <code>full</code>.</p>
+<p>For scripts, use <code>--output-format json</code> (single JSON object), <code>--output-format stream-json</code>
+(NDJSON events) or <code>-q/--quiet</code> (answer only). See <a href="../usage/headless/">Headless &amp; Scripting</a>.</p>
 <h3 id="how-do-i-disable-streaming-responses">How do I disable streaming responses?<a class="headerlink" href="#how-do-i-disable-streaming-responses" title="Permanent link">&para;</a></h3>
 <p>Use the <code>--no-stream</code> flag or set <code>STREAM=false</code> in your config:
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--no-stream<span class="w"> </span><span class="s2">&quot;What is the capital of France?&quot;</span>
@@ -2314,6 +2418,8 @@ which<span class="w"> </span>ai
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;Find all PNG files in the current directory&quot;</span>
 </code></pre></div>
 You'll be prompted to review and optionally edit commands before execution.</p>
+<p>When the model runs <code>execute_shell_command</code> as a tool, the approval prompt, danger classification,
+timeout and filtered environment apply automatically; see <a href="../usage/permissions/">Permissions &amp; Safety</a>.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="why-am-i-getting-api-errors">Why am I getting API errors?<a class="headerlink" href="#why-am-i-getting-api-errors" title="Permanent link">&para;</a></h3>
 <p>Common causes:
@@ -2341,6 +2447,10 @@ pipx<span class="w"> </span>upgrade<span class="w"> </span>yaicli
 <span class="c1"># Using uv</span>
 uv<span class="w"> </span>tool<span class="w"> </span>upgrade<span class="w"> </span>yaicli
 </code></pre></div>
+<p>The built-in tools load directly from the installed package in v0.19+, so a normal upgrade needs
+no extra step. If you previously exported function files with <code>ai --install-functions</code>, refresh
+them with <code>ai --reinstall-functions</code> (custom files are kept). See
+<a href="../advanced/upgrade/">Upgrade Notes</a> for behaviour changes and new config keys.</p>
 <h3 id="why-are-my-non-ascii-characters-displaying-incorrectly">Why are my non-ASCII characters displaying incorrectly?<a class="headerlink" href="#why-are-my-non-ascii-characters-displaying-incorrectly" title="Permanent link">&para;</a></h3>
 <p>Make sure your terminal supports UTF-8 and has a compatible font. On Windows, you might need to:
 <div class="highlight"><pre><span></span><code>chcp 65001  # Set console code page to UTF-8
@@ -2354,19 +2464,21 @@ uv<span class="w"> </span>tool<span class="w"> </span>upgrade<span class="w"> </
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--role<span class="w"> </span><span class="s2">&quot;SQL Expert&quot;</span><span class="w"> </span><span class="s2">&quot;Optimize this query&quot;</span>
 </code></pre></div></p>
 <h3 id="can-i-use-function-calling">Can I use function calling?<a class="headerlink" href="#can-i-use-function-calling" title="Permanent link">&para;</a></h3>
-<p>Yes, enable function calling with:
-<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--enable-functions<span class="w"> </span><span class="s2">&quot;Check the weather in New York&quot;</span>
+<p>Function calling is enabled by default and the 12 built-in tools load directly from the package —
+there is no setup step:
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span><span class="s2">&quot;check the weather in New York&quot;</span>
+ai<span class="w"> </span>--list-functions<span class="w">   </span><span class="c1"># show the loaded tools (builtin/user)</span>
 </code></pre></div></p>
-<p>Install default functions:
-<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--install-functions
-</code></pre></div></p>
+<p>If you need editable copies of the built-in definitions, export them with
+<code>ai --install-functions</code>; a copy overrides the built-in with the same tool name. Every tool call is
+confirmed by default; see <a href="../usage/permissions/">Permissions &amp; Safety</a>.</p>
 <h3 id="how-do-i-create-custom-functions">How do I create custom functions?<a class="headerlink" href="#how-do-i-create-custom-functions" title="Permanent link">&para;</a></h3>
 <p>Add your function definitions to <code>~/.config/yaicli/functions/</code>; each file must define a
 <code>Function(OpenAISchema)</code> class with a classmethod <code>execute</code>. Restart <code>ai</code> afterwards.</p>
-<p>If you recently upgraded YAICLI, run <code>ai --reinstall-functions</code> so the built-in function
-definitions match the new version (custom files are preserved).</p>
+<p>If you recently upgraded YAICLI and keep exported copies of the built-in definitions, run
+<code>ai --reinstall-functions</code> so those copies match the new version (custom files are preserved).</p>
 <p>See <a href="../usage/advanced/#function-calling">Advanced Usage — Function Calling</a> for the complete
-install/update/custom-function guide.</p>
+custom-function guide.</p>
 <h3 id="how-do-i-use-mcp-model-context-protocol">How do I use MCP (Model Context Protocol)?<a class="headerlink" href="#how-do-i-use-mcp-model-context-protocol" title="Permanent link">&para;</a></h3>
 <p>Enable MCP with:
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--enable-mcp<span class="w"> </span><span class="s2">&quot;Search for the latest AI research papers&quot;</span>

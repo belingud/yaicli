@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -325,6 +325,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -1280,6 +1355,8 @@
       
         
       
+        
+      
     
     
     
@@ -1349,6 +1426,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1782,8 +1882,9 @@
 behaviour is documented under <code>docs/usage/</code>; coding conventions live in <code>CLAUDE.md</code> and
 <code>.trellis/spec/</code>.</p>
 <h2 id="request-flow">Request flow<a class="headerlink" href="#request-flow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>entry.py (Typer CLI)
-  └─ cli.py (CLI: mode dispatch, REPL, tool-confirmation pump)
+<div class="highlight"><pre><span></span><code>_faststart.py (thin console entry; -v/--version fast path, EPIPE-safe)
+  └─ entry.py (Typer CLI; headless flags -&gt; CLI.configure_headless, exit-code mapping)
+       └─ cli.py (CLI: mode dispatch, REPL, headless output, tool-confirmation pump)
        ├─ llms/client.py (LLMClient: provider call + tool loop + streaming)
        │    └─ llms/provider.py (ProviderFactory -&gt; Provider)
        │         └─ llms/providers/&lt;name&gt;_provider.py
@@ -1793,11 +1894,14 @@ behaviour is documented under <code>docs/usage/</code>; coding conventions live 
        ├─ chat.py (Chat model + FileChatManager persistence)
        └─ printer.py / render.py (streaming, reasoning, markdown, prompts)
 </code></pre></div>
-<p><code>entry.py</code> parses arguments, merges piped stdin, processes <code>--image</code>, then builds a <code>CLI</code> and
-calls <code>cli.run(...)</code>. <code>CLI</code> decides between the single-shot path (<code>_run_once</code>) and the REPL
-(<code>_run_repl</code>); both assemble messages and ask <code>LLMClient.completion_with_tools()</code> for a
-response stream. Tool calls come back through the same generator and are executed after the
-confirmation gate, then the loop calls the provider again with the tool results.</p>
+<p><code>_faststart.main</code> answers <code>-v/--version</code> without importing the config/role/CLI stack (zero
+filesystem writes) and otherwise delegates to <code>entry.py</code>. <code>entry.py</code> parses arguments (including
+the headless flags), merges piped stdin, processes <code>--image</code>, then builds a <code>CLI</code>, calls
+<code>cli.configure_headless(...)</code> and <code>cli.run(...)</code>. <code>CLI</code> decides between the single-shot path
+(<code>_run_once</code>) and the REPL (<code>_run_repl</code>); both assemble messages and ask
+<code>LLMClient.completion_with_tools()</code> for a response stream. Tool calls come back through the same
+generator and are executed after the confirmation gate, then the loop calls the provider again
+with the tool results.</p>
 <h2 id="module-map">Module map<a class="headerlink" href="#module-map" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1808,12 +1912,20 @@ confirmation gate, then the loop calls the provider again with the tool results.
 </thead>
 <tbody>
 <tr>
+<td><code>_faststart.py</code></td>
+<td>Console entry (<code>ai</code>, <code>yaicli</code>, <code>python -m yaicli</code>); static <code>--version</code> fast path, SIGPIPE/EPIPE handling; then delegates to <code>entry.py</code>.</td>
+</tr>
+<tr>
 <td><code>entry.py</code></td>
-<td>Typer app/options, stdin/image handling, top-level error → exit-code mapping.</td>
+<td>Typer app/options, stdin/image handling, headless flags, top-level error → exit-code mapping.</td>
 </tr>
 <tr>
 <td><code>cli.py</code></td>
-<td><code>CLI</code> orchestrator: temp/chat/exec modes, REPL, chat save/load, role wiring.</td>
+<td><code>CLI</code> orchestrator: temp/chat/exec modes, REPL, chat save/load, role wiring, machine output (<code>json</code>/<code>stream-json</code>), exit-code state contract.</td>
+</tr>
+<tr>
+<td><code>errors.py</code></td>
+<td><code>ErrorKind</code>/<code>AgentError</code>, exception classification, retry helpers, <code>EXIT_*</code> constants.</td>
 </tr>
 <tr>
 <td><code>cmd_handler.py</code></td>
@@ -1829,7 +1941,7 @@ confirmation gate, then the loop calls the provider again with the tool results.
 </tr>
 <tr>
 <td><code>console.py</code></td>
-<td><code>YaiConsole</code> singleton + untrusted-text helpers (<code>safe_text</code>, <code>print_untrusted</code>, ...).</td>
+<td><code>YaiConsole</code> singleton, stderr console for machine mode, EPIPE-safe broken-pipe handling, untrusted-text helpers.</td>
 </tr>
 <tr>
 <td><code>context.py</code></td>
@@ -1841,7 +1953,7 @@ confirmation gate, then the loop calls the provider again with the tool results.
 </tr>
 <tr>
 <td><code>history.py</code></td>
-<td>Bounded prompt-toolkit history file (<code>~/.yaicli_history</code>).</td>
+<td>Bounded prompt-toolkit history file (<code>$XDG_STATE_HOME/yaicli/history</code> or <code>~/.yaicli_history</code>).</td>
 </tr>
 <tr>
 <td><code>role.py</code></td>
@@ -1873,7 +1985,7 @@ confirmation gate, then the loop calls the provider again with the tool results.
 </tr>
 <tr>
 <td><code>tools/</code></td>
-<td>Tool schema aggregation/caching, function loading, MCP integration, approval store.</td>
+<td>Tool schema aggregation/caching, function loading, MCP integration, approval store, <code>risk.py</code> (tool risk classes + shell danger classification).</td>
 </tr>
 <tr>
 <td><code>utils.py</code></td>
@@ -1882,10 +1994,17 @@ confirmation gate, then the loop calls the provider again with the tool results.
 </tbody>
 </table>
 <h2 id="state-on-disk">State on disk<a class="headerlink" href="#state-on-disk" title="Permanent link">&para;</a></h2>
+<p>The config directory is resolved at import time: <code>YAI_CONFIG_DIR</code> &gt; <code>XDG_CONFIG_HOME/yaicli</code> &gt;
+<code>%APPDATA%/yaicli</code> (Windows) &gt; <code>~/.config/yaicli</code>.</p>
 <ul>
-<li><code>~/.config/yaicli/config.ini</code> — configuration (<code>ai --template</code> prints the defaults).</li>
-<li><code>~/.config/yaicli/roles/</code>, <code>functions/</code>, <code>mcp.json</code>, <code>tool_permissions.json</code> — user data.</li>
-<li><code>~/.yaicli_history</code> — prompt history (bounded by <code>MAX_HISTORY</code>).</li>
+<li><code>&lt;config-dir&gt;/config.ini</code> — configuration, created lazily on the first run that needs it and
+  written with mode <code>0600</code> (<code>ai --template</code> prints the defaults).</li>
+<li><code>&lt;config-dir&gt;/roles/</code>, <code>functions/</code>, <code>mcp.json</code>, <code>tool_permissions.json</code> — user data.
+  <code>functions_manifest.json</code> records the version/hashes used to warn about stale exported copies.</li>
+<li><code>tool_audit.jsonl</code>, <code>tool-outputs/</code> — tool audit log and spilled (untruncated) tool outputs
+  (v0.19; see <code>docs/usage/context-limits.md</code> and <code>docs/usage/permissions.md</code>).</li>
+<li><code>$XDG_STATE_HOME/yaicli/history</code> or <code>~/.yaicli_history</code> — prompt history (bounded by
+  <code>MAX_HISTORY</code>).</li>
 <li><code>CHAT_HISTORY_DIR</code> (temp directory by default) — saved chat JSON sessions.</li>
 </ul>
 <h2 id="modes">Modes<a class="headerlink" href="#modes" title="Permanent link">&para;</a></h2>

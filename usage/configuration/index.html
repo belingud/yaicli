@@ -285,7 +285,7 @@
   
   
   <span class="md-ellipsis">
-    Getting Started
+    Agent Quickstart
     
   </span>
   
@@ -327,6 +327,12 @@
   
     
     
+      
+        
+      
+        
+      
+        
       
         
       
@@ -387,7 +393,76 @@
   
   
   <span class="md-ellipsis">
-    Command Overview
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
     
   </span>
   
@@ -541,6 +616,24 @@
   <a href="#configuration-options-reference" class="md-nav__link">
     <span class="md-ellipsis">
       Configuration Options Reference
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      State Files
     </span>
   </a>
   
@@ -1427,6 +1520,8 @@
       
         
       
+        
+      
     
     
     
@@ -1496,6 +1591,29 @@
   
   <span class="md-ellipsis">
     Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading to v0.19
     
   </span>
   
@@ -1825,6 +1943,24 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#context-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      State Files
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#syntax-highlighting-themes" class="md-nav__link">
     <span class="md-ellipsis">
       Syntax Highlighting Themes
@@ -1891,16 +2027,24 @@
 </ol>
 <h2 id="configuration-file">Configuration File<a class="headerlink" href="#configuration-file" title="Permanent link">&para;</a></h2>
 <h3 id="location">Location<a class="headerlink" href="#location" title="Permanent link">&para;</a></h3>
-<p>The default configuration file is located at:</p>
-<ul>
-<li>Linux/macOS: <code>~/.config/yaicli/config.ini</code></li>
-<li>Windows: <code>C:\Users\&lt;username&gt;\.config\yaicli\config.ini</code></li>
-</ul>
+<p>YAICLI resolves its configuration directory in this order:</p>
+<ol>
+<li><code>YAI_CONFIG_DIR</code> (explicit override)</li>
+<li><code>XDG_CONFIG_HOME/yaicli</code></li>
+<li><code>%APPDATA%/yaicli</code> on Windows</li>
+<li><code>~/.config/yaicli</code> (fallback, e.g. Linux/macOS without XDG set)</li>
+</ol>
+<p>The configuration file is <code>config.ini</code> inside that directory. It may contain an API key, so it is
+created with mode <code>0600</code> (and the directory with <code>0700</code>). On a read-only HOME or container, YAICLI
+keeps working with defaults and only warns once when it cannot persist state.</p>
+<p>The prompt history file follows XDG state conventions: <code>$XDG_STATE_HOME/yaicli/history</code> when
+<code>XDG_STATE_HOME</code> is set, otherwise <code>~/.yaicli_history</code>.</p>
 <h3 id="first-time-setup">First-time Setup<a class="headerlink" href="#first-time-setup" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Run <code>ai</code> once to generate the default configuration file</li>
-<li>Edit the file to add your API key and customize settings</li>
+<li>Run a real model command once (e.g. <code>ai "hi"</code>); the default configuration file is created on first use</li>
+<li>Edit the file to add your API key and customize settings (or export <code>YAI_API_KEY</code> instead)</li>
 </ol>
+<p><code>--version</code> and <code>--help</code> never write state, so they are safe in read-only environments.</p>
 <h3 id="viewing-default-configuration">Viewing Default Configuration<a class="headerlink" href="#viewing-default-configuration" title="Permanent link">&para;</a></h3>
 <p>To view the default configuration template:</p>
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--template
@@ -1971,6 +2115,34 @@
 
 <span class="c1"># Comma-separated API parameters to omit from requests, e.g. temperature,top_p</span>
 <span class="na">EXCLUDE_PARAMS</span><span class="o">=</span>
+
+<span class="c1"># Agent context settings (v0.19)</span>
+<span class="c1"># Max characters of one tool result kept in the context (0 = no truncation);</span>
+<span class="c1"># the full output is saved to TOOL_OUTPUT_DIR.</span>
+<span class="na">TOOL_OUTPUT_MAX_CHARS</span><span class="o">=</span><span class="s">32000</span>
+<span class="na">TOOL_OUTPUT_DIR</span><span class="o">=</span><span class="s">&lt;chat-history-dir&gt;/tool-outputs</span>
+<span class="c1"># Token budget for one request; 0 derives 70% of the model context window.</span>
+<span class="na">CONTEXT_BUDGET_TOKENS</span><span class="o">=</span><span class="s">0</span>
+
+<span class="c1"># Shell tool settings (v0.19)</span>
+<span class="c1"># Max seconds a shell command may run (killed with its process group on timeout).</span>
+<span class="na">TOOL_TIMEOUT</span><span class="o">=</span><span class="s">120</span>
+<span class="c1"># true = pass the full parent environment to shell commands (old behaviour);</span>
+<span class="c1"># false = filtered environment, secrets such as YAI_API_KEY are not passed.</span>
+<span class="na">TOOL_ENV_INHERIT</span><span class="o">=</span><span class="s">false</span>
+<span class="c1"># Shell commands may only run inside this directory (empty = current directory).</span>
+<span class="na">WORKSPACE_ROOT</span><span class="o">=</span>
+
+<span class="c1"># Reliability settings (v0.19)</span>
+<span class="na">RETRY_ENABLED</span><span class="o">=</span><span class="s">true</span>
+<span class="na">RETRY_MAX</span><span class="o">=</span><span class="s">2</span>
+<span class="na">RETRY_BASE_DELAY</span><span class="o">=</span><span class="s">1.0</span>
+<span class="c1"># Exit non-zero in one-shot mode when the tool-call depth limit is reached.</span>
+<span class="na">EXIT_ON_DEPTH_LIMIT</span><span class="o">=</span><span class="s">true</span>
+
+<span class="c1"># Tool audit log (v0.19)</span>
+<span class="c1"># Write one JSON line per tool decision to tool_audit.jsonl in the config dir.</span>
+<span class="na">TOOL_AUDIT</span><span class="o">=</span><span class="s">true</span>
 </code></pre></div>
 <blockquote>
 <p>Comments in <code>config.ini</code> must be on their own line. Inline comments are <strong>not</strong> stripped by
@@ -2175,6 +2347,72 @@ provider name invalid).</p>
 <td><code>YAI_TOOL_CONFIRM</code></td>
 </tr>
 <tr>
+<td><code>TOOL_OUTPUT_MAX_CHARS</code></td>
+<td>Max characters of one tool result kept in context (<code>0</code> = unlimited)</td>
+<td><code>32000</code></td>
+<td><code>YAI_TOOL_OUTPUT_MAX_CHARS</code></td>
+</tr>
+<tr>
+<td><code>TOOL_OUTPUT_DIR</code></td>
+<td>Where full (untruncated) tool outputs are saved</td>
+<td><code>&lt;chat-history&gt;/tool-outputs</code></td>
+<td><code>YAI_TOOL_OUTPUT_DIR</code></td>
+</tr>
+<tr>
+<td><code>CONTEXT_BUDGET_TOKENS</code></td>
+<td>Token budget per request (<code>0</code> = 70% of the model window)</td>
+<td><code>0</code></td>
+<td><code>YAI_CONTEXT_BUDGET_TOKENS</code></td>
+</tr>
+<tr>
+<td><code>TOOL_TIMEOUT</code></td>
+<td>Max seconds a shell tool command may run</td>
+<td><code>120</code></td>
+<td><code>YAI_TOOL_TIMEOUT</code></td>
+</tr>
+<tr>
+<td><code>TOOL_ENV_INHERIT</code></td>
+<td>Pass the full parent environment to shell tools (old behaviour)</td>
+<td><code>false</code></td>
+<td><code>YAI_TOOL_ENV_INHERIT</code></td>
+</tr>
+<tr>
+<td><code>WORKSPACE_ROOT</code></td>
+<td>Directory shell tools are confined to (empty = current dir)</td>
+<td>-</td>
+<td><code>YAI_WORKSPACE_ROOT</code></td>
+</tr>
+<tr>
+<td><code>RETRY_ENABLED</code></td>
+<td>Retry retryable API failures (429/5xx/network/timeout)</td>
+<td><code>true</code></td>
+<td><code>YAI_RETRY_ENABLED</code></td>
+</tr>
+<tr>
+<td><code>RETRY_MAX</code></td>
+<td>Maximum retry attempts</td>
+<td><code>2</code></td>
+<td><code>YAI_RETRY_MAX</code></td>
+</tr>
+<tr>
+<td><code>RETRY_BASE_DELAY</code></td>
+<td>Base backoff delay in seconds</td>
+<td><code>1.0</code></td>
+<td><code>YAI_RETRY_BASE_DELAY</code></td>
+</tr>
+<tr>
+<td><code>EXIT_ON_DEPTH_LIMIT</code></td>
+<td>Exit non-zero in one-shot mode when the tool-round limit is reached</td>
+<td><code>true</code></td>
+<td><code>YAI_EXIT_ON_DEPTH_LIMIT</code></td>
+</tr>
+<tr>
+<td><code>TOOL_AUDIT</code></td>
+<td>Write tool decisions to <code>tool_audit.jsonl</code></td>
+<td><code>true</code></td>
+<td><code>YAI_TOOL_AUDIT</code></td>
+</tr>
+<tr>
 <td><code>EXCLUDE_PARAMS</code></td>
 <td>Comma-separated API parameters to omit</td>
 <td>-</td>
@@ -2185,6 +2423,72 @@ provider name invalid).</p>
 <td>MiniMax interleaved reasoning (reasoning_split)</td>
 <td><code>true</code></td>
 <td><code>YAI_MINIMAX_REASONING_SPLIT</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="context-management">Context Management<a class="headerlink" href="#context-management" title="Permanent link">&para;</a></h2>
+<p>Conversation context is bounded on three levels; see
+<a href="../context-limits/">Context &amp; Limits</a> for the full behaviour:</p>
+<ul>
+<li><strong>Per-tool truncation</strong>: <code>TOOL_OUTPUT_MAX_CHARS</code> (default 32000 chars) keeps head/tail and
+  spills the full output to <code>TOOL_OUTPUT_DIR</code>.</li>
+<li><strong>Token budget</strong>: <code>CONTEXT_BUDGET_TOKENS</code> (default <code>0</code> = 70% of the model window) is enforced
+  before each request; over-budget history is trimmed by turn group, keeping assistant
+  <code>tool_calls</code> and their tool results together.</li>
+<li><strong>REPL retention</strong>: <code>INTERACTIVE_ROUND</code> (default <code>25</code>) is the number of chat turns kept in the
+  REPL (×2 messages), not a token limit. <code>MAX_HISTORY</code> (default <code>500</code>) only sizes the prompt
+  history file (see <a href="../../advanced/history/">Conversation &amp; History</a>).</li>
+</ul>
+<p>Use <code>/context</code> to inspect the estimated usage and <code>/compact [keep_rounds]</code> to compact manually
+(see <a href="../commands/#interactive-mode-commands">Command Reference</a>).</p>
+<h2 id="state-files">State Files<a class="headerlink" href="#state-files" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;config-dir&gt;/config.ini</code></td>
+<td>Main configuration (mode <code>0600</code>)</td>
+</tr>
+<tr>
+<td><code>&lt;config-dir&gt;/roles/</code></td>
+<td>Role definitions</td>
+</tr>
+<tr>
+<td><code>&lt;config-dir&gt;/functions/</code></td>
+<td>User/exported function definitions</td>
+</tr>
+<tr>
+<td><code>&lt;config-dir&gt;/functions_manifest.json</code></td>
+<td>Version/hash manifest for stale copied-function detection</td>
+</tr>
+<tr>
+<td><code>&lt;config-dir&gt;/mcp.json</code></td>
+<td>MCP server configuration</td>
+</tr>
+<tr>
+<td><code>&lt;config-dir&gt;/tool_permissions.json</code></td>
+<td>Persistent tool allow rules (mode <code>0600</code>)</td>
+</tr>
+<tr>
+<td><code>&lt;config-dir&gt;/tool_audit.jsonl</code></td>
+<td>Tool decision audit log</td>
+</tr>
+<tr>
+<td><code>&lt;config-dir&gt;/tool-outputs/</code></td>
+<td>Spilled full tool outputs (unless <code>TOOL_OUTPUT_DIR</code> overrides)</td>
+</tr>
+<tr>
+<td><code>$XDG_STATE_HOME/yaicli/history</code> or <code>~/.yaicli_history</code></td>
+<td>REPL prompt history</td>
+</tr>
+<tr>
+<td><code>CHAT_HISTORY_DIR</code> (default <code>&lt;tempdir&gt;/yaicli/chats</code>)</td>
+<td>Saved chat sessions</td>
 </tr>
 </tbody>
 </table>
