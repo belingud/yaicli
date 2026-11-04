@@ -15,8 +15,10 @@ sharing the output because provider-specific credentials may appear.
 ## Exit codes
 
 Successful runs exit `0`; handled failures exit `1` (configuration errors, provider/API errors,
-missing credentials, no input). See [Exit Codes](../usage/cli.md#exit-codes). In `--chat` mode, a
-failed turn prints the error and keeps the session alive instead of exiting.
+retry exhaustion, missing credentials, no input, depth limit). Usage errors exit `2`, a denied
+tool with `--fail-on-tool-denied` exits `3`, SIGINT exits `130` and a broken pipe exits `0`/`141`.
+See [Exit Codes](../usage/cli.md#exit-codes) and [Headless & Scripting](../usage/headless.md). In
+`--chat` mode, a failed turn prints the error and keeps the session alive instead of exiting.
 
 ## Isolate the environment
 
@@ -34,8 +36,10 @@ Common causes:
 
 - **Provider errors**: verify `PROVIDER` with `ai --list-providers`, then check `MODEL`,
   `BASE_URL` and the API key.
-- **Function changes not taking effect**: built-in function definitions are copied into
-  `~/.config/yaicli/functions/`; run `ai --reinstall-functions` after upgrading.
+- **Function changes not taking effect**: built-in definitions load directly from the installed
+  package; only exported copies in `~/.config/yaicli/functions/` can be stale. Run
+  `ai --list-functions` (it reports sources and stale copies), then `ai --reinstall-functions` to
+  refresh exported built-in copies.
 - **Network/proxy**: `HTTPS_PROXY`/`HTTP_PROXY` are honoured by the HTTP stack; an invalid
   `BASE_URL` causes connection errors.
 - **MCP**: `~/.config/yaicli/mcp.json` must be valid JSON; run `ai --list-mcp`.

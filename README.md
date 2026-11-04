@@ -1,4 +1,4 @@
-# YAICLI: Your AI assistant in command line.
+# YAICLI: A lightweight agent in your terminal.
 
 <p align="center">
   <img src="artwork/logo.png" width="150" alt="YAICLI Logo" />
@@ -11,9 +11,19 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/yaicli?logo=pypi&style=for-the-badge)
 ![Pepy Total Downloads](https://img.shields.io/pepy/dt/yaicli?style=for-the-badge&logo=python)
 
-YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (
-LLMs) like GPT-5 directly to your terminal. Interact with AI through multiple modes: have natural conversations,
-generate and execute shell commands, or get quick answers without leaving your workflow.
+YAICLI is a lightweight agent that runs in your terminal. Give it a task and it plans, calls
+built-in tools (read and edit files, search the web, run shell commands), checks the results, and
+keeps going until the job is done — no daemon, no index, no extra setup.
+
+- **Tools out of the box** — 12 built-in tools load straight from the installed package; there is
+  no install step before the model can use them.
+- **Safe by default** — every tool call is confirmed before it runs, shell commands are
+  risk-classified, and every decision is written to an audit log.
+- **Scriptable** — `-p/--print`, `--output-format json|stream-json`, stdin piping, documented exit
+  codes, and clean stdout/stderr separation make it usable in scripts and CI.
+- **Lightweight, with numbers** — startup, install size and memory are measured (see *Lightweight &
+  scope* below); no background processes.
+- **Any provider** — OpenAI, Anthropic, Gemini, Ollama and 30+ more through the Compatibility layer.
 
 **Supports both standard and deep reasoning models across all major LLM providers.**
 
@@ -26,7 +36,91 @@ generate and execute shell commands, or get quick answers without leaving your w
 >
 > We support Function Call since v0.5.0!
 
+## ⚡ Agent Quick Start (3 steps)
+
+**1. Install and give it a key** (~30 seconds)
+
+```bash
+pip install yaicli
+
+# either export a key for the default OpenAI provider ...
+export YAI_API_KEY="sk-..."
+# ... or run a real command once (e.g. `ai "hi"`) and edit ~/.config/yaicli/config.ini
+ai --version
+```
+
+**2. Give the agent a real task** (~1 minute)
+
+```bash
+ai "Use your tools to find the 3 largest files in this repository and write a summary to REPORT.md"
+```
+
+The model picks the built-in tools it needs (`fs_list_directory`, `fs_read_file`, `fs_write_file`,
+`execute_shell_command`, ...), reads each result, and continues until the task is done. There is no
+`--install-functions` step — the built-in tools are loaded directly from the package.
+
+**3. Approve tool calls** (the one safety rule you need)
+
+```
+╭─ Confirm tool call ─────────────────────────────────────╮
+│ execute_shell_command({"shell_command": "du -sh ."})    │
+╰─────────────────────────────────────────────────────────╯
+Execute tool? [y]once, [a]session, [A]always, [n]o:
+```
+
+| Key | Meaning |
+|-----|---------|
+| `y` | Allow this call only |
+| `a` | Allow this tool for the rest of the session |
+| `A` | Always allow — saved to `~/.config/yaicli/tool_permissions.json` |
+| `n` | Deny — the model receives a refusal and adapts its plan |
+
+Read-level tools can be auto-approved in scripts; write/execute-level tools still require an
+explicit rule. See [Permissions & Safety](docs/usage/permissions.md) for rules, audit log and
+headless approval flags.
+
+**Next:** [script it](docs/usage/headless.md) · [long-context behaviour](docs/usage/context-limits.md)
+· [upgrade notes](docs/advanced/upgrade.md) · [all command-line options](docs/usage/commands.md)
+
 ## ✨ Key Features
+
+### 🤖 Agent Loop with Built-in Tools
+
+- **Multi-step tasks**: the model plans, calls tools, reads results and continues — no manual
+  copy-paste between steps
+- **12 built-in tools**: filesystem read/write/edit/search/info, image reading,
+  shell execution, web fetch, web search and weather
+- **MCP (optional)**: connect external MCP servers as additional tools
+- **Bounded**: tool-call depth, token budget and per-tool output limits keep long tasks under
+  control
+
+### 🛡️ Safe by Default
+
+- **Approval prompt** for every tool call — allow once, for the session, permanently, or deny
+- **Risk classes** (`read` / `write` / `network` / `exec`) and danger classification for shell
+  commands (`rm -r -f`, `mkfs`, `dd of=/dev/*`, `curl … | sh`, ...)
+- **Allow rules** in `tool_permissions.json` — per tool name, shell argv prefix, or file path glob
+- **Audit log** of every tool decision in `tool_audit.jsonl`
+- **Guarded shell**: timeout, process-group kill, filtered environment (no API keys leaked to
+  commands), workspace-confined `cwd`
+
+### 📜 Headless & Scriptable
+
+- **`-p/--print`** for explicit one-shot runs, **`-q/--quiet`** for answer-only output
+- **`--output-format json|stream-json`** — one JSON object, or one NDJSON event per line
+- **stdout only carries the result**; labels, warnings and errors go to stderr
+- **Deterministic exit codes** (`0/1/2/3/130/141`) and SIGINT/EPIPE handling
+- **Non-interactive approvals** with `--yes`, `--allowed-tools` and `--fail-on-tool-denied`
+
+### 🧠 Context Economy
+
+- **Tool-output truncation** with full output spilled to disk (head+tail kept, model can page it
+  back with `fs_read_file`)
+- **Token budget** (`CONTEXT_BUDGET_TOKENS`) and turn-group-aligned history trimming — a
+  `tool_calls` message is never separated from its tool results
+- **Self-healing**: a provider `context_length` error is retried once after trimming instead of
+  failing permanently
+- **`/context`** shows what occupies the window, **`/compact [keep_rounds]`** compresses it on demand
 
 ### 🔄 Multiple Interaction Modes
 
@@ -34,44 +128,49 @@ generate and execute shell commands, or get quick answers without leaving your w
 - **🚀 Execute Mode**: Generate and safely run OS-specific shell commands
 - **⚡ Quick Query**: Get instant answers without entering interactive mode
 
-### 🧠 Smart Environment Awareness
-
-- **Auto-detection**: Identifies your shell (bash/zsh/PowerShell/CMD) and OS
-- **Safe Command Execution**: Verification before running any command
-- **Flexible Input**: Pipe content directly (`cat log.txt | ai "analyze this"`)
-
-### 🖼️ Image Input (Vision)
-
-- **Local Images**: Pass local image files with `--image/-i` (JPEG, PNG, GIF, WebP)
-- **URL Images**: Pass image URLs directly to vision-capable models
-- **Multi-Image**: Specify `--image` multiple times for comparison tasks
-- **30+ Providers**: Automatic format conversion for OpenAI, Anthropic, Gemini, Ollama families
-
-### 🔌 Universal LLM Compatibility
-
-- **OpenAI-Compatible**: Works with any OpenAI-compatible API endpoint
-- **Multi-Provider Support**: Support multiple providers
-
 ### 💻 Enhanced Terminal Experience
 
 - **Real-time Streaming**: See responses as they're generated with cursor animation
 - **Rich History Management**: Manage histories with 500 entries by default
 - **Syntax Highlighting**: Beautiful code formatting with customizable themes
 
+### 🖼️ Image Input (Vision)
+
+- **Local Images**: Pass local image files with `--image/-i` (JPEG, PNG, GIF, WebP)
+- **URL Images**: Pass image URLs directly to vision-capable models
+- **Multi-Image**: Specify `--image` multiple times for comparison tasks
+
 ### 🛠️ Developer-Friendly
 
 - **Layered Configuration**: Environment variables > Config file > Sensible defaults
+- **Any endpoint**: Works with any OpenAI-compatible API endpoint
 - **Debugging Tools**: Verbose mode with detailed API tracing
-
-### 📚 Function Calling & MCP
-
-- **Function Calling**: Enable function/MCP calling in API requests
-- **Function Output**: Show the output of functions/MCP
-- **Tool Confirmation**: Confirm each tool call before execution — allow once, for the session, permanently, or deny
 
 ![What is life](artwork/reasoning_example.png)
 
 Full document: https://belingud.github.io/yaicli/
+
+## 🪶 Lightweight & scope
+
+YAICLI stays small on purpose: one `pip install`, no daemon, no background process, no vector
+index. The numbers below were measured before and after the v0.19 startup work; anything still
+marked *planned* lands in v0.20.
+
+| Metric (baseline = v0.18, macOS sandbox) | Value |
+| --- | --- |
+| `ai --version` startup (P50) | ≈474–504 ms baseline → **≈40–45 ms** measured with the v0.19 fast path (≈38 ms prototype) |
+| `--help` startup (P50) | ≈519–568 ms (dominated by the CLI framework import) |
+| one-shot local overhead (`ai "hi"`, no network) | ≈1.5–1.6 s baseline, of which provider-SDK init is ≈0.9 s; further one-shot startup work is *planned* for v0.20 |
+| REPL ready (provider loaded) | ≈1.55–1.75 s (provider SDK loads at startup; lazy initialization is *planned* for v0.20) |
+| base install closure | **83 dists / 134.7 MB** (includes optional fetch/search/MCP/cloud SDKs; dependency slimming is *planned* for v0.20) |
+| idle RSS | ≈30 MB for `--version`; ≈65 MB for a REPL with the OpenAI SDK loaded |
+| background processes / daemons | **none** |
+
+> **Measurement caveat:** these numbers were measured on macOS inside a sandboxed benchmark
+> environment, where file access is intercepted and absolute timings are inflated (expect 2–3×
+> slower than a bare machine). Treat the *relative* deltas and proportions as the credible claim;
+> absolute milliseconds will be re-measured on CI before they are used in release notes. The full
+> benchmark method and per-import breakdown are kept with the release engineering notes.
 
 ## 📦 Installation
 
@@ -122,7 +221,11 @@ cd yaicli
 pip install .
 ```
 
-## Built-in Supported Providers
+## 🔌 Compatibility
+
+Provider support is a compatibility layer, not the headline: YAICLI exposes one agent loop, and you
+can point it at any of these providers (or any OpenAI-compatible endpoint) by changing `PROVIDER` /
+`API_KEY` / `MODEL`.
 
 - AI21
 - Anthropic/Claude
@@ -164,7 +267,8 @@ pip install .
 - Yi
 
 Any other OpenAI-compatible endpoint can be used with the `openai` or `openai-compatible`
-provider plus a custom `BASE_URL`.
+provider plus a custom `BASE_URL`. See the [provider overview](docs/providers/overview.md) for
+per-provider setup and the full configuration matrix.
 
 ## ⚙️ Configuration
 
@@ -172,13 +276,22 @@ YAICLI uses a simple configuration file to store your preferences and API keys.
 
 ### First-time Setup
 
-1. Run `ai` once to generate the default configuration file
-2. Edit `~/.config/yaicli/config.ini` to add your API key
-3. Customize other settings as needed
+1. Run a real command once (e.g. `ai "hi"`); the default configuration file is created on first
+   use. Or export `YAI_API_KEY` and skip the file entirely.
+2. Edit the config file to add your API key and customize settings.
+3. Customize other settings as needed.
+
+Plain `ai` with no prompt only prints help; it does not create the config file.
+
+The configuration directory is resolved in this order: `YAI_CONFIG_DIR` →
+`XDG_CONFIG_HOME/yaicli` → `%APPDATA%/yaicli` (Windows) → `~/.config/yaicli`. The file is created
+with mode `0600` because it may contain API keys; exported environment variables are the preferred
+way to keep keys out of disk.
 
 ### Configuration File Structure
 
-The default configuration file is located at `~/.config/yaicli/config.ini`. You can use `ai --template` to see the default configuration template.
+The default configuration file is `config.ini` inside the config directory above. You can use
+`ai --template` to see the default configuration template.
 
 ### Configuration Options Reference
 
@@ -196,7 +309,7 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `EXTRA_HEADERS`        | Extra headers                               | -                        | `YAI_EXTRA_HEADERS`        |
 | `EXTRA_BODY`           | Extra body                                  | -                        | `YAI_EXTRA_BODY`           |
 | `REASONING_EFFORT`     | Reasoning effort                            | -                        | `YAI_REASONING_EFFORT`     |
-| `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                     | `YAI_INTERACTIVE_ROUND`    |
+| `INTERACTIVE_ROUND`    | Chat turns kept in the REPL (×2 messages)   | `25`                     | `YAI_INTERACTIVE_ROUND`    |
 | `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                | `YAI_CODE_THEME`           |
 | `TEMPERATURE`          | Response randomness                         | `0.3`                    | `YAI_TEMPERATURE`          |
 | `FREQUENCY_PENALTY`    | Frequency penalty                           | `0.0`                    | `YAI_FREQUENCY_PENALTY`    |
@@ -215,14 +328,27 @@ The default configuration file is located at `~/.config/yaicli/config.ini`. You 
 | `SHOW_MCP_OUTPUT`      | Show MCP output when calling mcp            | `false`                  | `YAI_SHOW_MCP_OUTPUT`      |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
 | `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
+| `TOOL_OUTPUT_MAX_CHARS` | Max characters of one tool result kept in context (`0` = unlimited) | `32000` | `YAI_TOOL_OUTPUT_MAX_CHARS` |
+| `TOOL_OUTPUT_DIR`      | Where full (untruncated) tool outputs are saved | `<chat-history>/tool-outputs` | `YAI_TOOL_OUTPUT_DIR` |
+| `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = 70% of the model window) | `0`         | `YAI_CONTEXT_BUDGET_TOKENS` |
+| `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
+| `TOOL_ENV_INHERIT`     | Pass the full parent environment to shell tools (old behaviour) | `false` | `YAI_TOOL_ENV_INHERIT` |
+| `WORKSPACE_ROOT`       | Directory shell tools are confined to (empty = current dir) | -         | `YAI_WORKSPACE_ROOT`       |
+| `RETRY_ENABLED`        | Retry retryable API failures (429/5xx/network/timeout) | `true`         | `YAI_RETRY_ENABLED`        |
+| `RETRY_MAX`            | Maximum retry attempts                      | `2`                      | `YAI_RETRY_MAX`            |
+| `RETRY_BASE_DELAY`     | Base backoff delay in seconds               | `1.0`                    | `YAI_RETRY_BASE_DELAY`     |
+| `EXIT_ON_DEPTH_LIMIT`  | Exit non-zero in one-shot mode when the tool-round limit is reached | `true` | `YAI_EXIT_ON_DEPTH_LIMIT` |
+| `TOOL_AUDIT`           | Write tool decisions to `tool_audit.jsonl`  | `true`                   | `YAI_TOOL_AUDIT`           |
 | `EXCLUDE_PARAMS`       | Comma-separated API parameters to omit       | -                        | `YAI_EXCLUDE_PARAMS`       |
 | `MINIMAX_REASONING_SPLIT` | MiniMax interleaved reasoning (reasoning_split) | `true`            | `YAI_MINIMAX_REASONING_SPLIT` |
 
 > **Tool execution confirmation:** With `TOOL_CONFIRM` enabled (the default), YAICLI asks before running each
 > tool/function call. At the prompt you can allow it once, allow it for the rest of the session, allow it permanently,
-> or deny it. Permanent approvals are stored per tool name in `~/.config/yaicli/tool_permissions.json`. Set
+> or deny it. Permanent approvals are stored per tool name in `tool_permissions.json`. Set
 > `TOOL_CONFIRM=false` (or `YAI_TOOL_CONFIRM=false`) to run tool calls silently, as in previous versions. In
-> non-interactive sessions (e.g. piped input) only tools already in the permissions file run; others are denied.
+> non-interactive sessions (e.g. piped input) only tools already in the permissions file (or passed via
+> `--allowed-tools`) run; others are denied. See [Permissions & Safety](docs/usage/permissions.md) for the
+> rule format, risk levels, audit log and headless approval flags.
 
 ### LLM Provider Configuration
 
@@ -730,9 +856,12 @@ MODEL=4.0Ultra
 
 ## 🚀 Usage
 
-### Quick Start
+### Common Commands
 
 ```bash
+# Agent task: let the model pick and run tools
+ai "Use your tools to find the 3 largest files here and write a summary to REPORT.md"
+
 # Get a quick answer
 ai "What is the capital of France?"
 
@@ -749,6 +878,10 @@ ai --code "Write a Python function to sort a list"
 cat app.py | ai "Explain what this code does"
 # or use @
 ai '@Justfile What does this file do'
+
+# Scripting: one-shot, machine-readable output, answer only
+ai -p "summarize the git log" --output-format json
+ai -p "list open TODOs" --quiet
 
 # Send an image to a vision model
 ai --image photo.jpg "What is in this image?"
@@ -781,12 +914,15 @@ ai --verbose "Explain quantum computing"
 - `/exit` - Exit the application
 - `/mode chat|exec` - Switch modes
 - `/add <path>` - Add file/dir to context
-- `/context|/ctx` - Manage context (list, add, remove, clear)
+- `/context|/ctx` - Context usage and file context (list, add, remove, clear)
+- `/compact [keep_rounds]` - Compress the conversation, keeping the last N turns
+- `/permissions` - List/revoke tool approval rules
 
 **Keyboard Shortcuts**
 
 - `Shift+Tab` - Toggle between Chat/Execute modes
-- `Ctrl+C` or `Ctrl+D` - Exit
+- `Ctrl+C` - Clear the current input (during generation: cancel the turn)
+- `Ctrl+D` - Exit
 - `Ctrl+R` - Search history
 - `↑/↓` - Navigate through history
 
@@ -1107,25 +1243,35 @@ $ ai --code "write a fib generator" --model deepseek-r1
 
 ![fib code example](artwork/reasoning_code_example.png)
 
-### Function Call
+### Built-in Tools & Function Calling
 
-Function calling lets the model run local tools such as file readers, `web_search`, and
-`execute_shell_command`. Built-in definitions ship with the package and must be installed
-once, then refreshed after every upgrade:
+Function calling is what makes YAICLI an agent: the model can ask YAICLI to run local tools such
+as file readers, `web_search`, `fetch_webpage` and `execute_shell_command`, read the result, and
+continue working. The 12 built-in tools are loaded directly from the installed package, so they
+work immediately with no `--install-functions` step:
 
-```bash
-ai --install-functions      # first-time install (existing files are skipped)
-ai --list-functions         # show installed functions
-ai --reinstall-functions    # after upgrading: refresh built-in definitions (custom files kept)
-```
+| Tool group | Built-in tools |
+| --- | --- |
+| Filesystem (read) | `fs_get_filesystem_info`, `fs_list_directory`, `fs_read_file`, `fs_read_image`, `fs_search_files` |
+| Filesystem (write) | `fs_write_file`, `fs_edit_file`, `fs_file_operations` |
+| Shell (exec) | `execute_shell_command` |
+| Network | `fetch_webpage`, `web_search`, `get_weather` |
 
-Function calling is enabled by default (`ENABLE_FUNCTIONS`); use `--enable-functions` /
-`--disable-functions` to toggle it per run, and `--hide-function-output` to hide tool output.
+- Copy a built-in definition into `~/.config/yaicli/functions/` to edit it:
+  `ai --install-functions` exports editable copies (existing files are kept), and a user copy
+  overrides the built-in with the same tool name.
+- `ai --list-functions` shows every loaded tool and whether it is `builtin` or `user`.
+- `ai --reinstall-functions` refreshes stale copies after an upgrade (custom files are kept). This
+  is only needed if you have exported copies in the functions directory.
+- Function calling is enabled by default (`ENABLE_FUNCTIONS`); use `--enable-functions` /
+  `--disable-functions` to toggle it per run, and `--hide-function-output` to hide tool output.
+
 Every tool call asks for confirmation by default (`TOOL_CONFIRM`; allow once, for the session,
-permanently, or deny). Custom functions live in `~/.config/yaicli/functions/`.
-
-See [Advanced Usage — Function Calling](docs/usage/advanced.md#function-calling) for the full
-install/update/custom-function guide, built-in safety contracts, and the confirmation protocol.
+permanently, or deny); shell commands and writes get an extra risk check, and every decision is
+recorded in the audit log. See [Permissions & Safety](docs/usage/permissions.md),
+[Headless & Scripting](docs/usage/headless.md) and
+[Advanced Usage — Function Calling](docs/usage/advanced.md#function-calling) for the full
+command/flag reference and custom-function guide.
 
 ### MCP
 
@@ -1210,4 +1356,4 @@ Contributions are welcome! Here's how you can help:
 
 ---
 
-<p align="center"><i>YAICLI - Your AI Command Line Interface</i></p>
+<p align="center"><i>YAICLI — A lightweight agent in your terminal</i></p>

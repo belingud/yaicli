@@ -15,15 +15,26 @@ YAICLI follows this priority order for configuration:
 
 ### Location
 
-The default configuration file is located at:
+YAICLI resolves its configuration directory in this order:
 
-- Linux/macOS: `~/.config/yaicli/config.ini`
-- Windows: `C:\Users\<username>\.config\yaicli\config.ini`
+1. `YAI_CONFIG_DIR` (explicit override)
+2. `XDG_CONFIG_HOME/yaicli`
+3. `%APPDATA%/yaicli` on Windows
+4. `~/.config/yaicli` (fallback, e.g. Linux/macOS without XDG set)
+
+The configuration file is `config.ini` inside that directory. It may contain an API key, so it is
+created with mode `0600` (and the directory with `0700`). On a read-only HOME or container, YAICLI
+keeps working with defaults and only warns once when it cannot persist state.
+
+The prompt history file follows XDG state conventions: `$XDG_STATE_HOME/yaicli/history` when
+`XDG_STATE_HOME` is set, otherwise `~/.yaicli_history`.
 
 ### First-time Setup
 
-1. Run `ai` once to generate the default configuration file
-2. Edit the file to add your API key and customize settings
+1. Run a real model command once (e.g. `ai "hi"`); the default configuration file is created on first use
+2. Edit the file to add your API key and customize settings (or export `YAI_API_KEY` instead)
+
+`--version` and `--help` never write state, so they are safe in read-only environments.
 
 ### Viewing Default Configuration
 
@@ -102,6 +113,34 @@ MAX_TOOL_CALL_DEPTH=8
 
 # Comma-separated API parameters to omit from requests, e.g. temperature,top_p
 EXCLUDE_PARAMS=
+
+# Agent context settings (v0.19)
+# Max characters of one tool result kept in the context (0 = no truncation);
+# the full output is saved to TOOL_OUTPUT_DIR.
+TOOL_OUTPUT_MAX_CHARS=32000
+TOOL_OUTPUT_DIR=<chat-history-dir>/tool-outputs
+# Token budget for one request; 0 derives 70% of the model context window.
+CONTEXT_BUDGET_TOKENS=0
+
+# Shell tool settings (v0.19)
+# Max seconds a shell command may run (killed with its process group on timeout).
+TOOL_TIMEOUT=120
+# true = pass the full parent environment to shell commands (old behaviour);
+# false = filtered environment, secrets such as YAI_API_KEY are not passed.
+TOOL_ENV_INHERIT=false
+# Shell commands may only run inside this directory (empty = current directory).
+WORKSPACE_ROOT=
+
+# Reliability settings (v0.19)
+RETRY_ENABLED=true
+RETRY_MAX=2
+RETRY_BASE_DELAY=1.0
+# Exit non-zero in one-shot mode when the tool-call depth limit is reached.
+EXIT_ON_DEPTH_LIMIT=true
+
+# Tool audit log (v0.19)
+# Write one JSON line per tool decision to tool_audit.jsonl in the config dir.
+TOOL_AUDIT=true
 ```
 
 > Comments in `config.ini` must be on their own line. Inline comments are **not** stripped by
@@ -143,8 +182,52 @@ EXCLUDE_PARAMS=
 | `SHOW_MCP_OUTPUT`      | Show MCP output                             | `false`                  | `YAI_SHOW_MCP_OUTPUT`      |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
 | `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
+| `TOOL_OUTPUT_MAX_CHARS` | Max characters of one tool result kept in context (`0` = unlimited) | `32000` | `YAI_TOOL_OUTPUT_MAX_CHARS` |
+| `TOOL_OUTPUT_DIR`      | Where full (untruncated) tool outputs are saved | `<chat-history>/tool-outputs` | `YAI_TOOL_OUTPUT_DIR` |
+| `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = 70% of the model window) | `0`         | `YAI_CONTEXT_BUDGET_TOKENS` |
+| `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
+| `TOOL_ENV_INHERIT`     | Pass the full parent environment to shell tools (old behaviour) | `false` | `YAI_TOOL_ENV_INHERIT` |
+| `WORKSPACE_ROOT`       | Directory shell tools are confined to (empty = current dir) | -         | `YAI_WORKSPACE_ROOT`       |
+| `RETRY_ENABLED`        | Retry retryable API failures (429/5xx/network/timeout) | `true`         | `YAI_RETRY_ENABLED`        |
+| `RETRY_MAX`            | Maximum retry attempts                      | `2`                      | `YAI_RETRY_MAX`            |
+| `RETRY_BASE_DELAY`     | Base backoff delay in seconds               | `1.0`                    | `YAI_RETRY_BASE_DELAY`     |
+| `EXIT_ON_DEPTH_LIMIT`  | Exit non-zero in one-shot mode when the tool-round limit is reached | `true` | `YAI_EXIT_ON_DEPTH_LIMIT` |
+| `TOOL_AUDIT`           | Write tool decisions to `tool_audit.jsonl`  | `true`                   | `YAI_TOOL_AUDIT`           |
 | `EXCLUDE_PARAMS`       | Comma-separated API parameters to omit      | -                        | `YAI_EXCLUDE_PARAMS`       |
 | `MINIMAX_REASONING_SPLIT` | MiniMax interleaved reasoning (reasoning_split) | `true`            | `YAI_MINIMAX_REASONING_SPLIT` |
+
+
+## Context Management
+
+Conversation context is bounded on three levels; see
+[Context & Limits](context-limits.md) for the full behaviour:
+
+- **Per-tool truncation**: `TOOL_OUTPUT_MAX_CHARS` (default 32000 chars) keeps head/tail and
+  spills the full output to `TOOL_OUTPUT_DIR`.
+- **Token budget**: `CONTEXT_BUDGET_TOKENS` (default `0` = 70% of the model window) is enforced
+  before each request; over-budget history is trimmed by turn group, keeping assistant
+  `tool_calls` and their tool results together.
+- **REPL retention**: `INTERACTIVE_ROUND` (default `25`) is the number of chat turns kept in the
+  REPL (×2 messages), not a token limit. `MAX_HISTORY` (default `500`) only sizes the prompt
+  history file (see [Conversation & History](../advanced/history.md)).
+
+Use `/context` to inspect the estimated usage and `/compact [keep_rounds]` to compact manually
+(see [Command Reference](commands.md#interactive-mode-commands)).
+
+## State Files
+
+| Path | Purpose |
+| --- | --- |
+| `<config-dir>/config.ini` | Main configuration (mode `0600`) |
+| `<config-dir>/roles/` | Role definitions |
+| `<config-dir>/functions/` | User/exported function definitions |
+| `<config-dir>/functions_manifest.json` | Version/hash manifest for stale copied-function detection |
+| `<config-dir>/mcp.json` | MCP server configuration |
+| `<config-dir>/tool_permissions.json` | Persistent tool allow rules (mode `0600`) |
+| `<config-dir>/tool_audit.jsonl` | Tool decision audit log |
+| `<config-dir>/tool-outputs/` | Spilled full tool outputs (unless `TOOL_OUTPUT_DIR` overrides) |
+| `$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history` | REPL prompt history |
+| `CHAT_HISTORY_DIR` (default `<tempdir>/yaicli/chats`) | Saved chat sessions |
 
 
 ## Syntax Highlighting Themes

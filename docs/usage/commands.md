@@ -1,4 +1,4 @@
-# Command Overview
+# Command Reference
 
 YAICLI provides a versatile command-line interface with multiple options and modes. This page covers all available commands and options.
 
@@ -8,7 +8,9 @@ YAICLI provides a versatile command-line interface with multiple options and mod
 ai [OPTIONS] [PROMPT]
 ```
 
-Where `PROMPT` is the text input for the AI assistant. If not provided, YAICLI will read from stdin if available.
+Where `PROMPT` is the text input for the agent. If not provided, YAICLI reads from stdin when it is
+piped; with no prompt and no stdin it starts the interactive REPL. Use `-p/--print` to force a
+single one-shot run, and see [Headless & Scripting](headless.md) for the full scripting contract.
 
 ## Command Line Reference
 
@@ -20,17 +22,34 @@ Here's a comprehensive list of all available options:
 |--------|-------|-------------|
 | `--help` | `-h` | Show help message and exit |
 | `--verbose` | `-V` | Show verbose output (loaded config, API calls, etc.) |
-| `--version` | `-v` | Show version and exit |
+| `--version` | `-v` | Show version and exit (fast path; does not read config) |
 | `--template` | | Show the default config file template and exit |
 | `--list-providers` | | List available providers and exit |
+
+### Headless / Scripting Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--print` | `-p` | Explicit one-shot mode: run once, never start the REPL |
+| `--output-format text\|json\|stream-json` | | Output format for the result (default `text`; `stream-json` is NDJSON events) |
+| `--quiet` | `-q` | Only print the answer to stdout (no labels/progress) |
+| `--max-turns N` | | Maximum tool-call rounds for this run (overrides `MAX_TOOL_CALL_DEPTH`) |
+| `--yes` | `-y` | Auto-approve `read`-level tools only; write/exec tools still need a rule |
+| `--allowed-tools "a,b*"` | | Per-run tool allowlist, comma-separated names or globs |
+| `--cwd DIR` | | Working directory / workspace root for the run |
+| `--fail-on-tool-denied` | | Exit with code `3` when a tool was denied |
+
+See [Headless & Scripting](headless.md) for JSON schemas, exit codes and signal handling, and
+[Permissions & Safety](permissions.md) for `--yes` / `--allowed-tools` semantics.
 
 ### Mode Options
 
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--chat` | `-c` | Start in interactive chat mode |
-| `--shell` | `-s` | Generate and optionally execute shell commands |
+| `--shell` | `-s` | Generate and optionally execute shell commands (in a non-TTY: print only) |
 | `--code` | | Generate code in plaintext |
+| `--print` | `-p` | Explicit one-shot mode (see above) |
 
 ### LLM Options
 
@@ -69,14 +88,15 @@ Here's a comprehensive list of all available options:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--install-functions` | Install built-in functions (files that already exist are skipped) | |
-| `--reinstall-functions` | Overwrite built-in function files with the current version; custom files are kept | |
-| `--list-functions` | List installed functions | |
+| `--install-functions` | Export editable copies of the built-in functions into the config dir (built-ins work without this; existing files are skipped) | |
+| `--reinstall-functions` | Overwrite exported built-in copies with the current version; custom files are kept | |
+| `--list-functions` | List loaded tools, their source (`builtin`/`user`) and stale-copy warnings | |
 | `--enable-functions` / `--disable-functions` | Enable/disable function calling in API requests | enabled |
 | `--show-function-output` / `--hide-function-output` | Show/hide function output | show |
 
-See [Advanced Usage — Function Calling](advanced.md#function-calling) for installing,
-updating after an upgrade, writing custom functions, and the confirmation protocol.
+See [Advanced Usage — Function Calling](advanced.md#function-calling) for custom functions,
+updating after an upgrade, and built-in safety contracts. See
+[Permissions & Safety](permissions.md) for the confirmation protocol, rules and audit log.
 
 ### MCP Options
 
@@ -95,6 +115,15 @@ updating after an upgrade, writing custom functions, and the confirmation protoc
 ## Common Command Examples
 
 ```bash
+# Agent task: let the model pick and run tools
+ai "Use your tools to find the 3 largest files here and write a summary to REPORT.md"
+
+# One-shot with machine-readable output
+ai -p "summarize the git log" --output-format json
+
+# Answer-only output (for pipelines)
+ai -q -p "list the open TODOs in src/"
+
 # Get a quick answer
 ai "What is the capital of France?"
 
@@ -154,7 +183,11 @@ When in interactive chat or shell mode, you can use these special commands:
 | `/exit` | Exit the application |
 | `/mode chat\|exec` | Switch between chat and execute modes |
 | `/add <path>` | Add file or directory to context |
-| `/context <subcmd>` | Manage context (alias: `/ctx`) |
+| `/context` or `/ctx` | Show estimated context/token usage for the current conversation |
+| `/context <subcmd>` | Manage file context (`list`, `add`, `remove`, `clear`) |
+| `/compact [keep_rounds]` | Compact the conversation, keeping the last N turns |
+| `/permissions` | List session approvals, the persistent allowlist and the numbered rules |
+| `/permissions revoke <tool-or-index>` | Remove a persistent permission by tool name or rule number (the tool will ask again) |
 
 #### Context Management Commands
 
@@ -257,7 +290,8 @@ In addition to persistent context, you can temporarily reference files using the
 | Shortcut | Description |
 |----------|-------------|
 | `Shift+Tab` | Toggle between Chat/Execute modes |
-| `Ctrl+C` or `Ctrl+D` | Exit |
+| `Ctrl+C` | Clear the current input line; during generation it cancels the turn |
+| `Ctrl+D` | Exit (exit code 0) |
 | `Ctrl+R` | Search history |
 | `↑/↓` | Navigate through history |
 

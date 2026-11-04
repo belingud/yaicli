@@ -23,8 +23,12 @@ Press Shift+Tab to switch mode
 /save <title>      : Save current chat
 /load <index>      : Load a saved chat
 /del <index>       : Delete a saved chat
+/add <path>        : Add @file/dir to context
+/context, /ctx     : Manage context (list, add, remove, clear)
+  Tip: Type '@' for path completion, use Tab/arrows to select
 !<command>         : Execute shell command directly (e.g., !ls -al)
-/exit|Ctrl+D|Ctrl+C: Exit
+/exit|Ctrl+D       : Exit
+Ctrl+C             : Clear input / cancel current turn
 /mode chat|exec    : Switch mode (Case insensitive)
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 >
@@ -51,8 +55,12 @@ Press Shift+Tab to switch mode
 /save <title>      : Save current chat
 /load <index>      : Load a saved chat
 /del <index>       : Delete a saved chat
+/add <path>        : Add @file/dir to context
+/context, /ctx     : Manage context (list, add, remove, clear)
+  Tip: Type '@' for path completion, use Tab/arrows to select
 !<command>         : Execute shell command directly (e.g., !ls -al)
-/exit|Ctrl+D|Ctrl+C: Exit
+/exit|Ctrl+D       : Exit
+Ctrl+C             : Clear input / cancel current turn
 /mode chat|exec    : Switch mode (Case insensitive)
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 >
@@ -67,13 +75,19 @@ Press Shift+Tab to switch mode
 - `/save <title>` - Save current chat with title
 - `/load <index>` - Load a saved chat
 - `/del <index>` - Delete a saved chat
+- `/add <path>` - Add a file or directory to the persistent context
+- `/context` or `/ctx` - Show context/token usage, or manage file context (`list`, `add`, `remove`, `clear`)
+- `/compact [keep_rounds]` - Compact the conversation, keeping the last N turns
+- `/permissions` - List (and revoke) persistent tool approval rules
+- `!<command>` - Execute a shell command directly
 - `/exit` - Exit the application
 - `/mode chat|exec` - Switch modes
 
 ## Keyboard Shortcuts
 
 - `Shift+Tab` - Toggle between Chat/Execute modes
-- `Ctrl+C` or `Ctrl+D` - Exit
+- `Ctrl+C` - Clear the current input line; during generation it cancels the turn
+- `Ctrl+D` - Exit (exit code 0)
 - `Ctrl+R` - Search history
 - `↑/↓` - Navigate through history
 

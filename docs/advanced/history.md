@@ -11,9 +11,8 @@ YAICLI maintains a history of your commands and interactions, allowing you to:
 
 ### History Storage
 
-By default, command history is stored in:
-- Linux/macOS: `~/.yaicli_history`
-- Windows: `%USERPROFILE%\.yaicli_history`
+By default, command history is stored in `$XDG_STATE_HOME/yaicli/history` when `XDG_STATE_HOME` is
+set, otherwise in `~/.yaicli_history` (`%USERPROFILE%\.yaicli_history` on Windows).
 
 The history file uses a simple text format with each command on a new line.
 

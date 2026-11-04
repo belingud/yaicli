@@ -63,26 +63,34 @@ YAICLI supports function calling: the model can ask YAICLI to execute a local
 function/tool (for example `fs_read_file`, `web_search`, or `execute_shell_command`)
 and then continue the conversation with the result.
 
-### Installing and updating functions
+### Built-in tools load out of the box
 
-Built-in function definitions ship inside the installed package, but they are **not**
-used from there. They must be copied into your config directory once and re-copied
-after upgrades.
+Since v0.19 the 12 built-in tool definitions are loaded **directly from the installed package**, so
+the model can call them on the first run with no setup step. `ai --install-functions` is no longer
+required (it remains available as an export command, see below).
+
+Loading precedence:
+
+1. the built-in definitions shipped in the package;
+2. then Python files in the functions directory (`<config-dir>/functions/`, normally
+   `~/.config/yaicli/functions/`); a user file whose tool name matches a built-in **overrides** it.
+3. A broken function file only disables that file: a warning is printed to stderr and the other
+   tools keep working.
 
 | Action | Command | Effect |
 | --- | --- | --- |
-| First-time install | `ai --install-functions` | Copies every built-in definition into `~/.config/yaicli/functions/`. Files that already exist are skipped. |
-| List installed functions | `ai --list-functions` | Prints the function files currently loaded by YAICLI. |
-| Update after an upgrade | `ai --reinstall-functions` | Overwrites the files whose names match the current built-ins with the definitions from the new version. Custom files (different file names) are preserved. |
+| List tools | `ai --list-functions` | Prints every loaded tool with its source (`builtin`/`user`) and warns about stale copies. |
+| Export editable copies | `ai --install-functions` | Copies every built-in definition into the functions directory. Existing files are skipped, so your customisations are never overwritten. |
+| Refresh exported copies | `ai --reinstall-functions` | Overwrites files matching current built-ins with the new version; custom files (different names) are preserved. |
 
-Paths on Windows: `C:\Users\<user>\.config\yaicli\functions` (the non-Windows path is
+**When do I need `ai --reinstall-functions`?** Only when you have exported copies in the functions
+directory and want the definitions from the new version. If you never ran `--install-functions`,
+an upgrade needs no extra step. A stale exported copy is reported once by `--list-functions`, and
+the built-in stays active for tool names you did not customise.
+
+Paths on Windows: `%APPDATA%\yaicli\functions` when `APPDATA` is set, otherwise
+`C:\Users\<user>\.config\yaicli\functions` (the non-Windows path is
 `~/.config/yaicli/functions/`).
-
-**After every `pip install -U yaicli`, `uv tool upgrade yaicli`, or other package-manager
-upgrade, run `ai --reinstall-functions`.** Built-in schemas do change between releases —
-for example `fs_read_file` and `fs_read_image` now take lists, and `fs_edit_file` validates
-its operations — and the copy in your config directory is what the model actually sees.
-`ai --install-functions` will *not* refresh files that already exist.
 
 ### Writing custom functions
 
@@ -121,10 +129,12 @@ files, and `ai --install-functions` only adds built-in files that are missing.
 - Function calling is enabled by default (`ENABLE_FUNCTIONS=true`). Toggle it per run with
   `--enable-functions` / `--disable-functions`, or set `ENABLE_FUNCTIONS=false` in the config file.
 - Function output is displayed by default; use `--hide-function-output` or set
-  `SHOW_FUNCTION_OUTPUT=false` to hide it.
+  `SHOW_FUNCTION_OUTPUT=false` to hide it. Long output is truncated in the terminal exactly as it
+  is in the model context (see [Context & Limits](context-limits.md)).
 - Every call asks for confirmation by default (`TOOL_CONFIRM=true`); see
-  [Tool Execution Confirmation](#tool-execution-confirmation) below for the four choices.
-- `MAX_TOOL_CALL_DEPTH` (default `8`) bounds recursive tool-call rounds in one request.
+  [Permissions & Safety](permissions.md) for the prompt, risk levels, rules and audit log.
+- `MAX_TOOL_CALL_DEPTH` (default `8`) bounds recursive tool-call rounds in one request; override
+  per run with `--max-turns N`.
 
 ### Reading Multiple Files in One Call
 
@@ -135,8 +145,8 @@ files can be read with a single tool call instead of one call per file:
 {"file_paths": ["src/main.py", "src/config.py"], "encoding": "utf-8"}
 ```
 
-A single path string is still accepted for backward compatibility. The list contract is a
-built-in schema change: run `ai --reinstall-functions` after upgrading to pick it up.
+A single path string is still accepted for backward compatibility. If you keep exported copies of
+the built-in definitions, refresh them with `ai --reinstall-functions` after upgrading.
 
 ### Reading Multiple Images in One Call
 
@@ -148,7 +158,7 @@ images can be read and base64-encoded in one tool call:
 ```
 
 A single path string is still accepted for backward compatibility. The same
-`ai --reinstall-functions` rule applies after upgrading.
+`ai --reinstall-functions` rule applies to exported copies.
 
 ### Built-in Function Safety
 
@@ -201,27 +211,20 @@ Execute tool? [y]once, [a]session, [A]always, [n]o:
 |-----|---------|
 | `y` | Allow this call only |
 | `a` | Allow for the rest of this session |
-| `A` | Always allow — saved to `~/.config/yaicli/tool_permissions.json` |
+| `A` | Always allow — saved to `tool_permissions.json` |
 | `n` | Deny — the model receives a refusal result and can adapt |
 
 Pressing Ctrl-C or sending EOF at the prompt is treated as a denial.
 
-In non-interactive sessions (piped stdin / no TTY), tools already in the persistent
-allowlist run automatically; all others are denied with a hint telling you to pre-approve
-them or set `TOOL_CONFIRM=false`.
+In non-interactive sessions (piped stdin / no TTY), unapproved tools are denied; pre-approve them
+with `--allowed-tools`, `--yes` (read-level tools only), or persistent rules in
+`tool_permissions.json`. Dangerous shell commands always need an explicit confirmation and are
+refused non-interactively.
 
-To disable confirmation and restore silent execution:
-
-```ini
-# config.ini
-TOOL_CONFIRM=false
-```
-
-or:
-
-```bash
-export YAI_TOOL_CONFIRM=false
-```
+This section is only a summary. The full model — risk classes, persistent rules
+(`argv_prefix` / `path_glob`), audit log, and headless approval flags — is documented in
+[Permissions & Safety](permissions.md); the `TOOL_CONFIRM=false` escape hatch is described there as
+well.
 
 ## MCP (Model Context Protocol)
 

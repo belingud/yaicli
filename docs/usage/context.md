@@ -324,13 +324,19 @@ Warning: Cannot include @large-file.log: [File too large: 2097152 bytes - omitte
 
 ### Context Too Long
 
-If the AI stops responding or behaves unexpectedly, your context may be too large.
+If the AI stops responding or behaves unexpectedly, the request may be over the token budget.
+YAICLI trims old conversation turns automatically and retries once when a provider rejects the
+request as too long; if it still fails it prints an actionable error.
 
 **Solution**:
 ```bash
-/context list
-/context remove <unnecessary-files>
+/context            # show estimated token usage and remaining budget
+/compact 5          # keep only the 5 most recent turns
+/context list       # remove unnecessary context files
+/context remove <path>
 ```
+
+See [Context & Limits](context-limits.md) for truncation, the token budget and self-healing.
 
 ## Related Features
 

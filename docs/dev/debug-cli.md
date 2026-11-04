@@ -34,15 +34,17 @@ into bug reports without checking it: only `API_KEY` is masked, other credential
 | `API_KEY is required` | No key in `API_KEY`, `YAI_API_KEY`, or the provider-specific fallback. |
 | `ModelAPIError` / HTTP 4xx | Check model name, base URL, and provider credentials with `--verbose`. |
 | Config traceback / non-zero exit | Malformed `config.ini` (missing `[core]`, duplicate section). Inspect `ai --template` for the expected format. |
-| Functions behave like an old version | Built-in definitions are copied to `~/.config/yaicli/functions/`; run `ai --reinstall-functions`. |
+| Functions behave like an old version | Built-in definitions load from the package; stale exported copies live in `~/.config/yaicli/functions/`. Run `ai --list-functions` (reports source + stale copies), then `ai --reinstall-functions`. |
 | Markup/render crash | Untrusted strings must go through `yaicli/console.py` helpers (`safe_text`, `untrusted_text`, `print_untrusted`). |
 | Process exits `0` after an error message | Should not happen — handled failures exit `1` (`entry.py`); file a bug with the command and exit code. |
 
 ## Exit codes
 
-`0` on success, `1` on handled failures (config/provider/API/no-input). In `--chat` mode an
-error in one turn keeps the REPL alive; the exit code reflects leaving the REPL. See
-[Exit codes](../usage/cli.md#exit-codes).
+`0` on success, `1` on handled failures (config/provider/API/no-input/depth), `2` on usage errors,
+`3` when a denied tool is fatal (`--fail-on-tool-denied`), `130` on SIGINT, `141`/`0` on a broken
+pipe. In `--chat` mode an error in one turn keeps the REPL alive; the exit code reflects leaving
+the REPL. See [Exit codes](../usage/cli.md#exit-codes) and
+[Headless & Scripting](../usage/headless.md).
 
 ## Isolate components
 

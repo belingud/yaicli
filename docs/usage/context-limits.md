@@ -1,0 +1,130 @@
+# Context & Limits
+
+Long agent tasks have a failure mode that chat tools do not: a single tool result (a log file, a
+directory listing, a web page) can be larger than the model's context window. YAICLI bounds this on
+three levels — per-tool truncation, a per-request token budget, and turn-group-aligned history
+trimming — and heals a context-length rejection instead of failing permanently.
+
+## 1. Tool-output truncation
+
+Every tool result is truncated before it enters the conversation:
+
+- only the **head and tail** of the output are kept, with a marker in the middle;
+- the **full output is written to disk** so nothing is lost;
+- the marker tells the model where the full text is and how to page through it.
+
+The default cap is `TOOL_OUTPUT_MAX_CHARS=32000` characters (≈8k tokens). Built-in tools have
+per-tool caps on top of the global default:
+
+| Tool | Approx. cap |
+| --- | --- |
+| `fs_read_file` | 64 KB |
+| `fetch_webpage` (body) | 100 KB |
+| `fs_search_files`, `fs_list_directory` | 48 KB |
+| `execute_shell_command` | 32 KB |
+| `web_search`, MCP tools, default | 32 KB |
+
+Full outputs are stored under `TOOL_OUTPUT_DIR`, which defaults to a `tool-outputs/` directory
+under the chat-history directory. The truncated text includes the path, and the model can read the
+rest with `fs_read_file` using `offset` / `limit`:
+
+```json
+{"file_paths": ["/path/to/tool-outputs/20261104-123456-execute_shell_command.txt"], "offset": 20000, "limit": 12000}
+```
+
+Notes:
+
+- Set `TOOL_OUTPUT_MAX_CHARS=0` to disable truncation (not recommended for agent loops).
+- The same truncation is applied to tool output printed in the terminal (`SHOW_FUNCTION_OUTPUT`),
+  so a 1 MB shell result does not flood your screen.
+- If the spill file cannot be written (read-only disk, permission error), YAICLI degrades to plain
+  truncation without the path — the request still succeeds.
+
+## 2. Token budget
+
+Before each provider request, YAICLI estimates the tokens in the conversation (a stdlib heuristic:
+~3.5 characters per token with corrections for CJK text, plus a fixed per-message overhead) and
+compares it with the budget:
+
+| Setting | Meaning |
+| --- | --- |
+| `CONTEXT_BUDGET_TOKENS` | Token budget for one request. Default `0` = derive 70% of the model context window (fallback 128k tokens when the model is unknown). |
+| `MAX_TOOL_CALL_DEPTH` / `--max-turns` | Bounds how many tool rounds one request may run (default `8`). |
+
+If the conversation is over budget, YAICLI first trims mechanically — no extra API call, no extra
+cost — then sends the request. Trimming by message count alone is not enough: a `tool_calls`
+message must never be separated from its `tool` results, or every provider rejects the payload.
+YAICLI therefore trims by **turn group**:
+
+- a turn group is one user message plus the assistant/tool messages that follow it;
+- whole groups are dropped, oldest first;
+- an assistant message with `tool_calls` is always kept together with its tool results
+  (zero orphan `tool` messages);
+- leading system/context messages are preserved;
+- one line is printed to stderr when trimming happens, so you know why old context disappeared.
+
+## 3. Context-length self-healing
+
+Even with estimation, a provider can reject a request with a `context_length` error (the exact
+window differs per model). When that happens, YAICLI:
+
+1. drops one more turn group (or trims further to the budget);
+2. retries the request **once**;
+3. if it still fails, prints an actionable error (provider, cause, suggestion) and exits with the
+   usual error code — instead of the previous behaviour of failing every subsequent request.
+
+In the REPL you can also recover manually with `/clear` or `/compact`.
+
+## 4. Inspecting and compacting the conversation
+
+In the interactive REPL:
+
+| Command | Description |
+| --- | --- |
+| `/context` or `/ctx` | Show the estimated context usage: system prompt, history, tool output, remaining budget, and the budget being used. |
+| `/compact [keep_rounds]` | Manually compact the conversation, keeping the last *N* turns (turn groups); older ones are dropped from the outgoing request. Without an argument the default retention applies. |
+| `/clear` | Start over with an empty history. |
+
+Use `/context` when a session starts behaving as if it forgot earlier steps; then `/compact` to
+reclaim budget deliberately, or raise `CONTEXT_BUDGET_TOKENS` if your model has a larger window.
+
+## 5. Session and memory limits
+
+- `INTERACTIVE_ROUND` (default `25`) is the number of chat turns kept in the REPL
+  (×2 messages), not a token limit. Token trimming is described above.
+- `MAX_HISTORY` (default `500`) is the number of entries in the prompt history file — it has no
+  effect on the conversation context.
+- Tool outputs already spilled to `TOOL_OUTPUT_DIR` are not re-sent automatically; they only enter
+  the context if the model reads them back.
+- Image input is bounded by the provider; keep images reasonably small (the local cache also holds
+  the base64 payload in the session).
+
+## Recommended settings for long tasks
+
+```ini
+[core]
+# Leave at 0 to auto-derive 70% of the model window; set explicitly for small windows
+CONTEXT_BUDGET_TOKENS=0
+# Lower to reduce tokens per tool result if your model has a small window
+TOOL_OUTPUT_MAX_CHARS=16000
+# More tool rounds before the depth limit stops the run
+MAX_TOOL_CALL_DEPTH=12
+```
+
+## Related configuration
+
+| Key | Default | Purpose |
+| --- | --- | --- |
+| `TOOL_OUTPUT_MAX_CHARS` | `32000` | Per-tool-result character cap (`0` = unlimited) |
+| `TOOL_OUTPUT_DIR` | `<chat history>/tool-outputs` | Where full tool outputs are spilled |
+| `CONTEXT_BUDGET_TOKENS` | `0` (70% of window) | Per-request token budget |
+| `MAX_TOOL_CALL_DEPTH` | `8` | Tool rounds per request (`--max-turns` overrides per run) |
+| `EXIT_ON_DEPTH_LIMIT` | `true` | One-shot run exits non-zero when the tool-round limit is reached |
+| `INTERACTIVE_ROUND` | `25` | Chat turns kept in the REPL |
+
+## See Also
+
+- [Headless & Scripting](headless.md)
+- [Permissions & Safety](permissions.md)
+- [Configuration](configuration.md)
+- [Conversation & History](../advanced/history.md)

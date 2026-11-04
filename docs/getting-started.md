@@ -1,81 +1,143 @@
 # Getting Started with YAICLI
 
-YAICLI is a powerful yet lightweight command-line AI assistant that brings the capabilities of Large Language Models (LLMs) like GPT-5.2 directly to your terminal. This guide will help you get up and running quickly.
+YAICLI is a lightweight agent that runs in your terminal. It can read and edit files, search the
+web and run shell commands through its built-in tools, and it keeps working through a task until it
+is done. This page gets you from zero to a completed multi-step task in three steps.
 
-## Quick Start
+## Agent Quick Start (3 steps)
 
-After [installation](install.md), you can start using YAICLI immediately:
+### Step 1 — Install and give it a key
 
 ```bash
-# Get a quick answer
+pip install yaicli
+
+# Option A: keep the key in an environment variable (recommended for scripts/CI)
+export YAI_API_KEY="sk-..."
+
+# Option B: run a real command once (e.g. `ai "hi"`); it creates the config file, then edit it
+ai "hi"
+nano ~/.config/yaicli/config.ini
+```
+
+`pipx install yaicli` and `uv tool install yaicli` work the same way. Verify the install with
+`ai --version` (this fast path does not read or write any config).
+
+### Step 2 — Give the agent a real task
+
+```bash
+ai "Use your tools to find the 3 largest files in this repository and write a summary to REPORT.md"
+```
+
+The model chooses the tools it needs from the built-in set and reads each result before deciding
+the next step:
+
+| Tool group | Built-in tools |
+| --- | --- |
+| Filesystem (read) | `fs_get_filesystem_info`, `fs_list_directory`, `fs_read_file`, `fs_read_image`, `fs_search_files` |
+| Filesystem (write) | `fs_write_file`, `fs_edit_file`, `fs_file_operations` |
+| Shell (exec) | `execute_shell_command` |
+| Network | `fetch_webpage`, `web_search`, `get_weather` |
+
+You do **not** need to run `ai --install-functions` first: the definitions ship with the package
+and are loaded directly. `ai --list-functions` shows all 12 built-in tools on a fresh install.
+
+### Step 3 — Approve tool calls (the one safety rule to learn)
+
+Before a tool runs, YAICLI asks:
+
+```
+╭─ Confirm tool call ─────────────────────────────────────╮
+│ execute_shell_command({"shell_command": "du -sh ."})    │
+╰─────────────────────────────────────────────────────────╯
+Execute tool? [y]once, [a]session, [A]always, [n]o:
+```
+
+| Key | Meaning |
+|-----|---------|
+| `y` | Allow this call only |
+| `a` | Allow this tool for the rest of the session |
+| `A` | Always allow — saved to `tool_permissions.json` |
+| `n` | Deny — the model receives the refusal and adapts |
+
+Read-level tools are marked `read`; write, network and shell tools are classified more strictly, and
+a dangerous shell command (such as `rm -r -f`, `mkfs`, `dd of=/dev/*` or `curl … | sh`) always
+requires an explicit confirmation. In scripts, allow tools up front with `--allowed-tools`.
+
+That's the whole safety model — the details (rules, audit log, headless approval) are in
+[Permissions & Safety](usage/permissions.md).
+
+## Everyday Usage
+
+Once the agent works, the classic modes are still there:
+
+```bash
+# Quick answer (no tool loop needed)
 ai "What is the capital of France?"
 
-# Start an interactive chat session
+# Interactive chat session
 ai --chat
 
-# Generate and execute shell commands
+# Generate and execute a shell command
 ai --shell "Create a backup of my Documents folder"
 
-# Generate code snippets (default is Python)
+# Generate code (Python by default)
 ai --code "Write a function to sort a list"
+
+# Pipe input
+cat error.log | ai "Explain these errors"
 ```
 
-## First-time Setup
+## First-time Setup Details
 
-1. Run `ai` once to generate the default configuration file
-2. Edit `~/.config/yaicli/config.ini` to add your API key
-3. Customize other settings as needed
+### Configuration file
 
-## Configuration
+Run `ai --template` to see the full default configuration (the file itself is created on the first
+real model run). The config directory is resolved in this order: `YAI_CONFIG_DIR` → `XDG_CONFIG_HOME/yaicli` → `%APPDATA%/yaicli` (Windows)
+→ `~/.config/yaicli`. The file is created with mode `0600` because it may store API keys;
+environment variables are the preferred way to provide keys.
 
 YAICLI uses a layered configuration approach:
-- Environment variables (highest priority)
-- Config file (`~/.config/yaicli/config.ini`)
+
+- Command-line arguments (highest priority)
+- Environment variables
+- Config file (`config.ini`)
 - Sensible defaults (lowest priority)
 
-You can view the default configuration template with:
+See [Configuration](usage/configuration.md) for every option.
+
+### Check the agent is ready
 
 ```bash
-ai --template
+ai --list-functions     # should list 12 builtin tools
+ai --list-providers     # should list the provider keys
+ai --version            # fast, no config writes
 ```
 
-## Basic Usage Patterns
+If `--list-functions` lists nothing, the built-in function loader failed for every file; reinstall
+the package (`pip install -U yaicli`) and open an issue with the warning printed at startup.
 
-### Direct Queries
+## Script It
 
-Get quick answers without entering interactive mode:
+The same agent runs headless — stdout carries only the result, everything else goes to stderr:
 
 ```bash
-ai "What is quantum computing?"
+ai -p "summarize the changes in the last 5 commits" --output-format json | jq .content
+
+# Answer-only output, safe for pipelines
+ai -q -p "count the TODO comments in src/" > todos.txt
+
+# Non-interactive tool approval for a CI job
+ai -p "run the test suite and summarize failures" --allowed-tools "execute_shell_command" -y
 ```
 
-### Interactive Chat Mode
-
-Start a persistent conversation with context tracking:
-
-```bash
-ai --chat "Python programming"
-```
-
-### Command Generation
-
-Get AI to generate and optionally execute shell commands:
-
-```bash
-ai --shell "Find all large files in my home directory"
-```
-
-### Code Generation
-
-Generate code snippets with syntax highlighting:
-
-```bash
-ai --code "Create a web scraper for news headlines"
-```
+See [Headless & Scripting](usage/headless.md) for the JSON schema, exit codes and signal handling.
 
 ## Next Steps
 
-- Explore [detailed usage documentation](usage/commands.md)
-- Learn about [configuration options](usage/configuration.md)
-- Check out available [LLM providers](providers/overview.md)
-- Discover [advanced features](advanced/prompts.md)
+- [Headless & Scripting](usage/headless.md) — JSON output, exit codes, CI usage
+- [Permissions & Safety](usage/permissions.md) — rules, risk levels, audit log
+- [Context & Limits](usage/context-limits.md) — tool-output truncation, budget, `/compact`
+- [Command Reference](usage/commands.md) — all options and REPL commands
+- [Configuration](usage/configuration.md) — all config keys
+- [LLM Providers](providers/overview.md) — provider setup matrix
+- [Upgrade Notes](advanced/upgrade.md) — what changes when you update

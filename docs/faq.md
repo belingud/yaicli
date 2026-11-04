@@ -6,7 +6,7 @@ This page addresses common questions and issues encountered when using YAICLI.
 
 ### What is YAICLI?
 
-YAICLI is a command-line interface for interacting with Large Language Models (LLMs). It allows you to chat with AI assistants, generate shell commands, and get quick answers directly from your terminal.
+YAICLI is a lightweight agent that runs in your terminal. Given a task, it can plan, call its built-in tools (read/write files, search the web, run shell commands), read the results and continue until the task is done. It also works as a classic chat/quick-answer CLI and supports 30+ LLM providers.
 
 ### What LLM providers are supported?
 
@@ -44,8 +44,10 @@ export PATH="$HOME/.local/bin:$PATH"
 ### How do I set up my API key?
 
 You can set your API key in two ways:
-1. In the config file (`~/.config/yaicli/config.ini`)
-2. As an environment variable (`export YAI_API_KEY="your-key"`)
+1. In the config file (`config.ini` inside the config directory — `~/.config/yaicli` by default,
+   or `$YAI_CONFIG_DIR` / `$XDG_CONFIG_HOME/yaicli` when set)
+2. As an environment variable (`export YAI_API_KEY="your-key"`) — preferred for scripts and
+   shared machines
 
 YAICLI does not load `.env` files; use one of the options above (a `.env` file has no effect).
 
@@ -86,6 +88,9 @@ ai --justify center "Write a poem about AI"
 
 Options include: `default`, `left`, `center`, `right`, and `full`.
 
+For scripts, use `--output-format json` (single JSON object), `--output-format stream-json`
+(NDJSON events) or `-q/--quiet` (answer only). See [Headless & Scripting](usage/headless.md).
+
 ### How do I disable streaming responses?
 
 Use the `--no-stream` flag or set `STREAM=false` in your config:
@@ -109,6 +114,9 @@ Use shell mode with the `-s` or `--shell` flag:
 ai -s "Find all PNG files in the current directory"
 ```
 You'll be prompted to review and optionally edit commands before execution.
+
+When the model runs `execute_shell_command` as a tool, the approval prompt, danger classification,
+timeout and filtered environment apply automatically; see [Permissions & Safety](usage/permissions.md).
 
 ## Troubleshooting
 
@@ -150,6 +158,11 @@ pipx upgrade yaicli
 uv tool upgrade yaicli
 ```
 
+The built-in tools load directly from the installed package in v0.19+, so a normal upgrade needs
+no extra step. If you previously exported function files with `ai --install-functions`, refresh
+them with `ai --reinstall-functions` (custom files are kept). See
+[Upgrade Notes](advanced/upgrade.md) for behaviour changes and new config keys.
+
 ### Why are my non-ASCII characters displaying incorrectly?
 
 Make sure your terminal supports UTF-8 and has a compatible font. On Windows, you might need to:
@@ -173,26 +186,27 @@ ai --role "SQL Expert" "Optimize this query"
 
 ### Can I use function calling?
 
-Yes, enable function calling with:
+Function calling is enabled by default and the 12 built-in tools load directly from the package —
+there is no setup step:
 ```bash
-ai --enable-functions "Check the weather in New York"
+ai "check the weather in New York"
+ai --list-functions   # show the loaded tools (builtin/user)
 ```
 
-Install default functions:
-```bash
-ai --install-functions
-```
+If you need editable copies of the built-in definitions, export them with
+`ai --install-functions`; a copy overrides the built-in with the same tool name. Every tool call is
+confirmed by default; see [Permissions & Safety](usage/permissions.md).
 
 ### How do I create custom functions?
 
 Add your function definitions to `~/.config/yaicli/functions/`; each file must define a
 `Function(OpenAISchema)` class with a classmethod `execute`. Restart `ai` afterwards.
 
-If you recently upgraded YAICLI, run `ai --reinstall-functions` so the built-in function
-definitions match the new version (custom files are preserved).
+If you recently upgraded YAICLI and keep exported copies of the built-in definitions, run
+`ai --reinstall-functions` so those copies match the new version (custom files are preserved).
 
 See [Advanced Usage — Function Calling](usage/advanced.md#function-calling) for the complete
-install/update/custom-function guide.
+custom-function guide.
 
 ### How do I use MCP (Model Context Protocol)?
 

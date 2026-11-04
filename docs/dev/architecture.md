@@ -7,8 +7,9 @@ behaviour is documented under `docs/usage/`; coding conventions live in `CLAUDE.
 ## Request flow
 
 ```
-entry.py (Typer CLI)
-  └─ cli.py (CLI: mode dispatch, REPL, tool-confirmation pump)
+_faststart.py (thin console entry; -v/--version fast path, EPIPE-safe)
+  └─ entry.py (Typer CLI; headless flags -> CLI.configure_headless, exit-code mapping)
+       └─ cli.py (CLI: mode dispatch, REPL, headless output, tool-confirmation pump)
        ├─ llms/client.py (LLMClient: provider call + tool loop + streaming)
        │    └─ llms/provider.py (ProviderFactory -> Provider)
        │         └─ llms/providers/<name>_provider.py
@@ -19,25 +20,30 @@ entry.py (Typer CLI)
        └─ printer.py / render.py (streaming, reasoning, markdown, prompts)
 ```
 
-`entry.py` parses arguments, merges piped stdin, processes `--image`, then builds a `CLI` and
-calls `cli.run(...)`. `CLI` decides between the single-shot path (`_run_once`) and the REPL
-(`_run_repl`); both assemble messages and ask `LLMClient.completion_with_tools()` for a
-response stream. Tool calls come back through the same generator and are executed after the
-confirmation gate, then the loop calls the provider again with the tool results.
+`_faststart.main` answers `-v/--version` without importing the config/role/CLI stack (zero
+filesystem writes) and otherwise delegates to `entry.py`. `entry.py` parses arguments (including
+the headless flags), merges piped stdin, processes `--image`, then builds a `CLI`, calls
+`cli.configure_headless(...)` and `cli.run(...)`. `CLI` decides between the single-shot path
+(`_run_once`) and the REPL (`_run_repl`); both assemble messages and ask
+`LLMClient.completion_with_tools()` for a response stream. Tool calls come back through the same
+generator and are executed after the confirmation gate, then the loop calls the provider again
+with the tool results.
 
 ## Module map
 
 | Module | Responsibility |
 | --- | --- |
-| `entry.py` | Typer app/options, stdin/image handling, top-level error → exit-code mapping. |
-| `cli.py` | `CLI` orchestrator: temp/chat/exec modes, REPL, chat save/load, role wiring. |
+| `_faststart.py` | Console entry (`ai`, `yaicli`, `python -m yaicli`); static `--version` fast path, SIGPIPE/EPIPE handling; then delegates to `entry.py`. |
+| `entry.py` | Typer app/options, stdin/image handling, headless flags, top-level error → exit-code mapping. |
+| `cli.py` | `CLI` orchestrator: temp/chat/exec modes, REPL, chat save/load, role wiring, machine output (`json`/`stream-json`), exit-code state contract. |
+| `errors.py` | `ErrorKind`/`AgentError`, exception classification, retry helpers, `EXIT_*` constants. |
 | `cmd_handler.py` | Slash commands (`/add`, `/context`, `/save`, `/mode`, ...) and `!shell`. |
 | `config.py` | Layered `cfg` singleton: env > `config.ini` > defaults; type conversion. |
 | `const.py` | Defaults (`DEFAULT_CONFIG_MAP`), paths, commands/modes, default roles. |
-| `console.py` | `YaiConsole` singleton + untrusted-text helpers (`safe_text`, `print_untrusted`, ...). |
+| `console.py` | `YaiConsole` singleton, stderr console for machine mode, EPIPE-safe broken-pipe handling, untrusted-text helpers. |
 | `context.py` | `/add` persistent context and `@path` temporary references (dirs, binaries, images). |
 | `chat.py` | `Chat` message model, JSON serialization, atomic saves, `FileChatManager`. |
-| `history.py` | Bounded prompt-toolkit history file (`~/.yaicli_history`). |
+| `history.py` | Bounded prompt-toolkit history file (`$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history`). |
 | `role.py` | `Role`/`RoleManager`, role JSON files under `~/.config/yaicli/roles/`. |
 | `schemas.py` | Shared dataclasses crossing layers: `ChatMessage`, `LLMResponse`, `ToolCall`, `ToolPolicy`. |
 | `printer.py` / `render.py` | Streaming output, reasoning, confirmation prompts, markdown rendering. |
@@ -45,14 +51,22 @@ confirmation gate, then the loop calls the provider again with the tool results.
 | `function_schema.py` | `OpenAISchema`: pydantic model → OpenAI/Anthropic tool schemas. |
 | `functions/` | Built-in function templates (`buildin/`) and install/reinstall/list callbacks. |
 | `llms/` | `LLMClient`, provider ABC/registry, one module per provider. |
-| `tools/` | Tool schema aggregation/caching, function loading, MCP integration, approval store. |
+| `tools/` | Tool schema aggregation/caching, function loading, MCP integration, approval store, `risk.py` (tool risk classes + shell danger classification). |
 | `utils.py` | Shell/OS detection, `str2bool`, option callbacks, event-loop helper. |
 
 ## State on disk
 
-- `~/.config/yaicli/config.ini` — configuration (`ai --template` prints the defaults).
-- `~/.config/yaicli/roles/`, `functions/`, `mcp.json`, `tool_permissions.json` — user data.
-- `~/.yaicli_history` — prompt history (bounded by `MAX_HISTORY`).
+The config directory is resolved at import time: `YAI_CONFIG_DIR` > `XDG_CONFIG_HOME/yaicli` >
+`%APPDATA%/yaicli` (Windows) > `~/.config/yaicli`.
+
+- `<config-dir>/config.ini` — configuration, created lazily on the first run that needs it and
+  written with mode `0600` (`ai --template` prints the defaults).
+- `<config-dir>/roles/`, `functions/`, `mcp.json`, `tool_permissions.json` — user data.
+  `functions_manifest.json` records the version/hashes used to warn about stale exported copies.
+- `tool_audit.jsonl`, `tool-outputs/` — tool audit log and spilled (untruncated) tool outputs
+  (v0.19; see `docs/usage/context-limits.md` and `docs/usage/permissions.md`).
+- `$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history` — prompt history (bounded by
+  `MAX_HISTORY`).
 - `CHAT_HISTORY_DIR` (temp directory by default) — saved chat JSON sessions.
 
 ## Modes

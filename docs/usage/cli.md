@@ -10,7 +10,8 @@ These shortcuts work in all interactive modes:
 
 | Shortcut             | Description                       |
 | -------------------- | --------------------------------- |
-| `Ctrl+C` or `Ctrl+D` | Exit the application              |
+| `Ctrl+C`             | Clear the current input line (during generation: cancel the turn) |
+| `Ctrl+D`             | Exit the application              |
 | `Shift+Tab`          | Toggle between Chat/Execute modes |
 | `Ctrl+R`             | Search command history            |
 | `↑/↓`                | Navigate through command history  |
@@ -158,7 +159,11 @@ tell success from failure:
 | Exit code | Meaning |
 | --------- | ------- |
 | `0` | Success (answer produced; informational commands such as `--version`, `--list-*`). |
-| `1` | A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, no input/aborted action, or an unexpected error printed as `Unknown error: ...`. |
+| `1` | A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, retry exhaustion, no input/aborted action, or an unexpected error printed as `Unknown error: ...`. |
+| `2` | Usage error: an invalid option or argument. |
+| `3` | A tool call was denied and `--fail-on-tool-denied` was set. |
+| `130` | Interrupted by SIGINT (Ctrl+C) during a one-shot run or generation. |
+| `141` | Broken pipe (EPIPE); `ai --help \| head -1` is safe and exits `0`/`141`. |
 
 A failure report such as `Unknown error: API_KEY is required` is accompanied by exit code
 `1`; if you see a failure message with exit code `0`, that is a bug. Verify the current
@@ -169,8 +174,10 @@ ai --version; echo "exit=$?"
 ```
 
 Inside the interactive `--chat` REPL, an error during one turn is printed and the session
-continues; the process exits `0` when you leave the REPL normally. Use single-shot mode when
-you need the exit code to reflect the request outcome.
+continues; the process exits `0` when you leave the REPL normally. Use single-shot mode (`-p` or a
+prompt argument) when you need the exit code to reflect the request outcome. The full scripting
+contract (JSON output, signals, non-interactive approvals) is in
+[Headless & Scripting](headless.md).
 
 ## Next Steps
 
