@@ -114,3 +114,46 @@ Implemented all v0.19 P0 items from var/lightweight-audit/09-roadmap.md (K01, K0
 ### Next Steps
 
 - v0.20: startup/footprint work K08-K15 (one-shot <=1.2s, dependency extras split, permission policy v2, workspace writes/undo, AGENTS.md, session isolation), then publish/tag v0.19.0 via the existing release flow
+
+
+## Session 4: v0.19 independent verification fixes
+<!-- trellis-session: v=2 fp=e6c100cfd14918b0 -->
+
+**Date**: 2026-11-04
+**Task**: v0.19 independent verification fixes
+**Branch**: `release/v0.19.0`
+
+### Summary
+
+Fixed all defects found by the independent v0.19 verification: headless stdout pollution, permission-rule bypasses, false fs_read_file paging claim, import-time config write, debug prints, and environment-dependent test isolation. Re-verified with clean-HOME full suite and dedicated regression probes.
+
+### Main Changes
+
+- D1/D2/D3/D8: provider/client consoles re-pointed to stderr in machine mode, headless intent passed to CLI constructor before PromptSession/console creation, debug ANSI prints moved to stderr
+- D4/D5: path_glob candidates normalized (no .. traversal/absolute escape), argv_prefix rules reject shell control/expansion syntax; 17 new tests
+- D6: fs_read_file offset/limit paging implemented (marker/docs truthful) + spill files 0600 + --cwd wins over stale exported YAI_WORKSPACE_ROOT
+- D7/T1: legacy config key migration deferred to ensure_config_file (deduped per path), test credentials set before any yaicli import, _faststart ignores version flags after --
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5fd62bc` | fix(cli): keep machine-readable stdout clean in headless modes |
+| `4735f3d` | fix(permissions): block path-glob traversal and shell-syntax rule bypasses |
+| `f19cac6` | fix(agent): implement tool-output paging and harden shell env/spill handling |
+| `bf39624` | fix(runtime): keep config imports write-free and make tests environment-safe |
+| `1868067` | docs(changelog,spec): record v0.19 verification fixes |
+
+### Testing
+
+- [OK] full suite: 1775 passed (ambient env and fresh-HOME clean env)
+- [OK] regression probes: 20/20 (json/stream-json stdout purity incl. verbose, path traversal, substitution/pipe rules, paging, deferred migration, debug prints, -- parsing)
+- [OK] ruff check yaicli tests clean; mkdocs build --strict passes
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- v0.20: K08-K15 startup/footprint work; publish/tag v0.19.0 via the existing release flow
