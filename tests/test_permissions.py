@@ -324,6 +324,38 @@ class TestPermissionRules:
         assert len(manager.persistent_rules) == 1
         assert manager.persistent_rules[0].argv_prefix == ("git", "status")
 
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "git status $(touch /tmp/x)",
+            "git status `touch /tmp/x`",
+            "git status; rm -rf build",
+            "git status | cat",
+            "git status && rm -rf build",
+            "git status || true",
+            "git status > out.txt",
+            "git status < in.txt",
+            "git status & rm -rf build",
+            "git status\nrm -rf build",
+            "git status ${HOME}",
+            "git status <(rm -rf build)",
+            "git status >(cat)",
+        ],
+    )
+    def test_argv_prefix_rejects_shell_control_and_expansion(self, tmp_path, command):
+        """D5: substitution/chaining syntax must never be auto-approved by a rule."""
+        manager = make_manager(tmp_path)
+        manager.persistent_rules = [PermissionRule(tool="execute_shell_command", argv_prefix=("git", "status"))]
+        arguments = {"shell_command": command}
+        assert manager.match_source("execute_shell_command", arguments) is None
+        assert manager.is_allowed("execute_shell_command", arguments) is False
+
+    def test_argv_prefix_still_matches_plain_arguments(self, tmp_path):
+        manager = make_manager(tmp_path)
+        manager.persistent_rules = [PermissionRule(tool="execute_shell_command", argv_prefix=("git", "status"))]
+        for command in ("git status -s", "git status --short --branch", "  git status   -s  "):
+            assert manager.match_source("execute_shell_command", {"shell_command": command}) == "rule"
+
     def test_argv_prefix_matches_and_rejects(self, tmp_path):
         manager = make_manager(tmp_path)
         manager.persistent_rules = [
@@ -359,6 +391,49 @@ class TestPermissionRules:
         assert manager.is_allowed("fs_file_operations", move_within) is True
         move_outside = {"operation": "move", "path": "src/a", "destination": "/etc/passwd"}
         assert manager.is_allowed("fs_file_operations", move_outside) is False
+
+    def test_path_glob_rejects_dotdot_traversal(self, tmp_path, workspace):
+        """D4: ``..`` segments must not let a relative glob match another directory."""
+        manager = make_manager(tmp_path)
+        manager.persistent_rules = [PermissionRule(tool="fs_write_file", path_glob="var/probe-g2/allowed/*")]
+        arguments = {"file_path": "var/probe-g2/allowed/../../victim.txt"}
+        # The traversal target really does resolve outside the allowed directory ...
+        assert (workspace / "var" / "probe-g2" / "allowed" / ".." / ".." / "victim.txt").resolve() == (
+            workspace / "var" / "victim.txt"
+        ).resolve()
+        # ... so the rule must not claim it.
+        assert manager.match_source("fs_write_file", arguments) is None
+        assert manager.is_allowed("fs_write_file", arguments) is False
+        # A traversal that stays inside the workspace but leaves the glob root is refused
+        # as well (raw text is never a match candidate, only normalized paths).
+        assert manager.match_source("fs_write_file", {"file_path": "var/probe-g2/allowed/../allowed2/x.txt"}) is None
+        # Normalized "." segments inside the glob root still match.
+        assert manager.match_source("fs_write_file", {"file_path": "var/probe-g2/./allowed/ok.txt"}) == "rule"
+
+    def test_path_glob_absolute_escape_not_matched_by_relative_glob(self, tmp_path, workspace):
+        manager = make_manager(tmp_path)
+        manager.persistent_rules = [PermissionRule(tool="fs_write_file", path_glob="src/**")]
+        # Absolute path inside the workspace is matched via its normalized relative form.
+        assert manager.match_source("fs_write_file", {"file_path": str(workspace / "src" / "app.py")}) == "rule"
+        # An absolute path outside the workspace has no workspace-relative form.
+        outside = (tmp_path / "victim.txt").resolve()
+        assert manager.match_source("fs_write_file", {"file_path": str(outside)}) is None
+        assert manager.is_allowed("fs_write_file", {"file_path": str(outside)}) is False
+
+    @pytest.mark.skipif(os.name != "posix", reason="symlinks are POSIX-only here")
+    def test_path_glob_rejects_symlink_escape(self, tmp_path, workspace):
+        allowed = workspace / "var" / "probe-g2" / "allowed"
+        allowed.mkdir(parents=True)
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "victim.txt").write_text("x", encoding="utf-8")
+        (allowed / "link").symlink_to(outside, target_is_directory=True)
+        manager = make_manager(tmp_path)
+        manager.persistent_rules = [PermissionRule(tool="fs_write_file", path_glob="var/probe-g2/allowed/*")]
+        # The symlink resolves outside the workspace, so no relative candidate matches.
+        assert manager.match_source("fs_write_file", {"file_path": "var/probe-g2/allowed/link/victim.txt"}) is None
+        # A plain file inside the same directory still matches.
+        assert manager.match_source("fs_write_file", {"file_path": "var/probe-g2/allowed/ok.txt"}) == "rule"
 
     def test_rules_are_per_tool(self, tmp_path):
         manager = make_manager(tmp_path)

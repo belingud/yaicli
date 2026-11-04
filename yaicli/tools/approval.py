@@ -62,6 +62,14 @@ _PATH_ARG_KEYS: Tuple[str, ...] = (
 
 _SHELL_OPERATOR_CHARS = ";&|<>"
 
+#: Shell syntax that makes a command compound or expand into another command. An
+#: ``argv_prefix`` rule only vouches for one *simple* command, so any of these vetoes
+#: rule matching (the call falls back to the normal confirmation path): command
+#: separators/pipes/redirects, backticks, ``$(...)``/``${...}`` expansion, process
+#: substitution and newlines. Quoted literals containing these characters are
+#: rejected too (conservative, always safe: they simply require confirmation).
+_SHELL_UNSAFE_SYNTAX_RE = re.compile(r"[;|&<>`]|\$\(|\$\{|<\(|>\(|[\r\n]")
+
 
 def _workspace_root() -> Path:
     """Resolve the workspace root used to match relative paths (WORKSPACE_ROOT/cwd)."""
@@ -210,24 +218,40 @@ def _path_values(arguments: Dict[str, Any]) -> List[str]:
 
 
 def _path_candidates(raw: str, workspace: Path) -> List[str]:
-    """Return the normalized forms of ``raw`` a path glob may be matched against."""
+    """Return the normalized paths of ``raw`` a path glob may be matched against.
+
+    Only normalized paths are candidates (never the raw ``..``-containing form) so a
+    ``path_glob`` rule cannot be bypassed with traversal:
+
+    * a relative path is resolved against the workspace (``strict=False``) and offered
+      as its workspace-relative normalized path plus the absolute path;
+    * an absolute path inside the workspace is offered the same way;
+    * an absolute path outside the workspace is offered only as its normalized
+      absolute path, so a relative glob such as ``src/**`` never matches it.
+
+    ``..`` segments that resolve outside the workspace therefore never match a
+    workspace-relative glob.
+    """
     try:
-        path = Path(raw).expanduser()
-        if not path.is_absolute():
-            path = workspace / path
-        absolute = path.resolve()
+        expanded = Path(raw).expanduser()
+        if expanded.is_absolute():
+            absolute = expanded.resolve(strict=False)
+        else:
+            absolute = (workspace / expanded).resolve(strict=False)
     except (OSError, RuntimeError, ValueError):  # pragma: no cover - defensive
-        path = Path(raw).expanduser()
-        absolute = Path(os.path.normpath(os.path.join(str(workspace), raw))).expanduser()
+        joined = raw if os.path.isabs(raw) else os.path.join(str(workspace), raw)
+        absolute = Path(os.path.normpath(joined)).expanduser()
 
     absolute_text = str(absolute).replace(os.sep, "/")
-    candidates = [absolute_text, str(path).replace(os.sep, "/"), raw.replace(os.sep, "/")]
     try:
         relative = os.path.relpath(str(absolute), str(workspace))
-        candidates.append(relative.replace(os.sep, "/"))
     except (ValueError, OSError):  # pragma: no cover - different drives on Windows
-        pass
-    return candidates
+        relative = ""
+    relative_text = os.path.normpath(relative).replace(os.sep, "/") if relative else ""
+    if relative_text and relative_text != os.pardir and not relative_text.startswith(os.pardir + "/"):
+        return [relative_text, absolute_text]
+    # Outside the workspace: only the normalized absolute path can be matched.
+    return [absolute_text]
 
 
 def _path_glob_matches(pattern: str, arguments: Dict[str, Any]) -> bool:
@@ -244,12 +268,16 @@ def _path_glob_matches(pattern: str, arguments: Dict[str, Any]) -> bool:
 
 
 def _shell_tokens(command: str) -> Optional[List[str]]:
-    """Tokenize a shell command, refusing compound commands (no prefix rule match).
+    """Tokenize a shell command, refusing compound/expanded commands.
 
-    A rule may only auto-approve a single simple command: if the command contains a
-    pipe, redirect, ``;``/``&&`` chain or substitution we cannot claim the prefix
-    covers it, so the caller asks the user instead.
+    A rule may only auto-approve a single *simple* command. Before tokenizing, the raw
+    text is checked for shell control/expansion syntax (``;``, ``|``, ``&``, ``<``,
+    ``>``, backticks, ``$(...)``, ``${...}``, process substitution, newlines): if any
+    is present the prefix cannot be claimed to cover the whole command, so
+    :func:`_argv_prefix_matches` returns False and the user is asked instead.
     """
+    if _SHELL_UNSAFE_SYNTAX_RE.search(command):
+        return None
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=_SHELL_OPERATOR_CHARS)
         lexer.whitespace_split = True
