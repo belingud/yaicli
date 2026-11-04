@@ -35,6 +35,8 @@ CMD_COMPACT = "/compact"
 #: Slash command to list/revoke tool permissions (v0.19 K06).
 #: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
 CMD_PERMISSIONS = "/permissions"
+#: Slash command to re-print the last tool result in full (same as ``Ctrl+O``).
+CMD_SHOW_OUTPUT = "/show-output"
 #: Turn groups kept by ``/compact`` when no argument is given.
 DEFAULT_COMPACT_KEEP_ROUNDS = 5
 #: ``/context`` subcommands that print the estimated usage breakdown.
@@ -69,6 +71,7 @@ class CmdHandler:
             "/ctx": self.handle_context,
             CMD_COMPACT: self.handle_compact,
             CMD_PERMISSIONS: self.handle_permissions,
+            CMD_SHOW_OUTPUT: self.handle_show_output,
         }
 
     def handle_add_context(self, command_input: str = "") -> bool:
@@ -272,6 +275,20 @@ class CmdHandler:
 
         self.cli.console.print(f"Unknown sub-command: {safe_text(action)}", style="yellow")
         self.cli.console.print(safe_text(f"Usage: {CMD_PERMISSIONS} [revoke <tool-or-index>]"), style="dim")
+        return True
+
+    def handle_show_output(self) -> bool:
+        """Handle /show-output: print the last tool result in full.
+
+        The terminal preview is head-only (``TOOL_DISPLAY_MAX_LINES``); this is
+        the explicit expansion path, mirroring ``Ctrl+O`` in the REPL.
+
+        Returns:
+            True to continue the REPL loop
+        """
+        from .tools import show_last_tool_output
+
+        show_last_tool_output(self.cli.console)
         return True
 
     def handle_context(self, command_input: str = "") -> bool:

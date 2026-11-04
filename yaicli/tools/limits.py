@@ -15,18 +15,32 @@ If the spill file cannot be written (read-only disk, permissions), truncation
 still happens and the marker simply omits the path. ``TOOL_OUTPUT_MAX_CHARS=0``
 disables truncation entirely.
 
+The *terminal* preview is a separate, much tighter limit (v0.19.1): tool results
+are rendered head-only (first ``TOOL_DISPLAY_MAX_LINES`` lines / chars) with a
+``Ctrl+O to expand`` hint, while the model still receives the text capped by
+``TOOL_OUTPUT_MAX_CHARS``. :func:`make_display_preview` and
+:func:`summarize_arguments` implement that display-only layer.
+
 Standard library only: this module runs inside the tool-call path.
 """
 
+import json
 import os
 import re
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
 from ..config import cfg
-from ..const import DEFAULT_TOOL_OUTPUT_DIR, DEFAULT_TOOL_OUTPUT_MAX_CHARS
+from ..const import (
+    DEFAULT_TOOL_CALL_PREVIEW_MAX_CHARS,
+    DEFAULT_TOOL_DISPLAY_MAX_CHARS,
+    DEFAULT_TOOL_DISPLAY_MAX_LINES,
+    DEFAULT_TOOL_OUTPUT_DIR,
+    DEFAULT_TOOL_OUTPUT_MAX_CHARS,
+)
 
 #: Default cap (characters) when neither the tool nor the config overrides it.
 DEFAULT_OUTPUT_MAX_CHARS = DEFAULT_TOOL_OUTPUT_MAX_CHARS
@@ -43,6 +57,21 @@ MIN_MARKER_BUDGET = 32
 #: Marker tail shared by both the spilled and non-spilled variants.
 _READ_MORE_HINT = "use fs_read_file with offset/limit to read more"
 _FILENAME_UNSAFE_RE = re.compile(r"[^A-Za-z0-9_.-]+")
+
+# ---------------------------------------------------------------------------
+# Terminal display preview (v0.19.1)
+# ---------------------------------------------------------------------------
+#: Default head-only display limits (characters/lines); ``0`` = unlimited.
+DEFAULT_DISPLAY_MAX_LINES = DEFAULT_TOOL_DISPLAY_MAX_LINES
+DEFAULT_DISPLAY_MAX_CHARS = DEFAULT_TOOL_DISPLAY_MAX_CHARS
+#: Default cap for the ``@Function call:`` argument line (``0`` = raw arguments).
+DEFAULT_CALL_PREVIEW_MAX_CHARS = DEFAULT_TOOL_CALL_PREVIEW_MAX_CHARS
+#: Hint appended to a truncated terminal preview.
+DISPLAY_EXPAND_HINT = "Ctrl+O to expand"
+#: First characters of a long argument value kept in the call-line summary.
+_ARGUMENT_VALUE_HEAD_CHARS = 60
+#: Argument values longer than this are summarized as ``<N chars>``.
+_ARGUMENT_VALUE_SUMMARY_OVER = 80
 
 
 def _config_int(key: str, default: int) -> int:
@@ -180,17 +209,178 @@ def truncate_tool_output(text: Any, tool_name: str, max_chars: Optional[int] = N
     return text[:cap]
 
 
+@dataclass(frozen=True)
+class DisplayPreview:
+    """Head-only terminal preview of one tool result (display layer only)."""
+
+    text: str
+    truncated: bool = False
+    total_lines: int = 0
+    total_chars: int = 0
+    shown_lines: int = 0
+    shown_chars: int = 0
+    omitted_lines: int = 0
+    omitted_chars: int = 0
+    #: Which limit cut the preview: ``"lines"``, ``"chars"`` or ``"none"``.
+    limit: str = "none"
+
+    @property
+    def label(self) -> str:
+        """Short ``first x / y`` label for the panel title."""
+        if not self.truncated:
+            return ""
+        if self.limit == "chars":
+            return f"first {self.shown_chars:,} / {self.total_chars:,} chars"
+        return f"first {self.shown_lines:,} / {self.total_lines:,} lines"
+
+
+def _display_limit(value: Optional[int], key: str, default: int) -> int:
+    """Resolve a display limit: explicit value > config > default (negative => 0)."""
+    if value is None:
+        value = _config_int(key, default)
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return max(0, default)
+
+
+def make_display_preview(
+    text: Any,
+    max_lines: Optional[int] = None,
+    max_chars: Optional[int] = None,
+) -> DisplayPreview:
+    """Build the compact head-only preview rendered in the terminal.
+
+    Only the first ``max_lines`` lines and ``max_chars`` characters are kept;
+    the caller appends :func:`build_preview_marker` when ``truncated`` is set.
+    The model-facing text is produced separately by :func:`truncate_tool_output`,
+    so tightening these limits never reduces what the model can see.
+
+    ``max_lines``/``max_chars`` default to ``TOOL_DISPLAY_MAX_LINES`` /
+    ``TOOL_DISPLAY_MAX_CHARS`` (``0`` = unlimited for that dimension).
+    """
+    raw = "" if text is None else str(text)
+    line_limit = _display_limit(max_lines, "TOOL_DISPLAY_MAX_LINES", DEFAULT_DISPLAY_MAX_LINES)
+    char_limit = _display_limit(max_chars, "TOOL_DISPLAY_MAX_CHARS", DEFAULT_DISPLAY_MAX_CHARS)
+
+    total_chars = len(raw)
+    lines = raw.splitlines()
+    total_lines = len(lines)
+
+    head = lines if line_limit == 0 else lines[:line_limit]
+    preview = "\n".join(head)
+    limit = "none"
+    if line_limit and len(head) < total_lines:
+        limit = "lines"
+    if char_limit and len(preview) > char_limit:
+        preview = preview[:char_limit]
+        limit = "chars"
+
+    truncated = limit != "none"
+    if limit == "lines":
+        shown_lines = len(head)
+    else:
+        shown_lines = (preview.count("\n") + 1) if preview else 0
+    shown_chars = len(preview)
+    return DisplayPreview(
+        text=preview,
+        truncated=truncated,
+        total_lines=total_lines,
+        total_chars=total_chars,
+        shown_lines=shown_lines,
+        shown_chars=shown_chars,
+        omitted_lines=max(0, total_lines - shown_lines),
+        omitted_chars=max(0, total_chars - shown_chars),
+        limit=limit,
+    )
+
+
+def build_preview_marker(preview: DisplayPreview) -> str:
+    """Return the one-line ``… +N lines · Ctrl+O to expand`` marker (or ``""``)."""
+    if not preview.truncated:
+        return ""
+    if preview.limit == "chars":
+        omitted = f"+{preview.omitted_chars:,} chars"
+    else:
+        omitted = f"+{preview.omitted_lines:,} lines"
+    return f"… {omitted} · {DISPLAY_EXPAND_HINT}"
+
+
+def _summarize_argument_value(value: Any) -> str:
+    """Render one argument value, summarizing large strings/collections."""
+    if isinstance(value, str):
+        if "\n" not in value and len(value) <= _ARGUMENT_VALUE_SUMMARY_OVER:
+            return json.dumps(value, ensure_ascii=False)
+        first_line = value.split("\n", 1)[0]
+        clipped = first_line[: _ARGUMENT_VALUE_HEAD_CHARS - 1].rstrip() + "…"
+        return f"{json.dumps(clipped, ensure_ascii=False)} <{len(value):,} chars>"
+    if isinstance(value, (list, dict)):
+        rendered = json.dumps(value, ensure_ascii=False)
+        if len(rendered) <= _ARGUMENT_VALUE_SUMMARY_OVER:
+            return rendered
+        return f"<{len(rendered):,} chars>"
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _clip_with_ellipsis(text: str, limit: int) -> str:
+    """Clip ``text`` to at most ``limit`` characters, ending with ``…``."""
+    if limit <= 0:
+        return text
+    return text[: max(0, limit - 1)].rstrip() + "…"
+
+
+def summarize_arguments(arguments: Any, max_chars: Optional[int] = None) -> str:
+    """Return a compact one-line preview of tool-call arguments for the console.
+
+    Short arguments stay close to their original form (whitespace collapsed).
+    Large values are replaced by their first line plus ``<N chars>`` so a
+    ``fs_write_file`` call can no longer flood the terminal. ``max_chars``
+    defaults to ``TOOL_CALL_PREVIEW_MAX_CHARS``; ``0`` keeps the raw arguments.
+    """
+    raw = "" if arguments is None else str(arguments)
+    limit = _display_limit(max_chars, "TOOL_CALL_PREVIEW_MAX_CHARS", DEFAULT_CALL_PREVIEW_MAX_CHARS)
+    if limit == 0:
+        return raw
+
+    collapsed = " ".join(raw.split())
+    if len(collapsed) <= limit:
+        return collapsed
+
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        parsed = None
+    if isinstance(parsed, dict) and parsed:
+        pieces = [
+            f"{json.dumps(str(key), ensure_ascii=False)}: {_summarize_argument_value(value)}"
+            for key, value in parsed.items()
+        ]
+        summarized = "{" + ", ".join(pieces) + "}"
+        if len(summarized) <= limit:
+            return summarized
+        return _clip_with_ellipsis(summarized, limit)
+    return _clip_with_ellipsis(collapsed, limit)
+
+
 def get_output_cap(tool_name: str) -> int:
     """Convenience accessor: the effective cap for ``tool_name`` (``0`` = none)."""
     return resolve_output_cap(tool_name)
 
 
 __all__ = [
+    "DEFAULT_CALL_PREVIEW_MAX_CHARS",
+    "DEFAULT_DISPLAY_MAX_CHARS",
+    "DEFAULT_DISPLAY_MAX_LINES",
     "DEFAULT_OUTPUT_MAX_CHARS",
+    "DISPLAY_EXPAND_HINT",
+    "DisplayPreview",
     "MIN_MARKER_BUDGET",
     "TOOL_OUTPUT_CAPS",
+    "build_preview_marker",
+    "make_display_preview",
     "resolve_output_cap",
     "get_output_cap",
     "spill_tool_output",
+    "summarize_arguments",
     "truncate_tool_output",
 ]

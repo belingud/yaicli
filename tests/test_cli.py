@@ -836,8 +836,26 @@ class TestKeyBindingsAndSetup:
 
         cli._setup_key_bindings()
 
-        # Should register Shift+Tab as mode toggle.
-        cli.bindings.add.assert_called_once_with("s-tab")
+        # Shift+Tab toggles the mode; Ctrl+O expands the last tool output.
+        cli.bindings.add.assert_any_call("s-tab")
+        cli.bindings.add.assert_any_call("c-o")
+        assert cli.bindings.add.call_count == 2
+
+    def test_show_last_tool_output_delegates_to_tools(self, cli_with_mocks):
+        """Ctrl+O / /show-output delegate to the shared tool-output renderer."""
+        from unittest.mock import patch
+
+        cli = cli_with_mocks
+        with patch("yaicli.tools.show_last_tool_output") as mock_show:
+            cli._show_last_tool_output()
+        mock_show.assert_called_once_with(cli.console)
+
+    def test_print_help_mentions_show_output(self, cli_with_mocks):
+        """The help banner exposes the /show-output command."""
+        cli = cli_with_mocks
+        cli.print_help()
+        printed = [str(c.args[0]) for c in cli.console.print.call_args_list if c.args]
+        assert any("/show-output" in text for text in printed)
 
     @patch("yaicli.cli.CLI._setup_key_bindings")
     @patch("pathlib.Path.touch")  # Mock the Path.touch method
@@ -1163,7 +1181,9 @@ class TestCLICoverage:
 
         cli_with_mocks.current_mode = CHAT_MODE
         cli_with_mocks._setup_key_bindings()
-        binding = cli_with_mocks.bindings.bindings[-1]
+        binding = next(
+            b for b in cli_with_mocks.bindings.bindings if getattr(b.keys[0], "value", None) == "s-tab"
+        )
         binding.handler(MagicMock())
         assert cli_with_mocks.current_mode == EXEC_MODE
 

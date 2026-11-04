@@ -79,6 +79,7 @@ Ctrl+C             : Clear input / cancel turn; press twice to exit
 - `/context` or `/ctx` - Show context/token usage, or manage file context (`list`, `add`, `remove`, `clear`)
 - `/compact [keep_rounds]` - Compact the conversation, keeping the last N turns
 - `/permissions` - List (and revoke) persistent tool approval rules
+- `/show-output` - Show the last tool result in full (the terminal preview is head-only)
 - `!<command>` - Execute a shell command directly
 - `/exit` - Exit the application
 - `/mode chat|exec` - Switch modes
@@ -90,6 +91,7 @@ Ctrl+C             : Clear input / cancel turn; press twice to exit
   twice quickly to exit (single press keeps the session alive)
 - `Ctrl+D` - Exit (exit code 0)
 - `Ctrl+R` - Search history
+- `Ctrl+O` - Show the last tool output in full (it is previewed head-only)
 - `↑/↓` - Navigate through history
 
 ## Chat Mode (💬)

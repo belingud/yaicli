@@ -6,11 +6,16 @@ from json_repair import repair_json
 from rich.panel import Panel
 
 from ..config import cfg
-from ..console import get_console, get_error_console, safe_text, untrusted_text
+from ..console import get_console, get_error_console, safe_text, strip_control_chars, untrusted_text
 from ..exceptions import MCPToolsError
 from ..schemas import ToolCall
 from .function import get_function, list_functions
-from .limits import truncate_tool_output
+from .limits import (
+    build_preview_marker,
+    make_display_preview,
+    summarize_arguments,
+    truncate_tool_output,
+)
 
 # Lazy import MCP-related items to improve startup time
 # These constants are safe to define without importing fastmcp
@@ -58,6 +63,44 @@ _SHELL_GUARDRAIL_ENV = (
     ("WORKSPACE_ROOT", "YAI_WORKSPACE_ROOT"),
     ("TOOL_OUTPUT_MAX_CHARS", "YAI_TOOL_OUTPUT_MAX_CHARS"),
 )
+
+#: Last tool result executed in this process (``Ctrl+O`` / ``/show-output``).
+_last_tool_output: Dict[str, Any] | None = None
+
+
+def get_last_tool_output() -> Dict[str, Any] | None:
+    """Return the last tool result recorded for display expansion, if any.
+
+    The dict has ``type`` (``"function"``/``"mcp"``), ``name`` and ``text``
+    (the model-visible result after truncation/spill).
+    """
+    return _last_tool_output
+
+
+def _remember_tool_output(kind: str, name: str, text: str) -> None:
+    global _last_tool_output
+    _last_tool_output = {"type": kind, "name": name, "text": text}
+
+
+def show_last_tool_output(target_console: Any) -> bool:
+    """Print the last tool result in full; returns ``False`` when there is none."""
+    if _last_tool_output is None:
+        target_console.print("No tool output in this session yet.", style="dim")
+        return False
+    kind = str(_last_tool_output.get("type") or "function").title()
+    name = safe_text(_last_tool_output.get("name") or "")
+    text = _last_tool_output.get("text") or ""
+    target_console.print(
+        Panel(
+            untrusted_text(text),
+            title=f"Last {kind} output: {name}",
+            title_align="left",
+            expand=False,
+            border_style="blue",
+            style="dim",
+        )
+    )
+    return True
 
 
 def _sync_shell_guardrail_env() -> None:
@@ -186,9 +229,11 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
 
     if announce:
         # Tool name/arguments are model output: never let them act as Rich markup
-        # or emit terminal control sequences here.
+        # or emit terminal control sequences here. Arguments are compacted as well:
+        # a single huge content/command value must not wrap over several screens.
+        preview_arguments = summarize_arguments(tool_call.arguments)
         console.print(
-            f"@{_type.title()} call: {safe_text(tool_call.name)}({safe_text(tool_call.arguments)})",
+            f"@{_type.title()} call: {safe_text(tool_call.name)}({safe_text(preview_arguments)})",
             style="blue",
         )
     # 1. Get the tool
@@ -222,12 +267,22 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
         # K02: bound what enters the conversation. The same truncated text is shown
         # in the terminal panel, so a huge result can not flood either channel.
         result = truncate_tool_output(result, tool_call.name)
+        # Terminal display is head-only and independent from the model-facing cap;
+        # Ctrl+O / /show-output can re-print the full (model-visible) result later.
+        display_text = strip_control_chars(result)
+        _remember_tool_output(_type, tool_call.name, display_text)
         if show_output:
+            preview = make_display_preview(display_text)
+            content = untrusted_text(preview.text)
+            if preview.truncated:
+                content.append("\n\n")
+                content.append(build_preview_marker(preview), style="dim")
+            title = f"{_type.title()} output"
+            if preview.truncated:
+                title = f"{title} ({preview.label})"
             panel = Panel(
-                # Tool output is arbitrary file/command content: render literally
-                # and strip ANSI/OSC control characters.
-                untrusted_text(result),
-                title=f"{_type.title()} output",
+                content,
+                title=title,
                 title_align="left",
                 expand=False,
                 border_style="blue",

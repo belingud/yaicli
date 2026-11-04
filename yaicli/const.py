@@ -134,6 +134,13 @@ DEFAULT_EXCLUDE_PARAMS: str = ""  # Empty by default
 # Agent context / tool-output economy (v0.19 K02)
 DEFAULT_TOOL_OUTPUT_MAX_CHARS: int = 32000
 DEFAULT_TOOL_OUTPUT_DIR: Path = DEFAULT_CHAT_HISTORY_DIR / "tool-outputs"
+# Terminal rendering of tool results (v0.19.1): independent from the model-facing
+# cap above, so a long result can be fully available to the model while the
+# terminal only shows a compact head preview. 0 = show everything.
+DEFAULT_TOOL_DISPLAY_MAX_LINES: int = 15
+DEFAULT_TOOL_DISPLAY_MAX_CHARS: int = 4000
+# Max characters of the tool arguments echoed on the ``@Function call:`` line.
+DEFAULT_TOOL_CALL_PREVIEW_MAX_CHARS: int = 300
 # 0 means "derive from the model context window (70%)" at request time.
 DEFAULT_CONTEXT_BUDGET_TOKENS: int = 0
 # Shell tool guardrails (v0.19 K03)
@@ -251,6 +258,22 @@ DEFAULT_CONFIG_MAP = {
         "type": int,
     },
     "TOOL_OUTPUT_DIR": {"value": str(DEFAULT_TOOL_OUTPUT_DIR), "env_key": "YAI_TOOL_OUTPUT_DIR", "type": str},
+    # Terminal display only (the model still receives TOOL_OUTPUT_MAX_CHARS)
+    "TOOL_DISPLAY_MAX_LINES": {
+        "value": DEFAULT_TOOL_DISPLAY_MAX_LINES,
+        "env_key": "YAI_TOOL_DISPLAY_MAX_LINES",
+        "type": int,
+    },
+    "TOOL_DISPLAY_MAX_CHARS": {
+        "value": DEFAULT_TOOL_DISPLAY_MAX_CHARS,
+        "env_key": "YAI_TOOL_DISPLAY_MAX_CHARS",
+        "type": int,
+    },
+    "TOOL_CALL_PREVIEW_MAX_CHARS": {
+        "value": DEFAULT_TOOL_CALL_PREVIEW_MAX_CHARS,
+        "env_key": "YAI_TOOL_CALL_PREVIEW_MAX_CHARS",
+        "type": int,
+    },
     "CONTEXT_BUDGET_TOKENS": {
         "value": DEFAULT_CONTEXT_BUDGET_TOKENS,
         "env_key": "YAI_CONTEXT_BUDGET_TOKENS",
@@ -353,6 +376,14 @@ EXCLUDE_PARAMS=
 TOOL_OUTPUT_MAX_CHARS={DEFAULT_CONFIG_MAP["TOOL_OUTPUT_MAX_CHARS"]["value"]}
 # Directory where full (untruncated) tool outputs are saved
 TOOL_OUTPUT_DIR={DEFAULT_CONFIG_MAP["TOOL_OUTPUT_DIR"]["value"]}
+# Terminal display of a tool result: only the first N lines / characters are
+# shown; the model still receives TOOL_OUTPUT_MAX_CHARS characters.
+# Set either to 0 to show everything (not recommended for large outputs).
+TOOL_DISPLAY_MAX_LINES={DEFAULT_CONFIG_MAP["TOOL_DISPLAY_MAX_LINES"]["value"]}
+TOOL_DISPLAY_MAX_CHARS={DEFAULT_CONFIG_MAP["TOOL_DISPLAY_MAX_CHARS"]["value"]}
+# Max characters of the tool arguments echoed on the "@Function call:" line
+# (0 = print the raw arguments). Long values are summarized as <N chars>.
+TOOL_CALL_PREVIEW_MAX_CHARS={DEFAULT_CONFIG_MAP["TOOL_CALL_PREVIEW_MAX_CHARS"]["value"]}
 # Token budget for one request; 0 = derive 70% of the model context window
 CONTEXT_BUDGET_TOKENS={DEFAULT_CONFIG_MAP["CONTEXT_BUDGET_TOKENS"]["value"]}
 

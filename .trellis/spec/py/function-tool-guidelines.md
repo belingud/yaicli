@@ -139,6 +139,15 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
 are parsed with `json_repair.repair_json(..., return_objects=True)` and must be a `dict` (never
 `json.loads`), then the tool runs and its output prints in a `Panel` when the flag is on.
 
+Terminal rendering is a separate, much tighter display layer (`yaicli/tools/limits.py`):
+`make_display_preview()` keeps only the first `TOOL_DISPLAY_MAX_LINES` (15) lines /
+`TOOL_DISPLAY_MAX_CHARS` (4000) characters and appends `build_preview_marker()`
+(`… +N lines · Ctrl+O to expand`); these keys never reduce the model-facing text. The
+`@Function call:` line goes through `summarize_arguments()` (`TOOL_CALL_PREVIEW_MAX_CHARS`, 300):
+large `content`/`command` values render as `<N chars>` and newlines are collapsed.
+`execute_tool_call` records the last result in `yaicli.tools.get_last_tool_output()`;
+`show_last_tool_output()` re-prints it in full and backs both `Ctrl+O` (REPL) and `/show-output`.
+
 Every result passes through `yaicli/tools/limits.py::truncate_tool_output()` before it is appended
 to the model messages (and before the panel is rendered): per-tool caps (shell 32KB, `fs_read_file`
 64KB, search/list 48KB, fetch 100KB, MCP/default 32KB; `TOOL_OUTPUT_MAX_CHARS` overrides, `0`

@@ -119,7 +119,9 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   `LimitedFileHistory(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"])` (a non-positive `MAX_HISTORY`
   disables history saving), `AutoSuggestFromHistory()` when `cfg["AUTO_SUGGEST"]`, `AtPathCompleter()`,
   `complete_while_typing=True`; on failure it falls back to `PromptSession(key_bindings=...)` and prints
-  `Error initializing prompt session history: {e}`.
+  `Error initializing prompt session history: {e}`. `_setup_key_bindings()` also binds `c-o` to
+  `run_in_terminal(self._show_last_tool_output)` and `/show-output` uses the same renderer
+  (`yaicli.tools.show_last_tool_output()`), so both paths show the last full tool result.
 - `_run_repl()` loop: separator → `session.prompt(self.get_prompt_tokens)` → strip → skip blank →
   `_handle_special_commands()` (tri-state `False`=exit, `True`=handled, `str`=prompt) →
   `_process_user_input()`. SIGINT semantics (v0.19, consistent with the headless contract): a single

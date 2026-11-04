@@ -119,6 +119,12 @@ EXCLUDE_PARAMS=
 # the full output is saved to TOOL_OUTPUT_DIR.
 TOOL_OUTPUT_MAX_CHARS=32000
 TOOL_OUTPUT_DIR=<chat-history-dir>/tool-outputs
+# Terminal display of tool results (v0.19.1): head-only preview; the model still
+# receives TOOL_OUTPUT_MAX_CHARS. 0 = show everything.
+TOOL_DISPLAY_MAX_LINES=15
+TOOL_DISPLAY_MAX_CHARS=4000
+# Max characters of the "@Function call:" argument line (0 = raw arguments).
+TOOL_CALL_PREVIEW_MAX_CHARS=300
 # Token budget for one request; 0 derives 70% of the model context window.
 CONTEXT_BUDGET_TOKENS=0
 
@@ -184,6 +190,9 @@ TOOL_AUDIT=true
 | `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
 | `TOOL_OUTPUT_MAX_CHARS` | Max characters of one tool result kept in context (`0` = unlimited) | `32000` | `YAI_TOOL_OUTPUT_MAX_CHARS` |
 | `TOOL_OUTPUT_DIR`      | Where full (untruncated) tool outputs are saved | `<chat-history>/tool-outputs` | `YAI_TOOL_OUTPUT_DIR` |
+| `TOOL_DISPLAY_MAX_LINES` | Terminal preview: max lines of one tool result shown (`0` = unlimited) | `15` | `YAI_TOOL_DISPLAY_MAX_LINES` |
+| `TOOL_DISPLAY_MAX_CHARS` | Terminal preview: max characters shown; the model cap is `TOOL_OUTPUT_MAX_CHARS` | `4000` | `YAI_TOOL_DISPLAY_MAX_CHARS` |
+| `TOOL_CALL_PREVIEW_MAX_CHARS` | Max characters of the `@Function call:` argument line (`0` = raw) | `300` | `YAI_TOOL_CALL_PREVIEW_MAX_CHARS` |
 | `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = 70% of the model window) | `0`         | `YAI_CONTEXT_BUDGET_TOKENS` |
 | `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
 | `TOOL_ENV_INHERIT`     | Pass the full parent environment to shell tools (old behaviour) | `false` | `YAI_TOOL_ENV_INHERIT` |

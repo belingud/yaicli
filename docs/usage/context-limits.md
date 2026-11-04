@@ -49,8 +49,14 @@ pass a `limit` comfortably below that (e.g. `limit: 12000`) to avoid the page be
 Notes:
 
 - Set `TOOL_OUTPUT_MAX_CHARS=0` to disable truncation (not recommended for agent loops).
-- The same truncation is applied to tool output printed in the terminal (`SHOW_FUNCTION_OUTPUT`),
-  so a 1 MB shell result does not flood your screen.
+- The **terminal preview** is a separate, much tighter display-only limit:
+  `TOOL_DISPLAY_MAX_LINES=15` lines and `TOOL_DISPLAY_MAX_CHARS=4000` characters. Tool results are
+  rendered head-only with a `… +N lines · Ctrl+O to expand` marker, so a 1 MB shell result does not
+  flood your screen. This never changes what the model receives — the model still gets up to
+  `TOOL_OUTPUT_MAX_CHARS` characters. `Ctrl+O` (or `/show-output`) re-prints the last full result;
+  set both display limits to `0` to show everything.
+- Long tool-call arguments on the `@Function call:` line are summarized
+  (`TOOL_CALL_PREVIEW_MAX_CHARS=300`); a large `content`/`command` value appears as `<N chars>`.
 - If the spill file cannot be written (read-only disk, permission error), YAICLI degrades to plain
   truncation without the path — the request still succeeds.
 - Spilled files are created with mode `0600` on POSIX (file output may contain secrets); clean the
@@ -133,6 +139,9 @@ MAX_TOOL_CALL_DEPTH=12
 | --- | --- | --- |
 | `TOOL_OUTPUT_MAX_CHARS` | `32000` | Per-tool-result character cap (`0` = unlimited) |
 | `TOOL_OUTPUT_DIR` | `<chat history>/tool-outputs` | Where full tool outputs are spilled |
+| `TOOL_DISPLAY_MAX_LINES` | `15` | Terminal preview lines (`0` = unlimited; model unaffected) |
+| `TOOL_DISPLAY_MAX_CHARS` | `4000` | Terminal preview characters (`0` = unlimited; model unaffected) |
+| `TOOL_CALL_PREVIEW_MAX_CHARS` | `300` | Max characters of the `@Function call:` argument line (`0` = raw) |
 | `CONTEXT_BUDGET_TOKENS` | `0` (70% of window) | Per-request token budget |
 | `MAX_TOOL_CALL_DEPTH` | `8` | Tool rounds per request (`--max-turns` overrides per run) |
 | `EXIT_ON_DEPTH_LIMIT` | `true` | One-shot run exits non-zero when the tool-round limit is reached |
