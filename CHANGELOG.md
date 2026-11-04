@@ -4,6 +4,10 @@
 
 ### ⛰️  Features
 
+- feat(cli): exit the REPL on a double Ctrl-C
+
+Single Ctrl-C at the prompt still clears the current input line / cancels the current turn and keeps the session alive, but pressing Ctrl-C a second time within ~2 seconds now exits the REPL normally (like Ctrl-D); a completed prompt read resets the window, so a stray interrupt can never kill an interactive session. Generation interrupts follow the same counter: cancel the turn first, exit on the next Ctrl-C. One-shot SIGINT keeps exiting 130.
+Update the REPL help banner, README/docs (keyboard shortcuts, commands, SIGINT section) and the cli-and-rendering spec; add REPL tests for double-press exit, single-press survival and window reset. - ([3c401ae](https://github.com/belingud/yaicli/commit/3c401ae0490c0ee72653276e494acfb14b04b9b6)) - Belingud
 - feat(permissions): risk-aware confirmation, rule-based allowlist and audit log
 
 K06: tool risk classes (read/write/network/exec) and a shlex-based danger classifier gate execution: dangerous shell commands always need explicit confirmation (non-interactive => deny, even with TOOL_CONFIRM=false), --yes auto-allows only read risk, --allowed-tools grants globs for one run. tool_permissions.json v2 adds argv_prefix/path_glob rules while still reading the v1 always_allow format; writes are atomic and 0600. The confirmation prompt now shows the canonical arguments that will execute (shell command + danger reasons, fs_write target/mode, fs_edit diff head 40). Denied calls return structured {error: tool_denied, reason} results and tool_denied feeds --fail-on-tool-denied (exit 3). Every decision is appended to tool_audit.jsonl (best-effort, secret-redacted) and /permissions can list/revoke. - ([c83c87c](https://github.com/belingud/yaicli/commit/c83c87c02f82c507a6a28df70568be4fc9f48640)) - Belingud
@@ -47,6 +51,9 @@ Regression tests: polluting provider/client consoles under json/stream-json/--ve
 
 ### 📚 Documentation
 
+- docs(changelog,spec): record v0.19 verification fixes
+
+Regenerate the v0.19.0 changelog section with the four post-verification fix commits (headless stdout purity, permission-rule hardening, tool-output paging/env/spill handling, write-free config + environment-safe tests) and update the py-layer specs for the new contracts: CLI headless constructor intent + provider console sync, fs_read_file paging/spill mode/cfg-to-env shell precedence, deferred legacy-config key migration, and setting test credentials before importing yaicli. - ([1868067](https://github.com/belingud/yaicli/commit/18680675495e8b528f0c5ed3516d7745211b0d88)) - Belingud
 - docs: restore "Your AI assistant in command line" positioning
 
 Revert the first-screen positioning copy to the v0.18 assistant wording kept by the project: README title/intro/footer, docs index title/intro, the PyPI description (A simple CLI tool to interact with LLM) and mkdocs site_description (An advanced CLI tool for interacting with AI models). The v0.19 functional documentation is unchanged and still shipped: headless/scripting, permissions, context & limits, upgrade pages, quick start, and the measured lightweight table. - ([bc8d7fb](https://github.com/belingud/yaicli/commit/bc8d7fb90953c3bb992c25933ad2de49f7ddb2d5)) - Belingud
@@ -58,6 +65,7 @@ Rewrite README/docs index around the agent-first, lightweight-first positioning;
 
 ### ⚙️ Miscellaneous Tasks
 
+- chore: record journal - ([2720fef](https://github.com/belingud/yaicli/commit/2720fef5bb73f8ea410633ca06bc9b9e49bba8f0)) - Belingud
 - chore(release): sync uv.lock with v0.19.0
 
 Refresh the editable package version recorded in uv.lock (0.18.0 -> 0.19.0) after the release bump; no dependency changes. - ([42643ea](https://github.com/belingud/yaicli/commit/42643ea97b9ce55389364866258b0a03a247c829)) - Belingud
