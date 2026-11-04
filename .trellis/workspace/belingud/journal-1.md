@@ -157,3 +157,41 @@ Fixed all defects found by the independent v0.19 verification: headless stdout p
 ### Next Steps
 
 - v0.20: K08-K15 startup/footprint work; publish/tag v0.19.0 via the existing release flow
+
+
+## Session 5: v0.19.0 release and double Ctrl-C REPL exit
+<!-- trellis-session: v=2 fp=ab3f141e9c76388c -->
+
+**Date**: 2026-11-04
+**Task**: v0.19.0 release and double Ctrl-C REPL exit
+**Branch**: `master`
+
+### Summary
+
+Adds a second-Ctrl-C REPL exit, syncs the docs changelog page, and ships v0.19.0 to PyPI and the docs site.
+
+### Main Changes
+
+- REPL now exits on a second Ctrl-C within ~2s (single press still clears input/cancels the turn; a completed prompt read resets the window)
+- README/docs/commands/headless/upgrade pages and the cli-and-rendering spec document the new Ctrl-C semantics
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3c401ae` | feat(cli): exit the REPL on a double Ctrl-C |
+| `295dfd5` | docs(changelog): include the double Ctrl-C REPL exit in v0.19.0 notes |
+| `42fca6d` | docs(changelog): sync docs changelog page for v0.19.0 |
+
+### Testing
+
+- [OK] pytest: 1778 passed; ruff check clean; mkdocs build --strict ok
+- [OK] hatchling wheel/sdist for 0.19.0 built and console scripts smoke-tested
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Watch user feedback on the new Ctrl-C hint and the double-press window
