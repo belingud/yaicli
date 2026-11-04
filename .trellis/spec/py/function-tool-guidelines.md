@@ -16,10 +16,11 @@ specs and tests together.
 | Concern | Where | Contract |
 | --- | --- | --- |
 | Schema generation | `yaicli/function_schema.py` | `OpenAISchema.openai_schema` / `.anthropic_schema`, cached per class. |
-| Loading / dispatch | `yaicli/tools/function.py`, `yaicli/tools/__init__.py` | Executes `FUNCTIONS_DIR` files, validates `Function`, caches schemas, runs `execute_tool_call()`. |
-| Built-ins | `yaicli/functions/buildin/`, `yaicli/functions/__init__.py` | Templates copied to `~/.config/yaicli/functions/`; install/reinstall/list lifecycle. |
-| Policy / confirmation | `yaicli/llms/client.py`, `yaicli/tools/approval.py`, `yaicli/schemas.py` | Per-request `ToolPolicy` filter → four-outcome confirmation gate → execution. |
-| MCP | `yaicli/tools/mcp.py` | Lazy `fastmcp`, `_mcp__` prefix, MCP→provider schema conversion. |
+| Loading / dispatch | `yaicli/tools/function.py`, `yaicli/tools/__init__.py` | Package builtins + `FUNCTIONS_DIR` overrides, per-file robustness, `Function` metadata (`source`/`file_path`/`risk`), schema caches, `execute_tool_call()` (arg repair, output truncation). |
+| Built-ins | `yaicli/functions/buildin/`, `yaicli/functions/__init__.py` | Builtins load from the installed package (zero setup); `--install-functions` exports editable copies; `functions_manifest.json` version+sha256 drives the stale-copy warning. |
+| Risk / limit helpers | `yaicli/tools/risk.py`, `yaicli/tools/limits.py` | Risk classes + shlex shell-danger classifier; per-tool output caps and spill-to-disk. |
+| Policy / confirmation | `yaicli/llms/client.py`, `yaicli/tools/approval.py`, `yaicli/schemas.py` | Per-request `ToolPolicy` filter → risk/rule-aware confirmation gate (danger double-confirm, `--yes`/`--allowed-tools`) → execution → audit log. |
+| MCP | `yaicli/tools/mcp.py` | Lazy `fastmcp`, `_mcp__` prefix, MCP→provider schema conversion; MCP tools default to `exec` risk. |
 
 ## Schema Generation (`OpenAISchema`)
 
@@ -81,12 +82,14 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
    unexpected exceptions, and its generic message cannot help the model fix its arguments.
 4. Enforce resource limits in `execute` as in-band errors: `fs_read_file` caps 50 files, 10 MB per
    file and 50 MB total; `fs_read_image` caps 20 images and 5 MB each.
-5. Guard the side effect: `fs_write_file` refuses `/etc/`, `/sys/`, `/proc/`, `/dev/`;
-   `execute_shell_command` blocks `rm -rf`, `mkfs`, `dd`. New side-effecting built-ins need an
-   equivalent check.
+5. Guard the side effect: `fs_write_file` refuses `/etc/`, `/sys/`, `/proc/`, `/dev/`. The shell
+   tool no longer keeps a substring blacklist (it broke `git add`): `execute_shell_command` enforces
+   timeout/cwd/env/output caps, and destructive commands are classified by
+   `yaicli/tools/risk.py::classify_shell_command` + confirmed/denied at the approval gate. New
+   side-effecting built-ins should declare `risk` metadata in `tools/risk.py` and rely on the gate.
 6. Import heavy/optional packages inside `execute`: `web_search` imports `ddgs` lazily,
-   `fetch_webpage` imports `trafilatura` lazily. Every file in `FUNCTIONS_DIR` is exec'd when the
-   tool map is first built, so top-level imports slow the first tool-advertising request and a
+   `fetch_webpage` imports `trafilatura` lazily. Every builtin + `FUNCTIONS_DIR` file is exec'd when
+   the tool map is first built, so top-level imports slow the first tool-advertising request and a
    missing optional extra must degrade to an in-band error, not a load failure.
 7. No printing/UI from `execute`; the call line, `SHOW_FUNCTION_OUTPUT` panel and confirmation
    prompt belong to `yaicli/tools/__init__.py` and `yaicli/llms/client.py`. Those render sites use
@@ -104,20 +107,30 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
 
 ## Loading & Install Lifecycle
 
-- The runtime reads only `FUNCTIONS_DIR` = `~/.config/yaicli/functions/` (`yaicli/const.py`);
-  `yaicli/functions/buildin/*.py` are templates. `--install-functions` copies missing files and
-  skips existing ones; `--reinstall-functions` overwrites built-in names and preserves custom files.
-  Built-in edits reach an install only after reinstall; buildin imports in tests bypass this.
-- `get_func_name_map()` globs `*.py` (skipping `_`-prefixed files), execs each module, raises
-  `TypeError` unless `Function` has `openai_schema`, `anthropic_schema` and `execute`, then caches
-  a `tools.function.Function` wrapper (`name`/`description`/`parameters`/`execute`/`func_cls`) in
-  `_func_name_map`. Files using `from instructor import` warn once per file; never reintroduce it.
+- v0.19 makes built-ins available out of the box: `get_func_name_map()` loads
+  `yaicli/functions/buildin/*.py` **from the installed package first**, then `FUNCTIONS_DIR`
+  (`<config-dir>/functions/`). A user file whose schema function name equals a builtin replaces it;
+  otherwise the builtin wins. This is the customization path — `--install-functions` only exports
+  editable copies (idempotent, never overwrites an existing file) and `--reinstall-functions`
+  refreshes those copies (removing untouched copies of builtins that no longer exist, keeping
+  user-modified ones). Do not assume the file on disk in `buildin/` is the one executing for an
+  existing install: an old exported copy overrides it until `--reinstall-functions`.
+- `functions_manifest.json` (`const.FUNCTIONS_MANIFEST_PATH`, written by install/reinstall) records
+  the package version + sha256 per builtin. An installed copy whose hash matches the recorded
+  install hash and now differs from the bundled file is "stale" → one stderr warning, never blocks.
+  Copies the user edited are treated as intentional overrides (no nagging). Pre-v0.19 configs have
+  no manifest, so no stale warning is possible until the first install/reinstall in v0.19.
+- Per-file robustness (K15): a syntax/import error, missing `Function`, missing
+  `openai_schema`/`anthropic_schema`/`execute`, or a bad `risk` import skips **that file** with one
+  warning; all other tools keep working. `list_functions()` never creates `FUNCTIONS_DIR`.
 - Four caches: `_func_name_map`/`_gemini_functions_cache` in `tools/function.py`,
   `_openai_schemas_cache`/`_anthropic_schemas_cache` in `tools/__init__.py`. Production never
   invalidates them; tests patching `FUNCTIONS_DIR` must reset all four (autouse `reset_caches`
   fixture in `tests/tools/test_function_loading.py`).
-- Adding a built-in requires the `buildin/` file, schema-contract + `execute` + end-to-end
-  `execute_tool_call` tests, and a note in [docs/usage/advanced.md](../../../docs/usage/advanced.md).
+- `Function` exposes `name`/`description`/`parameters`/`execute`/`func_cls` plus `source`
+  (`builtin`/`user`), `file_path` and `risk` (from `tools/risk.py`, `ImportError`-tolerant). Add a
+  builtin by adding the `buildin/` file + schema-contract/execute/end-to-end tests; no install step.
+- `--list-functions` prints `name (builtin|user)` and a one-line stale hint; it never writes.
 
 ## Execution Path (`execute_tool_call`)
 
@@ -125,6 +138,14 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
 `_mcp__` prefix selects MCP (`SHOW_MCP_OUTPUT`) vs built-in (`SHOW_FUNCTION_OUTPUT`); arguments
 are parsed with `json_repair.repair_json(..., return_objects=True)` and must be a `dict` (never
 `json.loads`), then the tool runs and its output prints in a `Panel` when the flag is on.
+
+Every result passes through `yaicli/tools/limits.py::truncate_tool_output()` before it is appended
+to the model messages (and before the panel is rendered): per-tool caps (shell 32KB, `fs_read_file`
+64KB, search/list 48KB, fetch 100KB, MCP/default 32KB; `TOOL_OUTPUT_MAX_CHARS` overrides, `0`
+disables), head+tail with a marker pointing at the full text spilled to `TOOL_OUTPUT_DIR`. A spill
+failure degrades to plain truncation. Keep this the single truncation point — do not truncate again
+in `client.py`/`printer.py`. Tool announce/output panels use `get_error_console()` when stdout is not
+a TTY (headless JSON purity), the Rich console otherwise.
 
 `ok=True` means the call reached the tool, including in-band errors such as
 `{"error": "file_paths must be a list ..."}`. `ok=False` covers an unknown tool, bad arguments, or
@@ -138,21 +159,47 @@ an exception from `execute`; the returned text is the error report. Do not raise
   (`LLMClient._get_valid_tool_calls`) → confirmation gate (`_execute_tools_and_continue`) →
   `execute_tool_call`.
 
-## Tool Policy & Confirmation
+## Tool Policy, Risk & Confirmation
 
 - `ToolPolicy` (`yaicli/schemas.py`) is a frozen per-request pair of flags; functions and MCP are
   independent. `exec` mode forces `ToolPolicy(False, False)` (`CLI._get_tool_policy`), defaults are
   ANDed in `Provider.resolve_tool_policy`, and disallowed calls are dropped, not persisted.
-- `TOOL_CONFIRM` (enabled by default) gates execution: approved names skip the prompt,
-  non-interactive sessions deny unapproved tools with a hint, and interactive sessions get
-  `ConfirmToolCall` → `ToolConfirmDecision` (`ONCE`/`SESSION`/`PERSIST`/`DENY`). A deny appends a
-  tool message with the matching `tool_call_id` and `"The user declined to execute this tool."`.
-- `ToolApprovalManager` (`yaicli/tools/approval.py`) keeps a session set and a persistent allowlist
-  at `TOOL_PERMISSIONS_PATH` (`~/.config/yaicli/tool_permissions.json`, key `always_allow`).
-  Writes are atomic (temp file + `os.replace`); missing/malformed files load empty, and a failed
-  persist falls back to session. Keys are exact gate names (`read` ≠ `_mcp__read`); behavior
-  changes also update the openspec specs, `tests/llms/test_tool_confirmation.py` and
-  `tests/tools/test_approval.py`.
+- Risk classes live in `yaicli/tools/risk.py`: `RiskLevel` (`read`/`write`/`network`/`exec`),
+  `BUILTIN_TOOL_RISK` for the 12 builtins and `get_tool_risk(name)` (MCP/unknown → `exec`). The
+  classifier `classify_shell_command()` is shlex/argv based (rm -r/-f, mkfs, dd of=/dev, shutdown
+  family, recursive chmod/chown on system paths, find -delete, download|shell pipes, fork bombs,
+  git clean -f, device redirects, ...); `is_dangerous_shell()` is the convenience wrapper. Never
+  reintroduce substring blacklists (they false-positive on `git add` and miss flag permutations).
+- `TOOL_CONFIRM` (enabled by default) gates execution; approved rules/names skip the prompt unless
+  the call is a **dangerous shell command**, which is always confirmed even when the tool/rule is
+  allowed (non-interactive => deny). Interactive sessions get `ConfirmToolCall` →
+  `ToolConfirmDecision` (`ONCE`/`SESSION`/`PERSIST`/`DENY`).
+- Headless policy: `--yes` auto-allows only `read` risk; `--allowed-tools` grants this run only
+  (fnmatch, never persisted); everything else is denied without a TTY. A deny appends a tool message
+  with the matching `tool_call_id` and structured JSON content
+  `{"error": "tool_denied", "reason": "..."}` and sets `LLMClient.tool_denied` (CLI mirrors it so
+  `--fail-on-tool-denied` can exit 3).
+- `ToolApprovalManager` (`yaicli/tools/approval.py`) keeps a session set plus
+  `TOOL_PERMISSIONS_PATH` (`<config-dir>/tool_permissions.json`). v2 schema:
+  `{"version": 2, "always_allow": ["tool", ...],
+  "rules": [{"tool": ..., "argv_prefix": [...]}, {"tool": ..., "path_glob": "..."}]}`;
+  v1 bare-string files still load. `is_allowed(name, arguments)` = session → persistent name → rules.
+  `argv_prefix` matches only a single simple shell command (any pipe/redirect/`;`/`&&` fails the
+  rule); `path_glob` requires **every** path-like argument to match (fnmatch, workspace-relative).
+  Writes are atomic (temp + `os.replace`, mode 0600); missing/malformed files load empty, and a
+  failed persist falls back to session. Keys are exact gate names (`read` ≠ `_mcp__read`).
+- Faithful prompt: `Printer._confirm_tool_call()` renders `approval.canonical_arguments()` (the same
+  repaired JSON dict `execute_tool_call` receives), plus specialized previews for
+  `execute_shell_command` (decoded command + danger reasons), `fs_write_file` (target/mode/content
+  head) and `fs_edit_file` (unified diff head 40). Never show raw model JSON that differs from what
+  executes (`\u003b`/duplicate-key cases are regression-tested).
+- Audit: every gate decision appends one JSON line to `TOOL_AUDIT_PATH` (`<config-dir>/tool_audit.jsonl`,
+  `TOOL_AUDIT` config, default on) with `ts/tool/risk/decision/source/args_summary/duration_ms`
+  (`args_summary` secret-redacted, <=500 chars; shell => decoded command). Best-effort OSError-tolerant,
+  0600, never affects the call. `/permissions` lists session/persistent/rule state and
+  `/permissions revoke <tool-or-index>` mutates the persisted file.
+- Behavior changes also update the openspec specs, `tests/llms/test_tool_confirmation.py`,
+  `tests/tools/test_approval.py` and `tests/test_permissions.py`.
 
 ## MCP Boundary (`yaicli/tools/mcp.py`)
 
@@ -177,16 +224,30 @@ an exception from `execute`; the returned text is the error report. Do not raise
 - End-to-end call tests patch `yaicli.tools.cfg` with
   `{"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False}`, patch `get_function`/`get_mcp`, and
   pass a `MagicMock` console (`tests/tools/test_tools_init.py`); `fastmcp` is a core dependency.
-- Loader tests patch `FUNCTIONS_DIR` and reset caches; confirmation tests drive the generator
-  with a scripted `FakeProvider` + `drive()` helper (`tests/llms/test_tool_confirmation.py`).
-- Verify with `uv run pytest tests/tools tests/llms/test_tool_confirmation.py -q`.
+  Truncation/spill tests live in `tests/test_context_budget.py`.
+- Loader tests (`tests/tools/test_function_loading.py`, `tests/test_functions_init.py`) patch
+  `FUNCTIONS_DIR` and reset all caches: builtin direct-load, user override by schema name,
+  broken-file skip, install/reinstall/manifest/stale-warning, no writes on fresh dir.
+- Shell guardrails: `tests/test_shell_tool.py` (timeout/process-group kill, env allowlist,
+  output cap, workspace cwd, danger classification incl. `git add` false-positive guard).
+- Permission gate: `tests/llms/test_tool_confirmation.py` (generator + `send()`),
+  `tests/tools/test_approval.py` (v1/v2 store, rules, atomic writes) and
+  `tests/test_permissions.py` (risk classes, danger double-confirm, `--yes` read-only,
+  `--allowed-tools`, structured deny, audit, prompt/gate argument equality).
+- Verify with `uv run pytest tests/tools tests/llms/test_tool_confirmation.py tests/test_permissions.py tests/test_shell_tool.py -q`.
 
 ## Anti-Patterns
 
 - A `Union`/`Optional` model-facing field, which becomes an `anyOf`/`any_of` declaration.
 - Raising on expected tool failures instead of returning an in-band error.
 - Top-level third-party imports in a built-in, `yaicli/tools/__init__.py`, or `mcp.py`.
-- Editing installed `~/.config/yaicli/functions/` copies instead of `buildin/` + reinstall.
-- A new `execute_tool_call` caller that skips the `ToolPolicy` filter or confirmation gate.
+- Adding a substring blacklist for dangerous shell commands instead of `tools/risk.py` argv
+  classification (false positives like `git add`, misses like `rm -r -f` flag orders).
+- Truncating tool output anywhere except `execute_tool_call`/`tools/limits.py`, or letting a full
+  tool result reach the model messages.
+- A new `execute_tool_call` caller that skips the `ToolPolicy` filter or confirmation gate; a deny
+  path that appends a tool message without a matching `tool_call_id`; a deny without audit
+  `decision=denied`.
+- Rendering raw model JSON in the confirmation prompt instead of `canonical_arguments()`.
 - Using the class/file name as the tool name, duplicating a title, printing from `execute`, or
   mutating a cached schema dict.

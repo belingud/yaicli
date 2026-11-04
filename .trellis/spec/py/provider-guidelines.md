@@ -116,9 +116,34 @@ LongCat strips `<longcat_tool_call>...</longcat_tool_call>` out of reasoning bef
   `ValueError("API_KEY is required")`; `OpenAIAzure.get_client_params()` raises `ProviderError` or
   `ValueError`; `AnthropicBedrockProvider`/`AnthropicVertexProvider` raise `ConfigMissingError` for
   missing AWS/GCP settings. Ollama needs no key.
-- Do not swallow API errors: providers print untrusted error bodies literally then raise
-  `ProviderError` (`openai_provider.py`) so callers can set a non-zero process exit; the REPL
-  catches it and keeps the session.
+- Do not swallow API errors: providers must let failures raise a classified error, never return error
+  text as assistant content. Wrap request-time and mid-stream failures with
+  `yaicli.errors.wrap_provider_exception(exc, "<Provider name>")` (or
+  `provider_response_error(provider, body)` for HTTP-200 in-band error bodies); the resulting
+  `AgentError` carries `kind`, `status_code`, `retryable` and a user-facing `.user_message`. The
+  client retries only retryable kinds before any content was streamed, and `entry.py`/`cli.py` map the
+  failure to an actionable stderr message and a script-friendly exit code. Regression tests:
+  `tests/test_errors.py` (39-provider matrix) and the `tests/llms/test_*provider*.py` error cases.
+
+## Errors, Retries & Timeouts
+
+- `yaicli/errors.py` is the single vocabulary: `ErrorKind` (`auth`, `rate_limit`, `context_length`,
+  `network`, `timeout`, `bad_request`, `provider`, `tool`, `config`, `depth_limit`, `interrupted`,
+  `unknown`), `AgentError` (subclass of `ProviderError`) with `.kind/.status_code/.retryable/.hint/
+  .user_message`, `classify_exception(exc)` (duck-typed: explicit `exc.kind` → HTTP status → exception
+  class name → message patterns), `is_retryable`, `retry_after_seconds`, `backoff_delay`, and the
+  `EXIT_*` process codes.
+- Providers should not import heavy SDK exception types just to classify them; `classify_exception`
+  works on duck-typed attributes (`status_code`, `response.headers`) and class names.
+- Uniform timeout: every provider must forward the configured `TIMEOUT` to its SDK/HTTP client where
+  the API accepts one (OpenAI `timeout`, Anthropic `timeout`, ChatGLM/Mistral/Cohere/Ollama request
+  options). Providers that ignore `TIMEOUT` are considered buggy.
+- Retry policy lives in `LLMClient` (not providers): only `RATE_LIMIT`/`NETWORK`/`TIMEOUT`/`PROVIDER`
+  failures, only before content has been yielded to the printer; `RETRY_ENABLED`, `RETRY_MAX`,
+  `RETRY_BASE_DELAY`, `RETRY_MAX_DELAY` configure it and `Retry-After` is honored (capped).
+  `context_length` is never retried blindly: the client trims one turn group and retries once.
+- A mid-stream failure after content was emitted must raise a clear classified error — never silently
+  stop the stream or duplicate already-rendered content.
 
 ## Adding a Provider
 
@@ -140,6 +165,13 @@ LongCat strips `<longcat_tool_call>...</longcat_tool_call>` out of reasoning bef
 7. If the provider cannot take images, add its key to `NO_VISION_PROVIDERS` in `yaicli/const.py`;
    `yaicli/cli.py` warns and ignores images for those providers.
 8. Verify with `ruff check yaicli tests` and `uv run pytest tests/llms -q`.
+
+## Response Contracts
+
+- Tool execution is driven by `tool_call is not None`, not by `finish_reason`; `finish_reason` is
+  surfaced for outcomes such as `depth_limit` (client) and may be reported by providers.
+- `LLMResponse` has no usage field yet (token/cost accounting is a later milestone); headless JSON
+  output reports `usage` as zeros. Do not add provider-specific usage handling ad hoc.
 
 ## Testing Rules
 
@@ -180,5 +212,7 @@ LongCat strips `<longcat_tool_call>...</longcat_tool_call>` out of reasoning bef
 - Importing another provider's optional SDK from shared code. Optional SDKs are imported at the top
   of their own provider module; the factory imports only the selected module.
 - Registering a provider without updating `test_known_provider_types` or without a test file.
+- Catching `Exception` in `completion()` and yielding the error text as an `LLMResponse` — that was
+  the v0.18 cohere/ollama bug; raise the classified error instead (`tests/test_errors.py`).
 
 Run `uv run pytest tests/llms -q` and `ruff check yaicli tests` after any change here.

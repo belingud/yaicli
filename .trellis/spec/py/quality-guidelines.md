@@ -51,20 +51,30 @@ there is no `just check`; lint is bare `ruff check` or `tox -e lint`. `CLAUDE.md
 - Layout: `tests/llms/` (provider/client modules), `tests/tools/` (functions, MCP, approval, schemas),
   and flat modules for CLI/config/roles/printer/history. Both subdirectories are packages; `tests/` is not.
 - `tests/conftest.py` provides `patched_config_path` (session-scoped `autouse`; patches
-  `yaicli.config.CONFIG_PATH` to a session temp `.config/yaicli/config.ini`), `setup_test_environment`
-  (session-scoped `autouse`; sets `YAI_PROVIDER=openai`, `YAI_API_KEY=test_api_key`,
-  `YAI_MODEL=gpt-3.5-turbo`, mock AWS credentials/region and `FIREWORKS_API_KEY`, restored at teardown —
-  mutations leak for the whole session), `cli()` (function-scoped `CLI()` on the patched config path, as
-  used by `tests/test_image.py`), and `mock_console()` (function-scoped `MagicMock`).
+  `yaicli.config.CONFIG_PATH` to a session temp `.config/yaicli/config.ini`), `patched_history_file`
+  (session-scoped `autouse`; points `yaicli.cli.HISTORY_FILE`/`const.HISTORY_FILE` at a temp file so
+  REPL tests never write the real `~/.yaicli_history` in read-only HOME/CI),
+  `setup_test_environment` (session-scoped `autouse`; sets `YAI_PROVIDER=openai`,
+  `YAI_API_KEY=test_api_key`, `YAI_MODEL=gpt-3.5-turbo`, mock AWS credentials/region and
+  `FIREWORKS_API_KEY`, restored at teardown — mutations leak for the whole session),
+  `cli()` (function-scoped `CLI()` on the patched config path, as used by `tests/test_image.py`), and
+  `mock_console()` (function-scoped `MagicMock`).
+- Process-level tests (headless contract, faststart, config-dir resolution) run `sys.executable`
+  subprocesses with a private `HOME` + `YAI_CONFIG_DIR` under `tmp_path`, `stdin=DEVNULL`, and the
+  inherited `YAI_*`/`XDG_*` variables stripped (`tests/test_runtime_bootstrap.py`,
+  `tests/test_headless_contract.py`). Copy that harness instead of touching the real environment.
 - Pytest config: `python_files = ["test_*.py"]`; `filterwarnings` ignores `DeprecationWarning`,
   `PendingDeprecationWarning`, `UserWarning`, and pydantic deprecations. Warnings never fail a test —
   assert behavior directly.
 - Path-isolation pitfall: patching `yaicli.config.CONFIG_PATH` does not redirect `FUNCTIONS_DIR`,
-  `ROLES_DIR`, `MCP_JSON_PATH`, or `TOOL_PERMISSIONS_PATH`; `yaicli/const.py` derives them once from the
-  real `~/.config/yaicli`. Patch the consuming module or pass an explicit path:
+  `ROLES_DIR`, `MCP_JSON_PATH`, `TOOL_PERMISSIONS_PATH`, `TOOL_AUDIT_PATH`, `TOOL_OUTPUT_DIR` or
+  `HISTORY_FILE`; `yaicli/const.py` resolves them once at import from `YAI_CONFIG_DIR`/XDG/`~/.config`.
+  Patch the consuming module or pass an explicit path:
   `patch.object(yaicli.tools.function, "FUNCTIONS_DIR", tmp)` (`tests/tools/test_function_loading.py`),
-  `patch("yaicli.role.ROLES_DIR")` (`tests/test_role.py`), or
-  `ToolApprovalManager(permissions_path=tmp_path / "tool_permissions.json")` (`tests/tools/test_approval.py`).
+  `patch("yaicli.role.ROLES_DIR")` (`tests/test_role.py`),
+  `ToolApprovalManager(permissions_path=tmp_path / "tool_permissions.json")` (`tests/tools/test_approval.py`),
+  or patch `yaicli.tools.cfg["TOOL_AUDIT"]`/`const.TOOL_AUDIT_PATH` for permission tests
+  (`tests/test_permissions.py`). For a truly fresh config dir, set `YAI_CONFIG_DIR` in a subprocess.
 
 ## Test Patterns to Copy
 
@@ -107,6 +117,14 @@ there is no `just check`; lint is bare `ruff check` or `tox -e lint`. `CLAUDE.md
 **CLI**: `tests/test_entry.py` uses `typer.testing.CliRunner().invoke(app, ["--help"])` and patches
 `yaicli.cli.CLI`; `tests/test_cli.py` patches `yaicli.cli.get_console`, `Printer`, `FileChatManager`,
 `PromptSession`, `pathlib.Path.mkdir` and injects mocks; `tests/test_run_smoke.py` uses `CLI(client=...)`.
+`tests/test_headless_contract.py` covers the v0.19 stdout/stderr split, JSON/NDJSON payloads, exit codes
+and `--shell` non-TTY behaviour; keep stdout assertions exact (progress/errors must go to stderr).
+
+**Agent loop / context**: `tests/test_context_budget.py` (estimator, 8MB truncation + spill, 500-session
+turn-group invariant simulation, context-length self-heal, retry rules, `/context` + `/compact`),
+`tests/test_errors.py` (39-provider classification/no-swallow matrix), `tests/test_shell_tool.py`
+(timeout/process-group/env/output/danger), `tests/test_permissions.py` (risk gate, rules v2, audit,
+prompt/exec argument equality). Use `TemporaryDirectory`/`tmp_path` for spill/output paths.
 
 ## Hard Rules
 
@@ -131,7 +149,10 @@ Before reporting a Python change complete:
 - [ ] `ruff check --no-fix yaicli tests` clean.
 - [ ] Relevant tests green: tool change → `uv run pytest tests/tools/test_<name>.py` plus
       `tests/tools/test_tools_init.py`; provider change → `tests/llms/test_<provider>_provider.py` plus
-      `tests/llms/test_streaming.py`; CLI/config → `tests/test_cli.py tests/test_config.py tests/test_entry.py`.
+      `tests/llms/test_streaming.py` and `tests/test_errors.py`; CLI/config → `tests/test_cli.py
+      tests/test_config.py tests/test_entry.py tests/test_headless_contract.py`; context/client →
+      `tests/test_context_budget.py tests/llms/test_client.py`; permissions → `tests/test_permissions.py
+      tests/llms/test_tool_confirmation.py tests/tools/test_approval.py`.
 - [ ] Full suite `uv run pytest` green before finishing cross-cutting changes (client, config, function
       registry, schemas).
 - [ ] New built-in function in `yaicli/functions/buildin/` has `tests/tools/test_<name>.py` covering

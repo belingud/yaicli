@@ -1,0 +1,16 @@
+{"file": ".trellis/spec/py/index.md", "reason": "Yaicli Python package layer map, dependency rules, where new code goes, quality gate"}
+{"file": ".trellis/spec/py/provider-guidelines.md", "reason": "Provider/streaming/message-conversion and LLM client loop conventions for K02/K05 changes"}
+{"file": ".trellis/spec/py/function-tool-guidelines.md", "reason": "Function calling, builtin functions, tool approval, MCP conventions for K01/K03/K06"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "CLI modes, REPL, slash commands, rendering rules for K04/K07 changes"}
+{"file": ".trellis/spec/py/config-and-context.md", "reason": "Config layering, roles, history, @path context rules for K21/K02"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "Tests, lint, formatting and verification commands required by every work package"}
+{"file": ".trellis/spec/repo/index.md", "reason": "Repository-wide rules: conventional commits, docs ship with change, Trellis workflow"}
+{"file": ".trellis/spec/repo/build-and-release.md", "reason": "Version bump and release flow for the final integration step"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Avoid duplicating helpers across new modules"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Data flow across entry/cli/client/tools when adding headless and context features"}
+{"file": "var/lightweight-audit/09-roadmap.md", "reason": "Source requirements, gap evidence, detailed design for v0.19"}
+{"file": "var/lightweight-audit/01-agent-loop.md", "reason": "Context economy, trimming invariants, error/depth/parallel tool-call evidence for K02/K05"}
+{"file": "var/lightweight-audit/02-cli-ux.md", "reason": "Headless contract, EPIPE, SIGINT, REPL command evidence for K04"}
+{"file": "var/lightweight-audit/03-tools-safety.md", "reason": "Out-of-box tools, shell guardrails, permissions, truncation evidence for K01/K03/K06"}
+{"file": "var/lightweight-audit/04-footprint.md", "reason": "Startup/install measurements and prototype numbers for K07 docs table and K21 fast path"}
+{"file": "var/lightweight-audit/05-docs-positioning.md", "reason": "Positioning copy, quick start text, docs change list for K07"}
