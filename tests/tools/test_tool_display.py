@@ -195,6 +195,12 @@ class TestExecuteToolCallDisplay:
         assert entries[0].total_chars == len(result)
         assert entries[0].truncated is False
 
+    def test_tool_call_caption_recorded(self):
+        _, ok, _ = _tool_call(arguments='{"command": "pytest -q", "timeout": 120}')
+        entries, _ = output_history.viewer_outputs()
+        assert ok is True
+        assert entries[0].caption == "pytest -q"
+
     def test_unknown_tool_records_nothing(self):
         console = MagicMock()
         tc = ToolCall(id="1", name="nope", arguments="{}")

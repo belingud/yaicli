@@ -38,6 +38,7 @@ def entry(index=1, turn=1, name="execute_shell_command", text="result text", **k
         total_chars=kwargs.pop("total_chars", len(text)),
         spill_path=kwargs.pop("spill_path", None),
         truncated=kwargs.pop("truncated", False),
+        caption=kwargs.pop("caption", ""),
     )
 
 
@@ -71,8 +72,44 @@ class TestHelpers:
         fragments = _left_fragments(entries, 1)
         rendered = "".join(text for _, text in fragments)
         assert "1. a" in rendered and "2. b" in rendered
-        assert fragments[1][0] == "class:selected"
-        assert fragments[0][0] == ""
+        selected = [text for style, text in fragments if style == "class:selected"]
+        assert any("2. b" in text for text in selected)
+        assert not any("1. a" in text for text in selected)
+
+    def test_left_fragments_show_caption_and_size(self):
+        entries = [
+            entry(index=1, name="execute_shell_command", caption="pytest -q", total_chars=314),
+        ]
+        rendered = "".join(text for _, text in _left_fragments(entries, 0))
+        assert "execute_shell_command" in rendered
+        assert "(314c)" in rendered
+        assert "pytest -q" in rendered
+
+    def test_left_fragments_mark_truncated_entries(self):
+        entries = [entry(index=1, name="execute_shell_command", caption="pytest -q", truncated=True)]
+        rendered = "".join(text for _, text in _left_fragments(entries, 0))
+        assert "pytest -q · truncated" in rendered
+
+    def test_left_fragments_fall_back_to_arguments(self):
+        entries = [entry(index=1, name="fs_read_file", arguments='{"path": "/tmp/a.log"}')]
+        rendered = "".join(text for _, text in _left_fragments(entries, 0))
+        assert "/tmp/a.log" in rendered
+
+    def test_left_fragments_window_keeps_selection_visible(self):
+        entries = [entry(index=i, name="tool") for i in range(1, 21)]
+        rendered = "".join(text for _, text in _left_fragments(entries, 15))
+        assert "16. tool" in rendered
+        assert "11. tool" in rendered
+        assert "10. tool" not in rendered
+        assert "more above" in rendered
+        assert "more below" not in rendered
+
+    def test_left_fragments_window_marks_hidden_below(self):
+        entries = [entry(index=i, name="tool") for i in range(1, 21)]
+        rendered = "".join(text for _, text in _left_fragments(entries, 2))
+        assert "3. tool" in rendered
+        assert "more below" in rendered
+        assert "more above" not in rendered
 
     def test_load_full_text_reads_spill(self, tmp_path):
         spill = tmp_path / "out.txt"

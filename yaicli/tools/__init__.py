@@ -214,6 +214,19 @@ def get_anthropic_mcp_tools() -> list[dict[str, Any]]:
         raise MCPToolsError(f"Error getting MCP tools for Anthropic: {e}") from e
 
 
+#: Arguments that best identify a tool call in lists (first match wins).
+_CAPTION_ARGUMENT_KEYS = ("command", "file_path", "path", "url", "query", "pattern", "title")
+
+
+def _tool_call_caption(arguments: Dict[str, Any]) -> str:
+    """Return a short one-line caption for the viewer list (command/path/url...)."""
+    for key in _CAPTION_ARGUMENT_KEYS:
+        value = arguments.get(key)
+        if isinstance(value, str) and value.strip():
+            return " ".join(value.strip().split())[:160]
+    return ""
+
+
 def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, bool]:
     """Execute a tool call and return the result
 
@@ -267,6 +280,8 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
         console.print(safe_text(error_msg), style="red")
         return error_msg, False
 
+    caption = _tool_call_caption(arguments)
+
     # 3. Execute the tool
     try:
         # K03 integration: the standalone shell tool reads its guardrails from the
@@ -285,6 +300,7 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
             name=tool_call.name,
             arguments=preview_arguments,
             text=display_text,
+            caption=caption,
             total_chars=result_meta.total_chars,
             spill_path=result_meta.spill_path,
             truncated=result_meta.truncated,

@@ -101,3 +101,16 @@ class TestEntryMetadata:
         assert entry.truncated is True
         assert entry.turn == 1
         assert entry.index == 1
+        assert entry.caption == ""
+
+    def test_entry_caption_is_kept(self):
+        output_history.begin_turn()
+        entry = output_history.record_output(
+            kind="function",
+            name="execute_shell_command",
+            arguments='{"command": "pytest -q"}',
+            text="ok",
+            caption="pytest -q",
+            total_chars=2,
+        )
+        assert entry.caption == "pytest -q"

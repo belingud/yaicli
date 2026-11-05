@@ -20,6 +20,10 @@ from .tools.output_history import ToolOutputEntry, viewer_outputs
 
 #: Safety cap when loading a spilled full output into the viewer.
 MAX_FULL_TEXT_CHARS = 1_000_000
+#: Max characters of the one-line caption shown under an entry in the list pane.
+_CAPTION_MAX_CHARS = 40
+#: Entries rendered in the list pane at once (selection stays in the window).
+_MAX_VISIBLE_ENTRIES = 10
 
 _HELP_LINE = (
     " ↑/↓ select · Tab switch pane · PgUp/PgDn scroll · f full text · q/Esc/Ctrl+O close "
@@ -82,14 +86,43 @@ def _load_full_text(entry: ToolOutputEntry) -> Optional[str]:
     return data
 
 
+def _clip_caption(text: str, max_chars: int = _CAPTION_MAX_CHARS) -> str:
+    """One-line caption, whitespace collapsed and clipped to the list width."""
+    collapsed = " ".join(str(text or "").split())
+    if len(collapsed) > max_chars:
+        collapsed = collapsed[: max_chars - 1].rstrip() + "…"
+    return collapsed
+
+
+def _visible_window(total: int, position: int, max_visible: int = _MAX_VISIBLE_ENTRIES) -> tuple[int, int]:
+    """Return the ``[start, end)`` slice of entries that keeps ``position`` visible."""
+    if total <= max_visible:
+        return 0, total
+    half = max_visible // 2
+    start = max(0, min(position - half, total - max_visible))
+    return start, start + max_visible
+
+
 def _left_fragments(entries: List[ToolOutputEntry], position: int) -> List[Any]:
-    """Formatted text for the entry list (selected row reversed)."""
+    """Formatted text for the entry list: tool name, size and a command/path caption."""
     fragments: List[Any] = []
-    for index, entry in enumerate(entries):
+    start, end = _visible_window(len(entries), position)
+    if start > 0:
+        fragments.append(("class:caption", f"  … {start} more above\n"))
+    for index in range(start, end):
+        entry = entries[index]
         selected = index == position
+        style = "class:selected" if selected else ""
         marker = "▸ " if selected else "  "
-        text = f"{marker}{index + 1:>2}. {entry.name}  ({entry.total_chars:,}c)\n"
-        fragments.append(("class:selected" if selected else "", text))
+        fragments.append((style, f"{marker}{index + 1:>2}. {entry.name} ({entry.total_chars:,}c)\n"))
+        caption = _clip_caption(entry.caption or entry.arguments)
+        if entry.truncated:
+            caption = f"{caption} · truncated" if caption else "truncated"
+        if caption:
+            fragments.append((style or "class:caption", f"      {caption}\n"))
+    hidden = len(entries) - end
+    if hidden > 0:
+        fragments.append(("class:caption", f"  … {hidden} more below\n"))
     return fragments
 
 
@@ -120,7 +153,7 @@ def build_viewer_app(
     )
     list_window = Window(
         list_control,
-        width=Dimension(min=26, max=44),
+        width=Dimension(min=34, max=54),
         wrap_lines=False,
         style="class:pane",
     )
@@ -132,7 +165,7 @@ def build_viewer_app(
     def header_text() -> str:
         entry = selected()
         suffix = " · showing full file" if entry.index in state["full"] else ""
-        return f" Tool outputs · {label or 'session'} · {len(entries)} result(s){suffix} "
+        return f" Tool outputs · {label or 'session'} · {_entry_header(entry, state['pos'] + 1, len(entries))}{suffix} "
 
     def footer_text() -> str:
         return state["notice"] or _HELP_LINE
@@ -223,6 +256,7 @@ def build_viewer_app(
             "footer": "reverse",
             "pane": "",
             "selected": "reverse",
+            "caption": "fg:#888888",
             "separator": "fg:#666666",
         }
     )

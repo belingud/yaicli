@@ -37,6 +37,9 @@ class ToolOutputEntry:
     spill_path: Optional[str]
     #: Whether the result was truncated for the model context.
     truncated: bool
+    #: Short human caption for lists (e.g. the shell command or file path); "" when
+    #: the tool has no obviously identifying argument.
+    caption: str = ""
 
 
 _entries: Deque[ToolOutputEntry] = deque(maxlen=MAX_ENTRIES)
@@ -62,6 +65,7 @@ def record_output(
     name: str,
     arguments: str,
     text: str,
+    caption: str = "",
     total_chars: int,
     spill_path: Optional[str] = None,
     truncated: bool = False,
@@ -76,6 +80,7 @@ def record_output(
         name=name,
         arguments=arguments,
         text=text,
+        caption=caption,
         total_chars=total_chars,
         spill_path=spill_path,
         truncated=truncated,
