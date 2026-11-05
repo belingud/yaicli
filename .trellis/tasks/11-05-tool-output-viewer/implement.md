@@ -102,7 +102,7 @@ ruff, mkdocs --strict). Only the explicit v0.19.1 release step remains.
 | T0 | paused viewer baseline | commit `7fcea5f` (watcher + printer hook; generation pauses while viewer open) | — |
 | T1 ✅ | `11-05-stream-bridge` | `ThreadedStream` adapter + unit tests; not wired yet | T0 |
 | T2 ✅ | `11-05-worker-console-routing` | thread-dispatching console wrapper + tests; not wired yet | T1 |
-| T3 | `11-05-background-generation-cli` | interactive streaming uses the bridge; Ctrl+O viewer while worker continues; close redraws | T1+T2 |
+| T3 ✅ | `11-05-background-generation-cli` | interactive streaming uses the bridge; Ctrl+O viewer while worker continues; close redraws | T1+T2 |
 | T4 | `11-05-background-generation-cancel` | Ctrl+C/abort semantics, watcher lifecycle, message-copy safety, queued confirmations | T3 |
 | T5 | `11-05-background-generation-verify` | regression + docs/spec + commit | T4 |
 | T6 | release v0.19.1 | merge/tag/PyPI/docs (explicit user request only) | T5 |
