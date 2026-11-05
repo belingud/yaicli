@@ -124,6 +124,13 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   handler; that hangs the prompt event loop), and `_run_repl()` catches the signal, runs
   `CLI._open_tool_output_viewer()` (a synchronous alt-screen `prompt_toolkit.Application`) and
   continues. `/show-output` (`CmdHandler.handle_show_output`) opens the same viewer.
+- Generation-time Ctrl+O: while a turn streams there is no prompt reading the keyboard, so
+  `CLI._handle_llm_response()` starts `GenerationKeyWatcher` (`yaicli/generation_keys.py`, cbreak
+  stdin watcher with `ISIG` still on) and passes `pause_requested`/`on_pause` to
+  `Printer.display_stream()`. On Ctrl+O the printer stops the live region, `CLI._open_viewer_while_generating()`
+  pauses the watcher, opens the viewer and resumes; the provider generator is not advanced while the
+  viewer is open. Typed-ahead text is stored in `_pending_prompt_text` and passed as
+  `PromptSession.prompt(..., default=...)`. Headless/machine runs never start the watcher.
 - `_run_repl()` loop: separator → `session.prompt(self.get_prompt_tokens)` → strip → skip blank →
   `_handle_special_commands()` (tri-state `False`=exit, `True`=handled, `str`=prompt) →
   `_process_user_input()`. SIGINT semantics (v0.19, consistent with the headless contract): a single

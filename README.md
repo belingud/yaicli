@@ -925,7 +925,8 @@ ai --verbose "Explain quantum computing"
 - `Ctrl+C` - Clear the current input (during generation: cancel the turn); press twice quickly to exit
 - `Ctrl+D` - Exit
 - `Ctrl+R` - Search history
-- `Ctrl+O` - Open the full-screen tool-output viewer (all outputs of this turn)
+- `Ctrl+O` - Open the full-screen tool-output viewer (all outputs of this turn; also works while the
+  assistant is generating — the stream pauses until the viewer closes)
 - `↑/↓` - Navigate through history
 
 </td>

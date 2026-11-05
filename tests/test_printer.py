@@ -261,6 +261,43 @@ class TestPrinter(unittest.TestCase):
         self.assertEqual(received, [ToolConfirmDecision.ONCE])
 
     @patch("yaicli.printer.Live")
+    def test_display_stream_pause_hook_runs_and_resumes(self, mock_live):
+        """A generation-time viewer request stops the live, runs on_pause, then continues."""
+        mock_live.return_value = MagicMock()
+        printer = Printer()
+        printer.console = MagicMock()
+        printer.show_reasoning = True
+
+        def gen():
+            yield LLMResponse(content="first ")
+            yield LLMResponse(content="second")
+
+        requests = iter([True, False, False, False])
+        pauses = []
+        content, _ = printer.display_stream(
+            gen(),
+            pause_requested=lambda: next(requests, False),
+            on_pause=lambda: pauses.append(True),
+        )
+
+        self.assertEqual(pauses, [True])
+        self.assertIn("first ", content)
+        self.assertIn("second", content)
+
+    @patch("yaicli.printer.Live")
+    def test_display_stream_pause_hook_not_used_without_callback(self, mock_live):
+        """Without hooks the stream loop is unchanged (no pause checks)."""
+        mock_live.return_value = MagicMock()
+        printer = Printer()
+        printer.console = MagicMock()
+
+        def gen():
+            yield LLMResponse(content="only")
+
+        content, _ = printer.display_stream(gen())
+        self.assertIn("only", content)
+
+    @patch("yaicli.printer.Live")
     def test_display_stream_refresh_live_resets(self, mock_live):
         """A RefreshLive flushes reasoning, restarts the live, and resets accumulators."""
         mock_live.return_value = MagicMock()

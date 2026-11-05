@@ -294,7 +294,7 @@ In addition to persistent context, you can temporarily reference files using the
 | `Ctrl+C` | Clear the current input line; during generation it cancels the turn; press twice quickly to exit |
 | `Ctrl+D` | Exit (exit code 0) |
 | `Ctrl+R` | Search history |
-| `Ctrl+O` | Open the full-screen tool-output viewer for this turn (`q`/`Esc` to close) |
+| `Ctrl+O` | Open the full-screen tool-output viewer for this turn (`q`/`Esc` to close); works during generation too (stream pauses while viewing) |
 | `↑/↓` | Navigate through history |
 
 ## Next Steps

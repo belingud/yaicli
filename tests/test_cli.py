@@ -873,6 +873,110 @@ class TestKeyBindingsAndSetup:
             cli._open_tool_output_viewer()
         mock_open.assert_called_once_with(cli.console)
 
+    def test_start_generation_watcher_skips_machine_output(self, cli_with_mocks):
+        """Headless/machine runs never install the Ctrl+O key watcher."""
+        from unittest.mock import patch
+
+        cli = cli_with_mocks
+        cli.interactive = True
+        cli.machine_output = True
+        with patch("yaicli.generation_keys.GenerationKeyWatcher") as mock_watcher:
+            assert cli._start_generation_watcher() is None
+        mock_watcher.assert_not_called()
+
+    def test_start_generation_watcher_returns_none_when_not_tty(self, cli_with_mocks):
+        """A non-TTY start() result means no watcher is returned."""
+        from unittest.mock import MagicMock, patch
+
+        cli = cli_with_mocks
+        cli.interactive = True
+        cli.machine_output = False
+        fake = MagicMock()
+        fake.start.return_value = False
+        with patch("yaicli.generation_keys.GenerationKeyWatcher", return_value=fake):
+            assert cli._start_generation_watcher() is None
+        fake.start.assert_called_once()
+        fake.stop.assert_not_called()
+
+    def test_handle_llm_response_starts_and_stops_watcher(self, cli_with_mocks):
+        """The watcher wraps the stream and its typed-ahead text feeds the next prompt."""
+        from unittest.mock import MagicMock, patch
+
+        cli = cli_with_mocks
+        cli.interactive = True
+        cli.machine_output = False
+        fake = MagicMock()
+        fake.start.return_value = True
+        fake.take_viewer_request.return_value = False
+        fake.stop.return_value = "typed ahead"
+        with (
+            patch("yaicli.generation_keys.GenerationKeyWatcher", return_value=fake),
+            patch("yaicli.cli.CLI._build_messages", return_value=[]),
+            patch("yaicli.printer.Printer.display_stream", return_value=("answer", None)) as mock_display,
+        ):
+            cli.client.completion_with_tools.return_value = MagicMock()
+            content, _ = cli._handle_llm_response("hi")
+
+        assert content == "answer"
+        fake.start.assert_called_once()
+        fake.stop.assert_called_once()
+        assert mock_display.call_args.kwargs["pause_requested"] == fake.take_viewer_request
+        assert callable(mock_display.call_args.kwargs["on_pause"])
+        assert cli._pending_prompt_text == "typed ahead"
+
+    def test_open_viewer_while_generating_skips_without_outputs(self, cli_with_mocks):
+        """No outputs yet in this turn: the stream is not paused."""
+        from unittest.mock import MagicMock, patch
+
+        cli = cli_with_mocks
+        watcher = MagicMock()
+        with (
+            patch("yaicli.tools.output_history.viewer_outputs", return_value=([], "")),
+            patch("yaicli.cli.CLI._open_tool_output_viewer") as mock_open,
+        ):
+            cli._open_viewer_while_generating(watcher)
+        mock_open.assert_not_called()
+        watcher.pause.assert_not_called()
+
+    def test_open_viewer_while_generating_pauses_and_resumes(self, cli_with_mocks):
+        """A viewer request pauses the watcher, opens the viewer, then resumes the stream."""
+        from unittest.mock import MagicMock, patch
+
+        from yaicli.tools import output_history
+
+        cli = cli_with_mocks
+        watcher = MagicMock()
+        output_history.reset()
+        output_history.begin_turn()
+        output_history.record_output(kind="function", name="tool", arguments="{}", text="out", total_chars=3)
+        try:
+            with patch("yaicli.cli.CLI._open_tool_output_viewer") as mock_open:
+                cli._open_viewer_while_generating(watcher)
+        finally:
+            output_history.reset()
+        watcher.pause.assert_called_once()
+        mock_open.assert_called_once()
+        watcher.resume.assert_called_once()
+
+    def test_run_repl_prefills_pending_typed_text(self, cli_with_mocks):
+        """Text typed during generation is pre-filled into the next prompt."""
+        from unittest.mock import MagicMock, patch
+
+        mock_session = MagicMock()
+        mock_session.prompt.side_effect = [EOFError]
+        cli_with_mocks._pending_prompt_text = "draft text"
+        with (
+            patch("yaicli.cli.PromptSession", return_value=mock_session),
+            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+            patch("yaicli.cli.AtPathCompleter"),
+            patch("yaicli.cli.LimitedFileHistory"),
+        ):
+            cli_with_mocks._run_repl()
+
+        mock_session.prompt.assert_called_once()
+        assert mock_session.prompt.call_args.kwargs.get("default") == "draft text"
+        assert cli_with_mocks._pending_prompt_text == ""
+
     def test_print_help_mentions_show_output(self, cli_with_mocks):
         """The help banner exposes the /show-output command."""
         cli = cli_with_mocks

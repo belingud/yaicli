@@ -92,7 +92,8 @@ Ctrl+C             : Clear input / cancel turn; press twice to exit
 - `Ctrl+D` - Exit (exit code 0)
 - `Ctrl+R` - Search history
 - `Ctrl+O` - Open the full-screen tool-output viewer for this turn (`↑/↓` select, `Tab` switch
-  pane, `f` full text, `q`/`Esc` close)
+  pane, `f` full text, `q`/`Esc` close). It also works while the assistant is generating: the
+  stream pauses until the viewer closes
 - `↑/↓` - Navigate through history
 
 ## Chat Mode (💬)

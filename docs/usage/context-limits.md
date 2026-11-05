@@ -59,6 +59,10 @@ Notes:
   switches pane, `PgUp/PgDn` scroll, `f` toggles between the model-visible text and the spilled full
   file (capped at 1 MB), and `q`/`Esc`/`Ctrl+O` closes it, restoring the REPL. Non-interactive runs
   fall back to the inline last-output panel.
+- The same shortcut works **while the assistant is generating** an answer: the viewer opens without
+  waiting for the turn to finish and the provider stream is paused while it is open (it resumes on
+  close; leaving it open for a very long time may hit provider idle timeouts). Typed-ahead text is
+  kept and pre-filled into the next prompt.
 - Long tool-call arguments on the `@Function call:` line are summarized
   (`TOOL_CALL_PREVIEW_MAX_CHARS=300`); a large `content`/`command` value appears as `<N chars>`.
 - If the spill file cannot be written (read-only disk, permission error), YAICLI degrades to plain

@@ -111,6 +111,9 @@ class CLI:
         "interactive_round",
         #: K02: one-shot flag so the group-trim notice is printed at most once.
         "_trim_notified",
+        #: Text typed while the assistant was generating (Ctrl+O watcher); used as
+        #: the initial prompt buffer for the next input.
+        "_pending_prompt_text",
         "chat_start_time",
         "is_temp_session",
         "chat",
@@ -186,6 +189,8 @@ class CLI:
 
         self.interactive_round = cfg["INTERACTIVE_ROUND"]
         self._trim_notified = False
+        # Typed-ahead text captured by the generation-time Ctrl+O watcher.
+        self._pending_prompt_text = ""
         self.chat_start_time = None
         self.is_temp_session = True
         self.chat = Chat(title="", history=[])
@@ -769,6 +774,9 @@ class CLI:
         messages = self._build_messages(user_input, images=images)
         if not self.machine_output and self.role.name != DefaultRoleNames.CODER:
             self.console.print("Assistant:", style="bold green")
+        # Generation-time Ctrl+O: while chunks stream there is no prompt reading the
+        # keyboard, so a small cbreak watcher captures Ctrl+O (and typed-ahead text).
+        watcher = self._start_generation_watcher()
         try:
             response_iterator = self.client.completion_with_tools(
                 messages,
@@ -778,7 +786,14 @@ class CLI:
             if self.output_format == "stream-json":
                 response_iterator = self._instrument_tool_events(response_iterator, messages)
 
-            content, _ = self.printer.display_stream(response_iterator)
+            if watcher is not None:
+                content, _ = self.printer.display_stream(
+                    response_iterator,
+                    pause_requested=watcher.take_viewer_request,
+                    on_pause=lambda: self._open_viewer_while_generating(watcher),
+                )
+            else:
+                content, _ = self.printer.display_stream(response_iterator)
 
             # Wave-2 coordination (K02/K06): the client reports depth/denial
             # outcomes through its own flags; mirror them onto the CLI contract.
@@ -804,6 +819,37 @@ class CLI:
             if self.verbose:
                 traceback.print_exc()
             return None, messages
+        finally:
+            if watcher is not None:
+                pending = watcher.stop()
+                if pending:
+                    # Typed-ahead text (anything but Ctrl+O keys) becomes the next
+                    # prompt's initial buffer instead of being dropped.
+                    self._pending_prompt_text = (getattr(self, "_pending_prompt_text", "") + pending)[-4000:]
+
+    def _start_generation_watcher(self):
+        """Install the generation-time Ctrl+O key watcher (interactive streaming only)."""
+        if not getattr(self, "interactive", False) or getattr(self, "machine_output", False):
+            return None
+        try:
+            from .generation_keys import GenerationKeyWatcher
+
+            watcher = GenerationKeyWatcher()
+            return watcher if watcher.start() else None
+        except Exception:  # pragma: no cover - key capture must never break a turn
+            return None
+
+    def _open_viewer_while_generating(self, watcher) -> None:
+        """Pause the stream, show the tool-output viewer, then resume on close."""
+        from .tools.output_history import viewer_outputs
+
+        if not viewer_outputs()[0]:
+            return
+        watcher.pause()
+        try:
+            self._open_tool_output_viewer()
+        finally:
+            watcher.resume()
 
     def _recover_persisted_context_on_overflow(self, exc: BaseException) -> None:
         """Persist one group trim when the provider rejected the context as too long.
@@ -1098,8 +1144,11 @@ class CLI:
                 self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
 
             # --- Read ---
+            pending_text = getattr(self, "_pending_prompt_text", "")
+            if pending_text:
+                self._pending_prompt_text = ""
             try:
-                user_input = self.session.prompt(self.get_prompt_tokens)
+                user_input = self.session.prompt(self.get_prompt_tokens, default=pending_text)
             except ToolOutputViewerRequested:
                 # Ctrl+O at the prompt: run the viewer, then return to the prompt.
                 self._open_tool_output_viewer()

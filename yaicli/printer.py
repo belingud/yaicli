@@ -619,12 +619,19 @@ class Printer:
         stream_iterator: Generator[
             Union["LLMResponse", RefreshLive, ConfirmToolCall], Optional[ToolConfirmDecision], None
         ],
+        pause_requested: Optional[Callable[[], bool]] = None,
+        on_pause: Optional[Callable[[], None]] = None,
     ) -> tuple[str, str]:
         """Process and display an LLM stream.
 
         Reasoning is streamed as append-only text; only the content is rendered in the
         live region. Driven with next()/send() so a ConfirmToolCall signal can pause the
         live, prompt the user, and resume the generator with the user's decision.
+
+        ``pause_requested``/``on_pause`` implement the generation-time Ctrl+O toggle:
+        between chunks the caller is asked whether the user requested the viewer; when
+        so the live region is stopped, ``on_pause()`` runs (the viewer), and a fresh live
+        region redraws the accumulated content before streaming resumes.
         """
         if self.machine:
             return self._display_stream_machine(stream_iterator)
@@ -638,6 +645,17 @@ class Printer:
 
         try:
             while True:
+                if pause_requested is not None and on_pause is not None and pause_requested():
+                    # Generation-time viewer request: stop the live region, run the
+                    # callback (full-screen viewer), then redraw and keep streaming.
+                    self._safe_stop_live(live)
+                    try:
+                        on_pause()
+                    finally:
+                        live = self._create_and_start_live()
+                        if full_content:
+                            live.update(self._format_display_text(full_content, ""), refresh=True)
+                    continue
                 try:
                     if send_value is None:
                         chunk = next(stream_iterator)
