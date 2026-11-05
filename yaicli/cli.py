@@ -835,6 +835,10 @@ class CLI:
         """Process user input: get response, print, update history, maybe execute.
         Returns True to continue REPL, False to exit on critical error.
         """
+        from .tools.output_history import begin_turn
+
+        # Every user input opens a new turn; the Ctrl+O viewer groups tool outputs by it.
+        begin_turn()
         content, updated_messages = self._handle_llm_response(user_input, images=images)
         self._record_tool_calls(updated_messages)
 
@@ -979,7 +983,7 @@ class CLI:
 
     def _setup_key_bindings(self) -> None:
         """Setup keyboard shortcuts: Shift+Tab for mode switching, Ctrl+O for the
-        last full tool output."""
+        full-screen tool-output viewer."""
 
         @self.bindings.add("s-tab")  # Shift+Tab to switch mode
         def _(event: KeyPressEvent) -> None:
@@ -987,18 +991,18 @@ class CLI:
             self.current_mode = EXEC_MODE if self.current_mode == CHAT_MODE else CHAT_MODE
             self.set_role(DefaultRoleNames.SHELL if self.current_mode == EXEC_MODE else self.init_role)
 
-        @self.bindings.add("c-o")  # Ctrl+O: expand the last tool output
+        @self.bindings.add("c-o")  # Ctrl+O: open the tool-output viewer
         def _(event: KeyPressEvent) -> None:
-            """Print the last tool result in full without leaving the prompt."""
-            from prompt_toolkit.application import run_in_terminal
+            """Exit prompt() with a signal so the REPL can run the viewer app."""
+            from .tool_output_viewer import ToolOutputViewerRequested
 
-            run_in_terminal(self._show_last_tool_output)
+            event.app.exit(exception=ToolOutputViewerRequested())
 
-    def _show_last_tool_output(self) -> None:
-        """Print the last tool result in full (``Ctrl+O`` / ``/show-output``)."""
-        from .tools import show_last_tool_output
+    def _open_tool_output_viewer(self) -> None:
+        """Open the full-screen tool-output viewer (``Ctrl+O`` / ``/show-output``)."""
+        from .tool_output_viewer import open_tool_output_viewer
 
-        show_last_tool_output(self.console)
+        open_tool_output_viewer(self.console)
 
     def _print_welcome_message(self) -> None:
         """Prints the initial welcome banner and instructions."""
@@ -1047,7 +1051,7 @@ class CLI:
         self.console.print(
             f"{'/permissions [revoke <tool-or-index>]':<19}: List/revoke tool permissions and session grants"
         )
-        self.console.print(f"{'/show-output':<19}: Show the last tool output in full (same as Ctrl+O)")
+        self.console.print(f"{'/show-output':<19}: View this turn's tool outputs (same as Ctrl+O)")
         self.console.print("[dim]  Tip: Type '@' for path completion, use Tab/arrows to select[/dim]")
         self.console.print(f"{'!<command>':<19}: Execute shell command directly (e.g., !ls -al)")
         cmd_exit = f"{CMD_EXIT}|Ctrl+D"
@@ -1066,6 +1070,9 @@ class CLI:
         exit 130; one-shot/generation interrupts keep their 130 contract.
         """
         self.prepare_chat_loop()
+        # Ctrl+O closes prompt() through this signal; the REPL then runs the
+        # full-screen viewer and re-enters the prompt (alternate screen restores).
+        from .tool_output_viewer import ToolOutputViewerRequested
         # getattr fallbacks keep bare/legacy CLI objects (tests build them via
         # CLI.__new__) working without the full v0.19 state contract.
         interactive = getattr(self, "interactive", True)
@@ -1093,6 +1100,10 @@ class CLI:
             # --- Read ---
             try:
                 user_input = self.session.prompt(self.get_prompt_tokens)
+            except ToolOutputViewerRequested:
+                # Ctrl+O at the prompt: run the viewer, then return to the prompt.
+                self._open_tool_output_viewer()
+                continue
             except KeyboardInterrupt:
                 # Ctrl-C at the prompt: clear the input; press twice quickly to exit.
                 if _is_second_interrupt():

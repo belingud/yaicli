@@ -188,7 +188,7 @@ When in interactive chat or shell mode, you can use these special commands:
 | `/compact [keep_rounds]` | Compact the conversation, keeping the last N turns |
 | `/permissions` | List session approvals, the persistent allowlist and the numbered rules |
 | `/permissions revoke <tool-or-index>` | Remove a persistent permission by tool name or rule number (the tool will ask again) |
-| `/show-output` | Show the last tool result in full (the result is previewed head-only; same as `Ctrl+O`) |
+| `/show-output` | Open the full-screen viewer listing every tool output of the current turn (same as `Ctrl+O`) |
 
 #### Context Management Commands
 
@@ -294,7 +294,7 @@ In addition to persistent context, you can temporarily reference files using the
 | `Ctrl+C` | Clear the current input line; during generation it cancels the turn; press twice quickly to exit |
 | `Ctrl+D` | Exit (exit code 0) |
 | `Ctrl+R` | Search history |
-| `Ctrl+O` | Show the last tool output in full (it is previewed head-only) |
+| `Ctrl+O` | Open the full-screen tool-output viewer for this turn (`q`/`Esc` to close) |
 | `↑/↓` | Navigate through history |
 
 ## Next Steps

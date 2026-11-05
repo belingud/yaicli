@@ -836,19 +836,42 @@ class TestKeyBindingsAndSetup:
 
         cli._setup_key_bindings()
 
-        # Shift+Tab toggles the mode; Ctrl+O expands the last tool output.
+        # Shift+Tab toggles the mode; Ctrl+O opens the tool-output viewer.
         cli.bindings.add.assert_any_call("s-tab")
         cli.bindings.add.assert_any_call("c-o")
         assert cli.bindings.add.call_count == 2
 
-    def test_show_last_tool_output_delegates_to_tools(self, cli_with_mocks):
-        """Ctrl+O / /show-output delegate to the shared tool-output renderer."""
+    def test_ctrl_o_binding_requests_viewer(self, cli_with_mocks):
+        """Ctrl+O closes prompt() with the viewer signal (never prints inline)."""
+        from unittest.mock import MagicMock
+
+        from prompt_toolkit.key_binding import KeyBindings
+
+        from yaicli.tool_output_viewer import ToolOutputViewerRequested
+
+        cli = cli_with_mocks
+        cli.bindings = KeyBindings()
+        cli._setup_key_bindings()
+        binding = next(b for b in cli.bindings.bindings if getattr(b.keys[0], "value", None) == "c-o")
+        event = MagicMock()
+        binding.handler(event)
+        event.app.exit.assert_called_once()
+        exception = event.app.exit.call_args.kwargs.get("exception")
+        assert isinstance(exception, ToolOutputViewerRequested)
+
+    def test_ctrl_o_signal_class_is_importable(self):
+        from yaicli.tool_output_viewer import ToolOutputViewerRequested
+
+        assert issubclass(ToolOutputViewerRequested, Exception)
+
+    def test_open_tool_output_viewer_delegates(self, cli_with_mocks):
+        """/show-output / Ctrl+O delegate to the full-screen viewer entry point."""
         from unittest.mock import patch
 
         cli = cli_with_mocks
-        with patch("yaicli.tools.show_last_tool_output") as mock_show:
-            cli._show_last_tool_output()
-        mock_show.assert_called_once_with(cli.console)
+        with patch("yaicli.tool_output_viewer.open_tool_output_viewer") as mock_open:
+            cli._open_tool_output_viewer()
+        mock_open.assert_called_once_with(cli.console)
 
     def test_print_help_mentions_show_output(self, cli_with_mocks):
         """The help banner exposes the /show-output command."""
@@ -1240,6 +1263,27 @@ class TestCLICoverage:
         assert mock_session.prompt.call_count == 2
         printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
         assert any("Press Ctrl+C again to exit" in t for t in printed)
+
+    def test_run_repl_ctrl_o_opens_viewer_and_continues(self, cli_with_mocks):
+        """Ctrl+O at the prompt runs the viewer, then the REPL keeps looping."""
+        from unittest.mock import MagicMock, patch
+
+        from yaicli.cli import CLI
+        from yaicli.tool_output_viewer import ToolOutputViewerRequested
+
+        mock_session = MagicMock()
+        mock_session.prompt.side_effect = [ToolOutputViewerRequested(), EOFError]
+        with (
+            patch("yaicli.cli.PromptSession", return_value=mock_session),
+            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+            patch("yaicli.cli.AtPathCompleter"),
+            patch("yaicli.cli.LimitedFileHistory"),
+            patch.object(CLI, "_open_tool_output_viewer") as mock_viewer,
+        ):
+            cli_with_mocks._run_repl()
+
+        assert mock_session.prompt.call_count == 2
+        mock_viewer.assert_called_once()
 
     def test_run_repl_single_ctrl_c_keeps_session_alive(self, cli_with_mocks):
         """A single Ctrl-C clears the line and keeps the REPL running until Ctrl-D."""

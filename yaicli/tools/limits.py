@@ -179,6 +179,49 @@ def _split_around_marker(text: str, cap: int, spill_path: Optional[Path]) -> Opt
     return f"{text[:head_len]}{marker}{text[len(text) - tail_len :] if tail_len else ''}"
 
 
+@dataclass(frozen=True)
+class TruncatedOutput:
+    """Model-facing result of one tool call plus truncation metadata."""
+
+    text: str
+    total_chars: int
+    #: Spilled full-output path when truncation wrote one (string for JSON/UI use).
+    spill_path: Optional[str] = None
+    truncated: bool = False
+
+
+def truncate_tool_output_meta(
+    text: Any, tool_name: str, max_chars: Optional[int] = None
+) -> TruncatedOutput:
+    """Truncate one tool result to its cap and return the result with metadata.
+
+    The metadata (original length, spill path, truncation flag) feeds the Ctrl+O
+    viewer so it can show what the model saw and point at the full output.
+    """
+    if text is None:
+        return TruncatedOutput("", 0)
+    if not isinstance(text, str):
+        text = str(text)
+    total_chars = len(text)
+    cap = resolve_output_cap(tool_name, max_chars=max_chars)
+    if cap <= 0 or total_chars <= cap:
+        return TruncatedOutput(text, total_chars)
+
+    spill_path = spill_tool_output(text, tool_name)
+    spill_str = str(spill_path) if spill_path is not None else None
+    window = _split_around_marker(text, cap, spill_path)
+    if window is not None:
+        return TruncatedOutput(window, total_chars, spill_str, True)
+
+    # Tiny cap (smaller than the marker): plain truncation is all that fits.
+    if spill_path is not None:
+        suffix = f"\n...[truncated {total_chars - cap} chars; full output saved to {spill_path}]..."
+        keep = cap - len(suffix)
+        if keep > 0:
+            return TruncatedOutput(text[:keep] + suffix, total_chars, spill_str, True)
+    return TruncatedOutput(text[:cap], total_chars, spill_str, True)
+
+
 def truncate_tool_output(text: Any, tool_name: str, max_chars: Optional[int] = None) -> str:
     """Truncate one tool result to its cap, spilling the full text to disk.
 
@@ -187,26 +230,7 @@ def truncate_tool_output(text: Any, tool_name: str, max_chars: Optional[int] = N
     a head/tail window with a marker pointing at the spill file; if spilling
     fails the marker just omits the path (plain truncation still succeeds).
     """
-    if text is None:
-        return ""
-    if not isinstance(text, str):
-        text = str(text)
-    cap = resolve_output_cap(tool_name, max_chars=max_chars)
-    if cap <= 0 or len(text) <= cap:
-        return text
-
-    spill_path = spill_tool_output(text, tool_name)
-    window = _split_around_marker(text, cap, spill_path)
-    if window is not None:
-        return window
-
-    # Tiny cap (smaller than the marker): plain truncation is all that fits.
-    if spill_path is not None:
-        suffix = f"\n...[truncated {len(text) - cap} chars; full output saved to {spill_path}]..."
-        keep = cap - len(suffix)
-        if keep > 0:
-            return text[:keep] + suffix
-    return text[:cap]
+    return truncate_tool_output_meta(text, tool_name, max_chars=max_chars).text
 
 
 @dataclass(frozen=True)
@@ -376,6 +400,7 @@ __all__ = [
     "DisplayPreview",
     "MIN_MARKER_BUDGET",
     "TOOL_OUTPUT_CAPS",
+    "TruncatedOutput",
     "build_preview_marker",
     "make_display_preview",
     "resolve_output_cap",
@@ -383,4 +408,5 @@ __all__ = [
     "spill_tool_output",
     "summarize_arguments",
     "truncate_tool_output",
+    "truncate_tool_output_meta",
 ]

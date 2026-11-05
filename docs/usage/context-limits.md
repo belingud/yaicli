@@ -53,8 +53,12 @@ Notes:
   `TOOL_DISPLAY_MAX_LINES=15` lines and `TOOL_DISPLAY_MAX_CHARS=4000` characters. Tool results are
   rendered head-only with a `… +N lines · Ctrl+O to expand` marker, so a 1 MB shell result does not
   flood your screen. This never changes what the model receives — the model still gets up to
-  `TOOL_OUTPUT_MAX_CHARS` characters. `Ctrl+O` (or `/show-output`) re-prints the last full result;
-  set both display limits to `0` to show everything.
+  `TOOL_OUTPUT_MAX_CHARS` characters; set both display limits to `0` to show everything.
+- `Ctrl+O` (or `/show-output`) opens a **full-screen viewer** with every tool output of the current
+  turn: left pane lists the entries, right pane shows the selected result. `↑/↓` select, `Tab`
+  switches pane, `PgUp/PgDn` scroll, `f` toggles between the model-visible text and the spilled full
+  file (capped at 1 MB), and `q`/`Esc`/`Ctrl+O` closes it, restoring the REPL. Non-interactive runs
+  fall back to the inline last-output panel.
 - Long tool-call arguments on the `@Function call:` line are summarized
   (`TOOL_CALL_PREVIEW_MAX_CHARS=300`); a large `content`/`command` value appears as `<N chars>`.
 - If the spill file cannot be written (read-only disk, permission error), YAICLI degrades to plain

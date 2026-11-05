@@ -145,10 +145,19 @@ Terminal rendering is a separate, much tighter display layer (`yaicli/tools/limi
 (`… +N lines · Ctrl+O to expand`); these keys never reduce the model-facing text. The
 `@Function call:` line goes through `summarize_arguments()` (`TOOL_CALL_PREVIEW_MAX_CHARS`, 300):
 large `content`/`command` values render as `<N chars>` and newlines are collapsed.
-`execute_tool_call` records the last result in `yaicli.tools.get_last_tool_output()`;
-`show_last_tool_output()` re-prints it in full and backs both `Ctrl+O` (REPL) and `/show-output`.
 
-Every result passes through `yaicli/tools/limits.py::truncate_tool_output()` before it is appended
+`execute_tool_call` records every result in `yaicli/tools/output_history.py`
+(`ToolOutputEntry`: kind/name/arguments/model-visible text/total_chars/spill_path/truncated),
+grouped by turn via `begin_turn()` (called from `CLI._process_user_input`), ring buffer 100.
+`truncate_tool_output_meta()` is the metadata-returning variant of `truncate_tool_output()`.
+The `Ctrl+O` full-screen viewer (`yaicli/tool_output_viewer.py`) lists the current turn's entries
+on the left and the selected result on the right; `f` toggles the spilled full file (1 MB cap).
+`/show-output` opens the same viewer; non-TTY/headless falls back to the inline
+`tools.show_last_tool_output()` panel. Keep the viewer display-only: never change the text that is
+appended to the model messages.
+
+Every result passes through `yaicli/tools/limits.py::truncate_tool_output_meta()` (the
+metadata-returning variant of `truncate_tool_output()`) before it is appended
 to the model messages (and before the panel is rendered): per-tool caps (shell 32KB, `fs_read_file`
 64KB, search/list 48KB, fetch 100KB, MCP/default 32KB; `TOOL_OUTPUT_MAX_CHARS` overrides, `0`
 disables), head+tail with a marker pointing at the full text spilled to `TOOL_OUTPUT_DIR`; spill files

@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/py/function-tool-guidelines.md", "reason": "tool execution path, truncation and panel rendering rules"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "REPL keybindings, /show-output command, headless contract"}

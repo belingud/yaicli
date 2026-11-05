@@ -278,17 +278,21 @@ class CmdHandler:
         return True
 
     def handle_show_output(self) -> bool:
-        """Handle /show-output: print the last tool result in full.
+        """Handle /show-output: open the full-screen viewer for this turn's outputs.
 
-        The terminal preview is head-only (``TOOL_DISPLAY_MAX_LINES``); this is
-        the explicit expansion path, mirroring ``Ctrl+O`` in the REPL.
+        The viewer lists every tool result of the current turn; closing it
+        restores the REPL. Same entry point as ``Ctrl+O``.
 
         Returns:
             True to continue the REPL loop
         """
-        from .tools import show_last_tool_output
+        opener = getattr(self.cli, "_open_tool_output_viewer", None)
+        if callable(opener):
+            opener()
+        else:  # pragma: no cover - bare/legacy CLI objects without the viewer
+            from .tools import show_last_tool_output
 
-        show_last_tool_output(self.cli.console)
+            show_last_tool_output(self.cli.console)
         return True
 
     def handle_context(self, command_input: str = "") -> bool:

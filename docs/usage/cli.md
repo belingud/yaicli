@@ -14,7 +14,7 @@ These shortcuts work in all interactive modes:
 | `Ctrl+D`             | Exit the application              |
 | `Shift+Tab`          | Toggle between Chat/Execute modes |
 | `Ctrl+R`             | Search command history            |
-| `Ctrl+O`             | Show the last tool output in full (it is previewed head-only) |
+| `Ctrl+O`             | Open the full-screen tool-output viewer for this turn (`↑/↓` select, `Tab` switch pane, `f` full text, `q`/`Esc` close) |
 | `↑/↓`                | Navigate through command history  |
 | `Ctrl+L`             | Clear the screen                  |
 | `Ctrl+A`             | Move cursor to beginning of line  |

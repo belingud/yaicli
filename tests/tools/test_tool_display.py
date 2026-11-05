@@ -2,8 +2,8 @@
 
 The terminal preview is independent from the model-facing truncation: only the
 first TOOL_DISPLAY_MAX_LINES / TOOL_DISPLAY_MAX_CHARS are rendered, the model
-still receives the text capped by TOOL_OUTPUT_MAX_CHARS, and ``Ctrl+O`` /
-``/show-output`` can print the last full result.
+still receives the text capped by TOOL_OUTPUT_MAX_CHARS, and Ctrl+O (covered in
+tests/test_tool_output_viewer.py) opens the full-screen viewer.
 """
 
 import json
@@ -12,27 +12,28 @@ from unittest.mock import MagicMock, patch
 import pytest
 from rich.panel import Panel
 
-import yaicli.tools as tools_mod
-from yaicli.cmd_handler import CMD_SHOW_OUTPUT, CmdHandler
 from yaicli.const import DEFAULT_CONFIG_INI, DEFAULT_CONFIG_MAP
 from yaicli.schemas import ToolCall
 from yaicli.tools import execute_tool_call, get_last_tool_output, show_last_tool_output
+from yaicli.tools import output_history
 from yaicli.tools.limits import (
     build_preview_marker,
     make_display_preview,
     summarize_arguments,
+    truncate_tool_output_meta,
 )
 
 
 @pytest.fixture(autouse=True)
-def _reset_last_tool_output():
-    """Keep the process-wide "last tool output" slot deterministic per test."""
-    tools_mod._last_tool_output = None
+def _reset_history():
+    """Keep the process-wide tool-output history deterministic per test."""
+    output_history.reset()
     yield
-    tools_mod._last_tool_output = None
+    output_history.reset()
 
 
 def _tool_call(arguments: str = '{"city": "NYC"}', result: str = "result text"):
+    output_history.begin_turn()
     tool = MagicMock()
     tool.execute.return_value = result
     console = MagicMock()
@@ -182,16 +183,19 @@ class TestExecuteToolCallDisplay:
         assert "<2,000 chars>" in call_line
         assert "A" * 100 not in call_line
 
-    def test_last_output_is_recorded(self):
+    def test_result_is_recorded_in_history(self):
         result = "\n".join(f"line {i}" for i in range(1, 101))
         _tool_call(result=result)
-        last = get_last_tool_output()
-        assert last is not None
-        assert last["type"] == "function"
-        assert last["name"] == "get_weather"
-        assert last["text"] == result
+        entries, label = output_history.viewer_outputs()
+        assert label == "this turn"
+        assert len(entries) == 1
+        assert entries[0].name == "get_weather"
+        assert entries[0].kind == "function"
+        assert entries[0].text == result
+        assert entries[0].total_chars == len(result)
+        assert entries[0].truncated is False
 
-    def test_last_output_not_recorded_for_unknown_tool(self):
+    def test_unknown_tool_records_nothing(self):
         console = MagicMock()
         tc = ToolCall(id="1", name="nope", arguments="{}")
         with (
@@ -202,6 +206,29 @@ class TestExecuteToolCallDisplay:
             _, ok = execute_tool_call(tc)
         assert ok is False
         assert get_last_tool_output() is None
+        assert output_history.all_outputs() == []
+
+
+class TestTruncationMetadata:
+    def test_meta_returns_spill_path_and_original_size(self, tmp_path):
+        original = "x" * 1000
+        config = {"TOOL_OUTPUT_DIR": str(tmp_path), "TOOL_OUTPUT_MAX_CHARS": 32000}
+        with patch("yaicli.tools.limits.cfg", config):
+            meta = truncate_tool_output_meta(original, "execute_shell_command", max_chars=400)
+        assert meta.truncated is True
+        assert meta.total_chars == len(original)
+        assert meta.spill_path is not None
+        assert "truncated" in meta.text
+        from pathlib import Path
+
+        assert Path(meta.spill_path).read_text(encoding="utf-8") == original
+
+    def test_meta_short_text_has_no_spill(self):
+        meta = truncate_tool_output_meta("short", "execute_shell_command", max_chars=100)
+        assert meta.truncated is False
+        assert meta.text == "short"
+        assert meta.total_chars == 5
+        assert meta.spill_path is None
 
 
 class TestShowLastToolOutput:
@@ -212,31 +239,15 @@ class TestShowLastToolOutput:
         assert "No tool output" in str(console.print.call_args.args[0])
 
     def test_prints_panel_with_last_result(self):
-        tools_mod._last_tool_output = {"type": "function", "name": "get_weather", "text": "full text"}
+        output_history.record_output(
+            kind="function", name="get_weather", arguments='{"city": "NYC"}', text="full text", total_chars=9
+        )
         console = MagicMock()
         assert show_last_tool_output(console) is True
         panel = console.print.call_args.args[0]
         assert isinstance(panel, Panel)
-        assert str(panel.title) == "Last Function output: get_weather"
+        assert "get_weather" in str(panel.title)
         assert "full text" in str(panel.renderable)
-
-
-class TestShowOutputCommand:
-    def test_command_registered_and_expands(self):
-        cli = MagicMock()
-        handler = CmdHandler(cli)
-        tools_mod._last_tool_output = {"type": "function", "name": "x", "text": "payload"}
-        assert handler.handle_command(CMD_SHOW_OUTPUT) is True
-        panel = cli.console.print.call_args.args[0]
-        assert isinstance(panel, Panel)
-        assert "payload" in str(panel.renderable)
-
-    def test_command_with_no_output(self):
-        cli = MagicMock()
-        handler = CmdHandler(cli)
-        assert handler.handle_command(CMD_SHOW_OUTPUT) is True
-        cli.console.print.assert_called_once()
-        assert "No tool output" in str(cli.console.print.call_args.args[0])
 
 
 class TestConfigKeys:

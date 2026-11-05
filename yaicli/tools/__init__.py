@@ -9,12 +9,13 @@ from ..config import cfg
 from ..console import get_console, get_error_console, safe_text, strip_control_chars, untrusted_text
 from ..exceptions import MCPToolsError
 from ..schemas import ToolCall
+from . import output_history
 from .function import get_function, list_functions
 from .limits import (
     build_preview_marker,
     make_display_preview,
     summarize_arguments,
-    truncate_tool_output,
+    truncate_tool_output_meta,
 )
 
 # Lazy import MCP-related items to improve startup time
@@ -64,36 +65,44 @@ _SHELL_GUARDRAIL_ENV = (
     ("TOOL_OUTPUT_MAX_CHARS", "YAI_TOOL_OUTPUT_MAX_CHARS"),
 )
 
-#: Last tool result executed in this process (``Ctrl+O`` / ``/show-output``).
-_last_tool_output: Dict[str, Any] | None = None
+#: Last tool result executed in this process is tracked in ``output_history`` so the
+#: Ctrl+O viewer can list all outputs of the current turn and fall back to the last
+#: turn when the current one has no tool calls yet.
 
 
 def get_last_tool_output() -> Dict[str, Any] | None:
-    """Return the last tool result recorded for display expansion, if any.
+    """Return the last tool result as a dict (compatibility helper).
 
-    The dict has ``type`` (``"function"``/``"mcp"``), ``name`` and ``text``
-    (the model-visible result after truncation/spill).
+    The dict has ``type`` (``"function"``/``"mcp"``), ``name``, ``text`` (the
+    model-visible result after truncation/spill), plus ``total_chars``,
+    ``spill_path`` and ``truncated`` metadata.
     """
-    return _last_tool_output
-
-
-def _remember_tool_output(kind: str, name: str, text: str) -> None:
-    global _last_tool_output
-    _last_tool_output = {"type": kind, "name": name, "text": text}
+    entry = output_history.last_output()
+    if entry is None:
+        return None
+    return {
+        "type": entry.kind,
+        "name": entry.name,
+        "text": entry.text,
+        "total_chars": entry.total_chars,
+        "spill_path": entry.spill_path,
+        "truncated": entry.truncated,
+    }
 
 
 def show_last_tool_output(target_console: Any) -> bool:
-    """Print the last tool result in full; returns ``False`` when there is none."""
-    if _last_tool_output is None:
+    """Print the last tool result in full (inline fallback); ``False`` when none."""
+    entry = output_history.last_output()
+    if entry is None:
         target_console.print("No tool output in this session yet.", style="dim")
         return False
-    kind = str(_last_tool_output.get("type") or "function").title()
-    name = safe_text(_last_tool_output.get("name") or "")
-    text = _last_tool_output.get("text") or ""
+    title = f"Last {entry.kind.title()} output: {entry.name}"
+    if entry.truncated:
+        title += f" ({entry.total_chars:,} chars, truncated)"
     target_console.print(
         Panel(
-            untrusted_text(text),
-            title=f"Last {kind} output: {name}",
+            untrusted_text(entry.text),
+            title=safe_text(title),
             title_align="left",
             expand=False,
             border_style="blue",
@@ -227,11 +236,12 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
         show_output = cfg["SHOW_MCP_OUTPUT"]
         _type = "mcp"
 
+    # Tool name/arguments are model output: never let them act as Rich markup
+    # or emit terminal control sequences here. Arguments are compacted as well:
+    # a single huge content/command value must not wrap over several screens.
+    preview_arguments = summarize_arguments(tool_call.arguments)
+
     if announce:
-        # Tool name/arguments are model output: never let them act as Rich markup
-        # or emit terminal control sequences here. Arguments are compacted as well:
-        # a single huge content/command value must not wrap over several screens.
-        preview_arguments = summarize_arguments(tool_call.arguments)
         console.print(
             f"@{_type.title()} call: {safe_text(tool_call.name)}({safe_text(preview_arguments)})",
             style="blue",
@@ -263,14 +273,22 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
         # environment, so propagate the (env-first) config values right before use.
         if is_function_call and tool_call.name == "execute_shell_command":
             _sync_shell_guardrail_env()
-        result = tool.execute(**arguments)
+        result_meta = truncate_tool_output_meta(tool.execute(**arguments), tool_call.name)
         # K02: bound what enters the conversation. The same truncated text is shown
         # in the terminal panel, so a huge result can not flood either channel.
-        result = truncate_tool_output(result, tool_call.name)
+        result = result_meta.text
         # Terminal display is head-only and independent from the model-facing cap;
-        # Ctrl+O / /show-output can re-print the full (model-visible) result later.
+        # Ctrl+O opens the full-screen viewer with every output of the current turn.
         display_text = strip_control_chars(result)
-        _remember_tool_output(_type, tool_call.name, display_text)
+        output_history.record_output(
+            kind=_type,
+            name=tool_call.name,
+            arguments=preview_arguments,
+            text=display_text,
+            total_chars=result_meta.total_chars,
+            spill_path=result_meta.spill_path,
+            truncated=result_meta.truncated,
+        )
         if show_output:
             preview = make_display_preview(display_text)
             content = untrusted_text(preview.text)
