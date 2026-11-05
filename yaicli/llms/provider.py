@@ -8,6 +8,24 @@ from ..utils import option_callback
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+#: Optional PyPI extras for provider SDKs that are not part of the base install (K09).
+#: The base install deliberately keeps every builtin tool dependency, so only cloud
+#: provider closures (and the long-tail SDKs) are optional.
+_OPTIONAL_PROVIDER_EXTRAS = {
+    "anthropic-bedrock": "bedrock",
+    "anthropic-vertex": "vertex",
+    "cohere-bedrock": "cohere",
+    "cohere-sagemaker": "cohere",
+    "doubao": "doubao",
+    "ollama": "ollama",
+    "gemini": "gemini",
+    "vertexai": "gemini",
+    "huggingface": "huggingface",
+    "mistral": "mistral",
+    "cerebras": "cerebras",
+    "fireworks": "fireworks",
+}
+
 
 class Provider(ABC):
     """Base abstract class for LLM providers"""
@@ -219,8 +237,25 @@ class ProviderFactory:
             raise ValueError(f"Unknown provider: {provider_type}")
 
         module_path, class_name = cls.providers_map[provider_type]
-        module = importlib.import_module(module_path, package="yaicli.llms")
-        return getattr(module, class_name)(verbose=verbose, **kwargs)
+        try:
+            module = importlib.import_module(module_path, package="yaicli.llms")
+            return getattr(module, class_name)(verbose=verbose, **kwargs)
+        except ImportError as exc:
+            extra = _OPTIONAL_PROVIDER_EXTRAS.get(provider_type)
+            if extra:
+                message = (
+                    f"Provider '{provider_type}' requires an optional dependency ({exc}). "
+                    f'Install it with: pip install "yaicli[{extra}]"'
+                )
+                from ..errors import AgentError, ErrorKind
+
+                raise AgentError(
+                    message,
+                    kind=ErrorKind.CONFIG,
+                    user_message=message,
+                    cause=exc,
+                ) from exc
+            raise
 
     @classmethod
     @option_callback

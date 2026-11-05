@@ -53,7 +53,7 @@ keywords = [
     "ollama",
 ]
 dependencies = [
-    "anthropic[bedrock,vertex]>=0.57.1",
+    "anthropic>=0.57.1",
     "click>=8.1.8",
     "ddgs>=9.6.1",
     "distro>=1.9.0",
@@ -78,7 +78,11 @@ ai = "yaicli._faststart:main"
 yaicli = "yaicli._faststart:main"
 
 [project.optional-dependencies]
+# K09: the base install is tools-complete — ddgs (web_search), trafilatura
+# (fetch_webpage extraction) and fastmcp (MCP) stay in `dependencies` on purpose.
+# Only cloud-provider SDK closures are optional.
 all = [
+    "anthropic[bedrock,vertex]>=0.57.1",
     "volcengine-python-sdk>=3.0.15",
     "ollama>=0.5.1",
     "cohere>=5.15.0",
@@ -88,6 +92,8 @@ all = [
     "cerebras-cloud-sdk>=1.35.0",
     "fireworks-ai>=0.15.15",
 ]
+bedrock = ["anthropic[bedrock]>=0.57.1"]
+vertex = ["anthropic[vertex]>=0.57.1"]
 doubao = ["volcengine-python-sdk>=3.0.15"]
 ollama = ["ollama>=0.5.1"]
 cohere = ["cohere>=5.15.0"]

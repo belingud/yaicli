@@ -43,6 +43,20 @@ If a user file has the same tool name as a built-in, the user file wins. If you 
 built-in version, delete the old copy (or run `--reinstall-functions`) and restart `ai`.
 YAICLI only warns about stale copies; it never silently overwrites your customisations.
 
+## What changed in v0.20 (next release)
+
+The base install is still **tools-complete** (builtin tools and MCP work out of the box), but the
+Anthropic cloud SDK closure is no longer installed by default: `pip install yaicli` keeps the normal
+Anthropic API, while **Bedrock** and **Vertex** users must add one extra:
+
+```bash
+pip install -U 'yaicli[bedrock]'   # AWS Bedrock
+pip install -U 'yaicli[vertex]'    # Google Vertex AI
+```
+
+`pip install 'yaicli[all]'` still includes both. If you upgrade and see an actionable
+`Provider 'anthropic-bedrock' requires an optional dependency` message, install the extra above.
+
 ## What changed in v0.19
 
 | Area | Change | Action needed |

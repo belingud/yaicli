@@ -35,16 +35,25 @@ Quirks to preserve when editing the Justfile: the `format` recipe calls `isort y
 
 - **Build backend**: `hatchling>=1.18`. `[tool.hatch.build]` includes `yaicli` + `pyproject.toml`
   and excludes `test_*.py`, `tests/*`, `.gitignore` — the wheel ships the package and README only.
-- **Console scripts**: `ai = "yaicli.entry:app"` and `yaicli = "yaicli.entry:app"` (both names are
-  supported; `ai` is the documented one).
+- **Console scripts**: `ai = "yaicli._faststart:main"` and `yaicli = "yaicli._faststart:main"` (both
+  names are supported; `ai` is the documented one). `--version` is answered before importing the CLI
+  stack; only other invocations reach `entry.py`.
 - **Python**: `requires-python = ">=3.10"`; tox covers 3.10-3.13.
-- **Runtime dependencies**: `typer`, `click`, `rich`, `openai`, `anthropic[bedrock,vertex]`, `httpx`,
-  `prompt-toolkit`, `json-repair`, `docstring-parser`, `trafilatura`, `fastmcp`, `ddgs`, `distro`,
-  `socksio`.
-- **Optional extras** keep provider SDKs out of the core install: `all`, `doubao`, `ollama`,
-  `cohere`, `gemini`, `huggingface`, `mistral`, `cerebras`, `fireworks`. A new provider that needs
-  an SDK must add its extra here and import the SDK lazily from the provider module (see
-  [../py/index.md](../py/index.md) dependency rules).
+- **Runtime dependencies (tools-complete base, K09)**: `typer`, `click`, `rich`, `openai`,
+  `anthropic` (plain API), `httpx`, `prompt-toolkit`, `json-repair`, `docstring-parser`, `trafilatura`,
+  `fastmcp`, `ddgs`, `distro`, `socksio`. `ddgs` (web_search), `trafilatura` (fetch_webpage
+  extraction) and `fastmcp` (MCP) intentionally stay in base: a plain `pip install yaicli` must never
+  leave a builtin tool broken. Do not move them to extras without a product decision.
+- **Optional extras** keep cloud/long-tail provider SDKs out of the core install: `all`, `bedrock`,
+  `vertex`, `doubao`, `ollama`, `cohere`, `gemini`, `huggingface`, `mistral`, `cerebras`,
+  `fireworks`. `bedrock`/`vertex` wrap `anthropic[bedrock]`/`anthropic[vertex]`; `all` stays complete
+  (it includes `anthropic[bedrock,vertex]`). A new provider that needs an SDK must add its extra here,
+  add a key to `ProviderFactory`'s `_OPTIONAL_PROVIDER_EXTRAS`, and import the SDK lazily from the
+  provider module (see [../py/index.md](../py/index.md) dependency rules) so a missing SDK raises the
+  classified `AgentError` with `pip install "yaicli[<extra>]"`.
+- **Packaging policy tests**: `tests/test_packaging.py` parses `pyproject.toml` (Python 3.10-compatible,
+  no tomllib requirement) and locks the tools-complete base / cloud-extras split. Update it with any
+  intentional extras change.
 
 ```bash
 uv build           # sdist + wheel into dist/ (equivalent to `just build`)

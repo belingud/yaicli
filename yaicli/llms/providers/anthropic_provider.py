@@ -1,3 +1,4 @@
+import importlib
 import json
 from os import getenv
 from typing import Any, Dict, Generator, List, Optional, Tuple, cast
@@ -13,6 +14,23 @@ from ...errors import provider_response_error, wrap_provider_exception
 from ...exceptions import ConfigMissingError, MCPToolsError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ..provider import Provider
+
+
+def _require_optional_dependency(module_name: str, extra: str) -> None:
+    """Fail fast when an Anthropic cloud SDK extra is missing (K09).
+
+    ``boto3``/``google.auth`` are only installed through ``yaicli[bedrock]`` /
+    ``yaicli[vertex]``; without this check the SDK fails later with a confusing
+    request-time error instead of telling the user which extra to install.
+    """
+    try:
+        importlib.import_module(module_name)
+    except ImportError as exc:  # pragma: no cover - depends on installed extras
+        label = "Bedrock" if extra == "bedrock" else "Vertex"
+        raise ImportError(
+            f"Anthropic {label} support requires the optional dependency '{module_name}'; "
+            f'install it with: pip install "yaicli[{extra}]"'
+        ) from exc
 
 
 class AnthropicProvider(Provider):
@@ -369,6 +387,10 @@ class AnthropicBedrockProvider(AnthropicProvider):
     """Anthropic Bedrock provider implementation based on anthropic library"""
 
     CLIENT_CLS = AnthropicBedrock
+
+    def __init__(self, *args, **kwargs):
+        _require_optional_dependency("boto3", "bedrock")
+        super().__init__(*args, **kwargs)
     CLIENT_PARAMS_KEY_ENV_MAP = {
         "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
         "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
@@ -392,6 +414,9 @@ class AnthropicBedrockProvider(AnthropicProvider):
         )
         """
         client_params = super().get_client_params()
+        # The Bedrock client authenticates with AWS credentials and rejects an Anthropic
+        # api_key alongside them, so drop the shared API provider key.
+        client_params.pop("api_key", None)
         for config_key, env_key in self.CLIENT_PARAMS_KEY_ENV_MAP.items():
             if not self.config.get(config_key):
                 v = getenv(env_key)
@@ -412,6 +437,10 @@ class AnthropicVertexProvider(AnthropicProvider):
     """Anthropic Vertex provider implementation based on anthropic library"""
 
     CLIENT_CLS = AnthropicVertex
+
+    def __init__(self, *args, **kwargs):
+        _require_optional_dependency("google.auth", "vertex")
+        super().__init__(*args, **kwargs)
     CLIENT_PARAMS_KEY_ENV_MAP = {
         "PROJECT_ID": "PROJECT_ID",
         "CLOUD_ML_REGION": "CLOUD_ML_REGION",
@@ -420,6 +449,8 @@ class AnthropicVertexProvider(AnthropicProvider):
     def get_client_params(self) -> Dict[str, Any]:
         """Get the client parameters"""
         client_params = super().get_client_params()
+        # The Vertex client authenticates via google-auth project/region, not an api_key.
+        client_params.pop("api_key", None)
         for config_key, env_key in self.CLIENT_PARAMS_KEY_ENV_MAP.items():
             if not self.config.get(config_key):
                 v = getenv(env_key)

@@ -103,7 +103,7 @@ YAICLI currently integrates with the following LLM providers:
 
 ## Optional Dependencies
 
-Some providers require additional dependencies that can be installed using pip:
+The base install keeps every builtin tool and MCP working. Some provider SDKs are optional:
 
 ```bash
 # Install all dependencies
@@ -111,6 +111,10 @@ pip install 'yaicli[all]'
 
 # Install specific provider dependencies
 pip install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,cerebras,fireworks]'
+
+# Anthropic on AWS Bedrock / Google Vertex AI
+pip install 'yaicli[bedrock]'
+pip install 'yaicli[vertex]'
 ```
 
 ## Provider-Specific Documentation

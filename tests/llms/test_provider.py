@@ -307,6 +307,23 @@ class TestProviderFactory:
         # Assertions
         mock_provider.assert_called_once_with(verbose=True, api_key="test_key", base_url="https://test.com")
 
+    @patch("importlib.import_module", side_effect=ImportError("No module named 'boto3'"))
+    def test_create_provider_reports_missing_optional_extra(self, mock_import_module):
+        """K09: a missing provider SDK raises a classified error with the pip extra hint."""
+        from yaicli.errors import AgentError, ErrorKind
+
+        with pytest.raises(AgentError) as excinfo:
+            ProviderFactory.create_provider("anthropic-bedrock")
+
+        assert excinfo.value.kind == ErrorKind.CONFIG
+        assert 'pip install "yaicli[bedrock]"' in str(excinfo.value)
+
+    @patch("importlib.import_module", side_effect=ImportError("boom"))
+    def test_create_provider_without_extra_keeps_import_error(self, mock_import_module):
+        """Providers without an optional extra keep the original ImportError."""
+        with pytest.raises(ImportError, match="boom"):
+            ProviderFactory.create_provider("openai")
+
 
 class TestProviderImplementation:
     """Test for a mock Provider implementation to validate contract"""

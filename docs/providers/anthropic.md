@@ -26,6 +26,12 @@ MAX_TOKENS=1024
 
 ## AWS Bedrock Integration
 
+Install the optional cloud SDK first:
+
+```bash
+pip install 'yaicli[bedrock]'
+```
+
 ```ini
 PROVIDER=anthropic-bedrock
 AWS_ACCESS_KEY_ID=your-access-key
@@ -35,6 +41,10 @@ MODEL=anthropic.claude-3-5-sonnet-20241022-v2:0
 ```
 
 ## Google Vertex AI Integration
+
+```bash
+pip install 'yaicli[vertex]'
+```
 
 ```ini
 PROVIDER=anthropic-vertex

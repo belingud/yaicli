@@ -586,6 +586,42 @@ class TestAnthropicProviderCoverage:
         assert content[-1] == {"type": "text", "text": "describe these"}
 
 
+class TestCloudExtras:
+    """K09: missing bedrock/vertex extras fail fast with an actionable message."""
+
+    def test_helper_reports_missing_extra(self):
+        from yaicli.llms.providers.anthropic_provider import _require_optional_dependency
+
+        with pytest.raises(ImportError, match=r'yaicli\[vertex\]'):
+            _require_optional_dependency("definitely_missing_module_xyz", "vertex")
+
+    def test_bedrock_provider_checks_boto3(self):
+        from yaicli.llms.providers import anthropic_provider
+
+        with patch.object(
+            anthropic_provider,
+            "_require_optional_dependency",
+            side_effect=ImportError('install with: pip install "yaicli[bedrock]"'),
+        ) as check:
+            with pytest.raises(ImportError, match="bedrock"):
+                AnthropicBedrockProvider(config={})
+
+        check.assert_called_once_with("boto3", "bedrock")
+
+    def test_vertex_provider_checks_google_auth(self):
+        from yaicli.llms.providers import anthropic_provider
+
+        with patch.object(
+            anthropic_provider,
+            "_require_optional_dependency",
+            side_effect=ImportError('install with: pip install "yaicli[vertex]"'),
+        ) as check:
+            with pytest.raises(ImportError, match="vertex"):
+                AnthropicVertexProvider(config={})
+
+        check.assert_called_once_with("google.auth", "vertex")
+
+
 class TestAnthropicBedrockProvider:
     """Tests for AnthropicBedrockProvider.get_client_params."""
 
@@ -616,6 +652,7 @@ class TestAnthropicBedrockProvider:
         assert params["aws_secret_key"] == "secret"
         assert params["aws_session_token"] == "token"
         assert params["aws_region"] == "us-east-1"
+        assert "api_key" not in params  # Bedrock authenticates with AWS credentials
 
     def test_missing_aws_credential_raises(self, bedrock_config, monkeypatch):
         """Missing AWS credential (absent from config and env) raises ConfigMissingError."""
@@ -661,6 +698,7 @@ class TestAnthropicVertexProvider:
 
         assert params["project_id"] == "my-project"
         assert params["region"] == "us-central1"
+        assert "api_key" not in params  # Vertex authenticates via google-auth
 
     def test_missing_project_id_raises(self, vertex_config, monkeypatch):
         """Missing PROJECT_ID (absent from config and env) raises ConfigMissingError."""

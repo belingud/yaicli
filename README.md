@@ -191,7 +191,9 @@ pipx install yaicli
 uv tool install yaicli
 ```
 
-YAICLI has several optional dependency groups; install the extras for the providers you use.
+A plain `pip install yaicli` is **tools-complete**: all 12 builtin tools (including `web_search`
+and `fetch_webpage` extraction) and MCP work with no extra steps. Optional extras are only needed for
+cloud/long-tail provider SDKs.
 
 ```shell
 # install all optional dependencies
@@ -211,7 +213,9 @@ uv tool install 'yaicli[all]'
 uv tool install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,cerebras,fireworks]'
 ```
 
-Anthropic support is part of the core dependencies and needs no extra.
+Anthropic's API is part of the core dependencies and needs no extra. **Anthropic Bedrock** and
+**Anthropic Vertex** need the cloud SDK closure: `pip install 'yaicli[bedrock]'` or
+`pip install 'yaicli[vertex]'` (both are always included in `yaicli[all]`).
 
 ### Install from Source
 
@@ -441,8 +445,9 @@ API_KEY=
 MODEL=claude-sonnet-4-20250514
 ```
 
-If you want to access **Anthropic bedrock**, you need to set `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SESSION_TOKEN` and `AWS_REGION`
-in config or environment variables.
+If you want to access **Anthropic bedrock**, install the extra first
+(`pip install 'yaicli[bedrock]'`) and set `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID`,
+`AWS_SESSION_TOKEN` and `AWS_REGION` in config or environment variables.
 
 ```ini
 PROVIDER=anthropic-bedrock
@@ -455,7 +460,8 @@ MODEL=anthropic.claude-opus-4-20250514-v1:0
 
 Support `ANTHROPIC_BEDROCK_BASE_URL` env or `BASE_URL` in config file, with same effect.
 
-Also support **Anthropic vertex** with key `PROJECT_ID` and `CLOUD_ML_REGION` in config or environment variables.
+Also support **Anthropic vertex** (`pip install 'yaicli[vertex]'`) with key `PROJECT_ID` and
+`CLOUD_ML_REGION` in config or environment variables.
 
 ```ini
 PROVIDER=anthropic-vertex

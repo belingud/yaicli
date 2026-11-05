@@ -34,7 +34,16 @@ uv tool install yaicli
 
 ## Installing with Optional Dependencies
 
-YAICLI offers several optional dependency groups that you can install based on your needs:
+A plain `pip install yaicli` is **tools-complete**: every builtin tool (including `web_search`,
+`fetch_webpage` extraction and filesystem/shell tools) and MCP work without extras. Optional groups
+only add provider SDKs:
+
+| Extra | What it adds |
+| --- | --- |
+| `all` | every optional provider SDK (including `anthropic[bedrock,vertex]`) |
+| `bedrock` | Anthropic on AWS Bedrock (`anthropic[bedrock]`) |
+| `vertex` | Anthropic on Google Vertex AI (`anthropic[vertex]`) |
+| `ollama`, `cohere`, `doubao`, `huggingface`, `gemini`, `mistral`, `cerebras`, `fireworks` | that provider's SDK |
 
 ### All Dependencies
 
@@ -54,6 +63,13 @@ pip install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral]'
 
 # Using uv
 uv tool install 'yaicli[ollama,cohere,doubao,huggingface,gemini,mistral]'
+```
+
+### Anthropic on Bedrock / Vertex
+
+```bash
+pip install 'yaicli[bedrock]'   # AWS Bedrock
+pip install 'yaicli[vertex]'    # Google Vertex AI
 ```
 
 ## Installing from Source
