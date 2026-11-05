@@ -31,6 +31,32 @@ _MISSING = object()
 #: Internal decision value that unblocks a worker waiting for a confirmation.
 _ABORT = object()
 
+#: The bridge currently driving a generation, if any. ``WorkerConsole`` reads this
+#: to route prints made from the worker thread to the UI thread for replay.
+_active_bridge: Optional["ThreadedStream"] = None
+_active_bridge_lock = threading.Lock()
+
+
+def set_active_bridge(bridge: Optional["ThreadedStream"]) -> None:
+    """Mark ``bridge`` as the active generation bridge (or clear it with None)."""
+    global _active_bridge
+    with _active_bridge_lock:
+        _active_bridge = bridge
+
+
+def get_active_bridge() -> Optional["ThreadedStream"]:
+    """Return the active generation bridge, if a generation is running."""
+    with _active_bridge_lock:
+        return _active_bridge
+
+
+def clear_active_bridge(bridge: Optional["ThreadedStream"] = None) -> None:
+    """Clear the active bridge (only if it is still ``bridge`` when given)."""
+    global _active_bridge
+    with _active_bridge_lock:
+        if bridge is None or _active_bridge is bridge:
+            _active_bridge = None
+
 
 class ThreadedStream:
     """Run a completion generator on a worker thread; feed its UI thread.
@@ -39,7 +65,7 @@ class ThreadedStream:
     worker console output is preserved:
 
     * ``("chunk", <LLMResponse|RefreshLive|ConfirmToolCall>)``
-    * ``("console", (args, kwargs))`` — drained via ``on_console`` in ``__next__``
+    * ``("console", (stderr, args, kwargs))`` — drained via ``on_console`` in ``__next__``
     * ``("done", None)`` — becomes ``StopIteration``
     * ``("error", <exception>)`` — re-raised in the UI thread
 
@@ -96,10 +122,10 @@ class ThreadedStream:
             except Exception:  # pragma: no cover - closing must never mask the outcome
                 pass
 
-    def put_console(self, *args: Any, **kwargs: Any) -> None:
+    def put_console(self, *args: Any, stderr: bool = False, **kwargs: Any) -> None:
         """Queue a console print produced by the worker for replay on the UI thread."""
         if not self.dead:
-            self._queue.put(("console", (args, kwargs)))
+            self._queue.put(("console", (stderr, args, kwargs)))
 
     # -- UI thread (generator protocol) ------------------------------------
     def __iter__(self) -> "ThreadedStream":
@@ -110,8 +136,8 @@ class ThreadedStream:
             kind, payload = self._queue.get()
             if kind == "console":
                 if self._on_console is not None:
-                    args, kwargs = payload
-                    self._on_console(*args, **kwargs)
+                    stderr, args, kwargs = payload
+                    self._on_console(stderr, args, kwargs)
                 continue
             if kind == "done":
                 raise StopIteration
@@ -138,8 +164,9 @@ class ThreadedStream:
         self._decisions.put(_ABORT)
 
     def close(self, timeout: float = 1.0) -> None:
-        """Abort and join the worker thread (bounded wait)."""
+        """Abort and join the worker thread (bounded wait); clears the registry."""
         self.abort()
+        clear_active_bridge(self)
         if self._thread is not threading.current_thread():
             self._thread.join(timeout=timeout)
 

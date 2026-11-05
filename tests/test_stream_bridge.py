@@ -94,17 +94,17 @@ class TestConsoleEvents:
             yield LLMResponse(content="b")
             holder["adapter"].put_console("after")
 
-        adapter = ThreadedStream(gen(), on_console=lambda *a, **k: printed.append((a, k)))
+        adapter = ThreadedStream(gen(), on_console=lambda stderr, a, k: printed.append((stderr, a, k)))
         holder["adapter"] = adapter
         ready.set()
         try:
             assert next(adapter).content == "a"
             # The console event queued before "b" is replayed while waiting for it.
             assert next(adapter).content == "b"
-            assert printed == [(("between",), {"style": "blue"})]
+            assert printed == [(False, ("between",), {"style": "blue"})]
             with pytest.raises(StopIteration):
                 next(adapter)
-            assert printed[-1] == (("after",), {})
+            assert printed[-1] == (False, ("after",), {})
         finally:
             adapter.close()
 
