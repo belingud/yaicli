@@ -1932,6 +1932,7 @@ Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span cl
 <li><code>/context</code> or <code>/ctx</code> - Show context/token usage, or manage file context (<code>list</code>, <code>add</code>, <code>remove</code>, <code>clear</code>)</li>
 <li><code>/compact [keep_rounds]</code> - Compact the conversation, keeping the last N turns</li>
 <li><code>/permissions</code> - List (and revoke) persistent tool approval rules</li>
+<li><code>/show-output</code> - Open the full-screen tool-output viewer for this turn</li>
 <li><code>!&lt;command&gt;</code> - Execute a shell command directly</li>
 <li><code>/exit</code> - Exit the application</li>
 <li><code>/mode chat|exec</code> - Switch modes</li>
@@ -1943,6 +1944,9 @@ Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span cl
   twice quickly to exit (single press keeps the session alive)</li>
 <li><code>Ctrl+D</code> - Exit (exit code 0)</li>
 <li><code>Ctrl+R</code> - Search history</li>
+<li><code>Ctrl+O</code> - Open the full-screen tool-output viewer for this turn (<code>↑/↓</code> select, <code>Tab</code> switch
+  pane, <code>f</code> full text, <code>q</code>/<code>Esc</code> close). It also works while the assistant is generating:
+  generation continues in the background and closing the viewer redraws the accumulated answer</li>
 <li><code>↑/↓</code> - Navigate through history</li>
 </ul>
 <h2 id="chat-mode">Chat Mode (💬)<a class="headerlink" href="#chat-mode" title="Permanent link">&para;</a></h2>

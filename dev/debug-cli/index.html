@@ -1704,6 +1704,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#debugging-the-ctrlo-tool-output-viewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging the Ctrl+O tool-output viewer
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1876,6 +1885,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#debugging-the-ctrlo-tool-output-viewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging the Ctrl+O tool-output viewer
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1977,6 +1995,66 @@ uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </sp
 <h2 id="where-to-put-temporary-output">Where to put temporary output<a class="headerlink" href="#where-to-put-temporary-output" title="Permanent link">&para;</a></h2>
 <p>Use the project console (<code>get_console()</code>) or <code>print()</code> in <code>entry.py</code> only; remove debug output
 before committing. <code>tests/</code> never call real APIs — keep it that way when adding diagnostics.</p>
+<h2 id="debugging-the-ctrlo-tool-output-viewer">Debugging the Ctrl+O tool-output viewer<a class="headerlink" href="#debugging-the-ctrlo-tool-output-viewer" title="Permanent link">&para;</a></h2>
+<p>The viewer depends on terminal state (cbreak/raw mode, stdin ownership, alternate screen), so a
+"pressed Ctrl+O and nothing happened" report cannot be reproduced in CI. Enable the opt-in
+breadcrumb log before reproducing:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">YAI_DEBUG_LOG</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>ai<span class="w"> </span>-c<span class="w">          </span><span class="c1"># appends to ~/.config/yaicli/debug.log</span>
+<span class="c1"># or a specific file:</span>
+<span class="nv">YAI_DEBUG_LOG</span><span class="o">=</span>/tmp/yaicli-debug.log<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>ai<span class="w"> </span>-c
+</code></pre></div>
+<p>The log contains only event names and small scalars (counts/booleans/thread names), never prompts
+or model/tool content. Relevant events:</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>watcher.start</code></td>
+<td>fd/isatty state, <code>cbreak</code>, <code>discard_disabled</code> (^O), <code>flow_control_disabled</code> (^S/^Q)</td>
+</tr>
+<tr>
+<td><code>watcher.ready</code>, <code>watcher.skip</code>, <code>watcher.error</code></td>
+<td>whether the generation-time key watcher started (and why not)</td>
+</tr>
+<tr>
+<td><code>watcher.byte</code></td>
+<td>every byte the watcher read (hex), useful to see whether the keypress arrived at all</td>
+</tr>
+<tr>
+<td><code>watcher.ctrl-o</code></td>
+<td>Ctrl+O was recognised (<code>encoding=byte</code> for <code>\x0f</code>, <code>encoding=csi</code> for <code>ESC[111;5u</code>-style encodings)</td>
+</tr>
+<tr>
+<td><code>generation.begin</code> / <code>generation.end</code></td>
+<td>bounds of one model turn; correlate keypresses with the generation window</td>
+</tr>
+<tr>
+<td><code>prompt.begin</code></td>
+<td>the REPL is back at the prompt (generation over)</td>
+</tr>
+<tr>
+<td><code>watcher.pause</code> / <code>watcher.resume</code></td>
+<td>the reader was handed to/from the viewer app (<code>acked=False</code> means a 2s timeout)</td>
+</tr>
+<tr>
+<td><code>printer.pause.request</code></td>
+<td>the stream loop saw the request and is about to open the viewer</td>
+</tr>
+<tr>
+<td><code>viewer.request</code>, <code>viewer.open</code>, <code>viewer.run.begin</code>, <code>viewer.run.end</code>, <code>viewer.run.error</code></td>
+<td>viewer open/close/exception path</td>
+</tr>
+</tbody>
+</table>
+<p>If <code>watcher.skip</code>/<code>watcher.error</code> appears, the terminal is not being monitored and pressing Ctrl+O
+may hit the terminal's own <code>VDISCARD</code> key (the screen appears frozen until you press it again).
+If <code>viewer.run.begin</code> appears without <code>viewer.run.end</code>, the full-screen application hung; attach
+the log tail to the bug report.</p>
 
 
 

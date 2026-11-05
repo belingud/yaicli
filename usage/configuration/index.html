@@ -2121,6 +2121,12 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="c1"># the full output is saved to TOOL_OUTPUT_DIR.</span>
 <span class="na">TOOL_OUTPUT_MAX_CHARS</span><span class="o">=</span><span class="s">32000</span>
 <span class="na">TOOL_OUTPUT_DIR</span><span class="o">=</span><span class="s">&lt;chat-history-dir&gt;/tool-outputs</span>
+<span class="c1"># Terminal display of tool results (v0.19.1): head-only preview; the model still</span>
+<span class="c1"># receives TOOL_OUTPUT_MAX_CHARS. 0 = show everything.</span>
+<span class="na">TOOL_DISPLAY_MAX_LINES</span><span class="o">=</span><span class="s">15</span>
+<span class="na">TOOL_DISPLAY_MAX_CHARS</span><span class="o">=</span><span class="s">4000</span>
+<span class="c1"># Max characters of the &quot;@Function call:&quot; argument line (0 = raw arguments).</span>
+<span class="na">TOOL_CALL_PREVIEW_MAX_CHARS</span><span class="o">=</span><span class="s">300</span>
 <span class="c1"># Token budget for one request; 0 derives 70% of the model context window.</span>
 <span class="na">CONTEXT_BUDGET_TOKENS</span><span class="o">=</span><span class="s">0</span>
 
@@ -2357,6 +2363,24 @@ provider name invalid).</p>
 <td>Where full (untruncated) tool outputs are saved</td>
 <td><code>&lt;chat-history&gt;/tool-outputs</code></td>
 <td><code>YAI_TOOL_OUTPUT_DIR</code></td>
+</tr>
+<tr>
+<td><code>TOOL_DISPLAY_MAX_LINES</code></td>
+<td>Terminal preview: max lines of one tool result shown (<code>0</code> = unlimited)</td>
+<td><code>15</code></td>
+<td><code>YAI_TOOL_DISPLAY_MAX_LINES</code></td>
+</tr>
+<tr>
+<td><code>TOOL_DISPLAY_MAX_CHARS</code></td>
+<td>Terminal preview: max characters shown; the model cap is <code>TOOL_OUTPUT_MAX_CHARS</code></td>
+<td><code>4000</code></td>
+<td><code>YAI_TOOL_DISPLAY_MAX_CHARS</code></td>
+</tr>
+<tr>
+<td><code>TOOL_CALL_PREVIEW_MAX_CHARS</code></td>
+<td>Max characters of the <code>@Function call:</code> argument line (<code>0</code> = raw)</td>
+<td><code>300</code></td>
+<td><code>YAI_TOOL_CALL_PREVIEW_MAX_CHARS</code></td>
 </tr>
 <tr>
 <td><code>CONTEXT_BUDGET_TOKENS</code></td>

@@ -1990,8 +1990,23 @@ pass a <code>limit</code> comfortably below that (e.g. <code>limit: 12000</code>
 <p>Notes:</p>
 <ul>
 <li>Set <code>TOOL_OUTPUT_MAX_CHARS=0</code> to disable truncation (not recommended for agent loops).</li>
-<li>The same truncation is applied to tool output printed in the terminal (<code>SHOW_FUNCTION_OUTPUT</code>),
-  so a 1 MB shell result does not flood your screen.</li>
+<li>The <strong>terminal preview</strong> is a separate, much tighter display-only limit:
+  <code>TOOL_DISPLAY_MAX_LINES=15</code> lines and <code>TOOL_DISPLAY_MAX_CHARS=4000</code> characters. Tool results are
+  rendered head-only with a <code>… +N lines · Ctrl+O to expand</code> marker, so a 1 MB shell result does not
+  flood your screen. This never changes what the model receives — the model still gets up to
+  <code>TOOL_OUTPUT_MAX_CHARS</code> characters; set both display limits to <code>0</code> to show everything.</li>
+<li><code>Ctrl+O</code> (or <code>/show-output</code>) opens a <strong>full-screen viewer</strong> with every tool output of the current
+  turn: left pane lists the entries (tool name, size and a command/path caption), right pane shows
+  the selected result. <code>↑/↓</code> select, <code>Tab</code>
+  switches pane, <code>PgUp/PgDn</code> scroll, <code>f</code> toggles between the model-visible text and the spilled full
+  file (capped at 1 MB), and <code>q</code>/<code>Esc</code>/<code>Ctrl+O</code> closes it, restoring the REPL. Non-interactive runs
+  fall back to the inline last-output panel.</li>
+<li>The same shortcut works <strong>while the assistant is generating</strong> an answer: the viewer opens without
+  waiting for the turn to finish and the generation keeps running in a background worker thread
+  while it is open; closing it redraws the accumulated answer and streaming continues. Typed-ahead
+  text is kept and pre-filled into the next prompt.</li>
+<li>Long tool-call arguments on the <code>@Function call:</code> line are summarized
+  (<code>TOOL_CALL_PREVIEW_MAX_CHARS=300</code>); a large <code>content</code>/<code>command</code> value appears as <code>&lt;N chars&gt;</code>.</li>
 <li>If the spill file cannot be written (read-only disk, permission error), YAICLI degrades to plain
   truncation without the path — the request still succeeds.</li>
 <li>Spilled files are created with mode <code>0600</code> on POSIX (file output may contain secrets); clean the
@@ -2106,6 +2121,21 @@ reclaim budget deliberately, or raise <code>CONTEXT_BUDGET_TOKENS</code> if your
 <td><code>TOOL_OUTPUT_DIR</code></td>
 <td><code>&lt;chat history&gt;/tool-outputs</code></td>
 <td>Where full tool outputs are spilled</td>
+</tr>
+<tr>
+<td><code>TOOL_DISPLAY_MAX_LINES</code></td>
+<td><code>15</code></td>
+<td>Terminal preview lines (<code>0</code> = unlimited; model unaffected)</td>
+</tr>
+<tr>
+<td><code>TOOL_DISPLAY_MAX_CHARS</code></td>
+<td><code>4000</code></td>
+<td>Terminal preview characters (<code>0</code> = unlimited; model unaffected)</td>
+</tr>
+<tr>
+<td><code>TOOL_CALL_PREVIEW_MAX_CHARS</code></td>
+<td><code>300</code></td>
+<td>Max characters of the <code>@Function call:</code> argument line (<code>0</code> = raw)</td>
 </tr>
 <tr>
 <td><code>CONTEXT_BUDGET_TOKENS</code></td>

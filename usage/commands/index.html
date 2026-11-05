@@ -2576,6 +2576,10 @@ ai<span class="w"> </span>--image<span class="w"> </span>diagram.png
 <td><code>/permissions revoke &lt;tool-or-index&gt;</code></td>
 <td>Remove a persistent permission by tool name or rule number (the tool will ask again)</td>
 </tr>
+<tr>
+<td><code>/show-output</code></td>
+<td>Open the full-screen viewer listing every tool output of the current turn (same as <code>Ctrl+O</code>)</td>
+</tr>
 </tbody>
 </table>
 <h4 id="context-management-commands">Context Management Commands<a class="headerlink" href="#context-management-commands" title="Permanent link">&para;</a></h4>
@@ -2730,6 +2734,10 @@ Context<span class="w"> </span>cleared.
 <tr>
 <td><code>Ctrl+R</code></td>
 <td>Search history</td>
+</tr>
+<tr>
+<td><code>Ctrl+O</code></td>
+<td>Open the full-screen tool-output viewer for this turn (<code>q</code>/<code>Esc</code> to close); works during generation too (generation continues in the background; closing redraws the accumulated answer)</td>
 </tr>
 <tr>
 <td><code>↑/↓</code></td>
