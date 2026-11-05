@@ -26,10 +26,49 @@ from .debug_log import debug_log
 CTRL_O_BYTE = b"\x0f"
 #: Backspace/delete bytes (best-effort editing of the pending prompt text).
 _BACKSPACE_BYTES = (b"\x7f", b"\x08")
+#: Encodings of Ctrl+O used by extended keyboard protocols (kitty CSI-u /
+#: xterm modifyOtherKeys) when the terminal is not in plain byte mode.
+_CTRL_O_SEQUENCES = (b"\x1b[111;5u", b"\x1b[111;5~", b"\x1b[27;5;111~", b"\x1b[27;5;111u")
 _ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07")
 _POLL_SECONDS = 0.1
 _THREAD_JOIN_SECONDS = 1.0
 _PAUSE_ACK_SECONDS = 2.0
+#: Value of ``_POSIX_VDISABLE`` per platform (0xff on Darwin/BSD, 0x00 on Linux);
+#: writing it into ``c_cc`` disables that special control character.
+_POSIX_VDISABLE_BYTE = b"\xff" if sys.platform in ("darwin", "freebsd", "openbsd", "netbsd") else b"\x00"
+
+
+def _disable_output_control_keys(fd: int) -> tuple[bool, bool]:
+    """Disable `^O` (VDISCARD) and `^S`/`^Q` flow control for the watcher window.
+
+    macOS keeps ``VDISCARD`` bound to `^O` even in cbreak/non-canonical mode: the
+    tty driver would swallow the key and toggle "discard output" instead of
+    delivering it to us, which looks like a frozen screen with missing lines.
+    ``IXON`` is disabled too so a stray `^S` cannot freeze the stream either.
+    Returns ``(discard_disabled, flow_control_disabled)``.
+    """
+    try:
+        attrs = termios.tcgetattr(fd)
+    except (OSError, termios.error):
+        return False, False
+
+    discard_disabled = False
+    index = getattr(termios, "VDISCARD", None)
+    cc = attrs[6]
+    if index is not None and 0 <= index < len(cc):
+        cc[index] = _POSIX_VDISABLE_BYTE
+        discard_disabled = True
+
+    flow_control_disabled = False
+    if getattr(termios, "IXON", 0):
+        attrs[3] &= ~termios.IXON  # iflag
+        flow_control_disabled = True
+
+    try:
+        termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    except (OSError, termios.error):
+        return False, False
+    return discard_disabled, flow_control_disabled
 
 
 class GenerationKeyWatcher:
@@ -72,10 +111,12 @@ class GenerationKeyWatcher:
         try:
             self._old_attrs = termios.tcgetattr(fd)
             tty.setcbreak(fd)
+            discard_disabled, flow_control_disabled = _disable_output_control_keys(fd)
         except (OSError, termios.error) as exc:
             # Not a real tty in tests/containers: keep the watcher functional,
             # only the terminal-mode change is unavailable.
             self._old_attrs = None
+            discard_disabled = flow_control_disabled = False
             debug_log("watcher.start", fd=fd, cbreak=False, error=repr(exc))
         self._stop.clear()
         self._paused.clear()
@@ -85,7 +126,13 @@ class GenerationKeyWatcher:
         self._thread = threading.Thread(target=self._loop, name="yaicli-generation-keys", daemon=True)
         self._thread.start()
         self._started = True
-        debug_log("watcher.start", fd=fd, cbreak=self._old_attrs is not None)
+        debug_log(
+            "watcher.start",
+            fd=fd,
+            cbreak=self._old_attrs is not None,
+            discard_disabled=discard_disabled,
+            flow_control_disabled=flow_control_disabled,
+        )
         return True
 
     def stop(self) -> str:
@@ -158,14 +205,23 @@ class GenerationKeyWatcher:
                 break
             if not data:
                 break
+            debug_log("watcher.byte", hex=data.hex())
             if data == CTRL_O_BYTE:
-                debug_log("watcher.ctrl-o")
+                debug_log("watcher.ctrl-o", encoding="byte")
                 self._viewer_requested.set()
             elif data in _BACKSPACE_BYTES:
                 if self._pending:
                     self._pending.pop()
             else:
                 self._pending.extend(data)
+                # Extended keyboard protocols may encode Ctrl+O as an escape
+                # sequence; recognise it and drop it from the typed-ahead text.
+                for sequence in _CTRL_O_SEQUENCES:
+                    if self._pending.endswith(sequence):
+                        del self._pending[-len(sequence) :]
+                        debug_log("watcher.ctrl-o", encoding="csi")
+                        self._viewer_requested.set()
+                        break
 
     def _pending_text(self) -> str:
         data = bytes(self._pending)

@@ -771,6 +771,9 @@ class CLI:
             Optional[str]: The assistant's response content or None if an error occurred.
             list[ChatMessage]: The updated message history.
         """
+        from .debug_log import debug_log
+
+        debug_log("generation.begin", interactive=getattr(self, "interactive", False))
         messages = self._build_messages(user_input, images=images)
         if not self.machine_output and self.role.name != DefaultRoleNames.CODER:
             self.console.print("Assistant:", style="bold green")
@@ -847,6 +850,7 @@ class CLI:
                 traceback.print_exc()
             return None, messages
         finally:
+            debug_log("generation.end")
             # Stop the background generator first (it may still be producing), then
             # restore the consoles it was routed through, then the key watcher.
             abandoned = False
@@ -1244,6 +1248,9 @@ class CLI:
                 self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
 
             # --- Read ---
+            from .debug_log import debug_log
+
+            debug_log("prompt.begin")
             pending_text = getattr(self, "_pending_prompt_text", "")
             if pending_text:
                 self._pending_prompt_text = ""

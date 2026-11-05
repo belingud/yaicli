@@ -127,3 +127,62 @@ class TestPauseResume:
         watcher.resume()
         watcher.resume()
         watcher.stop()
+
+
+class TestExtendedCtrlOEncodings:
+    def test_csi_u_ctrl_o_requests_viewer(self, pipe_fd):
+        read_fd, write_fd = pipe_fd
+        watcher = started_watcher(read_fd)
+        os.write(write_fd, b"\x1b[111;5u")  # kitty CSI-u encoding of Ctrl+O
+        assert wait_for(watcher.take_viewer_request) is True
+        assert watcher.stop().strip() == ""
+
+    def test_modify_other_keys_ctrl_o_requests_viewer(self, pipe_fd):
+        read_fd, write_fd = pipe_fd
+        watcher = started_watcher(read_fd)
+        os.write(write_fd, b"\x1b[27;5;111~")  # xterm modifyOtherKeys encoding
+        assert wait_for(watcher.take_viewer_request) is True
+        watcher.stop()
+
+
+class TestOutputControlKeys:
+    """macOS keeps VDISCARD (^O) active in cbreak mode; the watcher must disable it."""
+
+    def _attrs(self):
+        import yaicli.generation_keys as gk
+
+        cc = [b"\x00"] * 32
+        cc[gk.termios.VDISCARD] = b"\x0f"
+        return [[], [], [], gk.termios.IXON | gk.termios.ICRNL, 0, 0, cc, []]
+
+    def test_discard_and_flow_control_are_disabled(self, monkeypatch):
+        import yaicli.generation_keys as gk
+
+        captured = {}
+        base = self._attrs()
+
+        def fake_getattr(fd):
+            import copy
+
+            return copy.deepcopy(base)
+
+        def fake_setattr(fd, when, attrs):
+            captured["attrs"] = attrs
+
+        monkeypatch.setattr(gk.termios, "tcgetattr", fake_getattr)
+        monkeypatch.setattr(gk.termios, "tcsetattr", fake_setattr)
+
+        discard, flow = gk._disable_output_control_keys(0)
+        assert discard is True
+        assert flow is True
+        assert captured["attrs"][6][gk.termios.VDISCARD] == gk._POSIX_VDISABLE_BYTE
+        assert captured["attrs"][3] & gk.termios.IXON == 0
+
+    def test_non_tty_returns_false(self, monkeypatch):
+        import yaicli.generation_keys as gk
+
+        def fake_getattr(fd):
+            raise gk.termios.error("not a tty")
+
+        monkeypatch.setattr(gk.termios, "tcgetattr", fake_getattr)
+        assert gk._disable_output_control_keys(0) == (False, False)

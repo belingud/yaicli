@@ -89,8 +89,12 @@ or model/tool content. Relevant events:
 
 | Event | Meaning |
 | --- | --- |
+| `watcher.start` | fd/isatty state, `cbreak`, `discard_disabled` (^O), `flow_control_disabled` (^S/^Q) |
 | `watcher.ready`, `watcher.skip`, `watcher.error` | whether the generation-time key watcher started (and why not) |
-| `watcher.ctrl-o` | the `\x0f` byte was received from the terminal |
+| `watcher.byte` | every byte the watcher read (hex), useful to see whether the keypress arrived at all |
+| `watcher.ctrl-o` | Ctrl+O was recognised (`encoding=byte` for `\x0f`, `encoding=csi` for `ESC[111;5u`-style encodings) |
+| `generation.begin` / `generation.end` | bounds of one model turn; correlate keypresses with the generation window |
+| `prompt.begin` | the REPL is back at the prompt (generation over) |
 | `watcher.pause` / `watcher.resume` | the reader was handed to/from the viewer app (`acked=False` means a 2s timeout) |
 | `printer.pause.request` | the stream loop saw the request and is about to open the viewer |
 | `viewer.request`, `viewer.open`, `viewer.run.begin`, `viewer.run.end`, `viewer.run.error` | viewer open/close/exception path |
