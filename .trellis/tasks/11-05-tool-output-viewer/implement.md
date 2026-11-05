@@ -108,3 +108,13 @@ ruff, mkdocs --strict). Only the explicit v0.19.1 release step remains.
 | T6 | release v0.19.1 | merge/tag/PyPI/docs (explicit user request only) | T5 |
 
 Each subtask must keep the full suite green and be committed separately before the next one starts.
+
+## Post-T5 hotfixes
+
+- `2eaaadf` — `execute_shell_command` argument renamed `shell_command` → `command` (breaking
+  schema change; approval/risk/preview/tests updated).
+- `cba65ee` — Ctrl+O was only serviced at the next stream chunk; `Printer.display_stream()` now
+  polls `ThreadedStream.poll_next(50ms)` and re-checks the viewer request between chunks, with a
+  dim hint when the current turn has no tool output yet. Added opt-in `YAI_DEBUG_LOG` breadcrumbs
+  (watcher start/skip, Ctrl+O byte, pause/resume ack, printer pause, viewer run begin/end/error)
+  documented in `docs/dev/debug-cli.md` for terminal-specific reproduction reports.
