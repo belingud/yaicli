@@ -71,3 +71,31 @@ Use `pytest -x --pdb` to drop into the debugger on the first failure, and
 
 Use the project console (`get_console()`) or `print()` in `entry.py` only; remove debug output
 before committing. `tests/` never call real APIs — keep it that way when adding diagnostics.
+
+## Debugging the Ctrl+O tool-output viewer
+
+The viewer depends on terminal state (cbreak/raw mode, stdin ownership, alternate screen), so a
+"pressed Ctrl+O and nothing happened" report cannot be reproduced in CI. Enable the opt-in
+breadcrumb log before reproducing:
+
+```bash
+YAI_DEBUG_LOG=1 uv run ai -c          # appends to ~/.config/yaicli/debug.log
+# or a specific file:
+YAI_DEBUG_LOG=/tmp/yaicli-debug.log uv run ai -c
+```
+
+The log contains only event names and small scalars (counts/booleans/thread names), never prompts
+or model/tool content. Relevant events:
+
+| Event | Meaning |
+| --- | --- |
+| `watcher.ready`, `watcher.skip`, `watcher.error` | whether the generation-time key watcher started (and why not) |
+| `watcher.ctrl-o` | the `\x0f` byte was received from the terminal |
+| `watcher.pause` / `watcher.resume` | the reader was handed to/from the viewer app (`acked=False` means a 2s timeout) |
+| `printer.pause.request` | the stream loop saw the request and is about to open the viewer |
+| `viewer.request`, `viewer.open`, `viewer.run.begin`, `viewer.run.end`, `viewer.run.error` | viewer open/close/exception path |
+
+If `watcher.skip`/`watcher.error` appears, the terminal is not being monitored and pressing Ctrl+O
+may hit the terminal's own `VDISCARD` key (the screen appears frozen until you press it again).
+If `viewer.run.begin` appears without `viewer.run.end`, the full-screen application hung; attach
+the log tail to the bug report.

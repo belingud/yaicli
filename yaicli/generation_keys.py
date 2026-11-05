@@ -20,6 +20,8 @@ import time
 import tty
 from typing import Any, Callable, Optional
 
+from .debug_log import debug_log
+
 #: The byte produced by Ctrl+O.
 CTRL_O_BYTE = b"\x0f"
 #: Backspace/delete bytes (best-effort editing of the pending prompt text).
@@ -57,20 +59,24 @@ class GenerationKeyWatcher:
             return True
         fd = self._fd if self._fd is not None else self._stdin_fd()
         if fd is None:
+            debug_log("watcher.skip", reason="no-stdin-fd")
             return False
         try:
             if not self._tty_check(fd):
+                debug_log("watcher.skip", reason="stdin-not-tty", fd=fd)
                 return False
         except (OSError, ValueError, AttributeError):
+            debug_log("watcher.skip", reason="tty-check-raised")
             return False
         self._fd = fd
         try:
             self._old_attrs = termios.tcgetattr(fd)
             tty.setcbreak(fd)
-        except (OSError, termios.error):
+        except (OSError, termios.error) as exc:
             # Not a real tty in tests/containers: keep the watcher functional,
             # only the terminal-mode change is unavailable.
             self._old_attrs = None
+            debug_log("watcher.start", fd=fd, cbreak=False, error=repr(exc))
         self._stop.clear()
         self._paused.clear()
         self._pause_ack.clear()
@@ -79,6 +85,7 @@ class GenerationKeyWatcher:
         self._thread = threading.Thread(target=self._loop, name="yaicli-generation-keys", daemon=True)
         self._thread.start()
         self._started = True
+        debug_log("watcher.start", fd=fd, cbreak=self._old_attrs is not None)
         return True
 
     def stop(self) -> str:
@@ -99,6 +106,7 @@ class GenerationKeyWatcher:
                 pass
             self._old_attrs = None
         self._started = False
+        debug_log("watcher.stop", pending=len(self._pending))
         return self._pending_text()
 
     @staticmethod
@@ -119,12 +127,14 @@ class GenerationKeyWatcher:
     def pause(self) -> None:
         """Stop reading keys so another prompt_toolkit app can own the terminal."""
         self._paused.set()
-        self._pause_ack.wait(timeout=_PAUSE_ACK_SECONDS)
+        acked = self._pause_ack.wait(timeout=_PAUSE_ACK_SECONDS)
+        debug_log("watcher.pause", acked=acked)
 
     def resume(self) -> None:
         """Resume reading keys after the viewer closes."""
         self._paused.clear()
         self._pause_ack.clear()
+        debug_log("watcher.resume")
 
     # -- internals ---------------------------------------------------------
     def _loop(self) -> None:
@@ -149,6 +159,7 @@ class GenerationKeyWatcher:
             if not data:
                 break
             if data == CTRL_O_BYTE:
+                debug_log("watcher.ctrl-o")
                 self._viewer_requested.set()
             elif data in _BACKSPACE_BYTES:
                 if self._pending:

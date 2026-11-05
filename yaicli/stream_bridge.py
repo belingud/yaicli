@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import queue
 import threading
+import time
 from typing import Any, Callable, Generator, Optional
 
 from .schemas import ConfirmToolCall
@@ -168,22 +169,49 @@ class ThreadedStream:
     def __iter__(self) -> "ThreadedStream":
         return self
 
+    def _replay_console(self, payload: Any) -> None:
+        if self._on_console is not None:
+            stderr, args, kwargs = payload
+            self._on_console(stderr, args, kwargs)
+
+    def _finish_event(self, kind: str, payload: Any) -> Any:
+        if kind == "done":
+            raise StopIteration
+        if kind == "error":
+            raise payload
+        if isinstance(payload, ConfirmToolCall):
+            self._awaiting_decision = True
+        return payload
+
     def __next__(self) -> Any:
         self.start()
         while True:
             kind, payload = self._queue.get()
             if kind == "console":
-                if self._on_console is not None:
-                    stderr, args, kwargs = payload
-                    self._on_console(stderr, args, kwargs)
+                self._replay_console(payload)
                 continue
-            if kind == "done":
-                raise StopIteration
-            if kind == "error":
-                raise payload
-            if isinstance(payload, ConfirmToolCall):
-                self._awaiting_decision = True
-            return payload
+            return self._finish_event(kind, payload)
+
+    def poll_next(self, timeout: float = 0.05) -> Any:
+        """Return the next chunk, or ``None`` when nothing arrives within ``timeout``.
+
+        The REPL uses this instead of a blocking ``next()`` so a Ctrl+O request is
+        serviced even while the provider/tool is between chunks (e.g. long reasoning
+        or a slow tool), instead of appearing frozen until the next chunk arrives.
+        ``StopIteration``/generator errors are raised exactly like ``__next__``.
+        """
+        self.start()
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = max(0.0, deadline - time.monotonic())
+            try:
+                kind, payload = self._queue.get(timeout=remaining)
+            except queue.Empty:
+                return None
+            if kind == "console":
+                self._replay_console(payload)
+                continue
+            return self._finish_event(kind, payload)
 
     def send(self, value: Any) -> Any:
         """Hand a ``ConfirmToolCall`` decision to the worker, then wait for the next chunk."""

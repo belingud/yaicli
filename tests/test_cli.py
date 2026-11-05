@@ -937,6 +937,8 @@ class TestKeyBindingsAndSetup:
             cli._open_viewer_while_generating(watcher)
         mock_open.assert_not_called()
         watcher.pause.assert_not_called()
+        printed = [str(c.args[0]) for c in cli.console.print.call_args_list if c.args]
+        assert any("No tool output in this turn yet" in text for text in printed)
 
     def test_open_viewer_while_generating_pauses_and_resumes(self, cli_with_mocks):
         """A viewer request pauses the watcher, opens the viewer, then resumes the stream."""

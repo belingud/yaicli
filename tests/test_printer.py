@@ -335,3 +335,37 @@ class TestPrinter(unittest.TestCase):
         with patch.object(printer, "_process_chunk", side_effect=RuntimeError("boom")):
             with self.assertRaises(RuntimeError):
                 printer.display_stream(gen())
+
+
+class TestPollableStream:
+    """Background streams are polled so Ctrl+O is serviced between slow chunks."""
+
+    @patch("yaicli.printer.Live")
+    def test_pause_is_serviceable_between_chunks(self, mock_live):
+        mock_live.return_value = MagicMock()
+        printer = Printer()
+        printer.console = MagicMock()
+        printer.show_reasoning = True
+
+        class Pollable:
+            def __init__(self):
+                self.chunks = [LLMResponse(content="a"), LLMResponse(content="b")]
+                self.polls = 0
+
+            def poll_next(self, timeout):
+                self.polls += 1
+                if self.chunks:
+                    return self.chunks.pop(0)
+                raise StopIteration
+
+        stream = Pollable()
+        requests = iter([False, True, False, False, False])
+        pauses = []
+        content, _ = printer.display_stream(
+            stream,
+            pause_requested=lambda: next(requests, False),
+            on_pause=lambda: pauses.append(stream.polls),
+        )
+
+        assert pauses == [1]  # ran after the first poll, before the second chunk
+        assert "a" in content and "b" in content

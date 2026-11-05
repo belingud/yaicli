@@ -15,6 +15,7 @@ pressing ``f`` again returns to the model-visible text.
 import sys
 from typing import Any, Dict, List, Optional
 
+from .debug_log import debug_log
 from .tools.output_history import ToolOutputEntry, viewer_outputs
 
 #: Safety cap when loading a spilled full output into the viewer.
@@ -242,14 +243,20 @@ def open_tool_output_viewer(console: Any) -> None:
 
     entries, label = viewer_outputs()
     if not entries:
+        debug_log("viewer.skip", reason="no-entries")
         console.print("No tool output in this session yet.", style="dim")
         return
+    debug_log("viewer.open", entries=len(entries), tty=_is_tty(), label=label)
     if not _is_tty():
         console.print("The tool-output viewer needs an interactive terminal; showing the latest output.", style="dim")
         show_last_tool_output(console)
         return
     try:
-        build_viewer_app(entries, label).run()
+        app = build_viewer_app(entries, label)
+        debug_log("viewer.run.begin")
+        app.run()
+        debug_log("viewer.run.end")
     except Exception as exc:  # noqa: BLE001 - a broken terminal must not kill the REPL
+        debug_log("viewer.run.error", error=repr(exc))
         console.print(f"Could not open the tool-output viewer: {exc}", style="dim")
         show_last_tool_output(console)

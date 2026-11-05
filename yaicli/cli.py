@@ -876,14 +876,23 @@ class CLI:
 
     def _start_generation_watcher(self):
         """Install the generation-time Ctrl+O key watcher (interactive streaming only)."""
-        if not getattr(self, "interactive", False) or getattr(self, "machine_output", False):
+        from .debug_log import debug_log
+
+        if not getattr(self, "interactive", False):
+            debug_log("watcher.skip", reason="not-interactive")
+            return None
+        if getattr(self, "machine_output", False):
+            debug_log("watcher.skip", reason="machine-output")
             return None
         try:
             from .generation_keys import GenerationKeyWatcher
 
             watcher = GenerationKeyWatcher()
-            return watcher if watcher.start() else None
-        except Exception:  # pragma: no cover - key capture must never break a turn
+            started = watcher.start()
+            debug_log("watcher.ready", started=started)
+            return watcher if started else None
+        except Exception as exc:  # pragma: no cover - key capture must never break a turn
+            debug_log("watcher.error", error=repr(exc))
             return None
 
     @staticmethod
@@ -927,9 +936,14 @@ class CLI:
 
     def _open_viewer_while_generating(self, watcher) -> None:
         """Open the viewer while the background generator keeps producing (T3)."""
+        from .debug_log import debug_log
         from .tools.output_history import viewer_outputs
 
-        if not viewer_outputs()[0]:
+        entries, label = viewer_outputs()
+        debug_log("viewer.request", entries=len(entries), label=label)
+        if not entries:
+            # Give feedback instead of silently ignoring Ctrl+O during early output.
+            self.console.print("No tool output in this turn yet; generation continues.", style="dim")
             return
         watcher.pause()
         try:

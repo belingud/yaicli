@@ -281,3 +281,65 @@ class TestThreadRegistry:
             release.set()
         assert adapter.close(timeout=2.0) is False
         assert adapter.alive is False
+
+
+class TestPollNext:
+    def test_returns_none_while_waiting_then_chunk(self):
+        release = threading.Event()
+
+        def gen():
+            release.wait(2.0)
+            yield LLMResponse(content="a")
+
+        adapter = ThreadedStream(gen())
+        try:
+            adapter.start()
+            assert adapter.poll_next(0.05) is None
+            release.set()
+            chunk = adapter.poll_next(2.0)
+            assert chunk is not None and chunk.content == "a"
+        finally:
+            release.set()
+            adapter.close()
+
+    def test_done_becomes_stopiteration(self):
+        def gen():
+            yield LLMResponse(content="a")
+
+        adapter = ThreadedStream(gen())
+        try:
+            assert adapter.poll_next(2.0).content == "a"
+            with pytest.raises(StopIteration):
+                adapter.poll_next(2.0)
+        finally:
+            adapter.close()
+
+    def test_console_events_are_replayed_in_poll(self):
+        printed = []
+        holder = {}
+
+        def gen():
+            yield LLMResponse(content="a")
+            holder["adapter"].put_console("panel")
+            yield LLMResponse(content="b")
+
+        adapter = ThreadedStream(gen(), on_console=lambda stderr, a, k: printed.append((stderr, a, k)))
+        holder["adapter"] = adapter
+        try:
+            assert adapter.poll_next(2.0).content == "a"
+            assert adapter.poll_next(2.0).content == "b"
+        finally:
+            adapter.close()
+        assert printed == [(False, ("panel",), {})]
+
+    def test_error_is_raised_from_poll(self):
+        def gen():
+            raise RuntimeError("boom")
+            yield LLMResponse(content="never")
+
+        adapter = ThreadedStream(gen())
+        try:
+            with pytest.raises(RuntimeError, match="boom"):
+                adapter.poll_next(2.0)
+        finally:
+            adapter.close()

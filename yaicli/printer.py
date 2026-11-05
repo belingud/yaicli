@@ -23,6 +23,9 @@ _PREVIEW_DIFF_CONTEXT = 2
 _PREVIEW_WRITE_MAX_LINES = 10
 _PREVIEW_LINE_MAX_CHARS = 200
 _PREVIEW_READ_MAX_CHARS = 200_000
+#: How long the UI thread waits for a background stream chunk before re-checking
+#: for a Ctrl+O viewer request (used with ThreadedStream.poll_next).
+_STREAM_POLL_SECONDS = 0.05
 
 
 def _clip_line(text: Any, limit: int = _PREVIEW_LINE_MAX_CHARS) -> str:
@@ -428,6 +431,28 @@ class Printer:
         if live.is_started:
             live.stop()
 
+    def _maybe_handle_pause(
+        self,
+        pause_requested: Optional[Callable[[], bool]],
+        on_pause: Optional[Callable[[], None]],
+        live: Live,
+        full_content: str,
+    ) -> Live:
+        """Run the generation-time viewer callback when requested; return the Live."""
+        if pause_requested is None or on_pause is None or not pause_requested():
+            return live
+        from .debug_log import debug_log
+
+        debug_log("printer.pause.request", full_content_chars=len(full_content))
+        self._safe_stop_live(live)
+        try:
+            on_pause()
+        finally:
+            live = self._create_and_start_live()
+            if full_content:
+                live.update(self._format_display_text(full_content, ""), refresh=True)
+        return live
+
     # ------------------- faithful confirmation preview (v0.19 K06) -------------------
     def _format_tool_preview(self, tool_call) -> str:
         """Build the confirmation preview from the *canonical* arguments.
@@ -645,25 +670,28 @@ class Printer:
 
         try:
             while True:
-                if pause_requested is not None and on_pause is not None and pause_requested():
-                    # Generation-time viewer request: stop the live region, run the
-                    # callback (full-screen viewer), then redraw and keep streaming.
-                    self._safe_stop_live(live)
+                # Service a Ctrl+O viewer request before waiting for the next chunk.
+                live = self._maybe_handle_pause(pause_requested, on_pause, live, full_content)
+
+                pollable = getattr(stream_iterator, "poll_next", None)
+                if pollable is not None and send_value is None:
+                    # Background bridge: a slow provider/tool must not delay Ctrl+O;
+                    # poll with a short timeout and re-check the request each round.
                     try:
-                        on_pause()
-                    finally:
-                        live = self._create_and_start_live()
-                        if full_content:
-                            live.update(self._format_display_text(full_content, ""), refresh=True)
-                    continue
-                try:
-                    if send_value is None:
-                        chunk = next(stream_iterator)
-                    else:
-                        chunk = stream_iterator.send(send_value)
-                        send_value = None
-                except StopIteration:
-                    break
+                        chunk = pollable(_STREAM_POLL_SECONDS)
+                    except StopIteration:
+                        break
+                    if chunk is None:
+                        continue
+                else:
+                    try:
+                        if send_value is None:
+                            chunk = next(stream_iterator)
+                        else:
+                            chunk = stream_iterator.send(send_value)
+                            send_value = None
+                    except StopIteration:
+                        break
 
                 if isinstance(chunk, ConfirmToolCall):
                     # Pause the live region so the prompt does not fight its refresh.
