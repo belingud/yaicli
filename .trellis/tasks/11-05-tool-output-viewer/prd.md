@@ -44,6 +44,11 @@ to restore the REPL.
   last-output panel; machine/headless stdout contract is untouched (`/show-output` is
   REPL/machine-safe).
 - **R9 No new config keys**: viewer behavior is fixed; display caps stay configurable as before.
+- **R11 Generation-time toggle**: while the assistant is streaming an answer, `Ctrl+O` opens the
+  same viewer without waiting for the turn to finish and the **generation keeps running in a
+  worker thread**; `Ctrl+O` again (or `q`/`Esc`) closes it, redraws the accumulated stream
+  content and continues. Typed characters during generation are kept and pre-filled into the next
+  prompt (best effort); `Ctrl+C` still aborts the turn.
 - **R10 Documentation**: README shortcuts, `docs/usage/cli.md`, `interactive.md`, `commands.md`,
   `context-limits.md`, and the py specs (`cli-and-rendering`, `function-tool-guidelines`).
 
@@ -52,7 +57,8 @@ to restore the REPL.
 - No assistant text/reasoning transcript in the viewer — tool outputs only.
 - No in-viewer search/filter/export (future work).
 - No persistent viewer history on disk; spill files remain the full-output store.
-- `Ctrl+O` is prompt-only (not available while a generation is running).
+- Not a background transcript: the generation pauses while the viewer is open (the provider stream
+  is not drained), so leaving it open for a very long time can hit provider idle timeouts.
 
 ## Acceptance Criteria
 

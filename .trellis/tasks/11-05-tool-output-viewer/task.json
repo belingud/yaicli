@@ -18,7 +18,13 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [],
+  "children": [
+    "11-05-stream-bridge",
+    "11-05-worker-console-routing",
+    "11-05-background-generation-cli",
+    "11-05-background-generation-cancel",
+    "11-05-background-generation-verify"
+  ],
   "parent": null,
   "relatedFiles": [],
   "notes": "",
