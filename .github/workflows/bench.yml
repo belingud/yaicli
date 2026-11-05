@@ -1,0 +1,29 @@
+name: Startup benchmark
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  bench:
+    name: Cold-start gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install project
+        run: uv sync --all-groups
+
+      - name: Run cold-start benchmark gate
+        run: uv run python scripts/bench.py --gate -n 3

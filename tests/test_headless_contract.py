@@ -721,7 +721,8 @@ class TestConstructorHeadlessIntent:
         assert cli.session is None
         assert cli.console is stderr_console
 
-    def test_plain_tty_still_builds_prompt_session_and_stdout_console(self):
+    def test_plain_tty_defers_prompt_session_until_repl(self):
+        """K08: a plain TTY keeps the stdout console but builds the session in the REPL."""
         with (
             patch("yaicli.cli.PromptSession") as mock_session,
             patch("yaicli.cli.get_console") as get_console_mock,
@@ -733,8 +734,21 @@ class TestConstructorHeadlessIntent:
             get_console_mock.return_value = stdout_console
             cli = CLI(client=MagicMock())
 
-        assert mock_session.call_count == 1
-        assert cli.interactive is True
-        assert cli.machine_output is False
-        assert cli.console is stdout_console
+            assert cli.interactive is True
+            assert cli.machine_output is False
+            assert cli.console is stdout_console
+            assert cli.session is None
+            mock_session.assert_not_called()
+
+            # The REPL builds the only prompt session (prepare_chat_loop).
+            with (
+                patch.object(CLI, "_setup_key_bindings"),
+                patch("yaicli.cli.HISTORY_FILE", MagicMock()),
+                patch("yaicli.cli.LimitedFileHistory"),
+                patch("yaicli.cli.AtPathCompleter"),
+            ):
+                cli.prepare_chat_loop()
+            assert mock_session.call_count == 1
+            assert cli.session is mock_session.return_value
+
         get_error_console_mock.assert_not_called()

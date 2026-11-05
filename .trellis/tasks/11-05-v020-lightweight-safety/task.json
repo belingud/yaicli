@@ -1,0 +1,29 @@
+{
+  "id": "v020-lightweight-safety",
+  "name": "v020-lightweight-safety",
+  "title": "v0.20 lightweight and safety foundation",
+  "description": "Ship the v0.20 milestone from var/lightweight-audit/09-roadmap.md: K08 startup latency, K09 tools-complete packaging (cloud extras split, all builtin tools + MCP work out of the box), then K10-K14 and the v0.20.0 release. W1 = K08 + K09.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "belingud",
+  "assignee": "belingud",
+  "createdAt": "2026-11-05",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "master",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "11-05-k08-startup-latency",
+    "11-05-k09-tools-complete-packaging"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

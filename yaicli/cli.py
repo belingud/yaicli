@@ -3,21 +3,16 @@ import subprocess
 import sys
 import time
 import traceback
-from os import devnull
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import typer
-from prompt_toolkit import PromptSession, prompt
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .chat import Chat, FileChatManager, chat_mgr
 from .cmd_handler import CMD_COMPACT, CmdHandler
-from .completer import AtPathCompleter
 from .config import cfg
 from .console import get_console, get_error_console, safe_text, untrusted_text
 from .const import (
@@ -44,14 +39,75 @@ from .const import (
 from .context import ContextManager, ctx_mgr
 from .errors import EXIT_ERROR, EXIT_OK, EXIT_SIGINT, EXIT_TOOL_DENIED, ErrorKind, classify_exception
 from .exceptions import ChatSaveError, YaicliError
-from .history import LimitedFileHistory
-from .llms import LLMClient
 from .printer import Printer
 from .role import Role, RoleManager, role_mgr
 from .schemas import ChatMessage, ImageData, RefreshLive, ToolPolicy
 from .tokens import resolve_context_budget, trim_messages_to_budget, trim_oldest_group
 from .tools.approval import ToolApprovalManager
 from .utils import detect_os, detect_shell, filter_command
+
+#: Lazily imported prompt_toolkit / LLM-client names (K08).
+#:
+#: They stay module attributes so the existing test seams
+#: ``patch("yaicli.cli.PromptSession")`` / ``patch("yaicli.cli.LLMClient")`` keep working, while
+#: one-shot/headless runs never pay the prompt_toolkit import and the REPL never pays the provider
+#: SDK import at startup.
+PromptSession = None  # type: ignore[assignment]
+prompt = None  # type: ignore[assignment]
+AtPathCompleter = None  # type: ignore[assignment]
+LimitedFileHistory = None  # type: ignore[assignment]
+LLMClient = None  # type: ignore[assignment]
+
+
+def _prompt_session_class() -> Any:
+    """Import prompt_toolkit's ``PromptSession`` on first REPL use (patchable seam)."""
+    global PromptSession
+    if PromptSession is None:
+        from prompt_toolkit import PromptSession as _PromptSession
+
+        PromptSession = _PromptSession
+    return PromptSession
+
+
+def _prompt_function() -> Any:
+    """Import prompt_toolkit's one-line ``prompt`` on first edit use (patchable seam)."""
+    global prompt
+    if prompt is None:
+        from prompt_toolkit import prompt as _prompt
+
+        prompt = _prompt
+    return prompt
+
+
+def _at_path_completer_class() -> Any:
+    """Import the ``@path`` completer lazily (it needs prompt_toolkit)."""
+    global AtPathCompleter
+    if AtPathCompleter is None:
+        from .completer import AtPathCompleter as _AtPathCompleter
+
+        AtPathCompleter = _AtPathCompleter
+    return AtPathCompleter
+
+
+def _limited_history_class() -> Any:
+    """Import the file-backed prompt history lazily (it needs prompt_toolkit)."""
+    global LimitedFileHistory
+    if LimitedFileHistory is None:
+        from .history import LimitedFileHistory as _LimitedFileHistory
+
+        LimitedFileHistory = _LimitedFileHistory
+    return LimitedFileHistory
+
+
+def _llm_client_class() -> Any:
+    """Import ``LLMClient`` on first use so REPL startup skips the provider SDK import (K08)."""
+    global LLMClient
+    if LLMClient is None:
+        from .llms import LLMClient as _LLMClient
+
+        LLMClient = _LLMClient
+    return LLMClient
+
 
 OUTPUT_FORMATS = ("text", "json", "stream-json")
 #: Content of the in-band tool result the client appends when a tool call is denied.
@@ -104,7 +160,7 @@ class CLI:
         "role_manager",
         "role",
         "printer",
-        "client",
+        "_client",
         "cmd_handler",
         "bindings",
         "current_mode",
@@ -176,14 +232,20 @@ class CLI:
         self.context_manager = context_manager or ctx_mgr
         self.role: Role = self.role_manager.get_role(self.role_name)
         self.printer = self._make_printer()
-        self.client = client or self._create_client()
-        # Providers capture their own stdout console at construction time; in
-        # machine mode every diagnostic (verbose request dumps, error bodies) must
-        # use stderr, so re-point the client *and* its provider console here.
-        self._sync_client_console()
+        # K08: construct the LLM client lazily (first ``cli.client`` access). A REPL
+        # startup must not pay the provider SDK import (~0.9 s for openai) before the
+        # first prompt is shown, and one-shot runs create it at their first request.
+        self._client = client
+        if client is not None:
+            # Providers capture their own stdout console at construction time; in
+            # machine mode every diagnostic (verbose request dumps, error bodies) must
+            # use stderr, so re-point the client *and* its provider console here.
+            self._sync_client_console()
         self.cmd_handler = CmdHandler(self)
 
-        self.bindings = KeyBindings()
+        # Created lazily by prepare_chat_loop()/_setup_key_bindings(); prompt_toolkit is
+        # only imported for real REPL/exec runs (K08).
+        self.bindings = None
 
         self.current_mode: str = TEMP_MODE
 
@@ -216,25 +278,22 @@ class CLI:
             self.console.print(f"Current role: {safe_text(self.role_name)}")
             self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
 
-        # v0.19 K04/K21: do not build a prompt_toolkit session for one-shot/pipe
-        # runs (it is useless there and can print warnings); the REPL builds its
-        # own session lazily in prepare_chat_loop(). This also keeps -p/--json TTY
-        # invocations free of prompt_toolkit cost/noise (K04 D3).
+        # v0.19 K04/K21: one-shot/pipe runs never build a prompt_toolkit session; since
+        # K08 the REPL builds the only session in prepare_chat_loop().
         self.session = None
-        if self.interactive and not self.machine_output:
-            # Disable prompt_toolkit warning when use non-tty input,
-            # e.g. when use pipe or redirect
-            _origin_stderr = None
-            if not sys.stdin.isatty():
-                _origin_stderr = sys.stderr
-                sys.stderr = open(devnull, "w", encoding="utf-8")
-            try:
-                self.session = PromptSession(key_bindings=self.bindings)
-            finally:
-                if _origin_stderr:
-                    sys.stderr.flush()
-                    sys.stderr.close()
-                    sys.stderr = _origin_stderr
+
+    @property
+    def client(self):
+        """The LLM client, constructed on first use (K08 lazy client)."""
+        if self._client is None:
+            self._client = self._create_client()
+            self._sync_client_console()
+        return self._client
+
+    @client.setter
+    def client(self, value: Any) -> None:
+        """Allow tests/integrations to inject a ready client (``cli.client = mock``)."""
+        self._client = value
 
     def _sync_client_console(self) -> None:
         """Point the LLM client and its provider at this CLI's console.
@@ -245,15 +304,16 @@ class CLI:
         to stderr so structured stdout stays parseable. Tool announcements are
         handled separately by ``yaicli.tools.console`` in :meth:`configure_headless`.
         """
-        if self.client is None:  # pragma: no cover - defensive
+        client = self._client
+        if client is None:  # pragma: no cover - defensive
             return
         try:
-            self.client.interactive = bool(self.interactive and not self.machine_output)
-            self.client.console = self.console
+            client.interactive = bool(self.interactive and not self.machine_output)
+            client.console = self.console
         except AttributeError:  # pragma: no cover - client without these slots
             return
         try:
-            provider = getattr(self.client, "provider", None)
+            provider = getattr(client, "provider", None)
             if provider is not None and hasattr(provider, "console"):
                 provider.console = self.console
         except (AttributeError, TypeError):  # pragma: no cover - exotic provider object
@@ -1077,7 +1137,7 @@ class CLI:
             executed_cmd = cmd
         elif _input == "e":
             try:
-                edited_cmd = prompt("Edit command: ", default=cmd).strip()
+                edited_cmd = _prompt_function()("Edit command: ", default=cmd).strip()
                 if edited_cmd and edited_cmd != cmd:
                     executed_cmd = edited_cmd
                 elif edited_cmd:
@@ -1109,31 +1169,39 @@ class CLI:
         try:
             HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
             HISTORY_FILE.touch(exist_ok=True)
-            history = LimitedFileHistory(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"])
+            history = _limited_history_class()(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"])
         except OSError as e:
             get_error_console().print(
                 f"Warning: could not set up prompt history ({safe_text(e)}); using in-memory history.",
                 style="yellow",
             )
 
-        # Set up the prompt session with command history
+        # Set up the prompt session with command history (prompt_toolkit is imported
+        # here, not at module import, so one-shot/headless runs stay light — K08).
+        PromptSessionClass = _prompt_session_class()
         try:
-            self.session = PromptSession(
+            from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
+            self.session = PromptSessionClass(
                 key_bindings=self.bindings,
                 history=history,
                 auto_suggest=AutoSuggestFromHistory() if cfg.get("AUTO_SUGGEST", True) else None,
                 enable_history_search=True,
-                completer=AtPathCompleter(),
+                completer=_at_path_completer_class()(),
                 complete_while_typing=True,  # Enable auto-completion for @ trigger
                 complete_in_thread=True,  # Don't block on completion
             )
         except Exception as e:
             self.console.print(f"Error initializing prompt session history: {safe_text(e)}", style="red")
-            self.session = PromptSession(key_bindings=self.bindings)
+            self.session = PromptSessionClass(key_bindings=self.bindings)
 
     def _setup_key_bindings(self) -> None:
         """Setup keyboard shortcuts: Shift+Tab for mode switching, Ctrl+O for the
-        full-screen tool-output viewer."""
+        full-screen tool-output viewer. Imports prompt_toolkit lazily (K08)."""
+        from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
+
+        if self.bindings is None:
+            self.bindings = KeyBindings()
 
         @self.bindings.add("s-tab")  # Shift+Tab to switch mode
         def _(event: KeyPressEvent) -> None:
@@ -1373,7 +1441,7 @@ class CLI:
         if redirect_stdout:
             sys.stdout = sys.stderr
         try:
-            return LLMClient(
+            return _llm_client_class()(
                 provider_name=cfg["PROVIDER"].lower(),
                 verbose=self.verbose,
                 config=cfg,

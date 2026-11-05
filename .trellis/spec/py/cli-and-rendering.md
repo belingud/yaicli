@@ -27,6 +27,16 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 - Print-and-exit flags (`--version`, `--list-roles`, `--list-chats`, ...) use `@option_callback`
   (`yaicli/utils.py`), which runs the callback then raises `typer.Exit`; never construct `CLI` for
   them, and keep `--version/--help/--template/--list-*` free of config-file creation (K21 contract).
+- K08 lazy option callbacks: `entry.py` no longer imports `chat`/`role`/`functions`/`llms.provider` at
+  module scope. Typer still introspects callback signatures at import time, so thin `_role_*`/`_chat_*`/
+  `_provider_*`/`_*_functions_callback` proxies import the heavy module only when the flag is used.
+  Keep a proxy's parameter shape identical to the callback it wraps (single value for bound
+  `@option_callback` classmethods, `(cls, value)` for the module-level functions callbacks) or Typer's
+  ctx/value injection breaks.
+- Startup is measured by `scripts/bench.py` (stdlib only): `--version/--help/--template`, entry import,
+  REPL-readiness proxy, and one-shot-to-first-request against a local OpenAI-compatible mock server.
+  `--gate` enforces P50 limits; `.github/workflows/bench.yml` runs it on master pushes/PRs. Do not add a
+  heavyweight runtime import to `entry.py`/`cli.py` module scope without updating the gate expectations.
 - `main()` input order: `--template` prints `DEFAULT_CONFIG_INI`; `--cwd` is validated/chdir'd before
   relative prompt/image paths resolve; `--max-turns` writes `cfg["MAX_TOOL_CALL_DEPTH"]`; non-TTY stdin
   is read and prepended (`f"{stdin}\n\n{prompt}"`) and forces `--chat=False` with a warning; empty
@@ -55,15 +65,23 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 - `CLI.evaluate_role_name(code, shell, role)` is the only precedence rule: `code` > `shell`
   > explicit `role` > `DEFAULT`. `set_role()` applies side effects: `CODER` → plaintext `Printer`, `SHELL`
   → `current_mode = EXEC_MODE`.
-- `CLI.__init__` derives `interactive` from stdin+stdout TTY and skips `PromptSession` creation and the
-  welcome banner when not interactive (headless runs stay cheap and quiet; the REPL builds its own
-  session in `prepare_chat_loop()`). It accepts defaulted `print_mode`/`output_format`/`quiet` kwargs so
-  ``entry.main`` can pass the headless intent *before* any console/printer/client/prompt-toolkit object
-  is built (D3: `-p --json` on a TTY must not create a PromptSession or print to stdout).
+- `CLI.__init__` derives `interactive` from stdin+stdout TTY and never builds a `PromptSession`
+  (K08): the REPL builds the only session in `prepare_chat_loop()`; one-shot/headless runs never import
+  prompt_toolkit. It accepts defaulted `print_mode`/`output_format`/`quiet` kwargs so ``entry.main`` can
+  pass the headless intent *before* any console/printer/client/prompt-toolkit object is built (D3:
+  `-p --json` on a TTY must not create a PromptSession or print to stdout).
   `configure_headless(...)` then applies the remaining flags (yes/allowed-tools/fail-on-denied/
   max-turns/cwd) and is idempotent. `_sync_client_console()` re-points both `client.console` and
   `client.provider.console` at the stderr console in machine mode (D1/D2) — provider verbose dumps and
   error bodies must never reach structured stdout.
+- K08 lazy client: the client is a `client` property backed by the `_client` slot; the LLM client (and
+  thus the provider SDK import) is constructed on first access (first request in one-shot, first turn in
+  the REPL), not in `__init__`. `cli.client = mock` still injects a ready client. The property re-runs
+  `_sync_client_console()` after construction, so machine-mode stderr routing still wins.
+- K08 lazy prompt_toolkit: `cli.py` keeps module-level `PromptSession`/`prompt`/`AtPathCompleter`/
+  `LimitedFileHistory` attributes defaulting to `None`, imported by `_prompt_session_class()` etc. on
+  first REPL/exec use. This preserves the `patch("yaicli.cli.PromptSession")` test seam without paying
+  the import on one-shot/headless runs. `self.bindings` is `None` until `_setup_key_bindings()`.
 - Public state contract consumed by `entry.py` (keep these names): `interactive`, `exit_code`,
   `had_error`, `interrupted`, `depth_limit_reached`, `tool_denied`, plus `yes`, `allowed_tools`,
   `fail_on_tool_denied`, `output_format`, `quiet`, `machine_output`. `_finalize_exit_code()` maps them:
@@ -146,7 +164,7 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   prompt exiting. One-shot runs exit 130 on SIGINT.
   Autosave on exit only when `not is_temp_session and chat.history`.
 - `sys.stdin.isatty()` appears exactly three times: `entry.main` (stdin merge, `--chat` warning), `CLI.__init__`
-  (skip the first `PromptSession` when not interactive), and `_create_client(interactive=...)`
+  (derive `interactive` / `machine_output`), and `_create_client(interactive=...)`
   (non-TTY tool confirmation denies instead of blocking — the K06 gate additionally applies
   `--yes`/`--allowed-tools`).
 

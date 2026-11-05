@@ -8,7 +8,6 @@ from typing import Annotated, Any, List, Optional
 import typer
 
 from . import __version__ as yaicli_version
-from .chat import FileChatManager
 from .config import cfg
 from .console import get_error_console, untrusted_text
 from .const import DEFAULT_CONFIG_INI, DEFAULT_OUTPUT_FORMAT, DefaultRoleNames, JustifyEnum, StrEnum
@@ -20,9 +19,6 @@ from .errors import (
     EXIT_TOOL_DENIED,
 )
 from .exceptions import YaicliError
-from .functions import install_functions, print_functions, print_mcp, reinstall_functions
-from .llms.provider import ProviderFactory
-from .role import RoleManager
 
 try:  # v0.19 K21: config files are materialised lazily on first real run.
     from .config import ensure_config_file
@@ -111,6 +107,82 @@ def _resolve_exit_code(cli: Any) -> int:
     return EXIT_OK
 
 
+# ---------------------------------------------------------------------------
+# Lazily imported option callbacks (K08)
+#
+# Typer introspects these signatures when the app is built, so the proxies must exist
+# at import time. The heavy modules behind them (role/chat/functions/provider registry)
+# are imported only when the matching flag is actually used, keeping --help/--template
+# from importing the whole CLI stack.
+# ---------------------------------------------------------------------------
+
+
+def _role_check(value: str) -> str:
+    from .role import RoleManager
+
+    return RoleManager.check_id_ok(value)
+
+
+def _role_create(value: str) -> None:
+    from .role import RoleManager
+
+    RoleManager.create_role_option(value)
+
+
+def _role_delete(value: str) -> None:
+    from .role import RoleManager
+
+    RoleManager.delete_role_option(value)
+
+
+def _role_list(_: Any) -> None:
+    from .role import RoleManager
+
+    RoleManager.print_list_option(_)
+
+
+def _role_show(value: str) -> None:
+    from .role import RoleManager
+
+    RoleManager.show_role_option(value)
+
+
+def _chat_list(value: bool) -> bool:
+    from .chat import FileChatManager
+
+    return FileChatManager.print_list_option(value)
+
+
+def _provider_list(_: Any) -> None:
+    from .llms.provider import ProviderFactory
+
+    ProviderFactory.list_providers(_)
+
+
+def _install_functions_callback(cls: Any, value: Any) -> None:
+    from .functions import install_functions
+
+    install_functions(cls, value)
+
+
+def _print_functions_callback(cls: Any, value: Any) -> None:
+    from .functions import print_functions
+
+    print_functions(cls, value)
+
+
+def _reinstall_functions_callback(cls: Any, value: Any) -> None:
+    from .functions import reinstall_functions
+
+    reinstall_functions(cls, value)
+
+
+def _print_mcp_callback(cls: Any, value: Any) -> None:
+    from .functions import print_mcp
+
+    print_mcp(cls, value)
+
+
 def version_callback(value: bool):
     if value:
         typer.echo(f"yaicli {yaicli_version}")
@@ -186,7 +258,7 @@ class RoleOptions:
         "-r",
         help="Specify the assistant role to use.",
         rich_help_panel="Role Options",
-        callback=RoleManager.check_id_ok,
+        callback=_role_check,
     )
 
     create_role = typer.Option(
@@ -194,7 +266,7 @@ class RoleOptions:
         "--create-role",
         help="Create a new role with the specified name.",
         rich_help_panel="Role Options",
-        callback=RoleManager.create_role_option,
+        callback=_role_create,
     )
 
     delete_role = typer.Option(
@@ -202,7 +274,7 @@ class RoleOptions:
         "--delete-role",
         help="Delete a role with the specified name.",
         rich_help_panel="Role Options",
-        callback=RoleManager.delete_role_option,
+        callback=_role_delete,
     )
 
     list_roles = typer.Option(
@@ -210,7 +282,7 @@ class RoleOptions:
         "--list-roles",
         help="List all available roles.",
         rich_help_panel="Role Options",
-        callback=RoleManager.print_list_option,
+        callback=_role_list,
     )
 
     show_role = typer.Option(
@@ -218,7 +290,7 @@ class RoleOptions:
         "--show-role",
         help="Show the role with the specified name.",
         rich_help_panel="Role Options",
-        callback=RoleManager.show_role_option,
+        callback=_role_show,
     )
 
 
@@ -236,7 +308,7 @@ class ChatOptions:
         "--list-chats",
         help="List saved chat sessions.",
         rich_help_panel="Chat Options",
-        callback=FileChatManager.print_list_option,
+        callback=_chat_list,
     )
 
 
@@ -359,7 +431,7 @@ class OtherOptions:
         "--list-providers",
         help="List the available providers and exit.",
         rich_help_panel="Other Options",
-        callback=ProviderFactory.list_providers,
+        callback=_provider_list,
     )
 
     show_reasoning = typer.Option(
@@ -403,7 +475,7 @@ class MCPOptions:
         "--list-mcp",
         help="List all available mcp.",
         rich_help_panel="MCP Options",
-        callback=print_mcp,
+        callback=_print_mcp_callback,
     )
 
 
@@ -423,7 +495,7 @@ class FunctionOptions:
         "--install-functions",
         help="Export editable copies of builtin functions (builtins load automatically; existing files are skipped).",
         rich_help_panel="Function Options",
-        callback=install_functions,
+        callback=_install_functions_callback,
     )
 
     list_functions = typer.Option(
@@ -431,7 +503,7 @@ class FunctionOptions:
         "--list-functions",
         help="List loaded tools and their source (builtin/user).",
         rich_help_panel="Function Options",
-        callback=print_functions,
+        callback=_print_functions_callback,
     )
 
     reinstall_functions = typer.Option(
@@ -439,7 +511,7 @@ class FunctionOptions:
         "--reinstall-functions",
         help="Refresh exported builtin function copies (preserves user-defined functions).",
         rich_help_panel="Function Options",
-        callback=reinstall_functions,
+        callback=_reinstall_functions_callback,
     )
 
     enable_functions = typer.Option(
