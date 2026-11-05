@@ -58,6 +58,29 @@ def clear_active_bridge(bridge: Optional["ThreadedStream"] = None) -> None:
             _active_bridge = None
 
 
+#: Worker-thread ident -> bridge. Lets ``WorkerConsole`` keep routing (or dropping)
+#: late output of an *abandoned* worker even after the next generation starts.
+_thread_bridges: "dict[int, ThreadedStream]" = {}
+_thread_bridges_lock = threading.Lock()
+
+
+def get_bridge_for_current_thread() -> Optional["ThreadedStream"]:
+    """Return the bridge driving the current thread (``None`` outside a generation)."""
+    with _thread_bridges_lock:
+        return _thread_bridges.get(threading.get_ident())
+
+
+def _register_worker_thread(bridge: "ThreadedStream") -> None:
+    with _thread_bridges_lock:
+        _thread_bridges[threading.get_ident()] = bridge
+
+
+def _unregister_worker_thread(bridge: "ThreadedStream") -> None:
+    with _thread_bridges_lock:
+        if _thread_bridges.get(threading.get_ident()) is bridge:
+            _thread_bridges.pop(threading.get_ident(), None)
+
+
 class ThreadedStream:
     """Run a completion generator on a worker thread; feed its UI thread.
 
@@ -106,6 +129,7 @@ class ThreadedStream:
         self._started = True
 
     def _run(self) -> None:
+        _register_worker_thread(self)
         value: Any = _MISSING
         try:
             while not self._cancel.is_set():
@@ -133,6 +157,7 @@ class ThreadedStream:
                 self._generator.close()
             except Exception:  # pragma: no cover - closing must never mask the outcome
                 pass
+            _unregister_worker_thread(self)
 
     def put_console(self, *args: Any, stderr: bool = False, **kwargs: Any) -> None:
         """Queue a console print produced by the worker for replay on the UI thread."""
@@ -176,13 +201,20 @@ class ThreadedStream:
         # Unblock a worker waiting for a confirmation decision.
         self._decisions.put(_ABORT)
 
-    def close(self, timeout: float = 1.0) -> None:
-        """Abort and join the worker thread (bounded wait); clears the registry."""
+    def close(self, timeout: float = 1.0) -> bool:
+        """Abort and join the worker (bounded wait); returns True when still alive.
+
+        A ``True`` return means the worker is blocked in a provider read or tool
+        execution and will finish later (abandoned); the caller must keep the
+        console routing in place so its late output is dropped instead of
+        corrupting the next turn.
+        """
         self.abort()
         clear_active_bridge(self)
         thread = self._thread
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout=timeout)
+        return self.alive
 
     @property
     def alive(self) -> bool:

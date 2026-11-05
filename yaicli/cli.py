@@ -782,14 +782,21 @@ class CLI:
         bridge = None
         routing = None
         saved_worker_consoles: list = []
+        result_messages = messages
         try:
+            # In background mode the worker mutates its own copy of the message list;
+            # it is adopted only when the turn completes, so an aborted or lingering
+            # worker can never corrupt the next turn's history.
+            request_messages = list(messages) if watcher is not None else messages
+            if watcher is not None:
+                result_messages = request_messages
             response_iterator = self.client.completion_with_tools(
-                messages,
+                request_messages,
                 stream=cfg["STREAM"],
                 tool_policy=self._get_tool_policy(),
             )
             if self.output_format == "stream-json":
-                response_iterator = self._instrument_tool_events(response_iterator, messages)
+                response_iterator = self._instrument_tool_events(response_iterator, request_messages)
 
             display_iterator = response_iterator
             if watcher is not None:
@@ -823,7 +830,7 @@ class CLI:
                 self.tool_denied = True
 
             # The 'messages' list is modified by the client in-place
-            return content, messages
+            return content, result_messages
         except Exception as e:
             self.had_error = True
             self._record_error(e)
@@ -842,14 +849,24 @@ class CLI:
         finally:
             # Stop the background generator first (it may still be producing), then
             # restore the consoles it was routed through, then the key watcher.
+            abandoned = False
             if bridge is not None:
                 from .stream_bridge import clear_active_bridge
 
                 clear_active_bridge(bridge)
-                bridge.close()
-            if routing is not None:
-                routing.restore()
-            self._restore_worker_consoles(saved_worker_consoles)
+                abandoned = bridge.close(timeout=0.5)
+            if not abandoned:
+                if routing is not None:
+                    routing.restore()
+                self._restore_worker_consoles(saved_worker_consoles)
+            else:
+                # A worker blocked in a provider read/tool call keeps the routed
+                # consoles installed (its dead bridge drops anything it prints later);
+                # main-thread output still reaches the real console unchanged.
+                self.console.print(
+                    "Background generation is still finishing; its remaining output is ignored.",
+                    style="dim",
+                )
             if watcher is not None:
                 pending = watcher.stop()
                 if pending:

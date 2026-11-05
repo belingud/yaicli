@@ -23,7 +23,7 @@ from __future__ import annotations
 import threading
 from typing import Any, Dict, Optional
 
-from .stream_bridge import get_active_bridge
+from .stream_bridge import get_active_bridge, get_bridge_for_current_thread
 
 
 class WorkerConsole:
@@ -41,8 +41,14 @@ class WorkerConsole:
 
     def print(self, *args: Any, **kwargs: Any) -> None:
         """Print on the main thread; queue worker-thread prints for replay."""
-        bridge = get_active_bridge()
-        if bridge is not None and threading.current_thread() is not threading.main_thread():
+        if threading.current_thread() is threading.main_thread():
+            self._real.print(*args, **kwargs)
+            return
+        # Prefer the bridge that owns this worker thread (an abandoned worker must
+        # never leak into a newer turn's stream); fall back to the active bridge for
+        # unregistered helper threads spawned during a generation.
+        bridge = get_bridge_for_current_thread() or get_active_bridge()
+        if bridge is not None:
             if bridge.dead:  # aborted generation: drop late worker output
                 return
             bridge.put_console(*args, stderr=self._stderr, **kwargs)
@@ -94,8 +100,13 @@ def install_worker_console_routing(
     import yaicli.console as console_mod
     import yaicli.tools as tools_mod
 
+    # Unwrap chained wrappers from an earlier (possibly abandoned) generation.
+    while isinstance(main_console, WorkerConsole):
+        main_console = main_console.real
     if error_console is None:
         error_console = console_mod.get_error_console()
+    while isinstance(error_console, WorkerConsole):
+        error_console = error_console.real
     main = WorkerConsole(main_console)
     error = WorkerConsole(error_console, stderr=True)
     saved = {

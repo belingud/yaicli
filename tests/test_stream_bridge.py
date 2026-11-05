@@ -236,3 +236,48 @@ class TestUiThreadIndependence:
             assert next(adapter).content == "b"
         finally:
             adapter.close()
+
+
+class TestThreadRegistry:
+    def test_worker_thread_is_registered(self):
+        from yaicli.stream_bridge import get_bridge_for_current_thread
+
+        holder = {}
+        started = threading.Event()
+        release = threading.Event()
+
+        def gen():
+            holder["bridge"] = get_bridge_for_current_thread()
+            started.set()
+            yield LLMResponse(content="a")
+            release.wait(2.0)
+            yield LLMResponse(content="b")
+
+        adapter = ThreadedStream(gen())
+        try:
+            assert next(adapter).content == "a"
+            assert started.wait(2.0) is True
+            assert holder["bridge"] is adapter
+            # The UI thread is not a generation worker.
+            assert get_bridge_for_current_thread() is None
+            release.set()
+        finally:
+            adapter.close(timeout=2.0)
+        assert get_bridge_for_current_thread() is None
+
+    def test_close_returns_alive_for_blocked_worker(self):
+        release = threading.Event()
+
+        def gen():
+            release.wait(2.0)
+            yield LLMResponse(content="late")
+
+        adapter = ThreadedStream(gen())
+        adapter.start()
+        try:
+            assert adapter.close(timeout=0.05) is True
+            assert adapter.alive is True
+        finally:
+            release.set()
+        assert adapter.close(timeout=2.0) is False
+        assert adapter.alive is False

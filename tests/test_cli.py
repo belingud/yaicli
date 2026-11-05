@@ -1657,3 +1657,144 @@ class TestBackgroundGeneration:
         # The replay used the real console (cli.console) from the main thread.
         assert any("demo()" in str(c.args[0]) for c in cli.console.print.call_args_list if c.args)
         assert threading.main_thread() is threading.current_thread()
+
+
+class TestBackgroundCancellation:
+    """T4: Ctrl+C/abort must not corrupt history or the next turn's console."""
+
+    def _fake_watcher(self, requests=()):
+        watcher = MagicMock()
+        watcher.start.return_value = True
+        watcher.stop.return_value = ""
+        sequence = iter(requests)
+        watcher.take_viewer_request = lambda: next(sequence, False)
+        return watcher
+
+    def _interactive_cli(self, cli_with_mocks):
+        from yaicli.printer import Printer
+
+        cli = cli_with_mocks
+        cli.interactive = True
+        cli.machine_output = False
+        cli.printer = Printer(console=cli.console, machine=False)
+        return cli
+
+    def test_worker_message_mutations_discarded_on_abort(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage, LLMResponse
+
+        cli = self._interactive_cli(cli_with_mocks)
+        original = [ChatMessage(role="user", content="hi")]
+        captured = {}
+
+        def completion(messages, **kwargs):
+            captured["worker_messages"] = messages
+
+            def gen():
+                messages.append(ChatMessage(role="assistant", content="partial"))
+                yield LLMResponse(content="x")
+                messages.append(ChatMessage(role="assistant", content="more"))
+                yield LLMResponse(content="y")
+
+            return gen()
+
+        def display(adapter, **kwargs):
+            next(adapter)  # the worker mutates its copy and yields a chunk
+            raise KeyboardInterrupt
+
+        fake_watcher = self._fake_watcher()
+        with (
+            patch("yaicli.generation_keys.GenerationKeyWatcher", return_value=fake_watcher),
+            patch("yaicli.cli.CLI._build_messages", return_value=original),
+            patch("yaicli.printer.Live"),
+        ):
+            cli.client.completion_with_tools.side_effect = completion
+            with patch("yaicli.printer.Printer.display_stream", side_effect=display):
+                with pytest.raises(KeyboardInterrupt):
+                    cli._handle_llm_response("hi")
+
+        # The worker was given a copy; the CLI's history list was never touched.
+        assert captured["worker_messages"] is not original
+        assert len(original) == 1
+        assert isinstance(captured["worker_messages"], list)
+        assert len(captured["worker_messages"]) >= 2
+
+    def test_success_adopts_worker_message_copy(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage, LLMResponse
+
+        cli = self._interactive_cli(cli_with_mocks)
+        original = [ChatMessage(role="user", content="hi")]
+        captured = {}
+
+        def completion(messages, **kwargs):
+            captured["worker_messages"] = messages
+
+            def gen():
+                messages.append(ChatMessage(role="assistant", content="answer"))
+                yield LLMResponse(content="answer")
+
+            return gen()
+
+        fake_watcher = self._fake_watcher()
+        with (
+            patch("yaicli.generation_keys.GenerationKeyWatcher", return_value=fake_watcher),
+            patch("yaicli.cli.CLI._build_messages", return_value=original),
+            patch("yaicli.printer.Live"),
+        ):
+            cli.client.completion_with_tools.side_effect = completion
+            content, returned = cli._handle_llm_response("hi")
+
+        assert content == "answer"
+        assert captured["worker_messages"] is not original
+        assert returned is captured["worker_messages"]
+        assert len(original) == 1
+        assert len(returned) == 2
+
+    def test_handled_error_returns_original_messages(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage
+
+        cli = self._interactive_cli(cli_with_mocks)
+        original = [ChatMessage(role="user", content="hi")]
+        fake_watcher = self._fake_watcher()
+        with (
+            patch("yaicli.generation_keys.GenerationKeyWatcher", return_value=fake_watcher),
+            patch("yaicli.cli.CLI._build_messages", return_value=original),
+            patch("yaicli.printer.Live"),
+            patch("yaicli.printer.Printer.display_stream", side_effect=RuntimeError("boom")),
+        ):
+            cli.client.completion_with_tools.return_value = iter([])
+            content, returned = cli._handle_llm_response("hi")
+
+        assert content is None
+        assert returned is original
+        assert len(original) == 1
+
+    def test_abandoned_worker_keeps_console_routing(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.interactive = True
+        cli.machine_output = False
+        fake_watcher = self._fake_watcher()
+        fake_bridge = MagicMock()
+        fake_bridge.dead = False
+        fake_bridge.close.return_value = True  # worker is still blocked -> abandoned
+        fake_routing = MagicMock()
+        fake_routing.main.real = cli.console
+        fake_routing.error.real = MagicMock()
+        saved_client_console = cli.client.console
+
+        try:
+            with (
+                patch("yaicli.generation_keys.GenerationKeyWatcher", return_value=fake_watcher),
+                patch("yaicli.cli.CLI._build_messages", return_value=[]),
+                patch("yaicli.stream_bridge.ThreadedStream", return_value=fake_bridge),
+                patch("yaicli.worker_console.install_worker_console_routing", return_value=fake_routing),
+                patch("yaicli.printer.Printer.display_stream", side_effect=KeyboardInterrupt),
+            ):
+                cli.client.completion_with_tools.return_value = MagicMock()
+                with pytest.raises(KeyboardInterrupt):
+                    cli._handle_llm_response("hi")
+        finally:
+            cli.client.console = saved_client_console
+
+        fake_routing.restore.assert_not_called()
+        printed = [str(c.args[0]) for c in cli.console.print.call_args_list if c.args]
+        assert any("still finishing" in text for text in printed)

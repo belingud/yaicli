@@ -203,3 +203,41 @@ class TestTiming:
         assert elapsed < 1.0
         assert adapter.put_console.call_count == 50
         real.print.assert_not_called()
+
+
+class TestAbandonedWorker:
+    def test_abandoned_worker_output_is_dropped_even_with_new_active_bridge(self):
+        """A worker left behind by an aborted turn cannot leak into a newer stream."""
+        real_main = MagicMock()
+        routing = install_worker_console_routing(real_main, MagicMock())
+        release = threading.Event()
+        finished = threading.Event()
+
+        def gen():
+            try:
+                release.wait(2.0)
+                tools_mod.console.print("late tool output", style="red")
+                yield LLMResponse(content="late")
+            finally:
+                finished.set()
+
+        adapter = ThreadedStream(gen())
+        set_active_bridge(adapter)
+        adapter.start()
+        try:
+            assert adapter.close(timeout=0.05) is True  # blocked worker -> abandoned
+            # Simulate the next generation having its own active bridge.
+            newer = MagicMock()
+            newer.dead = False
+            set_active_bridge(newer)
+            release.set()
+            assert finished.wait(2.0) is True
+            deadline = time.time() + 2.0
+            while adapter.alive and time.time() < deadline:
+                time.sleep(0.01)
+            assert adapter.alive is False
+            real_main.print.assert_not_called()
+            newer.put_console.assert_not_called()
+        finally:
+            routing.restore()
+            clear_active_bridge()
