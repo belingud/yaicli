@@ -1519,3 +1519,141 @@ class TestCLIErrorTracking:
 
         assert cli_with_mocks._process_user_input("hi") is True
         assert cli_with_mocks.had_error is True
+
+
+class TestBackgroundGeneration:
+    """T3: interactive streaming runs on a worker thread; Ctrl+O viewer is non-blocking."""
+
+    def _fake_watcher(self, requests):
+        watcher = MagicMock()
+        watcher.start.return_value = True
+        watcher.stop.return_value = ""
+        sequence = iter(requests)
+        watcher.take_viewer_request = lambda: next(sequence, False)
+        return watcher
+
+    def test_interactive_streaming_uses_threaded_bridge(self, cli_with_mocks):
+        import time
+
+        import yaicli.tools as tools_mod
+        from yaicli.schemas import LLMResponse
+        from yaicli.stream_bridge import get_active_bridge
+        from yaicli.tools import output_history
+
+        from yaicli.printer import Printer
+
+        cli = cli_with_mocks
+        cli.interactive = True
+        cli.machine_output = False
+        cli.printer = Printer(console=cli.console, machine=False)
+        saved_tools_console = tools_mod.console
+        saved_error_console = __import__("yaicli.console", fromlist=["_error_console"])._error_console
+        saved_client_console = cli.client.console
+
+        output_history.reset()
+        output_history.begin_turn()
+        output_history.record_output(kind="function", name="tool", arguments="{}", text="out", total_chars=3)
+
+        def gen():
+            for i in range(4):
+                yield LLMResponse(content=f"chunk{i} ")
+
+        fake_watcher = self._fake_watcher([False, False, True, False, False, False, False])
+        opened = []
+
+        def fake_open_viewer():
+            opened.append(True)
+            time.sleep(0.1)  # the worker keeps generating while the "viewer" is open
+
+        with (
+            patch("yaicli.generation_keys.GenerationKeyWatcher", return_value=fake_watcher),
+            patch("yaicli.cli.CLI._build_messages", return_value=[]),
+            patch("yaicli.cli.CLI._open_tool_output_viewer", side_effect=fake_open_viewer),
+            patch("yaicli.printer.Live"),
+        ):
+            cli.client.completion_with_tools.return_value = gen()
+            try:
+                content, _ = cli._handle_llm_response("hi")
+            finally:
+                output_history.reset()
+
+        assert content is not None
+        assert "chunk0 " in content
+        assert "chunk3 " in content
+        assert opened == [True]
+        assert get_active_bridge() is None
+        assert cli.client.console is saved_client_console
+        assert tools_mod.console is saved_tools_console
+        assert __import__("yaicli.console", fromlist=["_error_console"])._error_console is saved_error_console
+        fake_watcher.stop.assert_called_once()
+
+    def test_headless_generation_skips_bridge(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.machine_output = True
+        with (
+            patch("yaicli.generation_keys.GenerationKeyWatcher") as mock_watcher,
+            patch("yaicli.cli.CLI._build_messages", return_value=[]),
+            patch("yaicli.printer.Printer.display_stream", return_value=("answer", None)) as mock_display,
+            patch("yaicli.stream_bridge.ThreadedStream") as mock_bridge,
+        ):
+            cli.client.completion_with_tools.return_value = MagicMock()
+            content, _ = cli._handle_llm_response("hi")
+
+        assert content == "answer"
+        mock_watcher.assert_not_called()
+        mock_bridge.assert_not_called()
+        assert "pause_requested" not in mock_display.call_args.kwargs
+
+    def test_background_generation_cleans_up_on_interrupt(self, cli_with_mocks):
+        import yaicli.tools as tools_mod
+        from yaicli.stream_bridge import get_active_bridge
+
+        cli = cli_with_mocks
+        cli.interactive = True
+        cli.machine_output = False
+        saved_tools_console = tools_mod.console
+        saved_client_console = cli.client.console
+        fake_watcher = self._fake_watcher([])
+
+        with (
+            patch("yaicli.generation_keys.GenerationKeyWatcher", return_value=fake_watcher),
+            patch("yaicli.cli.CLI._build_messages", return_value=[]),
+            patch("yaicli.printer.Printer.display_stream", side_effect=KeyboardInterrupt),
+        ):
+            cli.client.completion_with_tools.return_value = MagicMock()
+            with pytest.raises(KeyboardInterrupt):
+                cli._handle_llm_response("hi")
+
+        assert get_active_bridge() is None
+        assert tools_mod.console is saved_tools_console
+        assert cli.client.console is saved_client_console
+        fake_watcher.stop.assert_called_once()
+
+    def test_worker_console_events_replayed_by_main_thread(self, cli_with_mocks):
+        """Tool announcements printed inside the worker are replayed on the UI thread."""
+        import threading
+
+        import yaicli.tools as tools_mod
+        from yaicli.schemas import LLMResponse
+
+        cli = cli_with_mocks
+        cli.interactive = True
+        cli.machine_output = False
+        cli.console.print.reset_mock()
+        fake_watcher = self._fake_watcher([])
+
+        def gen():
+            tools_mod.console.print("@Function call: demo()", style="blue")
+            yield LLMResponse(content="answer")
+
+        with (
+            patch("yaicli.generation_keys.GenerationKeyWatcher", return_value=fake_watcher),
+            patch("yaicli.cli.CLI._build_messages", return_value=[]),
+            patch("yaicli.printer.Live"),
+        ):
+            cli.client.completion_with_tools.return_value = gen()
+            cli._handle_llm_response("hi")
+
+        # The replay used the real console (cli.console) from the main thread.
+        assert any("demo()" in str(c.args[0]) for c in cli.console.print.call_args_list if c.args)
+        assert threading.main_thread() is threading.current_thread()

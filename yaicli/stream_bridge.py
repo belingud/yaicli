@@ -89,10 +89,22 @@ class ThreadedStream:
         self._awaiting_decision = False
         #: True after abort(): late console events are dropped, no new turn reuses us.
         self.dead = False
-        self._thread = threading.Thread(target=self._run, name="yaicli-stream-bridge", daemon=True)
-        self._thread.start()
+        self._thread: Optional[threading.Thread] = None
+        self._started = False
 
     # -- worker thread -----------------------------------------------------
+    def start(self) -> None:
+        """Start the worker thread (also started lazily by the first ``__next__``).
+
+        Lazy start lets the caller install console routing and register the bridge
+        as active *before* the generator starts producing output.
+        """
+        if self._started:
+            return
+        self._thread = threading.Thread(target=self._run, name="yaicli-stream-bridge", daemon=True)
+        self._thread.start()
+        self._started = True
+
     def _run(self) -> None:
         value: Any = _MISSING
         try:
@@ -132,6 +144,7 @@ class ThreadedStream:
         return self
 
     def __next__(self) -> Any:
+        self.start()
         while True:
             kind, payload = self._queue.get()
             if kind == "console":
@@ -167,10 +180,12 @@ class ThreadedStream:
         """Abort and join the worker thread (bounded wait); clears the registry."""
         self.abort()
         clear_active_bridge(self)
-        if self._thread is not threading.current_thread():
-            self._thread.join(timeout=timeout)
+        thread = self._thread
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=timeout)
 
     @property
     def alive(self) -> bool:
         """Whether the worker thread is still running."""
-        return self._thread.is_alive()
+        thread = self._thread
+        return thread is not None and thread.is_alive()

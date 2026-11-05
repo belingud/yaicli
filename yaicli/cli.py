@@ -776,7 +776,12 @@ class CLI:
             self.console.print("Assistant:", style="bold green")
         # Generation-time Ctrl+O: while chunks stream there is no prompt reading the
         # keyboard, so a small cbreak watcher captures Ctrl+O (and typed-ahead text).
+        # Interactive runs also move the generation pipeline to a worker thread so the
+        # viewer can open while the answer keeps streaming (T3).
         watcher = self._start_generation_watcher()
+        bridge = None
+        routing = None
+        saved_worker_consoles: list = []
         try:
             response_iterator = self.client.completion_with_tools(
                 messages,
@@ -786,14 +791,29 @@ class CLI:
             if self.output_format == "stream-json":
                 response_iterator = self._instrument_tool_events(response_iterator, messages)
 
+            display_iterator = response_iterator
+            if watcher is not None:
+                from .stream_bridge import ThreadedStream, set_active_bridge
+                from .worker_console import install_worker_console_routing
+
+                # Worker output must not touch the terminal directly: route it through
+                # the bridge so the UI thread replays it in order (T2). The bridge is
+                # registered as active before the worker starts (lazy start on first
+                # next()), so even the first tool announcement is marshalled.
+                routing = install_worker_console_routing(self.console, get_error_console())
+                saved_worker_consoles = self._swap_worker_consoles(routing.main)
+                bridge = ThreadedStream(response_iterator, on_console=self._console_replayer(routing))
+                set_active_bridge(bridge)
+                display_iterator = bridge
+
             if watcher is not None:
                 content, _ = self.printer.display_stream(
-                    response_iterator,
+                    display_iterator,
                     pause_requested=watcher.take_viewer_request,
                     on_pause=lambda: self._open_viewer_while_generating(watcher),
                 )
             else:
-                content, _ = self.printer.display_stream(response_iterator)
+                content, _ = self.printer.display_stream(display_iterator)
 
             # Wave-2 coordination (K02/K06): the client reports depth/denial
             # outcomes through its own flags; mirror them onto the CLI contract.
@@ -820,6 +840,16 @@ class CLI:
                 traceback.print_exc()
             return None, messages
         finally:
+            # Stop the background generator first (it may still be producing), then
+            # restore the consoles it was routed through, then the key watcher.
+            if bridge is not None:
+                from .stream_bridge import clear_active_bridge
+
+                clear_active_bridge(bridge)
+                bridge.close()
+            if routing is not None:
+                routing.restore()
+            self._restore_worker_consoles(saved_worker_consoles)
             if watcher is not None:
                 pending = watcher.stop()
                 if pending:
@@ -839,8 +869,47 @@ class CLI:
         except Exception:  # pragma: no cover - key capture must never break a turn
             return None
 
+    @staticmethod
+    def _console_replayer(routing):
+        """Main-thread replay of worker console events captured by the bridge."""
+
+        def replay(stderr: bool, args: tuple, kwargs: dict) -> None:
+            target = routing.error.real if stderr else routing.main.real
+            target.print(*args, **kwargs)
+
+        return replay
+
+    def _swap_worker_consoles(self, console) -> list:
+        """Point the client/provider consoles at the routed worker console (T2)."""
+        saved: list = []
+        client = getattr(self, "client", None)
+        if client is None:
+            return saved
+        saved.append((client, "console", getattr(client, "console", None)))
+        try:
+            client.console = console
+        except (AttributeError, TypeError):  # pragma: no cover - exotic client
+            saved.pop()
+        provider = getattr(client, "provider", None)
+        if provider is not None and hasattr(provider, "console"):
+            saved.append((provider, "console", getattr(provider, "console", None)))
+            try:
+                provider.console = console
+            except (AttributeError, TypeError):  # pragma: no cover - exotic provider
+                saved.pop()
+        return saved
+
+    @staticmethod
+    def _restore_worker_consoles(saved: list) -> None:
+        """Restore consoles saved by :meth:`_swap_worker_consoles`."""
+        for owner, attr, value in saved:
+            try:
+                setattr(owner, attr, value)
+            except (AttributeError, TypeError):  # pragma: no cover - exotic owner
+                pass
+
     def _open_viewer_while_generating(self, watcher) -> None:
-        """Pause the stream, show the tool-output viewer, then resume on close."""
+        """Open the viewer while the background generator keeps producing (T3)."""
         from .tools.output_history import viewer_outputs
 
         if not viewer_outputs()[0]:
