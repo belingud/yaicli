@@ -195,3 +195,56 @@ Adds a second-Ctrl-C REPL exit, syncs the docs changelog page, and ships v0.19.0
 ### Next Steps
 
 - Watch user feedback on the new Ctrl-C hint and the double-press window
+
+
+## Session 6: v0.19.1 tool-output viewer release
+<!-- trellis-session: v=2 fp=4b6eaa52dabc94d6 -->
+
+**Date**: 2026-11-05
+**Task**: v0.19.1 tool-output viewer release
+**Branch**: `master`
+
+### Summary
+
+Ships the full-screen Ctrl+O tool-output viewer, compact head-only tool previews and background generation to PyPI and the docs site as v0.19.1.
+
+### Main Changes
+
+- Ctrl+O // /show-output opens a two-pane alternate-screen viewer listing every tool result of the turn; the REPL keeps a 15-line head-only preview (… +N lines · Ctrl+O to expand)
+- Generation runs on a worker thread through ThreadedStream; Ctrl+O works while the model streams, closing the viewer redraws accumulated content, and abort never corrupts the message list
+- Viewer chrome uses compact tool labels (shell/read/write/…) and one-line call captions instead of the raw execute_shell_command name; body pane keeps full name, args, spilled full output on f (1 MB cap)
+- macOS VDISCARD/IXON were swallowing Ctrl+O during generation (missing TUI lines); watcher now disables output control keys and restores termios; execute_shell_command argument renamed shell_command -> command
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a0db5eb` | feat(tools): render tool results as a compact head-only preview |
+| `d77e190` | feat(tools): add full-screen Ctrl+O tool-output viewer |
+| `7fcea5f` | feat(cli): toggle the tool-output viewer during generation |
+| `b6709cf` | feat(stream): add threaded stream bridge for background generation |
+| `c0874a8` | feat(stream): route worker-thread console output through the bridge |
+| `b9337bd` | feat(cli): run interactive generation on a worker thread |
+| `d598955` | fix(stream): keep aborting/lingering workers from corrupting state |
+| `f437f7e` | docs(tools): document background generation Ctrl+O behavior |
+| `2eaaadf` | refactor(tools)!: rename execute_shell_command argument to command |
+| `cba65ee` | fix(cli): service Ctrl+O between background stream chunks |
+| `28f29f7` | fix(keys): stop macOS VDISCARD from swallowing Ctrl+O during generation |
+| `573f6d8` | feat(viewer): show tool-call captions in the output list |
+| `2f026ca` | feat(viewer): use compact tool labels in the output list |
+| `0b5a95a` | Bump version: 0.19.0 → 0.19.1 |
+| `fc8b98c` | docs(changelog): update changelog for v0.19.1 release |
+
+### Testing
+
+- [OK] pytest: 1909 passed; ruff check clean; mkdocs build --strict ok
+- [OK] GitHub publish.yml + deploy-docs.yml success; PyPI 0.19.1 wheel/sdist live; docs changelog shows 0.19.1
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Collect UX feedback on the viewer list (compact labels, caption width) and the generation-time Ctrl+O flow
+- v0.20: startup/footprint K08-K15, permission policy v2, workspace writes/undo, session isolation

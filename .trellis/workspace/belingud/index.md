@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 5
-- **Last Active**: 2026-11-04
+- **Total Sessions**: 6
+- **Last Active**: 2026-11-05
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~197 | Active |
+| `journal-1.md` | ~250 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 6 | 2026-11-05 | v0.19.1 tool-output viewer release | `a0db5eb`, `d77e190`, `7fcea5f`, `b6709cf`, `c0874a8`, `b9337bd`, `d598955`, `f437f7e`, `2eaaadf`, `cba65ee`, `28f29f7`, `573f6d8`, `2f026ca`, `0b5a95a`, `fc8b98c` | `master` |
 | 5 | 2026-11-04 | v0.19.0 release and double Ctrl-C REPL exit | `3c401ae`, `295dfd5`, `42fca6d` | `master` |
 | 4 | 2026-11-04 | v0.19 independent verification fixes | `5fd62bc`, `4735f3d`, `f19cac6`, `bf39624`, `1868067` | `release/v0.19.0` |
 | 3 | 2026-11-04 | v0.19.0 lightweight agent implementation | `dbd0a0b`, `77bd086`, `978eec5`, `3b8e27d`, `c83c87c`, `e9eb123`, `b928de8`, `a5b7d84` | `release/v0.19.0` |
