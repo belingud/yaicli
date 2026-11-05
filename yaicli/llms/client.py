@@ -384,13 +384,13 @@ class LLMClient:
     def _gate_shell_risk(self, gate_name: str, parsed_arguments: Optional[Dict[str, Any]]) -> Optional[ShellRisk]:
         """Classify a shell tool call before it runs (``None`` for non-shell tools).
 
-        The command is the *decoded* ``shell_command`` argument, i.e. the same value
+        The command is the *decoded* ``command`` argument, i.e. the same value
         ``execute_tool_call`` passes to the tool after ``json_repair``. Classification
         is advisory: the gate decides whether to confirm/deny, never the classifier.
         """
         if gate_name != "execute_shell_command" or not isinstance(parsed_arguments, dict):
             return None
-        command = parsed_arguments.get("shell_command")
+        command = parsed_arguments.get("command")
         if not isinstance(command, str):
             return None
         try:

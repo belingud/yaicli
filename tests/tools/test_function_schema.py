@@ -222,7 +222,7 @@ class TestBuiltinFunctionCompat:
         class Function(OpenAISchema):
             """Execute a shell command and return the output (result)."""
 
-            shell_command: str = Field(
+            command: str = Field(
                 ...,
                 json_schema_extra={"example": "ls -la"},
                 description="Shell command to execute.",
@@ -232,11 +232,11 @@ class TestBuiltinFunctionCompat:
                 title = "execute_shell_command"
 
             @classmethod
-            def execute(cls, shell_command: str) -> str:
-                return f"executed: {shell_command}"
+            def execute(cls, command: str) -> str:
+                return f"executed: {command}"
 
         schema = Function.openai_schema
         assert schema["name"] == "execute_shell_command"
         assert "shell command" in schema["description"].lower()
-        assert "shell_command" in schema["parameters"]["properties"]
-        assert Function.execute(shell_command="ls") == "executed: ls"
+        assert "command" in schema["parameters"]["properties"]
+        assert Function.execute(command="ls") == "executed: ls"

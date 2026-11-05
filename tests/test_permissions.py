@@ -277,7 +277,7 @@ class TestPermissionRules:
         assert manager.persistent_rules == []
         # Name-only semantics still work for v1 files.
         assert manager.is_allowed("execute_shell_command") is True
-        assert manager.is_allowed("execute_shell_command", {"shell_command": "anything"}) is True
+        assert manager.is_allowed("execute_shell_command", {"command": "anything"}) is True
 
     def test_persist_upgrades_v1_file_to_v2_and_keeps_rules(self, tmp_path):
         path = write_permissions(tmp_path, {"always_allow": ["fs_read_file"]})
@@ -346,7 +346,7 @@ class TestPermissionRules:
         """D5: substitution/chaining syntax must never be auto-approved by a rule."""
         manager = make_manager(tmp_path)
         manager.persistent_rules = [PermissionRule(tool="execute_shell_command", argv_prefix=("git", "status"))]
-        arguments = {"shell_command": command}
+        arguments = {"command": command}
         assert manager.match_source("execute_shell_command", arguments) is None
         assert manager.is_allowed("execute_shell_command", arguments) is False
 
@@ -354,7 +354,7 @@ class TestPermissionRules:
         manager = make_manager(tmp_path)
         manager.persistent_rules = [PermissionRule(tool="execute_shell_command", argv_prefix=("git", "status"))]
         for command in ("git status -s", "git status --short --branch", "  git status   -s  "):
-            assert manager.match_source("execute_shell_command", {"shell_command": command}) == "rule"
+            assert manager.match_source("execute_shell_command", {"command": command}) == "rule"
 
     def test_argv_prefix_matches_and_rejects(self, tmp_path):
         manager = make_manager(tmp_path)
@@ -362,17 +362,17 @@ class TestPermissionRules:
             PermissionRule(tool="execute_shell_command", argv_prefix=("git", "status")),
         ]
         shell = "execute_shell_command"
-        assert manager.is_allowed(shell, {"shell_command": "git status --short"}) is True
-        assert manager.match_source(shell, {"shell_command": "git status"}) == "rule"
-        assert manager.is_allowed(shell, {"shell_command": "git log --oneline"}) is False
-        assert manager.is_allowed(shell, {"shell_command": "rm -rf build"}) is False
+        assert manager.is_allowed(shell, {"command": "git status --short"}) is True
+        assert manager.match_source(shell, {"command": "git status"}) == "rule"
+        assert manager.is_allowed(shell, {"command": "git log --oneline"}) is False
+        assert manager.is_allowed(shell, {"command": "rm -rf build"}) is False
         # The prefix only covers a single simple command: compound commands are not
         # auto-approved (they need a fresh confirmation).
-        assert manager.is_allowed(shell, {"shell_command": "git status && rm -rf build"}) is False
-        assert manager.is_allowed(shell, {"shell_command": "git status; rm -rf build"}) is False
-        assert manager.is_allowed(shell, {"shell_command": "git status > out.txt"}) is False
+        assert manager.is_allowed(shell, {"command": "git status && rm -rf build"}) is False
+        assert manager.is_allowed(shell, {"command": "git status; rm -rf build"}) is False
+        assert manager.is_allowed(shell, {"command": "git status > out.txt"}) is False
         # Unparseable / non-string commands never match.
-        assert manager.is_allowed(shell, {"shell_command": "git 'status"}) is False
+        assert manager.is_allowed(shell, {"command": "git 'status"}) is False
         assert manager.is_allowed(shell, {}) is False
 
     def test_path_glob_matches_relative_and_absolute(self, tmp_path, workspace):
@@ -443,7 +443,7 @@ class TestPermissionRules:
     def test_raw_json_string_arguments_are_parsed_for_rules(self, tmp_path):
         manager = make_manager(tmp_path)
         manager.persistent_rules = [PermissionRule(tool="execute_shell_command", argv_prefix=("pytest",))]
-        assert manager.is_allowed("execute_shell_command", '{"shell_command": "pytest -q"}') is True
+        assert manager.is_allowed("execute_shell_command", '{"command": "pytest -q"}') is True
 
     def test_session_allow_keeps_name_only_semantics(self, tmp_path):
         manager = make_manager(tmp_path)
@@ -451,7 +451,7 @@ class TestPermissionRules:
         assert manager.match_source("execute_shell_command") == "session"
         # Session approvals are not argument-aware (v1 semantics): the gate still runs
         # the danger classification before executing.
-        assert manager.is_allowed("execute_shell_command", {"shell_command": "rm -rf /"}) is True
+        assert manager.is_allowed("execute_shell_command", {"command": "rm -rf /"}) is True
 
     def test_persisted_file_mode_is_0600(self, tmp_path):
         if os.name != "posix":  # pragma: no cover - Windows has no POSIX mode bits
@@ -471,7 +471,7 @@ class TestClientGate:
         manager.configure_run(yes=True)
         read = ToolCall(id="c1", name="fs_read_file", arguments='{"file_paths": ["a.txt"]}')
         write = ToolCall(id="c2", name="fs_write_file", arguments='{"file_path": "a.txt", "content": "x"}')
-        shell = ToolCall(id="c3", name="execute_shell_command", arguments='{"shell_command": "ls -la"}')
+        shell = ToolCall(id="c3", name="execute_shell_command", arguments='{"command": "ls -la"}')
         client = make_client(script_tools(read, write, shell), manager, interactive=False)
 
         messages, confirms, execute_mock = run_turn(client)
@@ -507,7 +507,7 @@ class TestClientGate:
     def test_allowed_tools_enables_safe_shell_but_not_dangerous(self, tmp_path):
         manager = make_manager(tmp_path)
         manager.configure_run(allowed_tools=["execute_shell_command"])
-        safe = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "ls -la"}')
+        safe = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "ls -la"}')
         client = make_client(script_tools(safe), manager, interactive=False)
         messages, confirms, execute_mock = run_turn(client)
         assert confirms == 0
@@ -515,7 +515,7 @@ class TestClientGate:
         assert client.tool_denied is False
 
         # A dangerous command is refused even though the tool name is allowed.
-        dangerous = ToolCall(id="c2", name="execute_shell_command", arguments='{"shell_command": "rm -rf build"}')
+        dangerous = ToolCall(id="c2", name="execute_shell_command", arguments='{"command": "rm -rf build"}')
         manager2 = make_manager(tmp_path, "tool_permissions_2.json")
         manager2.configure_run(allowed_tools=["execute_shell_command"])
         client2 = make_client(script_tools(dangerous), manager2, interactive=False)
@@ -531,7 +531,7 @@ class TestClientGate:
         """Acceptance: approving execute_shell_command does not approve ``rm -rf``."""
         manager = make_manager(tmp_path)
         manager.allow_session("execute_shell_command")
-        dangerous = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "rm -rf build"}')
+        dangerous = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "rm -rf build"}')
         client = make_client(script_tools(dangerous), manager, interactive=False)
         messages, confirms, execute_mock = run_turn(client)
         assert confirms == 0
@@ -542,7 +542,7 @@ class TestClientGate:
     def test_dangerous_shell_prompts_even_when_tool_is_allowed(self, tmp_path):
         manager = make_manager(tmp_path)
         manager.allow_persist("execute_shell_command")
-        dangerous = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "rm -rf build"}')
+        dangerous = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "rm -rf build"}')
         client = make_client(script_tools(dangerous), manager, interactive=True)
         messages, confirms, execute_mock = run_turn(client, [ToolConfirmDecision.ONCE])
         assert confirms == 1  # an explicit confirmation was still required
@@ -552,7 +552,7 @@ class TestClientGate:
     def test_dangerous_shell_denied_when_user_denies(self, tmp_path):
         manager = make_manager(tmp_path)
         manager.allow_persist("execute_shell_command")
-        dangerous = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "rm -rf build"}')
+        dangerous = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "rm -rf build"}')
         client = make_client(script_tools(dangerous), manager, interactive=True)
         messages, confirms, execute_mock = run_turn(client, [ToolConfirmDecision.DENY])
         assert confirms == 1
@@ -563,7 +563,7 @@ class TestClientGate:
 
     def test_dangerous_shell_denied_when_confirm_disabled(self, tmp_path):
         manager = make_manager(tmp_path)
-        dangerous = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "rm -rf build"}')
+        dangerous = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "rm -rf build"}')
         client = make_client(script_tools(dangerous), manager, interactive=True, tool_confirm=False)
         messages, confirms, execute_mock = run_turn(client)
         assert confirms == 0
@@ -579,7 +579,7 @@ class TestClientGate:
         hidden = ToolCall(
             id="c1",
             name="execute_shell_command",
-            arguments='{"shell_command": "echo harmless\\u003b rm -rf build"}',
+            arguments='{"command": "echo harmless\\u003b rm -rf build"}',
         )
         client = make_client(script_tools(hidden), manager, interactive=False)
         messages, confirms, execute_mock = run_turn(client)
@@ -593,7 +593,7 @@ class TestClientGate:
     def test_rule_allows_matching_call_without_prompt(self, tmp_path, workspace):
         manager = make_manager(tmp_path)
         manager.persistent_rules = [PermissionRule(tool="execute_shell_command", argv_prefix=("git", "status"))]
-        allowed = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "git status --short"}')
+        allowed = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "git status --short"}')
         client = make_client(script_tools(allowed), manager, interactive=True)
         messages, confirms, execute_mock = run_turn(client)
         assert confirms == 0
@@ -603,7 +603,7 @@ class TestClientGate:
     def test_rule_denies_non_matching_command_then_prompts(self, tmp_path):
         manager = make_manager(tmp_path)
         manager.persistent_rules = [PermissionRule(tool="execute_shell_command", argv_prefix=("git", "status"))]
-        non_matching = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "git push"}')
+        non_matching = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "git push"}')
         client = make_client(script_tools(non_matching), manager, interactive=True)
         messages, confirms, execute_mock = run_turn(client, [ToolConfirmDecision.ONCE])
         assert confirms == 1
@@ -706,7 +706,7 @@ class TestAuditLog:
         execute_mock.assert_called_once()
 
     def test_args_summary_redacts_secrets_and_truncates(self):
-        summary = summarize_arguments("execute_shell_command", {"shell_command": "echo sk-abcdef1234567890AKIA"})
+        summary = summarize_arguments("execute_shell_command", {"command": "echo sk-abcdef1234567890AKIA"})
         assert "sk-abcdef1234567890AKIA" not in summary
         assert "[redacted]" in summary
 
@@ -738,7 +738,7 @@ class TestConfirmationPreview:
             ToolCall(
                 id="c1",
                 name="execute_shell_command",
-                arguments='{"shell_command": "echo harmless\\u003b rm -rf build"}',
+                arguments='{"command": "echo harmless\\u003b rm -rf build"}',
             )
         )
         assert "echo harmless; rm -rf build" in preview
@@ -750,7 +750,7 @@ class TestConfirmationPreview:
             ToolCall(
                 id="c1",
                 name="execute_shell_command",
-                arguments='{"shell_command": "git status", "timeout": 30, "cwd": "/tmp"}',
+                arguments='{"command": "git status", "timeout": 30, "cwd": "/tmp"}',
             )
         )
         assert "command: git status" in preview
@@ -824,11 +824,11 @@ class TestConfirmationPreview:
         assert f"get_weather({canonical_arguments(raw)})" in preview
 
     def test_preview_arguments_equal_executed_arguments_unicode_escape(self):
-        raw = '{"shell_command": "echo harmless\\u003b rm -rf build"}'
+        raw = '{"command": "echo harmless\\u003b rm -rf build"}'
         executed = execute_and_capture("execute_shell_command", raw)
-        assert executed["shell_command"] == "echo harmless; rm -rf build"
+        assert executed["command"] == "echo harmless; rm -rf build"
         preview = render_confirm_preview(ToolCall(id="c1", name="execute_shell_command", arguments=raw))
-        assert executed["shell_command"] in preview
+        assert executed["command"] in preview
         assert "dangerous: yes" in preview
 
 

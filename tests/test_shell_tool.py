@@ -296,14 +296,14 @@ class TestShellToolSchema:
         schema = Function.openai_schema
         assert schema["name"] == "execute_shell_command"
         properties = schema["parameters"]["properties"]
-        assert set(properties) == {"shell_command", "timeout", "cwd"}
-        assert schema["parameters"]["required"] == ["shell_command"]
+        assert set(properties) == {"command", "timeout", "cwd"}
+        assert schema["parameters"]["required"] == ["command"]
         assert properties["timeout"]["type"] == "integer"
         assert properties["timeout"]["default"] == DEFAULT_TIMEOUT
 
     def test_execute_signature_matches_schema_defaults(self):
         signature = inspect.signature(Function.execute)
-        assert signature.parameters["shell_command"].default is inspect.Parameter.empty
+        assert signature.parameters["command"].default is inspect.Parameter.empty
         assert signature.parameters["timeout"].default == DEFAULT_TIMEOUT
         assert signature.parameters["cwd"].default is None
 

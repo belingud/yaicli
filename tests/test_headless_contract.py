@@ -249,7 +249,7 @@ class TestExitCodes:
         assert result.exit_code == 1
 
     def test_fail_on_tool_denied_exits_3(self):
-        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "rm -rf /"}')
+        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "rm -rf /"}')
 
         def hook(messages):
             messages.append(ChatMessage(role="assistant", content="", tool_calls=[tool_call]))

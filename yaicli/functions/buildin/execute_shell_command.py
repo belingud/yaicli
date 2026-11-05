@@ -236,7 +236,7 @@ class Function(OpenAISchema):
     output size.
     """
 
-    shell_command: str = Field(
+    command: str = Field(
         ...,
         json_schema_extra={
             "example": "ls -la",
@@ -259,20 +259,20 @@ class Function(OpenAISchema):
         title = "execute_shell_command"
 
     @classmethod
-    def execute(cls, shell_command: str, timeout: int = DEFAULT_TIMEOUT, cwd: Optional[str] = None) -> str:
+    def execute(cls, command: str, timeout: int = DEFAULT_TIMEOUT, cwd: Optional[str] = None) -> str:
         """
         Execute a shell command and return the output (result).
 
         Args:
-            shell_command (str): shell command to execute.
+            command (str): shell command to execute.
             timeout (int): maximum execution time in seconds, clamped to 1-600.
             cwd (Optional[str]): working directory inside the workspace root.
 
         Returns:
             str: exit code and output string.
         """
-        if not isinstance(shell_command, str) or not shell_command.strip():
-            return "Error: shell_command must be a non-empty string."
+        if not isinstance(command, str) or not command.strip():
+            return "Error: command must be a non-empty string."
         effective_timeout = _resolve_timeout(timeout)
         root = _workspace_root()
         resolved_cwd, cwd_error = _resolve_cwd(cwd, root)
@@ -282,7 +282,7 @@ class Function(OpenAISchema):
         with tempfile.TemporaryFile() as output_file:
             try:
                 process = subprocess.Popen(
-                    shell_command,
+                    command,
                     shell=True,
                     stdout=output_file,
                     stderr=subprocess.STDOUT,

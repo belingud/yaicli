@@ -450,7 +450,7 @@ class Printer:
                 f"{name}({raw_text})\nrisk: {risk.value}\narguments are not a JSON object; execution will fail in-band"
             )
 
-        if name == "execute_shell_command" and isinstance(parsed.get("shell_command"), str):
+        if name == "execute_shell_command" and isinstance(parsed.get("command"), str):
             lines = self._preview_shell(parsed, risk)
         elif name == "fs_write_file" and isinstance(parsed.get("file_path"), str):
             lines = self._preview_fs_write(parsed, risk)
@@ -467,7 +467,7 @@ class Printer:
     @staticmethod
     def _preview_shell(parsed: Dict[str, Any], risk) -> List[str]:
         """Decoded shell command + danger classification summary."""
-        command = parsed["shell_command"]
+        command = parsed["command"]
         lines = ["execute_shell_command", f"risk: {risk.value}", f"command: {command}"]
         timeout = parsed.get("timeout")
         if timeout is not None:

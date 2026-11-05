@@ -569,7 +569,7 @@ class TestClientContextBudget:
                 tool_call=ToolCall(
                     id="call_big",
                     name="execute_shell_command",
-                    arguments='{"shell_command": "cat big.log"}',
+                    arguments='{"command": "cat big.log"}',
                 ),
             )
         ]
@@ -738,7 +738,7 @@ class TestShellGuardrailPropagation:
     def test_config_values_are_exported_for_the_shell_tool(self, clean_shell_env):
         tool = MagicMock()
         tool.execute.return_value = "ok"
-        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "ls"}')
+        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "ls"}')
         fake_cfg = {
             "SHOW_FUNCTION_OUTPUT": False,
             "SHOW_MCP_OUTPUT": False,
@@ -764,7 +764,7 @@ class TestShellGuardrailPropagation:
         clean_shell_env.setenv("YAI_TOOL_TIMEOUT", "99")
         tool = MagicMock()
         tool.execute.return_value = "ok"
-        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "ls"}')
+        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "ls"}')
         fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "TOOL_TIMEOUT": 99}
         with (
             patch("yaicli.tools.cfg", fake_cfg),
@@ -785,7 +785,7 @@ class TestShellGuardrailPropagation:
         clean_shell_env.setenv("YAI_TOOL_TIMEOUT", "99")
         tool = MagicMock()
         tool.execute.return_value = "ok"
-        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "ls"}')
+        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "ls"}')
         fake_cfg = {
             "SHOW_FUNCTION_OUTPUT": False,
             "SHOW_MCP_OUTPUT": False,
@@ -806,7 +806,7 @@ class TestShellGuardrailPropagation:
         """Unset/empty config values keep the tool's built-in defaults."""
         tool = MagicMock()
         tool.execute.return_value = "ok"
-        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"shell_command": "ls"}')
+        tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "ls"}')
         fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "WORKSPACE_ROOT": ""}
         with (
             patch("yaicli.tools.cfg", fake_cfg),

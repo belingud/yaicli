@@ -185,8 +185,8 @@ def summarize_arguments(tool_name: str, arguments: Any, limit: int = 500) -> str
     parsed = arguments if isinstance(arguments, dict) else parse_tool_arguments(arguments)
     if parsed is None:
         summary = redact_text("" if arguments is None else str(arguments))
-    elif isinstance(parsed.get("shell_command"), str):
-        summary = redact_text(parsed["shell_command"])
+    elif isinstance(parsed.get("command"), str):
+        summary = redact_text(parsed["command"])
     else:
         try:
             summary = json.dumps(_redact_value(parsed), ensure_ascii=False)
@@ -297,7 +297,7 @@ def _argv_prefix_matches(prefix: Sequence[str], arguments: Dict[str, Any]) -> bo
     """True when the shell command's argv starts with ``prefix``."""
     if not prefix:
         return False
-    command = arguments.get("shell_command")
+    command = arguments.get("command")
     if not isinstance(command, str):
         return False
     tokens = _shell_tokens(command)
