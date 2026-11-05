@@ -156,6 +156,11 @@ on the left and the selected result on the right; `f` toggles the spilled full f
 `tools.show_last_tool_output()` panel. Keep the viewer display-only: never change the text that is
 appended to the model messages.
 
+In background mode (`stream_bridge`/`worker_console`) `execute_tool_call` runs on the generation
+worker thread; its announcements/panels and provider diagnostics are routed through `WorkerConsole`
+and replayed by the UI thread. Never assume `execute_tool_call` runs on the main thread in that
+path, and keep tool code writing only via its injected/module console (no direct `sys.stdout`).
+
 Every result passes through `yaicli/tools/limits.py::truncate_tool_output_meta()` (the
 metadata-returning variant of `truncate_tool_output()`) before it is appended
 to the model messages (and before the panel is rendered): per-tool caps (shell 32KB, `fs_read_file`

@@ -124,13 +124,19 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   handler; that hangs the prompt event loop), and `_run_repl()` catches the signal, runs
   `CLI._open_tool_output_viewer()` (a synchronous alt-screen `prompt_toolkit.Application`) and
   continues. `/show-output` (`CmdHandler.handle_show_output`) opens the same viewer.
-- Generation-time Ctrl+O: while a turn streams there is no prompt reading the keyboard, so
-  `CLI._handle_llm_response()` starts `GenerationKeyWatcher` (`yaicli/generation_keys.py`, cbreak
-  stdin watcher with `ISIG` still on) and passes `pause_requested`/`on_pause` to
-  `Printer.display_stream()`. On Ctrl+O the printer stops the live region, `CLI._open_viewer_while_generating()`
-  pauses the watcher, opens the viewer and resumes; the provider generator is not advanced while the
-  viewer is open. Typed-ahead text is stored in `_pending_prompt_text` and passed as
-  `PromptSession.prompt(..., default=...)`. Headless/machine runs never start the watcher.
+- Generation-time Ctrl+O (background generation, T1–T4): `CLI._handle_llm_response()` starts
+  `GenerationKeyWatcher` and, for interactive TTY runs, wraps the completion generator in
+  `yaicli/stream_bridge.py::ThreadedStream` (worker thread; FIFO events chunk/console/done/error;
+  `ConfirmToolCall` waits for `send(decision)`; lazily started on the first `__next__`).
+  `worker_console.WorkerConsole` routes worker prints (with a stderr flag) into the bridge and the
+  main thread replays them in order; client/provider consoles are swapped for the turn.
+  `Printer.display_stream(pause_requested=..., on_pause=...)` pauses only the Rich `Live` region
+  while the viewer is open — the worker keeps generating; closing redraws the accumulated content
+  and streaming continues. Cancellation: Ctrl+C raises KeyboardInterrupt on the UI thread;
+  `ThreadedStream.close(timeout)` aborts and reports whether the worker is abandoned; the CLI gives
+  the worker a copy of the message list and adopts it only on success, and keeps console routing
+  installed for an abandoned worker (per-worker bridge registry drops its late output).
+  Headless/machine runs never start the watcher or bridge.
 - `_run_repl()` loop: separator → `session.prompt(self.get_prompt_tokens)` → strip → skip blank →
   `_handle_special_commands()` (tri-state `False`=exit, `True`=handled, `str`=prompt) →
   `_process_user_input()`. SIGINT semantics (v0.19, consistent with the headless contract): a single

@@ -14,7 +14,7 @@ These shortcuts work in all interactive modes:
 | `Ctrl+D`             | Exit the application              |
 | `Shift+Tab`          | Toggle between Chat/Execute modes |
 | `Ctrl+R`             | Search command history            |
-| `Ctrl+O`             | Open the full-screen tool-output viewer for this turn (`↑/↓` select, `Tab` switch pane, `f` full text, `q`/`Esc` close). Also works while the assistant is generating: the stream pauses until the viewer closes |
+| `Ctrl+O`             | Open the full-screen tool-output viewer for this turn (`↑/↓` select, `Tab` switch pane, `f` full text, `q`/`Esc` close). Also works while the assistant is generating: generation continues in the background and closing the viewer redraws the accumulated answer |
 | `↑/↓`                | Navigate through command history  |
 | `Ctrl+L`             | Clear the screen                  |
 | `Ctrl+A`             | Move cursor to beginning of line  |

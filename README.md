@@ -926,7 +926,8 @@ ai --verbose "Explain quantum computing"
 - `Ctrl+D` - Exit
 - `Ctrl+R` - Search history
 - `Ctrl+O` - Open the full-screen tool-output viewer (all outputs of this turn; also works while the
-  assistant is generating — the stream pauses until the viewer closes)
+  assistant is generating — generation continues in the background and closing the viewer redraws
+  the accumulated answer)
 - `↑/↓` - Navigate through history
 
 </td>
