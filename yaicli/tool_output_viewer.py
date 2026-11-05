@@ -24,23 +24,6 @@ MAX_FULL_TEXT_CHARS = 1_000_000
 _CAPTION_MAX_CHARS = 40
 #: Entries rendered in the list pane at once (selection stays in the window).
 _MAX_VISIBLE_ENTRIES = 10
-#: Compact labels for the viewer chrome; the body pane still shows the raw tool name.
-_TOOL_SHORT_NAMES = {
-    "execute_shell_command": "shell",
-    "fetch_webpage": "web",
-    "web_search": "search",
-    "get_weather": "weather",
-    "fs_read_file": "read",
-    "fs_write_file": "write",
-    "fs_edit_file": "edit",
-    "fs_list_directory": "ls",
-    "fs_search_files": "grep",
-    "fs_read_image": "image",
-    "fs_get_filesystem_info": "fsinfo",
-    "fs_file_operations": "fileop",
-}
-#: Longest fallback label for tools without a compact name.
-_SHORT_FALLBACK_MAX_CHARS = 18
 
 _HELP_LINE = (
     " ↑/↓ select · Tab switch pane · PgUp/PgDn scroll · f full text · q/Esc/Ctrl+O close "
@@ -59,22 +42,8 @@ def _is_tty() -> bool:
         return False
 
 
-def _short_tool_name(name: str) -> str:
-    """Compact tool label for the list and header (the body keeps the raw name)."""
-    clean = str(name or "").strip()
-    if not clean:
-        return "tool"
-    short = _TOOL_SHORT_NAMES.get(clean)
-    if short is not None:
-        return short
-    short = clean.removeprefix("_mcp__") or clean
-    if len(short) > _SHORT_FALLBACK_MAX_CHARS:
-        short = short[: _SHORT_FALLBACK_MAX_CHARS - 1].rstrip() + "…"
-    return short
-
-
 def _entry_header(entry: ToolOutputEntry, position: int, total: int) -> str:
-    parts = [f"[{position}/{total}] {_short_tool_name(entry.name)}"]
+    parts = [f"[{position}/{total}] {entry.name}"]
     parts.append("MCP" if entry.kind == "mcp" else "function")
     parts.append(f"{entry.total_chars:,} chars")
     if entry.truncated:
@@ -145,9 +114,7 @@ def _left_fragments(entries: List[ToolOutputEntry], position: int) -> List[Any]:
         selected = index == position
         style = "class:selected" if selected else ""
         marker = "▸ " if selected else "  "
-        fragments.append(
-            (style, f"{marker}{index + 1:>2}. {_short_tool_name(entry.name)} ({entry.total_chars:,}c)\n")
-        )
+        fragments.append((style, f"{marker}{index + 1:>2}. {entry.name} ({entry.total_chars:,}c)\n"))
         caption = _clip_caption(entry.caption or entry.arguments)
         if entry.truncated:
             caption = f"{caption} · truncated" if caption else "truncated"

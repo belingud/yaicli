@@ -13,7 +13,6 @@ from yaicli.tool_output_viewer import (
     _entry_header,
     _left_fragments,
     _load_full_text,
-    _short_tool_name,
     build_viewer_app,
     open_tool_output_viewer,
 )
@@ -46,28 +45,15 @@ def entry(index=1, turn=1, name="execute_shell_command", text="result text", **k
 class TestHelpers:
     def test_entry_header(self):
         header = _entry_header(entry(total_chars=12_345, truncated=True), 2, 4)
-        assert header.startswith("[2/4] shell")
-        assert "execute_shell_command" not in header
+        assert header.startswith("[2/4] execute_shell_command")
         assert "function" in header
         assert "12,345 chars" in header
         assert "truncated" in header
 
     def test_entry_header_mcp(self):
         header = _entry_header(entry(kind="mcp", name="_mcp__clock"), 1, 1)
-        assert "clock" in header
+        assert "_mcp__clock" in header
         assert "MCP" in header
-
-    def test_short_tool_name_builtins(self):
-        assert _short_tool_name("execute_shell_command") == "shell"
-        assert _short_tool_name("fs_read_file") == "read"
-        assert _short_tool_name("web_search") == "search"
-
-    def test_short_tool_name_fallbacks(self):
-        assert _short_tool_name("_mcp__clock") == "clock"
-        assert _short_tool_name("custom_tool") == "custom_tool"
-        assert _short_tool_name("x" * 40).endswith("…")
-        assert len(_short_tool_name("x" * 40)) == 18
-        assert _short_tool_name("") == "tool"
 
     def test_body_text_contains_call_arguments_result_and_spill(self):
         body = _body_text(entry(text="hello", spill_path="/tmp/spill.txt"))
@@ -96,21 +82,21 @@ class TestHelpers:
             entry(index=1, name="execute_shell_command", caption="pytest -q", total_chars=314),
         ]
         rendered = "".join(text for _, text in _left_fragments(entries, 0))
-        assert "execute_shell_command" not in rendered
-        assert "shell" in rendered
+        assert "execute_shell_command" in rendered
         assert "(314c)" in rendered
         assert "pytest -q" in rendered
 
-    def test_left_fragments_use_short_tool_labels(self):
+    def test_left_fragments_show_full_tool_names_for_mixed_turns(self):
+        """The list must identify the executed tool; no abbreviated aliases."""
         entries = [
             entry(index=1, name="execute_shell_command", caption="ls"),
             entry(index=2, name="fs_read_file", caption="/tmp/a.py"),
+            entry(index=3, name="fetch_webpage", caption="https://example.com"),
         ]
         rendered = "".join(text for _, text in _left_fragments(entries, 0))
-        assert "shell" in rendered
-        assert "read" in rendered
-        assert "execute_shell_command" not in rendered
-        assert "fs_read_file" not in rendered
+        assert "execute_shell_command" in rendered
+        assert "fs_read_file" in rendered
+        assert "fetch_webpage" in rendered
 
     def test_left_fragments_mark_truncated_entries(self):
         entries = [entry(index=1, name="execute_shell_command", caption="pytest -q", truncated=True)]
