@@ -2873,7 +2873,7 @@ wheels = [
 
 [[package]]
 name = "yaicli"
-version = "0.19.0"
+version = "0.19.1"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic", extra = ["bedrock", "vertex"] },

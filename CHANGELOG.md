@@ -1,5 +1,177 @@
 
 ---
+## [0.19.1](https://github.com/belingud/yaicli/compare/v0.19.0..v0.19.1) - 2026-11-05
+
+### ⛰️  Features
+
+- feat(viewer): use compact tool labels in the output list - ([2f026ca](https://github.com/belingud/yaicli/commit/2f026cafa3609dd85f9db053fee8451c8a0677ea)) - Belingud
+- feat(viewer): show tool-call captions in the output list
+
+The left pane only showed '4. execute_shell_command (314c)', which made
+repeated shell/MCP calls indistinguishable. Each entry now renders two lines:
+the tool name + result size, and a one-line caption derived from the decoded
+arguments (command, file_path/path, url, query, pattern, title; whitespace
+collapsed and clipped). Entries fall back to the compact argument summary when
+no identifying key exists, the list keeps the selection in a 10-entry window
+with '… N more above/below' markers, and the header bar now shows the selected
+entry ([2/4] name · kind · chars · truncated) next to the turn label.
+
+Output-history entries carry the caption (computed in execute_tool_call from the
+repaired argument dict), so it never re-parses a truncated argument string. - ([573f6d8](https://github.com/belingud/yaicli/commit/573f6d806b9c663ab57a196dc5c1299570d1dc94)) - Belingud
+- feat(cli): run interactive generation on a worker thread
+
+Interactive TTY turns now consume the completion generator through
+ThreadedStream: the provider/tool pipeline runs on a worker thread while the
+REPL thread renders, so Ctrl+O can open the tool-output viewer mid-answer and
+generation continues; closing the viewer redraws the accumulated content.
+
+Worker console output is routed through WorkerConsole into the bridge so the
+main thread replays it in order; client/provider consoles are swapped for the
+turn and restored afterwards. ThreadedStream now starts lazily on the first
+next(), letting the CLI install console routing and register the active bridge
+before the worker produces anything. Headless/machine paths are unchanged. - ([b9337bd](https://github.com/belingud/yaicli/commit/b9337bd9966f2cc4f3944ff2d6bc0f767eb9a951)) - Belingud
+- feat(stream): route worker-thread console output through the bridge
+
+WorkerConsole dispatches print() by thread: main-thread writes pass through to
+the real console, generation-worker writes are queued on the active
+ThreadedStream (with a stderr flag) and replayed in order by the UI thread, and
+late writes from an aborted worker are dropped. install_worker_console_routing()
+swaps the module consoles captured by the generation path and returns a
+restorable handle. Bridge console events now carry the stderr target. Still not
+wired into the CLI (task T2). - ([c0874a8](https://github.com/belingud/yaicli/commit/c0874a87b0ceb2b6c1b5165847352bfa42363d1b)) - Belingud
+- feat(stream): add threaded stream bridge for background generation
+
+ThreadedStream runs a completion generator on a worker thread and exposes the
+generator protocol (__next__/send) to the UI thread over a FIFO event queue:
+chunks, worker console prints, done/error. ConfirmToolCall waits for the
+decision sent back by the UI thread; abort() cancels at the next chunk boundary
+and drops late console events. Isolated module with unit tests (not wired into
+the CLI yet, tracked as task T1). - ([b6709cf](https://github.com/belingud/yaicli/commit/b6709cf9d101b7820ea75fda6afae154e44b6bd8)) - Belingud
+- feat(cli): toggle the tool-output viewer during generation
+
+While a turn streams there is no prompt reading the keyboard, so install a
+cbreak GenerationKeyWatcher (ISIG stays on: Ctrl+C still cancels) that captures
+Ctrl+O. Printer.display_stream() gains pause_requested/on_pause hooks: it stops
+the live region, opens the viewer, then redraws the accumulated content and
+continues. The provider stream is paused while the viewer is open for now;
+typed-ahead text is kept and pre-filled into the next prompt.
+
+Headless/machine runs never start the watcher. - ([7fcea5f](https://github.com/belingud/yaicli/commit/7fcea5f431ac3c5980ccd2db9e9b44a74b8ced1c)) - Belingud
+- feat(tools): add full-screen Ctrl+O tool-output viewer
+
+Replace the inline Ctrl+O print (a0db5eb) with an alternate-screen two-pane
+viewer: the left pane lists every tool output of the current turn (function and
+MCP), the right pane shows the selected result. Keys: up/down select, Tab
+switches pane, PgUp/PgDn/Home/End scroll, f toggles the spilled full file
+(1 MB cap), q/Esc/Ctrl+O closes and restores the REPL.
+
+Tool results are recorded in a turn-tagged history with spill metadata
+(begin_turn from CLI._process_user_input); truncate_tool_output_meta adds the
+metadata without changing the model-facing text. /show-output opens the same
+viewer; non-TTY/headless and viewer failures fall back to the inline
+last-output panel.
+
+Docs, README, py specs and tests updated (turn grouping, fallbacks, viewer
+app driven with pipe input). - ([d77e190](https://github.com/belingud/yaicli/commit/d77e190d6ebc351131c5cf9b7656375fcf829c09)) - Belingud
+- feat(tools): render tool results as a compact head-only preview
+
+Tool results and call arguments could flood the terminal even though the
+model-facing result is already capped. Add a display-only layer that is
+independent from TOOL_OUTPUT_MAX_CHARS: the panel shows only the first
+TOOL_DISPLAY_MAX_LINES (15) lines / TOOL_DISPLAY_MAX_CHARS (4000) chars and a
+'… +N lines · Ctrl+O to expand' marker, while the model still receives the
+full capped result.
+
+- The '@Function call:' line summarizes arguments (TOOL_CALL_PREVIEW_MAX_CHARS,
+  default 300); large content/command values render as <N chars>.
+- execute_tool_call records the last result; Ctrl+O in the REPL and
+  /show-output re-print it in full (same renderer).
+- New config keys + env vars, config template, docs, spec and tests.
+
+Terminal display only: short outputs are unchanged (no marker). - ([a0db5eb](https://github.com/belingud/yaicli/commit/a0db5ebf8431babd954dc3d42aee81be1d625a05)) - Belingud
+
+### 🐛 Bug Fixes
+
+- fix(keys): stop macOS VDISCARD from swallowing Ctrl+O during generation
+
+On macOS the tty driver keeps ^O bound to VDISCARD even in cbreak mode: the
+key was consumed before GenerationKeyWatcher could read it and toggled
+"discard output" instead, which matches the captured TUI (a missing
+@Function call line between two tool panels) and a debug log that showed
+watcher.start cbreak=True but no watcher.ctrl-o event. The viewer could
+therefore never open and output silently went missing until the key was
+pressed again.
+
+- Disable VDISCARD (^O) and IXON (^S/^Q flow control) for the watcher window,
+  restoring the saved termios on stop; log discard_disabled/flow_control_disabled.
+- Decode CSI-u / modifyOtherKeys Ctrl+O encodings used by extended keyboard
+  protocols (kitty/xterm) in addition to the plain 0x0f byte.
+- Log every received byte in YAI_DEBUG_LOG mode and add generation.begin/end +
+  prompt.begin breadcrumbs so a future freeze can be correlated with keypresses.
+- Document the new events in docs/dev/debug-cli.md. - ([28f29f7](https://github.com/belingud/yaicli/commit/28f29f71b76ee3d39098829cd0cb46008aaf3618)) - Belingud
+- fix(cli): service Ctrl+O between background stream chunks
+
+The REPL blocked on the bridge queue waiting for the next chunk, so a Ctrl+O
+request was only handled after the provider/tool produced something. During
+long reasoning or a slow tool that looked like a frozen screen with no viewer,
+and pressing Ctrl+O again did nothing until output resumed.
+
+- ThreadedStream.poll_next(timeout) polls the event queue and returns None on
+  timeout (chunks/errors/StopIteration behave like next()).
+- Printer.display_stream() now polls background streams every 50ms and
+  re-checks the viewer request each round, so the viewer opens promptly.
+- Ctrl+O during a turn with no tool output yet prints a dim hint instead of
+  silently doing nothing.
+- Add opt-in YAI_DEBUG_LOG breadcrumbs (watcher start/skip, Ctrl+O byte,
+  pause/resume ack, printer pause, viewer run begin/end/error) and document
+  them in docs/dev/debug-cli.md for terminal-specific reproductions. - ([cba65ee](https://github.com/belingud/yaicli/commit/cba65eef4cac2d2fe37f6b78b11c13d3b3efc549)) - Belingud
+- fix(stream): keep aborting/lingering workers from corrupting state
+
+Cancellation and history safety (T4): background turns now pass the worker a
+copy of the message list and adopt it only on success, so an aborted or
+failed turn returns the untouched original (a lingering worker cannot pollute
+the next turn's history). Each worker thread is registered with its owning
+bridge, so late console output from an abandoned worker is dropped instead of
+leaking into a newer generation; close() reports whether the worker is still
+alive and the CLI keeps the routed consoles installed in that case (with a dim
+notice) instead of restoring them under a running worker. Console wrappers are
+unwrapped before re-wrapping to avoid chains across repeated abandons. - ([d598955](https://github.com/belingud/yaicli/commit/d598955927159c0728853b4ad52902bc2f24ea3b)) - Belingud
+
+### 🚜 Refactor
+
+- refactor(tools)!: rename execute_shell_command argument to command
+
+The shell tool's model-facing argument was 'shell_command'; shorten it to
+'command' so a call reads execute_shell_command(command=...). Update the builtin
+schema/execute signature, the approval/risk/canonical-argument lookups, the
+confirmation preview, and the affected tests.
+
+BREAKING: models/roles that still pass shell_command will get a missing-argument
+error; the tool name (execute_shell_command) is unchanged. - ([2eaaadf](https://github.com/belingud/yaicli/commit/2eaaadf5ce27044f54cd45afc33706a404538ffd)) - Belingud
+
+### 📚 Documentation
+
+- docs(tools): document background generation Ctrl+O behavior
+
+Ctrl+O during an in-flight answer now opens the tool-output viewer while the
+generation keeps running on a background worker thread; closing the viewer
+redraws the accumulated answer. Update README, usage pages (cli, interactive,
+commands, context-limits) and the py specs (background pipeline, cancellation,
+abandoned-worker handling, worker-thread tool output rules). - ([f437f7e](https://github.com/belingud/yaicli/commit/f437f7e67edf142ccbf9c13a5b590e3187f520d9)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore(task): record post-T5 Ctrl+O and tool-schema hotfixes - ([969b11b](https://github.com/belingud/yaicli/commit/969b11bd3ff7b81266b236377666d16a17ae928e)) - Belingud
+- chore(task): complete T5 background generation verification - ([77acac9](https://github.com/belingud/yaicli/commit/77acac95cb4826e6d950d451d3fc02d3ae78db27)) - Belingud
+- chore(task): complete T4 cancellation and history safety plan - ([1553c50](https://github.com/belingud/yaicli/commit/1553c50a427c5e044bec2ad51bd720aa8e91fcd4)) - Belingud
+- chore(task): complete T3 background generation wiring plan - ([099ab94](https://github.com/belingud/yaicli/commit/099ab94b4ac2949baa20ca6f62df18c5ec5f26a2)) - Belingud
+- chore(task): complete T2 worker console routing plan - ([6b3822f](https://github.com/belingud/yaicli/commit/6b3822f87f875694a57eacd1cf4de649ee364bc6)) - Belingud
+- chore(task): complete T1 stream bridge plan - ([4dbd116](https://github.com/belingud/yaicli/commit/4dbd11602703d856c026f90dd86bdbddb5b961ef)) - Belingud
+- chore(task): plan background generation as subtasks T1-T5 - ([13eb196](https://github.com/belingud/yaicli/commit/13eb1960a16c5012288daccc1d5fc9a1ff572efe)) - Belingud
+- chore: record journal - ([e654434](https://github.com/belingud/yaicli/commit/e654434e0ad6bb3f9d087b95b9c9191aba9b3d43)) - Belingud
+
+
+---
 ## [0.19.0](https://github.com/belingud/yaicli/compare/v0.18.0..v0.19.0) - 2026-11-04
 
 ### ⛰️  Features
