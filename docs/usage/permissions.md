@@ -35,7 +35,7 @@ file will be created or overwritten. If the preview and the execution ever disag
 
 ## Risk levels
 
-Every tool has a risk class. The class decides what `--yes` and rules may auto-approve.
+Every tool has a risk class. The class decides what `--yes`, rules and `TOOL_POLICY` may do with it.
 
 | Risk | Built-in tools | Notes |
 | --- | --- | --- |
@@ -46,6 +46,77 @@ Every tool has a risk class. The class decides what `--yes` and rules may auto-a
 
 MCP and custom tools default to `exec` because YAICLI cannot inspect what they do.
 
+## Permission modes: `TOOL_POLICY`
+
+`TOOL_POLICY` is a session-wide ceiling/floor for the tool gate. Like every setting it is layered:
+`YAI_TOOL_POLICY` (environment) > `TOOL_POLICY` in `config.ini` > default `standard`. Values are
+case- and whitespace-insensitive.
+
+| Mode | Read / network tools | Write / exec tools | Typical use |
+| --- | --- | --- | --- |
+| `standard` (default) | Normal flow: rules → `--allowed-tools` → `--yes` → prompt / deny | Same normal flow | Everyday interactive and scripted use; behaves exactly like v0.19/v0.20 |
+| `readonly` | **Auto-allowed without a prompt**, interactive or not | **Always denied** — approvals, session grants, `--allowed-tools`, `--yes` and `TOOL_CONFIRM=false` cannot override it | Untrusted tasks, exploration, CI steps that should only read |
+| `trusted` | Auto-allowed without a prompt | **Auto-allowed without a prompt** for non-dangerous writes and shell commands | Fully trusted automation where prompts are pointless |
+
+Unknown tools and MCP tools count as `exec` risk, so `readonly` denies them and `trusted`
+auto-approves them.
+
+### Precedence: danger classification comes first
+
+The mode never relaxes a dangerous shell command. Danger classification is evaluated **before** the
+mode, in every mode:
+
+| Situation | Result in `standard`, `readonly` and `trusted` |
+| --- | --- |
+| Interactive, `TOOL_CONFIRM=true` | Explicit confirmation prompt — only `y` runs it |
+| Interactive, `TOOL_CONFIRM=false` | Denied (there is no prompt to confirm with) |
+| Non-interactive (pipe/CI) | Denied |
+
+So `readonly` does not turn `rm -r -f …` into an auto-deny with a different reason: an interactive
+confirmation can still run it, exactly as in `standard`. Conversely, `trusted` never runs a
+dangerous command silently.
+
+### Setting the mode
+
+```ini
+# config.ini
+[core]
+TOOL_POLICY=readonly
+```
+
+```bash
+# Environment variable (wins over config.ini)
+export YAI_TOOL_POLICY=readonly
+ai "read the test failures and explain them"
+
+# One-off for a single command
+YAI_TOOL_POLICY=trusted ai -p "update the changelog from the git log"
+```
+
+`ai --template` prints the current template, which includes `TOOL_POLICY=standard` (the default).
+An existing `config.ini` that predates v0.21 does **not** need editing: a missing `TOOL_POLICY`
+means `standard` (the previous behaviour) and the line is not materialised into existing files —
+add it only when you want a different mode.
+
+An invalid value falls back to `standard` with one warning on stderr (once per session, not per
+tool call). The effective mode is shown by `ai --verbose` and recorded in every audit-log line.
+
+### How the modes interact with approvals
+
+- `standard` keeps the v0.19/v0.20 flow: persistent rules and session approvals skip the prompt,
+  `--allowed-tools` grants a tool for the run, `--yes` auto-approves `read`-risk tools only, and
+  non-interactive runs deny whatever is not granted.
+- `readonly` is a hard ceiling: a persisted rule, an `A` (always allow) answer,
+  `--allowed-tools`, `--yes` or `TOOL_CONFIRM=false` cannot make a `write`/`exec` call run. The
+  model receives an actionable denial that names `TOOL_POLICY=readonly` and says to switch to
+  `standard`.
+- `trusted` is a floor: prompting is skipped for every non-dangerous tool, so approval rules are
+  simply unnecessary. It does not bypass the workspace write guard — files are still confined and
+  backed up (see [Workspace Safety](workspace-safety.md)).
+
+Denied calls return a structured `{"error": "tool_denied", "reason": ...}` result to the model and
+are recorded in the audit log with `source: "policy"`.
+
 ## Danger classification for shell commands
 
 Shell commands are analysed with `shlex` (argv- and flag-based, not string matching) and can be
@@ -55,10 +126,11 @@ into a shell, fork bombs, and similar. Safe commands such as `git add`, `git sta
 not flagged.
 
 - Interactively, a dangerous command needs an explicit confirmation even if the tool or a rule
-  already allows `execute_shell_command`.
-- Non-interactively, a dangerous command is always denied, even with `--yes` or a matching rule.
+  already allows `execute_shell_command`, and even in `TOOL_POLICY=trusted`.
+- Non-interactively, a dangerous command is always denied, even with `--yes`, a matching rule or
+  `TOOL_POLICY=trusted`.
 - With `TOOL_CONFIRM=false` there is no prompt to confirm with, so a dangerous command is denied
-  as well.
+  as well (in every mode).
 
 Additional shell guardrails apply automatically: a timeout (`TOOL_TIMEOUT`, default 120 s), process
 group kill on timeout/interrupt, a filtered environment (`YAI_API_KEY` and other secrets are not
@@ -117,7 +189,7 @@ With `TOOL_AUDIT=true` (default), every tool decision is appended as one JSON li
 `tool_audit.jsonl` in the config directory:
 
 ```json
-{"ts": "2026-11-04T12:34:56Z", "tool": "execute_shell_command", "risk": "exec", "decision": "denied", "source": "non_interactive", "args_summary": "du -sh .", "duration_ms": 0, "reason": "Dangerous shell command refused in a non-interactive session; ..."}
+{"ts": "2026-11-07T14:34:56Z", "tool": "execute_shell_command", "risk": "exec", "policy": "standard", "decision": "denied", "source": "non_interactive", "args_summary": "du -sh .", "duration_ms": 0, "reason": "Dangerous shell command refused in a non-interactive session; ..."}
 ```
 
 | Field | Meaning |
@@ -125,11 +197,12 @@ With `TOOL_AUDIT=true` (default), every tool decision is appended as one JSON li
 | `ts` | UTC timestamp |
 | `tool` | Tool name |
 | `risk` | Risk class of the tool |
+| `policy` | Effective `TOOL_POLICY` mode (`readonly` / `standard` / `trusted`) for that decision |
 | `decision` | `allowed` / `denied` / `error` |
-| `source` | Why: `prompt` (you confirmed), `session`, `persist`, `rule`, `allowlist` (`--allowed-tools`), `yes`, `disabled` (`TOOL_CONFIRM=false`) or `non_interactive` |
+| `source` | Why: `prompt` (you confirmed), `session`, `persist`, `rule`, `allowlist` (`--allowed-tools`), `yes`, `disabled` (`TOOL_CONFIRM=false`), `non_interactive`, or `policy` (decided by `TOOL_POLICY`) |
 | `args_summary` | Sanitized, truncated argument summary (shell commands are shown decoded; secrets such as API keys are redacted) |
 | `duration_ms` | Tool execution time (`0` for a denied call) |
-| `reason` | Present for denials/errors: why the call was refused or failed |
+| `reason` | Present for denials/errors: why the call was refused or failed (redacted and truncated to 300 characters) |
 
 Set `TOOL_AUDIT=false` to disable, or point the log elsewhere by changing the config directory.
 The audit log records decisions, not full command output.
@@ -148,6 +221,13 @@ default. The flags that change this are:
 
 See [Headless & Scripting](headless.md) for the full scripting contract.
 
+> **`TOOL_POLICY=readonly` is the safe default for read-only automation.** It auto-allows
+> read/network tools (including `fs_read_file`, `web_search`) and denies write/exec calls even if a
+> flag or rule would otherwise grant them — no per-tool grants needed. Set it through
+> `YAI_TOOL_POLICY=readonly` in the environment or `TOOL_POLICY=readonly` in `config.ini`.
+> Tool calls that a mode does allow are still confined to the workspace and backed up before they
+> change files (see [Workspace Safety](workspace-safety.md)).
+
 > **Prefer narrow grants.** Granting `execute_shell_command` does not make every command safe:
 > individual commands are still danger-classified, but a non-malicious-looking command can still do
 > damage. Rules with an `argv_prefix` are safer than a bare tool name.
@@ -156,8 +236,11 @@ See [Headless & Scripting](headless.md) for the full scripting contract.
 
 - **API keys**: `config.ini` may contain `API_KEY` in plaintext. The file is created with mode
   `0600`; prefer `YAI_API_KEY` (environment) on shared machines.
-- **Workspace**: shell tools run inside `WORKSPACE_ROOT` (or `--cwd`); a `cwd` outside it is
-  rejected.
+- **Workspace**: built-in filesystem writes and shell `cwd` are confined to `WORKSPACE_ROOT`
+  (default: the directory `ai` was started in; `--cwd` overrides it). Before a write tool changes
+  an existing file it is backed up to `.yaicli-backups/`, and protected paths such as `.git/` and
+  `.env*` are refused. See [Workspace Safety](workspace-safety.md) for the write guard, backups
+  and recovery.
 - **Environment**: shell commands receive a filtered environment by default. `TOOL_ENV_INHERIT=true`
   restores the old behaviour — only do that if you trust every command the model may run.
 - **Read-only / container environments**: state writes are best-effort, so read-only commands such
@@ -165,6 +248,7 @@ See [Headless & Scripting](headless.md) for the full scripting contract.
 
 ## See Also
 
+- [Workspace Safety](workspace-safety.md)
 - [Headless & Scripting](headless.md)
 - [Context & Limits](context-limits.md)
 - [Command Reference](commands.md)

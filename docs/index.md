@@ -48,6 +48,9 @@ properly.
 - **Approval prompt** for every tool call, with risk classes (`read`/`write`/`network`/`exec`)
 - **Danger classification** for shell commands and an **audit log** of every decision
 - **Allow rules** by tool name, shell argv prefix or file path glob
+- **Workspace-confined writes**: built-in file tools only touch files inside `WORKSPACE_ROOT`, back
+  up changes to `.yaicli-backups/`, refuse protected paths, and `/undo` reverts the last change —
+  see [Workspace Safety](usage/workspace-safety.md)
 - **Guarded shell**: timeout, process-group kill, filtered environment, workspace-confined `cwd`
 
 ### 📜 Headless & Scriptable
@@ -97,6 +100,7 @@ compatibility layer: the agent loop and tooling are the same for every provider.
 - [Agent Quickstart](getting-started.md)
 - [Headless & Scripting](usage/headless.md)
 - [Permissions & Safety](usage/permissions.md)
+- [Workspace Safety](usage/workspace-safety.md)
 - [Context & Limits](usage/context-limits.md)
 - [Installation](install.md)
 - [Command Reference](usage/commands.md)

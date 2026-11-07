@@ -108,6 +108,12 @@ SHOW_MCP_OUTPUT=false
 # Tool confirmation (set to false to restore silent execution)
 TOOL_CONFIRM=true
 
+# Session-wide tool permission mode (v0.21): readonly | standard | trusted
+# readonly: auto-allow read/network tools only; write/exec tools are always denied
+# standard: ask for confirmation / use tool_permissions.json rules (default)
+# trusted: auto-allow every non-dangerous tool (dangerous shell commands still ask)
+TOOL_POLICY=standard
+
 # Maximum recursive tool-call rounds per request
 MAX_TOOL_CALL_DEPTH=8
 
@@ -134,7 +140,7 @@ TOOL_TIMEOUT=120
 # true = pass the full parent environment to shell commands (old behaviour);
 # false = filtered environment, secrets such as YAI_API_KEY are not passed.
 TOOL_ENV_INHERIT=false
-# Shell commands may only run inside this directory (empty = current directory).
+# Workspace root for shell cwd and guarded file writes (empty = current directory).
 WORKSPACE_ROOT=
 
 # Reliability settings (v0.19)
@@ -188,6 +194,7 @@ TOOL_AUDIT=true
 | `SHOW_MCP_OUTPUT`      | Show MCP output                             | `false`                  | `YAI_SHOW_MCP_OUTPUT`      |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
 | `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
+| `TOOL_POLICY`          | Session-wide tool permission mode: `readonly`, `standard` or `trusted` (see [Permissions & Safety](permissions.md#permission-modes-tool_policy)) | `standard` | `YAI_TOOL_POLICY` |
 | `TOOL_OUTPUT_MAX_CHARS` | Max characters of one tool result kept in context (`0` = unlimited) | `32000` | `YAI_TOOL_OUTPUT_MAX_CHARS` |
 | `TOOL_OUTPUT_DIR`      | Where full (untruncated) tool outputs are saved | `<chat-history>/tool-outputs` | `YAI_TOOL_OUTPUT_DIR` |
 | `TOOL_DISPLAY_MAX_LINES` | Terminal preview: max lines of one tool result shown (`0` = unlimited) | `15` | `YAI_TOOL_DISPLAY_MAX_LINES` |
@@ -196,7 +203,7 @@ TOOL_AUDIT=true
 | `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = 70% of the model window) | `0`         | `YAI_CONTEXT_BUDGET_TOKENS` |
 | `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
 | `TOOL_ENV_INHERIT`     | Pass the full parent environment to shell tools (old behaviour) | `false` | `YAI_TOOL_ENV_INHERIT` |
-| `WORKSPACE_ROOT`       | Directory shell tools are confined to (empty = current dir) | -         | `YAI_WORKSPACE_ROOT`       |
+| `WORKSPACE_ROOT`       | Workspace root: shell `cwd` and guarded file writes must stay inside it (empty = current dir; see [Workspace Safety](workspace-safety.md)) | - | `YAI_WORKSPACE_ROOT` |
 | `RETRY_ENABLED`        | Retry retryable API failures (429/5xx/network/timeout) | `true`         | `YAI_RETRY_ENABLED`        |
 | `RETRY_MAX`            | Maximum retry attempts                      | `2`                      | `YAI_RETRY_MAX`            |
 | `RETRY_BASE_DELAY`     | Base backoff delay in seconds               | `1.0`                    | `YAI_RETRY_BASE_DELAY`     |

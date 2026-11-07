@@ -189,6 +189,7 @@ When in interactive chat or shell mode, you can use these special commands:
 | `/permissions` | List session approvals, the persistent allowlist and the numbered rules |
 | `/permissions revoke <tool-or-index>` | Remove a persistent permission by tool name or rule number (the tool will ask again) |
 | `/show-output` | Open the full-screen viewer listing every tool output of the current turn (same as `Ctrl+O`) |
+| `/undo` | Restore the last file change made by a guarded tool in this session (see [Workspace Safety](workspace-safety.md#undo)) |
 
 #### Context Management Commands
 

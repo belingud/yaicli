@@ -37,6 +37,7 @@ nav:
       - Command Reference: usage/commands.md
       - Headless & Scripting: usage/headless.md
       - Permissions & Safety: usage/permissions.md
+      - Workspace Safety: usage/workspace-safety.md
       - Context & Limits: usage/context-limits.md
       - File Context Management: usage/context.md
       - Configuration Guide: usage/configuration.md
@@ -75,7 +76,7 @@ nav:
   - Advanced:
       - Prompt Template System: advanced/prompts.md
       - Conversation & History: advanced/history.md
-      - Upgrading to v0.19: advanced/upgrade.md
+      - Upgrading: advanced/upgrade.md
       - Debugging & Logs: advanced/debugging.md
   - Developer Guide:
       - Architecture Overview: dev/architecture.md

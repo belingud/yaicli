@@ -1,6 +1,6 @@
 # Upgrade Notes
 
-This page explains what changes when you upgrade to **v0.20** and what (if anything) you must do.
+This page explains what changes when you upgrade to **v0.21** and what (if anything) you must do.
 Old config files keep working: newly added keys simply fall back to their defaults.
 
 ## Upgrade the package
@@ -42,6 +42,37 @@ ai --list-functions         # shows builtin/user source and warns about stale co
 If a user file has the same tool name as a built-in, the user file wins. If you want the new
 built-in version, delete the old copy (or run `--reinstall-functions`) and restart `ai`.
 YAICLI only warns about stale copies; it never silently overwrites your customisations.
+
+## What changed in v0.21
+
+- **Permission modes (`TOOL_POLICY`)** — a session-wide mode: `readonly`, `standard` or `trusted`
+  (`TOOL_POLICY` in `config.ini`, `YAI_TOOL_POLICY` in the environment). `standard` is the default
+  and keeps the previous behaviour, so **existing config files need no edit**: a missing
+  `TOOL_POLICY` means `standard` and the line is not written into existing files. `readonly`
+  auto-allows read/network tools and hard-denies write/exec calls (approvals, `--yes`,
+  `--allowed-tools` and `TOOL_CONFIRM=false` cannot override it); `trusted` auto-runs every
+  non-dangerous tool. Danger-classified shell commands keep their confirmation/denial precedence in
+  every mode. Audit lines now include the effective `policy` field.
+- **Workspace-confined writes (on by default)** — `fs_write_file`, `fs_edit_file` and
+  `fs_file_operations` now only modify files inside `WORKSPACE_ROOT` (default: the directory `ai`
+  was started in; `--cwd` sets it). Absolute paths outside the workspace now fail with an in-band
+  `outside_workspace` refusal where earlier versions wrote them. To keep writing elsewhere, start
+  `ai` in that directory, set `WORKSPACE_ROOT`, or pass `--cwd`.
+- **Protected paths** — the guarded filesystem tools refuse `.git`/`.ssh`/`.aws`/`.gnupg` path
+  components and `.env`/`.env.*`/`*.pem`/`*.key` files even inside the workspace. Edit those
+  yourself.
+- **Backups before every mutation** — an existing file/directory is copied to
+  `<workspace>/.yaicli-backups/<UTC stamp>/<path relative to the workspace root>` (files `0600`,
+  directories `0700`) before it is overwritten, edited, appended to, deleted or moved. If the
+  backup cannot be written, the change is refused (fail closed). Add `.yaicli-backups/` to your
+  `.gitignore`; backups are not cleaned up automatically.
+- **`/undo`** — in the REPL, reverts the last guarded file change: restores overwritten/edited/
+  deleted/moved files from their backup and deletes files the agent created. The stack keeps the
+  last 20 mutations and is process-local, so it disappears when `ai` exits; shell-command and MCP
+  side effects are not undoable.
+
+No action is normally needed. If you script permissions, see [Permissions & Safety](../usage/permissions.md#permission-modes-tool_policy);
+if the agent writes files for you, see [Workspace Safety](../usage/workspace-safety.md).
 
 ## What changed in v0.20
 
@@ -90,12 +121,13 @@ Add these to `config.ini` only if you want non-default values (see
 
 | Key | Default | Purpose |
 | --- | --- | --- |
+| `TOOL_POLICY` | `standard` | Session-wide permission mode (`readonly`/`standard`/`trusted`); see [Permissions & Safety](../usage/permissions.md#permission-modes-tool_policy) |
 | `TOOL_OUTPUT_MAX_CHARS` | `32000` | Per-tool-result character cap (`0` = unlimited) |
 | `TOOL_OUTPUT_DIR` | `<chat history>/tool-outputs` | Where full tool outputs are stored |
 | `CONTEXT_BUDGET_TOKENS` | `0` (70% of model window) | Per-request token budget |
 | `TOOL_TIMEOUT` | `120` | Shell command timeout in seconds |
 | `TOOL_ENV_INHERIT` | `false` | Pass the full parent environment to shell tools |
-| `WORKSPACE_ROOT` | *empty* (current dir) | Directory shell tools are confined to |
+| `WORKSPACE_ROOT` | *empty* (current dir) | Workspace root for the shell `cwd` and guarded filesystem writes |
 | `RETRY_ENABLED` | `true` | Retry retryable API failures |
 | `RETRY_MAX` | `2` | Maximum retry attempts |
 | `RETRY_BASE_DELAY` | `1.0` | Base backoff delay (seconds) |
@@ -136,23 +168,30 @@ Files in the config directory:
 4. Check the new defaults: environment filtering (`TOOL_ENV_INHERIT`), output truncation
    (`TOOL_OUTPUT_MAX_CHARS`), and shell timeout (`TOOL_TIMEOUT`) are the most likely reasons an old
    workflow behaves differently.
+5. If a file write is refused, check `WORKSPACE_ROOT` (`ai --verbose` prints it) and the protected-
+   path rules; the model-facing error names the reason (`outside_workspace`, `protected_path`, ...).
+   See [Workspace Safety](../usage/workspace-safety.md) — and remember that pre-change backups are
+   in `<workspace>/.yaicli-backups/` if you need to restore something by hand.
 
 ## Rollback
 
 To go back to the previous release:
 
 ```bash
-pip install 'yaicli==0.18.0'
+pip install 'yaicli==0.20.0'
 ```
 
 Your `config.ini` and permissions file remain readable by the old version (unknown keys are
 ignored); `tool_permissions.json` stays backward compatible because v2 only adds keys. Remove
-`tool_audit.jsonl` / `tool-outputs/` if you no longer need them.
+`tool_audit.jsonl` / `tool-outputs/` if you no longer need them, and note that v0.21 may have
+created a `.yaicli-backups/` directory in your workspace — keep it if you want the stored backups,
+delete it otherwise.
 
 ## See Also
 
-- [Headless & Scripting](../usage/headless.md)
 - [Permissions & Safety](../usage/permissions.md)
+- [Workspace Safety](../usage/workspace-safety.md)
+- [Headless & Scripting](../usage/headless.md)
 - [Context & Limits](../usage/context-limits.md)
 - [Configuration](../usage/configuration.md)
 - [Changelog](../changelog.md)

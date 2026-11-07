@@ -18,7 +18,8 @@ generate and execute shell commands, or get quick answers without leaving your w
 - **Tools out of the box** — 12 built-in tools load straight from the installed package; there is
   no install step before the model can use them.
 - **Safe by default** — every tool call is confirmed before it runs, shell commands are
-  risk-classified, and every decision is written to an audit log.
+  risk-classified, every decision is written to an audit log, and file writes stay inside the
+  workspace with backups + `/undo`.
 - **Scriptable** — `-p/--print`, `--output-format json|stream-json`, stdin piping, documented exit
   codes, and clean stdout/stderr separation make it usable in scripts and CI.
 - **Lightweight, with numbers** — startup, install size and memory are measured (see *Lightweight &
@@ -101,6 +102,9 @@ headless approval flags.
   commands (`rm -r -f`, `mkfs`, `dd of=/dev/*`, `curl … | sh`, ...)
 - **Allow rules** in `tool_permissions.json` — per tool name, shell argv prefix, or file path glob
 - **Audit log** of every tool decision in `tool_audit.jsonl`
+- **Workspace-confined writes**: built-in file tools only change files inside `WORKSPACE_ROOT`,
+  back up existing files to `.yaicli-backups/`, refuse protected paths (`.git/`, `.env*`, ...), and
+  `/undo` reverts the last change — see [Workspace Safety](docs/usage/workspace-safety.md)
 - **Guarded shell**: timeout, process-group kill, filtered environment (no API keys leaked to
   commands), workspace-confined `cwd`
 

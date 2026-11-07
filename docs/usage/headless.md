@@ -190,7 +190,7 @@ non-interactively, even when the tool itself is allowed.
 | Option | Effect |
 | --- | --- |
 | `--max-turns N` | Maximum number of tool-call rounds for this run (`N >= 1`; maps to `MAX_TOOL_CALL_DEPTH`, default `8`). When the limit is reached, the run stops with a `depth_limit` result; with `EXIT_ON_DEPTH_LIMIT=true` (default) a one-shot run exits non-zero. |
-| `--cwd DIR` | Working directory for the run; also becomes the workspace root for shell tools. Paths outside the workspace are rejected. |
+| `--cwd DIR` | Working directory for the run; also becomes `WORKSPACE_ROOT` for the shell `cwd` and the guarded file writes. Paths outside the workspace are rejected (see [Workspace Safety](workspace-safety.md)). |
 | `--output-format ...`, `-q`, `-p` | Output contract, described above. |
 
 ## Non-interactive `--shell`
