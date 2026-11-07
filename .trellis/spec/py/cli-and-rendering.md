@@ -193,7 +193,7 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
 
 - `CmdHandler.commands` maps `const.CMD_*` constants to handlers; exact matches first, then prefix match for
   argument-taking commands (`/save`, `/load`, `/del`, `/mode`, `/add`, `/context`, `/compact`,
-  `/permissions`). Aliases: `/ctx`, `/chats`, `?`, and `!`/`！` → `subprocess.call(shell=True)`.
+  `/permissions`, `/undo`). Aliases: `/ctx`, `/chats`, `?`, and `!`/`！` → `subprocess.call(shell=True)`.
   `handle_command()` returns `True` (continue), `False` (exit) or the original input; handlers return
   `bool` and print via `self.cli.console`.
 - `/add`, `/context` use `shlex.split` (quoted paths work) and strip one leading `@`; bad quoting prints
@@ -203,7 +203,12 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
 - `/compact [keep_rounds]` (default 5) trims the conversation to whole turn groups and reports
   before→after estimated tokens; it must never split tool pairs. `/permissions [revoke <tool-or-index>]`
   lists session/persisted/rules and revokes persisted entries.
-- New command checklist: constant in `const.py` (or cmd_handler-local like `CMD_COMPACT`) → register in
+- `/undo` (v0.21 K11) restores the most recent builtin-filesystem mutation the agent made in this
+  process (backup restore, or delete a path the agent created) and prints what was restored/deleted;
+  with an empty stack it prints a friendly message. `CMD_UNDO` is cmd_handler-local; the undo stack
+  lives in `yaicli/tools/workspace.py` and is populated by `execute_tool_call`, not by the handler.
+  See [function-tool-guidelines.md](./function-tool-guidelines.md) for the guard/backup contract.
+- New command checklist: constant in `const.py` (or cmd_handler-local like `CMD_COMPACT`/`CMD_UNDO`) → register in
   `CmdHandler.commands` → usage line in `cli.print_help()` → path prefix in `completer.py`
   (`_is_context_command`) if it takes a path (`tests/test_command_handler.py` covers shlex errors,
   missing args, aliases, tri-state return).

@@ -83,3 +83,31 @@ When the user interrupts the confirmation prompt (for example via Ctrl-C or end-
 #### Scenario: Interrupt at the prompt denies the call
 - **WHEN** the user interrupts the confirmation prompt for a tool call
 - **THEN** the system SHALL treat the call as denied and continue without executing the tool
+
+### Requirement: A session-wide tool policy mode adjusts the confirmation gate
+
+The system SHALL support a session-wide `TOOL_POLICY` mode (environment variable `YAI_TOOL_POLICY`, default `standard`) that is a hard ceiling or floor for the confirmation gate. `readonly` SHALL auto-allow read-only risk tools without prompting and SHALL deny write and exec risk tools even when they are present in the persistent allowlist, carry a matching argument rule, are granted with `--yes` or `--allowed-tools`, or confirmation is disabled with `TOOL_CONFIRM=false`. `standard` SHALL preserve the previously specified confirmation behavior. `trusted` SHALL auto-allow every non-dangerous tool without prompting. An unrecognized mode value SHALL fall back to `standard` with a single warning. Independently of the mode, a danger-classified shell command SHALL keep its confirmation/denial precedence.
+
+#### Scenario: Readonly blocks mutations even when pre-approved
+- **WHEN** `TOOL_POLICY=readonly` and the model calls a write or exec risk tool that is pre-approved or confirmation is disabled
+- **THEN** the system SHALL deny the call and return a matched structured `tool_denied` result to the model
+
+#### Scenario: Readonly allows read-only work
+- **WHEN** `TOOL_POLICY=readonly` and the model calls a read or network risk tool
+- **THEN** the system SHALL execute it without prompting
+
+#### Scenario: Trusted auto-allows non-dangerous tools
+- **WHEN** `TOOL_POLICY=trusted` and the model calls a non-dangerous tool
+- **THEN** the system SHALL execute it without prompting
+
+#### Scenario: Dangerous shell commands keep their precedence
+- **WHEN** the model calls a danger-classified shell command under any policy mode
+- **THEN** the interactive confirmation / non-interactive denial rules SHALL apply unchanged
+
+### Requirement: The audit log records the effective policy mode
+
+When the tool audit log is enabled, every gate decision line (allowed, denied or error) SHALL include the effective `TOOL_POLICY` mode in addition to the previously recorded fields.
+
+#### Scenario: Audit includes the policy mode
+- **WHEN** a tool-call decision is written to the audit log
+- **THEN** the JSON line SHALL contain the effective `policy` value (`readonly`, `standard` or `trusted`)

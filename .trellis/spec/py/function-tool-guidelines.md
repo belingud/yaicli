@@ -205,6 +205,30 @@ an exception from `execute`; the returned text is the error report. Do not raise
   (`LLMClient._get_valid_tool_calls`) → confirmation gate (`_execute_tools_and_continue`) →
   `execute_tool_call`.
 
+### Workspace write guard & `/undo` (v0.21 K11)
+
+`execute_tool_call` runs `yaicli/tools/workspace.py::prepare_mutation(name, arguments)` before
+dispatching `fs_write_file` / `fs_edit_file` / `fs_file_operations`. Builtins stay standalone, so the
+guard is a stdlib-only execution-layer module and never imports `cfg`: `execute_tool_call` first
+propagates the effective `WORKSPACE_ROOT` (and other guardrail keys) through
+`_sync_shell_guardrail_env()`. The guard enforces, in order: workspace containment (resolved target
+strictly inside `WORKSPACE_ROOT`, default cwd; symlink escapes and `..` traversal refused), protected
+path components/basenames (`.git`/`.ssh`/`.aws`/`.gnupg`, `.env*`, `*.pem`, `*.key`), and
+backup-before-mutation under `<workspace>/.yaicli-backups/<UTC stamp>/<workspace-relative path>`
+(files 0600, dirs 0700, fail-closed).
+
+A denial is the tool result for the matching call — in-band JSON
+(`{"success": false, "error": ..., "reason": ...}`) returned with `ok=True` (the call reached the
+tool path), recorded through the same `_emit_tool_result` truncation/history pipeline. The guard never
+prints and never raises; any internal error fails closed. Successful mutations push an undo entry
+(`workspace.push_undo`, only when the tool result is not `success:false`); `/undo` (`CMD_UNDO`,
+defined locally in `cmd_handler.py`) restores the most recent mutation or deletes an agent-created
+path. `fs_edit_file(dry_run=True)` performs no containment check, backup or undo push. The undo stack
+is bounded and process-local. Do not move the guard into a builtin file (user copies are exec'd
+standalone), do not call a mutating builtin's `execute()` from another path that bypasses
+`prepare_mutation`, and add any new mutating builtin to `workspace.MUTATING_TOOL_NAMES` plus its
+argument planning.
+
 ## Tool Policy, Risk & Confirmation
 
 - `ToolPolicy` (`yaicli/schemas.py`) is a frozen per-request pair of flags; functions and MCP are
@@ -216,6 +240,14 @@ an exception from `execute`; the returned text is the error report. Do not raise
   family, recursive chmod/chown on system paths, find -delete, download|shell pipes, fork bombs,
   git clean -f, device redirects, ...); `is_dangerous_shell()` is the convenience wrapper. Never
   reintroduce substring blacklists (they false-positive on `git add` and miss flag permutations).
+- `TOOL_POLICY` (v0.21 K10; `YAI_TOOL_POLICY`, default `standard`) is a session-wide ceiling/floor
+  resolved once per gate: `readonly` auto-allows `read`/`network` risk and hard-denies `write`/`exec`
+  risk even when pre-approved, session-approved, granted by `--yes`/`--allowed-tools`, or
+  `TOOL_CONFIRM=false`; `trusted` auto-allows every non-dangerous tool; `standard` keeps the
+  behaviour below unchanged. Danger-classified shell commands keep their confirmation/denial
+  precedence in every mode, and an invalid mode falls back to `standard` with one stderr warning.
+  Denials use the structured `{"error": "tool_denied", "reason": ...}` result and audit `source`
+  `"policy"`.
 - `TOOL_CONFIRM` (enabled by default) gates execution; approved rules/names skip the prompt unless
   the call is a **dangerous shell command**, which is always confirmed even when the tool/rule is
   allowed (non-interactive => deny). Interactive sessions get `ConfirmToolCall` →
@@ -240,12 +272,14 @@ an exception from `execute`; the returned text is the error report. Do not raise
   head) and `fs_edit_file` (unified diff head 40). Never show raw model JSON that differs from what
   executes (`\u003b`/duplicate-key cases are regression-tested).
 - Audit: every gate decision appends one JSON line to `TOOL_AUDIT_PATH` (`<config-dir>/tool_audit.jsonl`,
-  `TOOL_AUDIT` config, default on) with `ts/tool/risk/decision/source/args_summary/duration_ms`
-  (`args_summary` secret-redacted, <=500 chars; shell => decoded command). Best-effort OSError-tolerant,
+  `TOOL_AUDIT` config, default on) with `ts/tool/risk/policy/decision/source/args_summary/duration_ms`
+  (`policy` is the effective `TOOL_POLICY` mode, v0.21 K10; `args_summary` secret-redacted, <=500 chars;
+  shell => decoded command). Best-effort OSError-tolerant,
   0600, never affects the call. `/permissions` lists session/persistent/rule state and
   `/permissions revoke <tool-or-index>` mutates the persisted file.
-- Behavior changes also update the openspec specs, `tests/llms/test_tool_confirmation.py`,
-  `tests/tools/test_approval.py` and `tests/test_permissions.py`.
+- Behavior changes also update the openspec specs (`interactive-tool-policy`,
+  `tool-execution-confirmation`, `workspace-write-safety`), `tests/llms/test_tool_confirmation.py`,
+  `tests/tools/test_approval.py`, `tests/test_permissions.py` and `tests/test_tool_policy.py`.
 
 ## MCP Boundary (`yaicli/tools/mcp.py`)
 
@@ -294,6 +328,10 @@ an exception from `execute`; the returned text is the error report. Do not raise
 - A new `execute_tool_call` caller that skips the `ToolPolicy` filter or confirmation gate; a deny
   path that appends a tool message without a matching `tool_call_id`; a deny without audit
   `decision=denied`.
+- A mutating builtin call that bypasses `workspace.prepare_mutation`; adding a mutating builtin
+  without updating `workspace.MUTATING_TOOL_NAMES`/its planner; treating a guard denial as an
+  exception instead of an in-band JSON result; materializing/re-reading `TOOL_POLICY` inside the
+  per-tool loop instead of once per gate.
 - Rendering raw model JSON in the confirmation prompt instead of `canonical_arguments()`.
 - Using the class/file name as the tool name, duplicating a title, printing from `execute`, or
   mutating a cached schema dict.

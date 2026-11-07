@@ -66,7 +66,7 @@ Module map:
 | `yaicli/function_schema.py` | Lightweight `OpenAISchema` replacing `instructor.OpenAISchema`. |
 | `yaicli/functions/` | Builtin function templates (`buildin/`) + install/reinstall/list callbacks and `functions_manifest.json` (version+sha256, stale-copy warning). |
 | `yaicli/llms/` | `LLMClient` (tool loop, budget, retry, depth limit), `Provider` ABC/`ProviderFactory`, one module per provider in `providers/`. |
-| `yaicli/tools/` | Function schema aggregation/caching, builtin function direct-loading + user overrides, MCP integration, approval store (rules v2 + audit), `risk.py`, `limits.py`, `execute_tool_call` (arg repair, truncation, stderr-aware console). |
+| `yaicli/tools/` | Function schema aggregation/caching, builtin function direct-loading + user overrides, MCP integration, approval store (rules v2 + audit), `risk.py`, `limits.py`, `workspace.py` (write guard/backups/undo), `execute_tool_call` (arg repair, truncation, workspace guard, stderr-aware console). |
 | `yaicli/utils.py` | Shell/OS detection, `str2bool`, result-option callbacks, event-loop helper. |
 
 `yaicli/__init__.py` holds the static `__version__` (kept in sync with `pyproject.toml` by
@@ -98,7 +98,7 @@ some filesystems). `entry.version_callback` prints the same constant.
   and Live output. Do not create bare `rich.console.Console()` instances in new code.
 - Tool results are JSON strings (in-band errors) under `yaicli/functions/buildin/`; the executor in
   `tools/__init__.py` is the single place that parses arguments, truncates output and surfaces failures.
-- `errors.py`, `tokens.py`, `tools/risk.py` and `tools/limits.py` are stdlib-only leaf modules: they may
+- `errors.py`, `tokens.py`, `tools/risk.py`, `tools/limits.py` and `tools/workspace.py` are stdlib-only leaf modules: they may
   be imported by `cli.py`, `llms/` and `tools/` without pulling a provider SDK or the Typer app.
 
 ## Where New Code Goes

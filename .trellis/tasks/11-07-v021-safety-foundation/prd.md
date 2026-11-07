@@ -33,10 +33,10 @@ was descoped from v0.20.0 (user decision at the v0.20.0 release), using
 
 ## Acceptance Criteria
 
-- [ ] K10: policy modes selectable and enforced by the tool gate; readonly denies write/exec in
-      non-interactive runs; audit log records the effective policy.
-- [ ] K11: writes outside `WORKSPACE_ROOT` are refused with an actionable error; protected paths are
-      denied; a write can be reverted with `/undo`; backup files are 0600.
+- [x] K10: policy modes selectable and enforced by the tool gate; readonly denies write/exec in
+      non-interactive runs; audit log records the effective policy. (commit `09a41ad`)
+- [x] K11: writes outside `WORKSPACE_ROOT` are refused with an actionable error; protected paths are
+      denied; a write can be reverted with `/undo`; backup files are 0600. (commit `d305e92`)
 - [ ] K12: `AGENTS.md` content reaches the system prompt with a size cap and a stderr notice;
       `AGENTS_NONE`/config disables it; no file → no extra request cost.
 - [ ] K13: sessions are per-project, 0600/0700, metadata-stamped; `--resume` works; a missed title

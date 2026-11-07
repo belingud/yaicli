@@ -45,6 +45,14 @@ on demand by `ensure_config_file()` (first real run, never for `--version`/`--he
   A fresh `HOME` therefore has `cfg["PROVIDER"]` without raising `KeyError: 'PROVIDER'`, and `YAI_PROVIDER`
   overrides file/default values. `tests/test_config.py` asserts no file exists until `ensure_config_file()` is
   called (then 0600 file / 0700 dir, never overwriting an existing file).
+- `TOOL_POLICY` (v0.21 K10; `YAI_TOOL_POLICY`, type `str`, default `standard`) exists in both the map and
+  the INI template. It is **normalized at the consumption site** (`LLMClient._resolve_tool_policy_mode`),
+  not in the config layer: empty = unset → `standard`; unrecognized → `standard` + one stderr warning;
+  case/whitespace-insensitive `readonly|standard|trusted`. Do not add a config-layer validator for it.
+- `WORKSPACE_ROOT` (empty = cwd) is used by the standalone shell tool's cwd guard and, since v0.21 K11,
+  by the filesystem write guard; `execute_tool_call` exports it (and the other `TOOL_*` guardrails) via
+  environment variables right before a shell call or fs mutation, so config.ini / `--cwd` win over a
+  stale user-exported env value.
 - `MAX_HISTORY` bounds the prompt history file (see Prompt History below) and `ROLE_MODIFY_WARNING` gates
   the built-in-role warning in `role.py`; both are real consumers now, not dead keys.
 
@@ -83,6 +91,9 @@ on demand by `ensure_config_file()` (first real run, never for `--version`/`--he
   `TOOL_OUTPUT_DIR = DEFAULT_CHAT_HISTORY_DIR/tool-outputs`; `HISTORY_FILE = get_history_file()`
   (`XDG_STATE_HOME/yaicli/history` when set, else `~/.yaicli_history`; empty HOME falls back to a temp dir).
   Tests patch `yaicli.config.CONFIG_PATH` (the reading module) and `yaicli.cli.HISTORY_FILE` (the consuming module).
+  v0.21 K11 backup files are the exception: `<workspace>/.yaicli-backups/<UTC stamp>/<relative path>` is
+  resolved by `yaicli/tools/workspace.py` from the workspace root (not the config dir), always 0600/0700,
+  and has no retention/cleanup yet.
 - `StrEnum` has a Python 3.10 fallback (`class StrEnum(str, Enum)`); use it for new enums, never import `enum.StrEnum`.
 - `DEFAULT_ROLES` seeds role state in memory (not on disk at import); `DEFAULT_CONFIG_INI` must stay in sync with
   `DEFAULT_CONFIG_MAP` (template-only keys are invisible to env/type conversion; map-only keys are not written for
