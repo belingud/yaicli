@@ -1,5 +1,137 @@
 
 ---
+## [0.21.0](https://github.com/belingud/yaicli/compare/v0.20.0..v0.21.0) - 2026-11-07
+
+### ⛰️  Features
+
+- feat(chat): isolate sessions per project, stamp metadata and add --resume (K13)
+
+Sessions now live under ~/.yaicli/sessions/<sha256(cwd)[:16]>/ (0700 dirs,
+0600 atomic files) unless CHAT_HISTORY_DIR is explicitly overridden, which
+keeps the old flat directory. Each session records model/provider/role/cwd
+and created/updated timestamps (legacy JSON loads fine and is backfilled on
+save). New --resume continues the newest session of the current project
+with a one-line notice; no session starts a new one explicitly. A missed
+--chat title now prints an explicit notice instead of silently starting a
+new session. The prompt history file is created 0600 with 0700 dirs and
+legacy 0644 files are repaired on append/trim. Old temp-dir sessions are
+left in place (no auto-migration); tests cover path keying, modes,
+metadata, resume/miss semantics and the history privacy. - ([7def9ad](https://github.com/belingud/yaicli/commit/7def9adad9b3e503ab5dcc726e3ceb69b13a61aa)) - Belingud
+- feat(context): auto-load project AGENTS.md context into the system prompt (K12)
+
+New stdlib yaicli/project_context.py discovers AGENTS.md / CLAUDE.md /
+.yaicli.md from the current directory up to the git root (inclusive),
+outermost first so the most specific instructions come last, deduping
+symlinked files. The bounded block is appended to the role system message
+(config: ENABLE_PROJECT_CONTEXT default true, PROJECT_CONTEXT_MAX_CHARS
+default 20000, YAI_ env keys); truncation prints one stderr notice and
+unreadable files are skipped. With no project files the message payload is
+byte-identical to before, disabled mode does zero filesystem reads, and
+nothing is written at import. - ([001258f](https://github.com/belingud/yaicli/commit/001258f3a667cbc264654690a17cfef4a4d8f25f)) - Belingud
+- feat(tools): confine writes to the workspace, back up mutations and add /undo (K11)
+
+fs_write_file / fs_edit_file / fs_file_operations now go through a stdlib
+workspace guard before execution: resolved targets must stay strictly inside
+WORKSPACE_ROOT (cfg/env, default cwd), symlink escapes are refused, and
+.git/.ssh/.aws/.gnupg components plus .env*/*.pem/*.key basenames are
+protected. Existing targets are backed up to .yaicli-backups (0600/0700)
+before the mutation; a failed backup fails closed. Successful mutations are
+pushed onto a bounded in-memory stack and /undo restores the last change or
+deletes files the agent created. Denials are in-band JSON the model can act
+on; fs_edit_file(dry_run) creates no backup/undo. - ([d305e92](https://github.com/belingud/yaicli/commit/d305e924e8bd6a79daa069ef4d043c49b04f39c1)) - Belingud
+- feat(permissions): add TOOL_POLICY readonly/standard/trusted modes (K10)
+
+The session-wide TOOL_POLICY mode (YAI_TOOL_POLICY env > config.ini >
+default standard) is a hard ceiling/floor in the tool gate: readonly
+auto-allows read/network tools and denies write/exec even when they are
+pre-approved or confirmation is disabled; trusted auto-allows every
+non-dangerous tool; danger-classified shell commands keep their existing
+confirmation/denial precedence in every mode. Every audit line now records
+the effective policy. Invalid values fall back to standard with one
+stderr warning.
+
+Also fixes a test-hygiene issue where the permission test suite appended
+to the real user audit log by default. - ([09a41ad](https://github.com/belingud/yaicli/commit/09a41ad29f71177d7474dc22f664738764e1ba35)) - Belingud
+
+### 🐛 Bug Fixes
+
+- fix(providers): keep every tool call in multi-call turns (K14)
+
+A provider response can now carry multiple calls: LLMResponse.tool_calls
+(legacy .tool_call is kept in sync via explicit dual-set) and a shared
+stdlib accumulator handles streaming index/id merging, same-name calls
+without ids, id-then-index folding and dedupe. LLMClient collects and
+executes every call, appending all assistant tool_calls and matching tool
+results while filtering by tool policy.
+
+Fixes silent drops: Anthropic non-stream/stream parallel tool_use blocks,
+Gemini streamed same-name function calls, Ollama multiple calls, and the
+single-slot streaming providers (chatglm/huggingface, minimax, ai21,
+mistral, openai-compatible) which also no longer surface partial arguments
+mid-stream. New helper/schema/provider/end-to-end tests under tests/llms. - ([7d5fa88](https://github.com/belingud/yaicli/commit/7d5fa88f7291707c7c2cc954634c4b4abee176aa)) - Belingud
+
+### 📚 Documentation
+
+- docs: document v0.21 project context, per-project sessions and parallel tool calls
+
+Adds docs/usage/project-context.md (AGENTS.md discovery/cap/disable and
+untrusted-input note) and docs/usage/sessions.md (per-project store, 0700/
+0600, metadata, --resume, missed-title notice, no auto-migration, history
+file privacy). Updates configuration/cli/commands/history/architecture and
+the v0.21 upgrade section for K12-K14, refreshes the stale --help snapshot,
+and extends README/index feature lists and mkdocs nav. - ([0bf4c55](https://github.com/belingud/yaicli/commit/0bf4c55e7572c4de7bc77f3c86c19d6f09868337)) - Belingud
+- docs(spec): record v0.21 K13 per-project sessions and --resume contract
+
+Adds the session-isolation openspec (per-project store, 0600/0700 privacy,
+metadata, --resume, explicit missed-title notice, no auto-migration) and
+updates the Python specs: session paths/keying/override semantics, prompt
+history privacy, --resume/--chat CLI semantics, chat/const module map.
+Marks K13 accepted in the milestone PRD. - ([363a561](https://github.com/belingud/yaicli/commit/363a561628df4af603b11409d08e7c2ca953d6cb)) - Belingud
+- docs(spec): document the plural tool_calls contract and shared accumulator (K14)
+
+Provider guidelines now describe LLMResponse.tool_calls with the legacy
+tool_call mirror, the shared yaicli/llms/tool_calls.py accumulator rules,
+the no-partial-call streaming rule for native providers, and the new
+multi-call test coverage. Marks K14 accepted in the milestone PRD. - ([7a5adfa](https://github.com/belingud/yaicli/commit/7a5adfade2b284e5f67111737091adbeb47f37df)) - Belingud
+- docs(spec): record v0.21 K12 project context auto-load contract
+
+Adds the project-context openspec (discovery to the git root, bounded block
+with truncation notice, disable switch, no-import-writes) and documents the
+new module/config keys plus the CLI message-assembly insertion point.
+Marks K12 accepted in the milestone PRD. - ([3580931](https://github.com/belingud/yaicli/commit/3580931ae6a68f4878ddd3abbf90ee04bf795f1f)) - Belingud
+- docs: document v0.21 permission modes, workspace write safety and /undo
+
+Adds docs/usage/workspace-safety.md (confinement, protected paths, backups,
+/undo, denial reasons, limits), a Permission modes section with the
+readonly/standard/trusted table and audit policy field, the TOOL_POLICY
+config key, the /undo command, a v0.21 upgrade section describing the
+default-on workspace confinement behavior change, and README/index safety
+mentions. - ([116166c](https://github.com/belingud/yaicli/commit/116166ca4806f2047282f9fdfac8d560f31ef17c)) - Belingud
+- docs(spec): record v0.21 K10 tool policy modes and K11 workspace write safety
+
+Adds the workspace-write-safety openspec (confinement, protected paths,
+backups, /undo, in-band denial contract) and the session-wide TOOL_POLICY
+requirements + audit policy field to tool-execution-confirmation. Updates
+the Python layer specs (function-tool guidelines, CLI/REPL commands,
+config/paths, module map) and marks K10/K11 accepted in the milestone PRD. - ([fd25b83](https://github.com/belingud/yaicli/commit/fd25b8393dedd63d3f80d115c0e005db96d79200)) - Belingud
+- docs(changelog): update changelog for v0.20.0 release
+
+Sync docs/changelog.md, refresh uv.lock for 0.20.0, and teach git-cliff to
+group build(deps) commits so the K09 packaging change is listed. - ([5e69202](https://github.com/belingud/yaicli/commit/5e69202d06bd8a31d35daa27f4cd983040a19ccd)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore(task): record v0.21 K10-K14 implementation tasks and acceptance
+
+Adds the per-item Trellis subtasks (K10-K14) with their PRDs/context and
+marks every milestone acceptance item checked in the parent PRD. Release
+bookkeeping (archives/journal) follows the v0.21.0 tag. - ([e52b44d](https://github.com/belingud/yaicli/commit/e52b44de1c915598e65fcc49e391a1fba510c9c8)) - Belingud
+- chore: record journal - ([0feeb96](https://github.com/belingud/yaicli/commit/0feeb96851226b10d95cb1482236d89ed6afd26f)) - Belingud
+- chore(task): plan the v0.21 safety foundation milestone - ([c59f197](https://github.com/belingud/yaicli/commit/c59f197194c9a6043309958aaabb48c4bb787747)) - Belingud
+- chore(task): archive 11-05-v020-lightweight-safety - ([a852c58](https://github.com/belingud/yaicli/commit/a852c58f086384b380d2b71e86ac620b1f1a4e96)) - Belingud
+
+
+---
 ## [0.20.0](https://github.com/belingud/yaicli/compare/v0.19.1..v0.20.0) - 2026-11-07
 
 ### 🐛 Bug Fixes
