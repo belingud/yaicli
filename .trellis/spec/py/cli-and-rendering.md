@@ -27,6 +27,16 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 - Print-and-exit flags (`--version`, `--list-roles`, `--list-chats`, ...) use `@option_callback`
   (`yaicli/utils.py`), which runs the callback then raises `typer.Exit`; never construct `CLI` for
   them, and keep `--version/--help/--template/--list-*` free of config-file creation (K21 contract).
+- Chat session entry points (v0.21 K13): `--chat` starts the REPL (the prompt positional, if any, is a
+  session title); a missed title prints an explicit "starting a new session" notice, never a silent
+  fallback. `--resume` (ChatOptions) implies chat and resumes the newest saved session of the current
+  project via `CLI._resume_latest_session()` — one-line notice with title + recorded model/provider/role,
+  and an explicit stderr notice when no session exists. `--resume` is warned+ignored under
+  `--print`/`--output-format` and when stdin is redirected, like `--chat`. The flag reaches the CLI through
+  `configure_headless(resume=...)` (`CLI.run()` signature unchanged). Session metadata is captured by
+  `CLI._apply_session_metadata()` before saving; a resumed session keeps its recorded values. Because
+  `--list-chats` is an option callback that runs before `--cwd` applies, it lists the invocation cwd's
+  project sessions (documented known caveat).
 - K08 lazy option callbacks: `entry.py` no longer imports `chat`/`role`/`functions`/`llms.provider` at
   module scope. Typer still introspects callback signatures at import time, so thin `_role_*`/`_chat_*`/
   `_provider_*`/`_*_functions_callback` proxies import the heavy module only when the flag is used.

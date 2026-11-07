@@ -86,10 +86,14 @@ on demand by `ensure_config_file()` (first real run, never for `--version`/`--he
 
 - Paths are resolved in `const.py` at import from the environment and must not be hardcoded elsewhere:
   `CONFIG_DIR`/`CONFIG_PATH` (`get_config_dir()`), `ROLES_DIR`, `FUNCTIONS_DIR`, `FUNCTIONS_MANIFEST_PATH`,
-  `MCP_JSON_PATH`, `TOOL_PERMISSIONS_PATH`, `TOOL_AUDIT_PATH` all live under `CONFIG_DIR`; chat sessions live under
-  `DEFAULT_CHAT_HISTORY_DIR = <tempdir>/yaicli/chats` with full tool outputs spilled to
-  `TOOL_OUTPUT_DIR = DEFAULT_CHAT_HISTORY_DIR/tool-outputs`; `HISTORY_FILE = get_history_file()`
+  `MCP_JSON_PATH`, `TOOL_PERMISSIONS_PATH`, `TOOL_AUDIT_PATH` all live under `CONFIG_DIR`; chat sessions are
+  **per project** (v0.21 K13) under `get_sessions_dir() = ~/.yaicli/sessions/<sha256(resolved cwd)[:16]>/`
+  (`get_project_sessions_dir()`), while `DEFAULT_CHAT_HISTORY_DIR = <tempdir>/yaicli/chats` is only the legacy
+  flat directory and the anchor for `TOOL_OUTPUT_DIR = DEFAULT_CHAT_HISTORY_DIR/tool-outputs`
+  (tool spills still go to the temp dir); an explicit `CHAT_HISTORY_DIR` env/config value different from that
+  built-in default keeps the flat directory (`chat.resolve_default_chat_dir()`); `HISTORY_FILE = get_history_file()`
   (`XDG_STATE_HOME/yaicli/history` when set, else `~/.yaicli_history`; empty HOME falls back to a temp dir).
+  Session dirs are 0700 and session files 0600 (best effort, atomic write); `HISTORY_FILE` is created 0600.
   Tests patch `yaicli.config.CONFIG_PATH` (the reading module) and `yaicli.cli.HISTORY_FILE` (the consuming module).
   v0.21 K11 backup files are the exception: `<workspace>/.yaicli-backups/<UTC stamp>/<relative path>` is
   resolved by `yaicli/tools/workspace.py` from the workspace root (not the config dir), always 0600/0700,
@@ -170,6 +174,9 @@ Two mechanisms share one manager (`ctx_mgr` global), and `CLI._build_messages()`
 `LimitedFileHistory(FileHistory)` writes to `HISTORY_FILE` (`get_history_file()`: `XDG_STATE_HOME/yaicli/history`
 when set, else `~/.yaicli_history`) and trims every `trim_every`
 appends (default 2) to the newest `max_entries` prompt-toolkit records (`# timestamp` header + `+line` lines).
+`history.prepare_history_file()` (v0.21 K13) creates the file 0600 and created dirs 0700, raises `OSError` for the
+caller to degrade, and returns `None` for non-`str`/`Path` inputs; `store_string`/`_trim_history` best-effort
+re-apply 0600 so legacy 0644 files are repaired on the next append/trim.
 `CLI.prepare_chat_loop()` makes the history setup OSError-tolerant (read-only HOME must not crash: warn once,
 continue without history) and passes `max_entries=cfg["MAX_HISTORY"]`; a non-positive limit disables saving
 (`store_string` no-ops; the `_trim_history()` guard also clears the file if trimming is forced directly).
@@ -182,7 +189,8 @@ multi-line trimming and the zero-limit behaviour — keep the `# ` / `+` file fo
 ## Schemas (`schemas.py`) — Cross-Layer Contracts
 
 - `ChatMessage(role, content=None, name=None, tool_call_id=None, tool_calls=[], reasoning=None, images=[])`,
-  `ToolCall(id, name, arguments)`, `LLMResponse(reasoning, content, finish_reason, tool_call)`, `ImageData(data,
+  `ToolCall(id, name, arguments)`, `LLMResponse(reasoning, content, finish_reason, tool_call, tool_calls)`,
+  `ImageData(data,
   media_type, is_url)`, `ToolPolicy(enable_functions, enable_mcp)` (frozen, per request). Control signals: `RefreshLive`,
   `StopLive` (unused), `ConfirmToolCall(tool_call)`, `ToolConfirmDecision` (`once|session|persist|deny`).
 - Adding a `ChatMessage` field is cross-layer: update provider conversion
