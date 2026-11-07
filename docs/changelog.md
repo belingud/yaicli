@@ -1,5 +1,78 @@
 
 ---
+## [0.20.0](https://github.com/belingud/yaicli/compare/v0.19.1..v0.20.0) - 2026-11-07
+
+### 🐛 Bug Fixes
+
+- fix(viewer): show full tool names in the output list
+
+The compact labels from 2f026ca (shell/read/web/...) hid which tool actually ran.
+The list and header now show the raw tool name again (execute_shell_command,
+fs_read_file, fetch_webpage, _mcp__<tool>, ...), with the call caption line and
+result size unchanged so mixed-tool turns stay scannable. - ([641d7cf](https://github.com/belingud/yaicli/commit/641d7cf8194675297a088955bc4a898f4f5d6e9b)) - Belingud
+
+### 📦 Build
+
+- build(deps): keep tools complete in base and split Anthropic cloud extras (K09)
+
+- base keeps ddgs/trafilatura/fastmcp so every builtin tool and MCP works on a
+  plain 'pip install yaicli'; only the cloud SDK closure moves out
+- anthropic[bedrock,vertex] -> [bedrock]/[vertex] extras; [all] stays complete
+- ProviderFactory maps missing optional SDKs to a classified AgentError with the
+  'pip install "yaicli[<extra>]"' hint; Anthropic Bedrock/Vertex fast-fail with
+  the right extra and no longer forward the shared api_key to the cloud clients
+- tests/test_packaging.py locks the tools-complete base policy (3.10-compatible
+  parser); install/upgrade/provider docs updated
+- verified: wheel METADATA + fresh venv base install imports all 12 builtin tool
+  modules, fastmcp/trafilatura/ddgs, and ai --list-functions lists builtin tools - ([d874b09](https://github.com/belingud/yaicli/commit/d874b091287e0efcf852041d051bf2a835b66ac4)) - Belingud
+
+### 📚 Documentation
+
+- docs: refresh lightweight claims and v0.20 upgrade notes
+
+- README/docs index: v0.20 measured numbers (entry/lazy client: REPL ready
+  ~0.55-0.65s, --help no longer imports the CLI stack, 95 dist base with the
+  cloud SDK closure opt-in)
+- upgrade notes: v0.20 is current; startup/viewer/cloud-extras migration list
+- install docs point at the v0.20 + v0.19 change lists - ([a9f347d](https://github.com/belingud/yaicli/commit/a9f347d24cd9e4fe03512a3f6b4c6418d5314c30)) - Belingud
+- docs(spec): require raw tool names in the Ctrl+O viewer chrome
+
+Capture the 641d7cf lesson so abbreviated viewer labels do not come back:
+- function-tool-guidelines.md: new 'Viewer chrome must show the raw tool name'
+  rule (entry.name in list + header, caption/size are supplements, no aliases,
+  no _mcp__ stripping, wrong/correct examples, locking test names)
+- cli-and-rendering.md: Ctrl+O viewer bullet points at the rule - ([9be64e2](https://github.com/belingud/yaicli/commit/9be64e27caa0928f9f29761bcbf3dc9d5ccbc770)) - Belingud
+- docs(changelog): update changelog for v0.19.1 release - ([fc8b98c](https://github.com/belingud/yaicli/commit/fc8b98cf0a821f2cfc592b57d7d89d24586ac291)) - Belingud
+
+### ⚡ Performance
+
+- perf(startup): defer heavy imports and build the LLM client lazily (K08)
+
+- entry.py: lazy option-callback proxies for role/chat/functions/provider so
+  --help/--template no longer import the CLI stack (entry import 563ms -> 311ms)
+- cli.py: prompt_toolkit, @path completer and file history are imported on first
+  REPL/exec use; no PromptSession is built in __init__ (REPL builds the only one)
+- cli.py: LLM client constructed on first access via a client property, so the REPL
+  shows its first prompt before the provider SDK import (proxy ~1.55s -> ~0.55s)
+- scripts/bench.py + bench.yml: cold-start gate (version/help/template/entry import/
+  REPL readiness/one-shot-to-first-request) with P50 limits - ([3d33651](https://github.com/belingud/yaicli/commit/3d33651a88ab54175f5b654bc2388e0fc49d0a57)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- ci(bench): widen the one-shot local-overhead gate to 2200 ms for shared runners - ([390e045](https://github.com/belingud/yaicli/commit/390e045e5b8caf1838f75f877a395b09ec0ee127)) - Belingud
+- chore(task): mark W1 (K08+K09) acceptance in the v0.20 PRD - ([b42c5a1](https://github.com/belingud/yaicli/commit/b42c5a16afbf00a8dd33d08cbf5e53dd1aea224c)) - Belingud
+- chore(task): archive 11-05-k09-tools-complete-packaging - ([7000679](https://github.com/belingud/yaicli/commit/70006791f280af7e9daf380477f51295e8d62a11)) - Belingud
+- chore(task): archive 11-05-k08-startup-latency - ([58032af](https://github.com/belingud/yaicli/commit/58032aff67e49cc6a0c9e881d44bcce99fc1332c)) - Belingud
+- chore: record journal - ([fddffba](https://github.com/belingud/yaicli/commit/fddffba96dc070bd4add807c8ba0ba803ac7dcd7)) - Belingud
+- chore(task): archive 11-05-background-generation-verify - ([dfae6fe](https://github.com/belingud/yaicli/commit/dfae6fe9b66f83f7763ee89f40022bec73e9f78c)) - Belingud
+- chore(task): archive 11-05-background-generation-cancel - ([133bb3d](https://github.com/belingud/yaicli/commit/133bb3d999947cc9280fd722a5e79f0078f556e7)) - Belingud
+- chore(task): archive 11-05-background-generation-cli - ([9b5355c](https://github.com/belingud/yaicli/commit/9b5355c2dba3613b11228f11d59d2dbf037a49d2)) - Belingud
+- chore(task): archive 11-05-worker-console-routing - ([b0d359e](https://github.com/belingud/yaicli/commit/b0d359ea657766cf4db7d3bc3749938eb57c4b84)) - Belingud
+- chore(task): archive 11-05-tool-output-viewer - ([3f7f1ac](https://github.com/belingud/yaicli/commit/3f7f1ac634d3499a7080f60cf61bfa819bfe094c)) - Belingud
+- chore(task): archive 11-05-stream-bridge - ([748550f](https://github.com/belingud/yaicli/commit/748550fa3aa42333bcb2fefff7382b89d46d4534)) - Belingud
+
+
+---
 ## [0.19.1](https://github.com/belingud/yaicli/compare/v0.19.0..v0.19.1) - 2026-11-05
 
 ### ⛰️  Features
