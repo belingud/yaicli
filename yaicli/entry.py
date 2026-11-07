@@ -303,6 +303,13 @@ class ChatOptions:
         rich_help_panel="Chat Options",
     )
 
+    resume = typer.Option(
+        False,
+        "--resume",
+        help="Resume the most recent chat session for the current project.",
+        rich_help_panel="Chat Options",
+    )
+
     list_chats = typer.Option(
         False,
         "--list-chats",
@@ -600,6 +607,7 @@ def main(
     show_role: str = RoleOptions.show_role,  # noqa: F841
     # ------------------- Chat Options -------------------
     chat: bool = ChatOptions.chat,
+    resume: bool = ChatOptions.resume,
     list_chats: bool = ChatOptions.list_chats,  # noqa: F841
     # ------------------- Headless Options -------------------
     print_mode: bool = HeadlessOptions.print_mode,
@@ -654,6 +662,7 @@ def main(
         ai --code "Write a fibonacci generator in Python"
         ai --chat "What's the meaning of life"  # Start a chat session with a title
         ai --chat  # Start a temporary chat session
+        ai --resume  # Continue the newest chat session of this project
         ai --shell "Start docker image python:3.13.5-alpine3.22 with ports 8080"
     """
     if template:
@@ -672,11 +681,19 @@ def main(
     if max_turns is not None:
         cfg["MAX_TOOL_CALL_DEPTH"] = max_turns
 
+    # ``--resume`` is an interactive mode: it implies --chat (v0.21 K13).
+    if resume:
+        chat = True
+
     # Structured output and -p are explicit one-shot modes: a REPL cannot emit
     # one JSON document (and must not mix prompts with machine output).
     if (print_mode or output_format is not OutputFormat.TEXT) and chat:
-        _warn("--chat is ignored with --print/--output-format; running one-shot.")
+        if resume:
+            _warn("--resume is ignored with --print/--output-format; running one-shot.")
+        else:
+            _warn("--chat is ignored with --print/--output-format; running one-shot.")
         chat = False
+        resume = False
 
     # # Combine prompt argument with stdin content if available
     final_prompt = prompt
@@ -691,8 +708,12 @@ def main(
         # prompt_toolkit will raise EOFError if stdin is redirected
         # Set chat to False to prevent starting interactive mode.
         if chat:
-            _warn("--chat is ignored when stdin was redirected.")
+            if resume:
+                _warn("--resume is ignored when stdin was redirected.")
+            else:
+                _warn("--chat is ignored when stdin was redirected.")
             chat = False
+            resume = False
     if not any([final_prompt, chat, image]):
         if output_format is not OutputFormat.TEXT:
             # Machine-readable output must not degrade into a help screen.
@@ -763,6 +784,7 @@ def main(
             fail_on_tool_denied=fail_on_tool_denied,
             max_turns=max_turns,
             cwd=resolved_cwd,
+            resume=resume,
         )
         # v0.19 K06: expose --yes/--allowed-tools to the tool gate (per-run grants).
         _apply_run_tool_policy(cli, yes=yes, allowed_tools=allowed_tool_patterns)

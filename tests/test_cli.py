@@ -969,7 +969,6 @@ class TestKeyBindingsAndSetup:
         cli_with_mocks._pending_prompt_text = "draft text"
         with (
             patch("yaicli.cli.PromptSession", return_value=mock_session),
-            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
             patch("yaicli.cli.AtPathCompleter"),
             patch("yaicli.cli.LimitedFileHistory"),
         ):
@@ -999,21 +998,20 @@ class TestKeyBindingsAndSetup:
         # Verify key bindings were set up
         mock_setup_bindings.assert_called_once()
 
-    @patch("yaicli.cli.LimitedFileHistory")
-    @patch("yaicli.cli.PromptSession")
-    @patch("yaicli.cli.HISTORY_FILE")
-    def test_prepare_chat_loop_uses_max_history(
-        self, mock_history_file, mock_prompt_session, mock_limited_history, cli_with_mocks
-    ):
+    def test_prepare_chat_loop_uses_max_history(self, tmp_path, cli_with_mocks):
         """Prompt history is bounded by cfg["MAX_HISTORY"], not INTERACTIVE_ROUND."""
         cli = cli_with_mocks
+        history_file = tmp_path / "history"
         with (
             patch("yaicli.cli.CLI._setup_key_bindings"),
             patch("yaicli.cli.cfg", {**cfg, "MAX_HISTORY": 17}),
+            patch("yaicli.cli.HISTORY_FILE", history_file),
+            patch("yaicli.cli.PromptSession"),
+            patch("yaicli.cli.LimitedFileHistory") as mock_limited_history,
         ):
             cli.prepare_chat_loop()
 
-        mock_limited_history.assert_called_once_with(mock_history_file, max_entries=17)
+        mock_limited_history.assert_called_once_with(history_file, max_entries=17)
         assert cli.interactive_round == cfg["INTERACTIVE_ROUND"]
 
     @patch("yaicli.cli.CLI._setup_key_bindings")
@@ -1298,7 +1296,6 @@ class TestCLICoverage:
         from unittest.mock import MagicMock, patch
 
         with (
-            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
             patch("yaicli.cli.PromptSession", side_effect=[Exception("boom"), MagicMock()]),
         ):
             cli_with_mocks.prepare_chat_loop()
@@ -1330,7 +1327,6 @@ class TestCLICoverage:
         mock_session.prompt.side_effect = ["", "/help", "/exit"]
         with (
             patch("yaicli.cli.PromptSession", return_value=mock_session),
-            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
             patch("yaicli.cli.AtPathCompleter"),
             patch("yaicli.cli.LimitedFileHistory"),
         ):
@@ -1344,7 +1340,6 @@ class TestCLICoverage:
         cli_with_mocks.client.completion_with_tools.side_effect = KeyboardInterrupt
         with (
             patch("yaicli.cli.PromptSession", return_value=mock_session),
-            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
             patch("yaicli.cli.AtPathCompleter"),
             patch("yaicli.cli.LimitedFileHistory"),
         ):
@@ -1360,7 +1355,6 @@ class TestCLICoverage:
         mock_session.prompt.side_effect = [KeyboardInterrupt, KeyboardInterrupt]
         with (
             patch("yaicli.cli.PromptSession", return_value=mock_session),
-            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
             patch("yaicli.cli.AtPathCompleter"),
             patch("yaicli.cli.LimitedFileHistory"),
         ):
@@ -1381,7 +1375,6 @@ class TestCLICoverage:
         mock_session.prompt.side_effect = [ToolOutputViewerRequested(), EOFError]
         with (
             patch("yaicli.cli.PromptSession", return_value=mock_session),
-            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
             patch("yaicli.cli.AtPathCompleter"),
             patch("yaicli.cli.LimitedFileHistory"),
             patch.object(CLI, "_open_tool_output_viewer") as mock_viewer,
@@ -1399,7 +1392,6 @@ class TestCLICoverage:
         mock_session.prompt.side_effect = [KeyboardInterrupt, EOFError]
         with (
             patch("yaicli.cli.PromptSession", return_value=mock_session),
-            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
             patch("yaicli.cli.AtPathCompleter"),
             patch("yaicli.cli.LimitedFileHistory"),
         ):
@@ -1417,7 +1409,6 @@ class TestCLICoverage:
         mock_session.prompt.side_effect = [KeyboardInterrupt, "", KeyboardInterrupt, EOFError]
         with (
             patch("yaicli.cli.PromptSession", return_value=mock_session),
-            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
             patch("yaicli.cli.AtPathCompleter"),
             patch("yaicli.cli.LimitedFileHistory"),
         ):
@@ -1437,7 +1428,6 @@ class TestCLICoverage:
         cli_with_mocks.chat.title = "T"
         with (
             patch("yaicli.cli.PromptSession", return_value=mock_session),
-            patch("yaicli.cli.HISTORY_FILE", MagicMock()),
             patch("yaicli.cli.AtPathCompleter"),
             patch("yaicli.cli.LimitedFileHistory"),
         ):

@@ -10,11 +10,39 @@ from rich.table import Table
 
 from .config import cfg
 from .console import YaiConsole, get_console, safe_text, untrusted_text
+from .const import DEFAULT_CHAT_HISTORY_DIR, get_project_sessions_dir, get_sessions_dir
 from .exceptions import ChatDeleteError, ChatLoadError, ChatSaveError
 from .schemas import ChatMessage, ImageData, ToolCall
 from .utils import option_callback
 
 console: YaiConsole = get_console()
+
+#: Session dirs are private (they contain full conversations); files are 0600.
+SESSION_DIR_MODE = 0o700
+SESSION_FILE_MODE = 0o600
+
+
+def _chmod_quietly(path: Path, mode: int) -> None:
+    """Best-effort POSIX mode change (no-op on platforms without chmod)."""
+    try:
+        os.chmod(path, mode)
+    except OSError:
+        pass
+
+
+def resolve_default_chat_dir() -> Path:
+    """Resolve the session directory used when no explicit one is given.
+
+    v0.21 K13: sessions are isolated per project under
+    ``~/.yaicli/sessions/<sha256(resolved cwd)[:16]>``. An explicit
+    ``CHAT_HISTORY_DIR`` override (config file or ``YAI_CHAT_HISTORY_DIR``) that
+    differs from the built-in default keeps the previous flat-directory
+    behaviour, so scripts/tests pinning that directory are unaffected.
+    """
+    configured = str(cfg.get("CHAT_HISTORY_DIR") or "").strip()
+    if configured and configured != str(DEFAULT_CHAT_HISTORY_DIR):
+        return Path(configured).expanduser()
+    return get_project_sessions_dir()
 
 
 def _tool_call_to_dict(tool_call: ToolCall) -> Dict:
@@ -106,27 +134,78 @@ class Chat:
     history: List[ChatMessage] = field(default_factory=list)
     date: str = field(default_factory=lambda: datetime.now().isoformat())
     path: Optional[Path] = None
+    # ---- v0.21 K13 session metadata (all optional: legacy files lack them) ----
+    #: Model the session was recorded with (``cfg["MODEL"]`` at save time).
+    model: str = ""
+    #: Provider the session was recorded with (``cfg["PROVIDER"]`` at save time).
+    provider: str = ""
+    #: Assistant role name the session was recorded with.
+    role: str = ""
+    #: Absolute working directory the session belongs to.
+    cwd: str = ""
+    #: ISO creation timestamp (falls back to ``date`` for legacy sessions).
+    created_at: str = ""
+    #: ISO timestamp of the last save.
+    updated_at: str = ""
 
     def add_message(self, role: str, content: str) -> None:
         """Add message to the session"""
         self.history.append(ChatMessage(role=role, content=content))
+
+    def update_metadata(
+        self,
+        *,
+        model: Optional[str] = None,
+        provider: Optional[str] = None,
+        role: Optional[str] = None,
+        cwd: Optional[str] = None,
+    ) -> None:
+        """Record session metadata, keeping already-known values when omitted.
+
+        Called by the CLI before every save (K13): model/provider/role/cwd make a
+        resumed session self-describing. Legacy sessions (empty metadata) get
+        backfilled on their next save.
+        """
+        if model is not None:
+            self.model = str(model)
+        if provider is not None:
+            self.provider = str(provider)
+        if role is not None:
+            self.role = str(role)
+        if cwd is not None:
+            self.cwd = str(cwd)
+        if not self.created_at:
+            self.created_at = self.date or datetime.now().isoformat()
+        self.updated_at = datetime.now().isoformat()
 
     def to_dict(self) -> Dict:
         """Convert to dictionary representation, preserving every message field."""
         return {
             "title": self.title,
             "date": self.date,
+            "model": self.model,
+            "provider": self.provider,
+            "role": self.role,
+            "cwd": self.cwd,
+            "created_at": self.created_at or self.date,
+            "updated_at": self.updated_at,
             "history": [_message_to_dict(msg) for msg in self.history],
         }
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Chat":
-        """Create Chat instance from dictionary"""
+        """Create Chat instance from dictionary (legacy files without metadata work)"""
         chat = cls(
             idx=data.get("idx", None),
             title=data.get("title", "Untitled Chat"),
             date=data.get("date", datetime.now().isoformat()),
             path=data.get("path", None),
+            model=str(data.get("model") or ""),
+            provider=str(data.get("provider") or ""),
+            role=str(data.get("role") or ""),
+            cwd=str(data.get("cwd") or ""),
+            created_at=str(data.get("created_at") or ""),
+            updated_at=str(data.get("updated_at") or ""),
         )
 
         for msg_data in data.get("history", []):
@@ -148,6 +227,12 @@ class Chat:
                 data = json.load(f)
                 self.title = data.get("title", self.title)
                 self.date = data.get("date", self.date)
+                self.model = str(data.get("model") or "")
+                self.provider = str(data.get("provider") or "")
+                self.role = str(data.get("role") or "")
+                self.cwd = str(data.get("cwd") or "")
+                self.created_at = str(data.get("created_at") or "")
+                self.updated_at = str(data.get("updated_at") or "")
                 self.history = [_message_from_dict(msg) for msg in data.get("history", [])]
             return True
         except (json.JSONDecodeError, OSError) as e:
@@ -177,8 +262,14 @@ class Chat:
             self.title = f"Chat-{int(time.time())}"
 
         # Update timestamp if not set
+        now = datetime.now().isoformat()
         if not self.date:
-            self.date = datetime.now().isoformat()
+            self.date = now
+        # v0.21 K13 metadata: created_at is fixed at creation (or first save for
+        # legacy sessions), updated_at advances on every save.
+        if not self.created_at:
+            self.created_at = self.date or now
+        self.updated_at = now
 
         # Create a descriptive filename with timestamp and title
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -194,7 +285,11 @@ class Chat:
                 json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
                 f.flush()
                 os.fsync(f.fileno())
+            # Sessions are private (K13): chmod the temp file *before* it becomes
+            # the visible session file so no moment exposes a 0644 session.
+            _chmod_quietly(temp_path, SESSION_FILE_MODE)
             os.replace(temp_path, chat_path)
+            _chmod_quietly(chat_path, SESSION_FILE_MODE)
 
             # Update chat's path to the new file only after a successful replace
             self.path = chat_path
@@ -213,7 +308,9 @@ class Chat:
 class FileChatManager:
     """File system chat manager"""
 
-    chat_dir: Path = field(default_factory=lambda: Path(cfg["CHAT_HISTORY_DIR"]))
+    #: Per-project session store by default (v0.21 K13); an explicit
+    #: ``CHAT_HISTORY_DIR`` override keeps the old flat directory.
+    chat_dir: Path = field(default_factory=resolve_default_chat_dir)
     max_saved_chats: int = field(default_factory=lambda: cfg["MAX_SAVED_CHATS"])
     current_chat: Optional[Chat] = None
     _chats_map: Optional[Dict[str, Dict[str, Chat]]] = None
@@ -227,9 +324,12 @@ class FileChatManager:
             self.chat_dir = Path(self.chat_dir)
 
     def _ensure_chat_dir(self) -> bool:
-        """Create the chat directory if needed. Best effort, never raises."""
+        """Create the session directory if needed. Best effort, never raises."""
         try:
             self.chat_dir.mkdir(parents=True, exist_ok=True)
+            # v0.21 K13: session dirs are private (they contain conversations).
+            _chmod_quietly(self.chat_dir, SESSION_DIR_MODE)
+            self._harden_sessions_store()
             return True
         except OSError as e:
             console.print(
@@ -237,6 +337,25 @@ class FileChatManager:
                 style="yellow",
             )
             return False
+
+    def _harden_sessions_store(self) -> None:
+        """Best-effort 0700 for the managed session store root(s).
+
+        Only paths under ``~/.yaicli/sessions`` are touched: a user-provided
+        ``CHAT_HISTORY_DIR`` override may point at a shared directory whose
+        modes are not ours to change.
+        """
+        try:
+            sessions_root = get_sessions_dir()
+        except OSError:  # pragma: no cover - HOME resolution edge
+            return
+        try:
+            if self.chat_dir != sessions_root and sessions_root not in self.chat_dir.parents:
+                return
+            if sessions_root.exists():
+                _chmod_quietly(sessions_root, SESSION_DIR_MODE)
+        except OSError:  # pragma: no cover - permission edge
+            pass
 
     @property
     def chats_map(self) -> Dict[str, Dict[str, Chat]]:
@@ -423,6 +542,30 @@ class FileChatManager:
         if chat.load():
             self.current_chat = chat
         return chat
+
+    def latest_chat(self) -> Optional[Chat]:
+        """Load the most recently saved session in this project (v0.21 K13).
+
+        ``chats_map["index"]`` is ordered newest-first (session files are sorted
+        by mtime), so index ``"1"`` is the most recent session. Returns ``None``
+        when the project has no saved session (or the newest file cannot be
+        parsed), so ``--resume`` can print an explicit notice instead of silently
+        starting a new session.
+        """
+        chats = self.list_chats()
+        if not chats:
+            return None
+
+        newest = chats[0]
+        if newest.path is None or not newest.path.exists():
+            return None
+        try:
+            if not newest.load():
+                return None
+        except ChatLoadError:
+            return None
+        self.current_chat = newest
+        return newest
 
     def validate_chat_index(self, index: Union[str, int]) -> bool:
         """Validate a chat index and return success status"""

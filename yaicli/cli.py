@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import time
@@ -11,7 +12,7 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from .chat import Chat, FileChatManager, chat_mgr
+from .chat import Chat, FileChatManager, chat_mgr, resolve_default_chat_dir
 from .cmd_handler import CMD_COMPACT, CMD_UNDO, CmdHandler
 from .config import cfg
 from .console import get_console, get_error_console, safe_text, untrusted_text
@@ -38,7 +39,7 @@ from .const import (
 )
 from .context import ContextManager, ctx_mgr
 from .errors import EXIT_ERROR, EXIT_OK, EXIT_SIGINT, EXIT_TOOL_DENIED, ErrorKind, classify_exception
-from .exceptions import ChatSaveError, YaicliError
+from .exceptions import ChatLoadError, ChatSaveError, YaicliError
 from .printer import Printer
 from .project_context import load_project_context
 from .role import Role, RoleManager, role_mgr
@@ -147,6 +148,7 @@ class CLI:
         "print_mode",
         "output_format",
         "quiet",
+        "resume",
         "yes",
         "allowed_tools",
         "fail_on_tool_denied",
@@ -206,6 +208,8 @@ class CLI:
         self.print_mode: bool = bool(print_mode)
         self.output_format: str = output_format if output_format in OUTPUT_FORMATS else DEFAULT_OUTPUT_FORMAT
         self.quiet: bool = bool(quiet)
+        #: v0.21 K13: --resume continues the newest session of this project.
+        self.resume: bool = False
         self.interactive: bool = self._stdin_is_tty() and self._stdout_is_tty() and not self.print_mode
         self.machine_output: bool = (not self.interactive) or self.quiet or self.output_format != "text"
         self.exit_code: int = EXIT_OK
@@ -232,6 +236,10 @@ class CLI:
         # for the final result/events.
         self.console = get_console() if not self.machine_output else get_error_console()
         self.chat_manager = chat_manager or chat_mgr
+        if chat_manager is None and hasattr(self.chat_manager, "chat_dir"):
+            # ``--cwd`` may have changed the process cwd after import: re-resolve
+            # the per-project session directory (v0.21 K13).
+            self.chat_manager.chat_dir = resolve_default_chat_dir()
         self.role_manager = role_manager or role_mgr
         self.context_manager = context_manager or ctx_mgr
         self.role: Role = self.role_manager.get_role(self.role_name)
@@ -265,10 +273,11 @@ class CLI:
         self.is_temp_session = True
         self.chat = Chat(title="", history=[])
 
-        # Get and create chat history directory from configuration
-        self.chat_history_dir = Path(cfg["CHAT_HISTORY_DIR"])
-        # if not self.chat_history_dir.exists():
-        #     self.chat_history_dir.mkdir(parents=True, exist_ok=True)
+        # Session directory actually used by the manager (per-project by default).
+        manager_dir = getattr(self.chat_manager, "chat_dir", None)
+        self.chat_history_dir = (
+            Path(manager_dir) if isinstance(manager_dir, (str, Path)) else resolve_default_chat_dir()
+        )
 
         # Detect OS and Shell if set to auto
         if cfg["OS_NAME"] == DEFAULT_OS_NAME:
@@ -360,6 +369,7 @@ class CLI:
         fail_on_tool_denied: bool = False,
         max_turns: Optional[int] = None,
         cwd: Optional[str] = None,
+        resume: bool = False,
     ) -> None:
         """Apply the v0.19 headless/scripting flags (called once by entry.main).
 
@@ -381,6 +391,8 @@ class CLI:
         else:
             self.max_turns = cfg["MAX_TOOL_CALL_DEPTH"]
         self.cwd = cwd
+        # v0.21 K13: --resume keeps the newest project session as the REPL target.
+        self.resume = bool(resume)
 
         # The interactive contract: a human terminal is available *and* we are not
         # asked for explicit one-shot output. Everything else is machine output.
@@ -696,6 +708,13 @@ class CLI:
         if title:
             self.chat.title = title
 
+        # v0.21 K13: persist model/provider/role/cwd/created_at/updated_at.
+        try:
+            self._apply_session_metadata(self.chat)
+        except AttributeError:
+            # Legacy/bare Chat-like object (tests/integrations): keep saving it.
+            pass
+
         # Save chat and get the saved title back
         try:
             saved_title = self.chat_manager.save_chat(self.chat)
@@ -780,6 +799,94 @@ class CLI:
         else:
             self.console.print(f"Failed to delete chat: {safe_text(chat_data.title)}", style="bold red")
             return False
+
+    # ------------------- Session metadata / resume (v0.21 K13) -------------------
+    def _apply_session_metadata(self, chat: Chat) -> None:
+        """Record model/provider/role/cwd on a session before it is saved.
+
+        Resumed sessions keep their recorded values (they describe how the
+        conversation was produced); new/legacy sessions get the current config.
+        """
+        model = str(cfg.get("MODEL", "") or "")
+        provider = str(cfg.get("PROVIDER", "") or "")
+        try:
+            cwd = os.getcwd()
+        except OSError:  # pragma: no cover - deleted cwd
+            cwd = ""
+        if not chat.model:
+            chat.model = model
+        if not chat.provider:
+            chat.provider = provider
+        chat.role = chat.role or str(self.role_name or "")
+        if not chat.cwd:
+            chat.cwd = cwd
+        chat.update_metadata()
+
+    @staticmethod
+    def _session_notice(chat: Chat) -> str:
+        """One-line description of a resumed session (title + recorded metadata)."""
+        model = chat.model or "unknown"
+        provider = chat.provider or "unknown"
+        role = chat.role or "unknown"
+        return (
+            f'Resumed session "{chat.title}" '
+            f"(model={model}, provider={provider}, role={role}, messages={len(chat.history)})"
+        )
+
+    def _resume_latest_session(self) -> bool:
+        """Make the newest saved session of this project the active one (--resume).
+
+        Returns:
+            bool: True when an existing session was resumed, False when a new
+            session was started after printing an explicit notice.
+        """
+        try:
+            latest = self.chat_manager.latest_chat()
+        except ChatLoadError as e:
+            get_error_console().print(f"Could not load the latest session: {safe_text(e)}", style="yellow")
+            latest = None
+
+        if latest is None:
+            get_error_console().print(
+                "No saved session found for this project; starting a new session.",
+                style="yellow",
+            )
+            self.chat = Chat(title="", history=[])
+            self._apply_session_metadata(self.chat)
+            self.is_temp_session = True
+            return False
+
+        self.chat = latest
+        self.is_temp_session = False
+        self.chat_start_time = latest.date
+        self.console.print(self._session_notice(latest), style="bold green")
+        return True
+
+    def _start_chat_by_title(self, title: str) -> None:
+        """Load the session named ``title`` or explicitly start a new one.
+
+        v0.21 K13: a missed title must never silently create a session; print
+        one explicit notice instead (the old behaviour made the user believe
+        they were resuming a saved conversation).
+        """
+        loaded: Optional[Chat] = None
+        try:
+            loaded = self.chat_manager.load_chat_by_title(title)
+        except ChatLoadError as e:
+            get_error_console().print(f"Could not load session '{safe_text(title)}': {safe_text(e)}", style="yellow")
+
+        if loaded is not None and loaded.path is not None:
+            self.chat = loaded
+            self.is_temp_session = False
+            self.chat_start_time = loaded.date
+            return
+
+        self.chat = loaded if loaded is not None else Chat(title=title, history=[])
+        self.is_temp_session = False
+        get_error_console().print(
+            f'No saved session titled "{safe_text(title)}" for this project; starting a new session.',
+            style="yellow",
+        )
 
     # ------------------- Special commands -------------------
     def _handle_special_commands(self, user_input: str) -> Union[bool, str]:
@@ -1203,11 +1310,13 @@ class CLI:
 
         # K21: a read-only HOME (containers/CI/sandbox) must not crash the REPL
         # because the history file cannot be created; fall back to in-memory
-        # history and keep going.
+        # history and keep going. K13: create it with 0600 file / 0700 dirs
+        # (it contains every prompt typed, including any pasted secrets).
         history = None
         try:
-            HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-            HISTORY_FILE.touch(exist_ok=True)
+            from .history import prepare_history_file
+
+            prepare_history_file(HISTORY_FILE)
             history = _limited_history_class()(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"])
         except OSError as e:
             get_error_console().print(
@@ -1446,12 +1555,15 @@ class CLI:
             raise typer.Abort()
 
         if chat:
-            # If user provided a title, try to load that chat
-            if user_input and isinstance(user_input, str):
-                loaded_chat = self.chat_manager.load_chat_by_title(user_input)
-                if loaded_chat:
-                    self.chat = loaded_chat
-                    self.is_temp_session = False
+            if getattr(self, "resume", False):
+                # v0.21 K13: continue the newest session of this project
+                # (explicit notice + new session when the project has none).
+                self._resume_latest_session()
+            elif user_input and isinstance(user_input, str):
+                # `ai --chat "<title>"`: resume that session, or print an explicit
+                # notice that a new session is being started (no silent fallback).
+                self._start_chat_by_title(user_input)
+            self._apply_session_metadata(self.chat)
             # Run the interactive chat REPL
             self._run_repl()
             return

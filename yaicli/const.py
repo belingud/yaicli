@@ -7,11 +7,12 @@ except ImportError:
         """Compatible with python below 3.11"""
 
 
+import hashlib
 import os
 import sys
 from pathlib import Path
 from tempfile import gettempdir
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Union
 
 from rich.console import JustifyMethod
 
@@ -87,6 +88,38 @@ def get_history_file() -> Path:
     return get_home_dir() / ".yaicli_history"
 
 
+def get_sessions_dir() -> Path:
+    """Root of the per-project chat session store (v0.21 K13).
+
+    Sessions are HOME-derived (``~/.yaicli/sessions``), not XDG-derived: they are
+    user data that should follow the home directory, and keeping them out of
+    ``$XDG_CONFIG_HOME`` avoids mixing state with the editable config. Resolved
+    lazily from the environment so tests can point ``HOME`` at a temp dir.
+    """
+    return get_home_dir() / ".yaicli" / "sessions"
+
+
+def project_sessions_key(cwd: Optional[Union[str, Path]] = None) -> str:
+    """Stable 16-hex-char key for a project directory (the resolved cwd).
+
+    ``sha256(str(Path(cwd).resolve()))[:16]``: stable across runs, symlink
+    normalised, and deliberately not human readable so directory listings do not
+    leak usernames or project names. Two different directories always map to
+    different keys (16 hex chars = 64 bits is plenty for local projects).
+    """
+    project_dir = Path(cwd) if cwd is not None else Path.cwd()
+    try:
+        resolved = project_dir.resolve()
+    except OSError:  # pragma: no cover - deleted cwd / permission edge
+        resolved = project_dir.absolute()
+    return hashlib.sha256(str(resolved).encode("utf-8")).hexdigest()[:16]
+
+
+def get_project_sessions_dir(cwd: Optional[Union[str, Path]] = None) -> Path:
+    """Per-project session directory: ``get_sessions_dir()/<project key>``."""
+    return get_sessions_dir() / project_sessions_key(cwd)
+
+
 HISTORY_FILE = get_history_file()
 CONFIG_DIR = get_config_dir()
 CONFIG_PATH = CONFIG_DIR / "config.ini"
@@ -117,6 +150,10 @@ DEFAULT_TIMEOUT: int = 60
 DEFAULT_EXTRA_HEADERS: str = "{}"
 DEFAULT_EXTRA_BODY: str = "{}"
 DEFAULT_INTERACTIVE_ROUND: int = 25
+# Legacy flat chat dir and the DEFAULT_CONFIG_MAP value for CHAT_HISTORY_DIR.
+# v0.21 K13: unless CHAT_HISTORY_DIR is explicitly overridden (a value different
+# from this built-in default), FileChatManager stores sessions per project under
+# get_project_sessions_dir(). The constant still anchors TOOL_OUTPUT_DIR.
 DEFAULT_CHAT_HISTORY_DIR: Path = Path(gettempdir()) / "yaicli/chats"
 DEFAULT_MAX_SAVED_CHATS = 20
 DEFAULT_JUSTIFY: JustifyMethod = "default"
