@@ -292,3 +292,82 @@ Ships K08 startup latency, K09 tools-complete packaging and the Ctrl+O full-tool
 ### Next Steps
 
 - Start v0.21 safety foundation (task 11-07-v021-safety-foundation): K10 policy modes, K11 workspace write safety + /undo, K12 AGENTS.md, K13 session isolation, K14 provider tool-call consistency
+
+
+## Session 8: v0.21.0 safety foundation release (K10-K14)
+<!-- trellis-session: v=2 fp=0e2bf2a84e624394 -->
+
+**Date**: 2026-11-07
+**Task**: v0.21.0 safety foundation release (K10-K14)
+**Branch**: `master`
+
+### Summary
+
+Shipped K10 permission policy modes, K11 workspace write safety + /undo, K12 project context, K13 per-project sessions + --resume, K14 multi-provider tool-call consistency; released v0.21.0 to PyPI/docs with specs, openspec and changelog.
+
+### Main Changes
+
+# v0.21.0 — safety foundation (K10–K14)
+
+## Shipped
+
+- **K10 permission policy modes** (`09a41ad`): `TOOL_POLICY` (`YAI_TOOL_POLICY`) with
+  `readonly`/`standard`/`trusted`, enforced as a hard ceiling/floor in the tool gate; readonly auto-allows
+  read/network and hard-denies write/exec even when pre-approved; trusted auto-allows non-dangerous tools;
+  danger-classified shell keeps its precedence in every mode; audit JSONL gained a `policy` field; invalid
+  values fall back to standard with one warning.
+- **K11 workspace write safety + /undo** (`d305e92`): new stdlib `tools/workspace.py` guard called from
+  `execute_tool_call` for `fs_write_file`/`fs_edit_file`/`fs_file_operations`: confinement to
+  `WORKSPACE_ROOT` (default cwd), symlink/`..` escape refusal, protected paths (`.git/.ssh/.aws/.gnupg`,
+  `.env*`, `*.pem`, `*.key`), backups under `<workspace>/.yaicli-backups/` (0600/0700, fail closed), and
+  in-memory bounded undo + `/undo` REPL command. Denials are in-band JSON with actionable reasons.
+- **K12 project context** (`001258f`): stdlib `project_context.py` auto-loads `AGENTS.md`/`CLAUDE.md`/
+  `.yaicli.md` from cwd to the git root into the role system message; bounded by
+  `PROJECT_CONTEXT_MAX_CHARS` (20000), one stderr truncation notice, `ENABLE_PROJECT_CONTEXT` disable,
+  byte-identical payload when no files exist.
+- **K13 session isolation + resume** (`7def9ad`): sessions under
+  `~/.yaicli/sessions/<sha256(cwd)[:16]>/` (0700/0600, atomic) with model/provider/role/cwd/timestamps
+  metadata; explicit `CHAT_HISTORY_DIR` keeps the flat dir; `--resume` continues the newest project
+  session with a notice (explicit new-session notice when none); missed `--chat <title>` is announced, not
+  silent; prompt history created 0600. Old temp-dir sessions left in place (no auto-migration).
+- **K14 multi-provider tool-call consistency** (`7d5fa88`): shared stdlib `llms/tool_calls.py` accumulator
+  and plural `LLMResponse.tool_calls` (legacy `tool_call` mirrored); client collects/executes every call;
+  fixed Anthropic parallel `tool_use` (non-stream+stream), Gemini streamed same-name calls, Ollama multiple
+  calls, chatglm/huggingface, minimax, ai21, mistral and openai-compatible (no partial-args streaming).
+- **Docs/spec/openspec**: permissions modes, workspace-safety, project-context and session pages; upgrade
+  v0.21 section; README/index; specs for tool policy/workspace/context/session/provider contracts; new
+  openspec specs `workspace-write-safety`, `project-context`, `session-isolation` and the tool-policy
+  requirements added to `tool-execution-confirmation`.
+
+## Verification
+
+- Full suite: **2136 passed**; `ruff check yaicli tests` clean; `mkdocs build --strict` passes.
+- `scripts/bench.py --gate`: version 74.8/250ms, help 516/900, template 480/900, entry_import 429/900,
+  repl_ready 600/1800, oneshot_local 1624/2200 — all ok.
+- Release: tag `v0.21.0` (`cec4ae1`), changelog `dc52fa1`; PyPI wheel (283,442 B) + sdist live; GitHub
+  workflows Publish-to-PyPI, Deploy-MkDocs and Startup-benchmark all success; docs changelog shows 0.21.0.
+- Released-wheel smoke in a clean venv: `ai --version` → 0.21.0, `--help` lists `--resume`, `--template`
+  contains `TOOL_POLICY`/`ENABLE_PROJECT_CONTEXT`/`PROJECT_CONTEXT_MAX_CHARS`, new modules import, builtin
+  functions load.
+
+## Next
+
+v0.22.0 «ecosystem & observability» = K16 MCP hardening + K20 secret redaction first, then K17 usage/cost,
+K18 REPL experience, K19 on-demand tool schemas.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `09a41ad` | feat(permissions): add TOOL_POLICY readonly/standard/trusted modes (K10) |
+| `d305e92` | feat(tools): confine writes to the workspace, back up mutations and add /undo (K11) |
+| `001258f` | feat(context): auto-load project AGENTS.md context into the system prompt (K12) |
+| `7def9ad` | feat(chat): isolate sessions per project, stamp metadata and add --resume (K13) |
+| `7d5fa88` | fix(providers): keep every tool call in multi-call turns (K14) |
+| `cec4ae1` | Bump version: 0.20.0 → 0.21.0 |
+| `dc52fa1` | docs(changelog): update changelog for v0.21.0 release |
+
+### Status
+
+[OK] **Completed**
