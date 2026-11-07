@@ -1,6 +1,6 @@
 # Upgrade Notes
 
-This page explains what changes when you upgrade to **v0.19** and what (if anything) you must do.
+This page explains what changes when you upgrade to **v0.20** and what (if anything) you must do.
 Old config files keep working: newly added keys simply fall back to their defaults.
 
 ## Upgrade the package
@@ -43,7 +43,14 @@ If a user file has the same tool name as a built-in, the user file wins. If you 
 built-in version, delete the old copy (or run `--reinstall-functions`) and restart `ai`.
 YAICLI only warns about stale copies; it never silently overwrites your customisations.
 
-## What changed in v0.20 (next release)
+## What changed in v0.20
+
+- **Faster startup**: the REPL shows its first prompt before the provider SDK loads (≈0.55–0.65 s in
+  the sandbox vs ≈1.55 s), and `--help`/one-shot runs no longer import prompt_toolkit. No action needed.
+- **Ctrl+O viewer**: the output list and header show the full tool name (`execute_shell_command`,
+  `fetch_webpage`, ...) so you can tell which tool ran. No action needed.
+- **Cloud provider extras**: the base install stays tools-complete, but the Anthropic Bedrock/Vertex
+  SDK closure moved out of it (see the extras below).
 
 The base install is still **tools-complete** (builtin tools and MCP work out of the box), but the
 Anthropic cloud SDK closure is no longer installed by default: `pip install yaicli` keeps the normal

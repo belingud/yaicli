@@ -153,16 +153,16 @@ Full document: https://belingud.github.io/yaicli/
 ## 🪶 Lightweight & scope
 
 YAICLI stays small on purpose: one `pip install`, no daemon, no background process, no vector
-index. The numbers below were measured before and after the v0.19 startup work; anything still
-marked *planned* lands in v0.20.
+index. The numbers below were measured on the same macOS sandbox across the v0.19 fast path and the
+v0.20 startup/packaging work.
 
 | Metric (baseline = v0.18, macOS sandbox) | Value |
 | --- | --- |
-| `ai --version` startup (P50) | ≈474–504 ms baseline → **≈40–45 ms** measured with the v0.19 fast path (≈38 ms prototype) |
-| `--help` startup (P50) | ≈519–568 ms (dominated by the CLI framework import) |
-| one-shot local overhead (`ai "hi"`, no network) | ≈1.5–1.6 s baseline, of which provider-SDK init is ≈0.9 s; further one-shot startup work is *planned* for v0.20 |
-| REPL ready (provider loaded) | ≈1.55–1.75 s (provider SDK loads at startup; lazy initialization is *planned* for v0.20) |
-| base install closure | **83 dists / 134.7 MB** (includes optional fetch/search/MCP/cloud SDKs; dependency slimming is *planned* for v0.20) |
+| `ai --version` startup (P50) | ≈474–504 ms baseline → **≈40–45 ms** (v0.19 fast path) |
+| `--help` startup (P50) | ≈519–568 ms baseline → **≈450–500 ms** after the v0.20 lazy-import work (the CLI stack is no longer imported for help) |
+| one-shot local overhead (`ai "hi"`, no network) | ≈1.5–1.6 s baseline → **≈1.6 s** in the same sandbox; prompt_toolkit is no longer imported, provider-SDK init (≈0.9 s) still dominates |
+| REPL ready (first prompt) | ≈1.55–1.75 s baseline → **≈0.55–0.65 s** (the LLM client/SDK is constructed on the first request) |
+| base install closure | **95 dists** (v0.19.1: 103): fetch/search/MCP stay in base, the boto3/botocore/google-auth cloud closure (~25–29 MB) is now opt-in via `[bedrock]`/`[vertex]` |
 | idle RSS | ≈30 MB for `--version`; ≈65 MB for a REPL with the OpenAI SDK loaded |
 | background processes / daemons | **none** |
 

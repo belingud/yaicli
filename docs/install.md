@@ -145,7 +145,7 @@ ai --list-functions         # verify sources and stale-copy warnings
 A user function file with the same tool name as a built-in wins over the built-in. If a stale copy
 is detected, YAICLI prints a one-line warning but keeps working.
 
-See [Upgrade Notes](advanced/upgrade.md) for the complete v0.19 change list (new config keys,
+See [Upgrade Notes](advanced/upgrade.md) for the v0.20 and v0.19 change lists (new config keys,
 environment filtering for shell tools, output truncation, permissions v2, headless flags, state
 paths) and rollback instructions.
 
