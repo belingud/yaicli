@@ -40,6 +40,7 @@ from .context import ContextManager, ctx_mgr
 from .errors import EXIT_ERROR, EXIT_OK, EXIT_SIGINT, EXIT_TOOL_DENIED, ErrorKind, classify_exception
 from .exceptions import ChatSaveError, YaicliError
 from .printer import Printer
+from .project_context import load_project_context
 from .role import Role, RoleManager, role_mgr
 from .schemas import ChatMessage, ImageData, RefreshLive, ToolPolicy
 from .tokens import resolve_context_budget, trim_messages_to_budget, trim_oldest_group
@@ -167,6 +168,9 @@ class CLI:
         "interactive_round",
         #: K02: one-shot flag so the group-trim notice is printed at most once.
         "_trim_notified",
+        #: K12: project instruction files are discovered once, on the first request.
+        "_project_context_loaded",
+        "_project_context_text",
         #: Text typed while the assistant was generating (Ctrl+O watcher); used as
         #: the initial prompt buffer for the next input.
         "_pending_prompt_text",
@@ -251,6 +255,10 @@ class CLI:
 
         self.interactive_round = cfg["INTERACTIVE_ROUND"]
         self._trim_notified = False
+        # K12: project instruction files (AGENTS.md/CLAUDE.md/.yaicli.md) are loaded
+        # lazily on the first request so CLI construction stays write/read-free.
+        self._project_context_loaded = False
+        self._project_context_text = ""
         # Typed-ahead text captured by the generation-time Ctrl+O watcher.
         self._pending_prompt_text = ""
         self.chat_start_time = None
@@ -778,10 +786,41 @@ class CLI:
         """Handle special command return: True-continue loop, False-exit loop, str-non-special command"""
         return self.cmd_handler.handle_command(user_input)
 
+    def _get_project_context(self) -> str:
+        """Return the auto-loaded project instruction block (``""`` when none/disabled).
+
+        Discovery runs once per CLI instance on the first request (v0.21 K12): the
+        project files are not re-read on every turn of a REPL session. Configuration is
+        honoured inside :func:`yaicli.project_context.load_project_context`; a disabled
+        feature performs no filesystem reads. Any unexpected failure degrades to "no
+        project context" so a bad file can never break a turn.
+
+        ``getattr`` is used for the cache slots so CLI instances built via
+        ``CLI.__new__`` (as some tests and embedding code do) keep working.
+        """
+        if getattr(self, "_project_context_loaded", False):
+            return getattr(self, "_project_context_text", "")
+        self._project_context_loaded = True
+        text = ""
+        try:
+            result = load_project_context()
+        except Exception:  # pragma: no cover - defensive: never fail the request
+            result = None
+        if result is not None and result.has_content:
+            text = result.text
+        self._project_context_text = text
+        return text
+
     def _build_messages(self, user_input: str, images: Optional[List[ImageData]] = None) -> list[ChatMessage]:
         """Build message list for LLM API with @ file references expanded."""
-        # Create the message list with system prompt
-        messages = [ChatMessage(role="system", content=self.role.prompt)]
+        # Create the message list with system prompt. K12: the project instruction files
+        # are appended to the role prompt (after it, before persistent/@ context); with
+        # no files found the payload stays byte-identical to the pre-K12 behaviour.
+        system_prompt = self.role.prompt
+        project_context = self._get_project_context()
+        if project_context:
+            system_prompt = f"{system_prompt}\n\n{project_context}"
+        messages = [ChatMessage(role="system", content=system_prompt)]
 
         # Add context messages if any
         context_msgs = self.context_manager.get_context_messages()

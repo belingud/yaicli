@@ -149,6 +149,9 @@ DEFAULT_TOOL_DISPLAY_MAX_CHARS: int = 4000
 DEFAULT_TOOL_CALL_PREVIEW_MAX_CHARS: int = 300
 # 0 means "derive from the model context window (70%)" at request time.
 DEFAULT_CONTEXT_BUDGET_TOKENS: int = 0
+# Project instructions auto-loaded into the system prompt (v0.21 K12)
+DEFAULT_ENABLE_PROJECT_CONTEXT: BOOL_STR = "true"
+DEFAULT_PROJECT_CONTEXT_MAX_CHARS: int = 20000
 # Shell tool guardrails (v0.19 K03)
 DEFAULT_TOOL_TIMEOUT: int = 120
 DEFAULT_TOOL_TIMEOUT_MAX: int = 600
@@ -286,6 +289,17 @@ DEFAULT_CONFIG_MAP = {
         "env_key": "YAI_CONTEXT_BUDGET_TOKENS",
         "type": int,
     },
+    # Project instructions auto-loaded into the system prompt (v0.21 K12)
+    "ENABLE_PROJECT_CONTEXT": {
+        "value": DEFAULT_ENABLE_PROJECT_CONTEXT,
+        "env_key": "YAI_ENABLE_PROJECT_CONTEXT",
+        "type": bool,
+    },
+    "PROJECT_CONTEXT_MAX_CHARS": {
+        "value": DEFAULT_PROJECT_CONTEXT_MAX_CHARS,
+        "env_key": "YAI_PROJECT_CONTEXT_MAX_CHARS",
+        "type": int,
+    },
     # Shell tool guardrails
     "TOOL_TIMEOUT": {"value": DEFAULT_TOOL_TIMEOUT, "env_key": "YAI_TOOL_TIMEOUT", "type": int},
     "TOOL_ENV_INHERIT": {"value": DEFAULT_TOOL_ENV_INHERIT, "env_key": "YAI_TOOL_ENV_INHERIT", "type": bool},
@@ -399,6 +413,14 @@ TOOL_DISPLAY_MAX_CHARS={DEFAULT_CONFIG_MAP["TOOL_DISPLAY_MAX_CHARS"]["value"]}
 TOOL_CALL_PREVIEW_MAX_CHARS={DEFAULT_CONFIG_MAP["TOOL_CALL_PREVIEW_MAX_CHARS"]["value"]}
 # Token budget for one request; 0 = derive 70% of the model context window
 CONTEXT_BUDGET_TOKENS={DEFAULT_CONFIG_MAP["CONTEXT_BUDGET_TOKENS"]["value"]}
+
+# Project context settings (v0.21 K12)
+# Auto-load AGENTS.md / CLAUDE.md / .yaicli.md from the current directory up to the
+# git root and add them to the system prompt. Set to false to disable (no file reads).
+ENABLE_PROJECT_CONTEXT={DEFAULT_CONFIG_MAP["ENABLE_PROJECT_CONTEXT"]["value"]}
+# Max characters of project instructions added to the system prompt
+# (0 = no cap; the excess is cut and a warning names the files involved).
+PROJECT_CONTEXT_MAX_CHARS={DEFAULT_CONFIG_MAP["PROJECT_CONTEXT_MAX_CHARS"]["value"]}
 
 # Shell tool settings
 # Maximum seconds a shell command may run
