@@ -9,7 +9,7 @@ from ..config import cfg
 from ..console import get_console, get_error_console, safe_text, strip_control_chars, untrusted_text
 from ..exceptions import MCPToolsError
 from ..schemas import ToolCall
-from . import output_history
+from . import output_history, workspace
 from .function import get_function, list_functions
 from .limits import (
     build_preview_marker,
@@ -55,9 +55,9 @@ def _stdout_is_tty() -> bool:
 # clean. The CLI re-points this to its own console once the output mode is known.
 console = get_console() if _stdout_is_tty() else get_error_console()
 
-#: Config keys that the standalone shell tool reads from the environment. They are
-#: propagated from ``cfg`` right before the shell tool runs so config.ini / ``--cwd``
-#: control the guardrails (the tool runs as a separate module and cannot see cfg).
+#: Config keys that standalone tool modules read from the environment. They are
+#: propagated from ``cfg`` right before a shell call or a filesystem mutation so
+#: config.ini / ``--cwd`` control the guardrails (standalone modules cannot see cfg).
 _SHELL_GUARDRAIL_ENV = (
     ("TOOL_TIMEOUT", "YAI_TOOL_TIMEOUT"),
     ("TOOL_ENV_INHERIT", "YAI_TOOL_ENV_INHERIT"),
@@ -113,16 +113,17 @@ def show_last_tool_output(target_console: Any) -> bool:
 
 
 def _sync_shell_guardrail_env() -> None:
-    """Best-effort: expose config shell guardrails to the shell tool via env vars.
+    """Best-effort: expose config tool guardrails via environment variables.
 
-    The shell tool is a standalone module executed in a child process tree, so the
-    only way to pass it configuration is the environment. ``cfg`` is env-first
-    (``YAI_*`` > config.ini > defaults): for a user-exported variable the value
-    written back is the same one that was loaded from the environment. When the CLI
-    overrides configuration at runtime — notably ``--cwd``, which writes the
-    resolved directory to ``cfg["WORKSPACE_ROOT"]`` — the config value deliberately
-    wins over a stale environment variable. Empty/unset values are skipped so the
-    tool's own defaults apply.
+    The shell tool and the workspace write guard (``tools/workspace.py``) run as
+    standalone code that cannot import ``cfg``; the only way to pass configuration
+    is the environment. ``cfg`` is env-first (``YAI_*`` > config.ini > defaults):
+    for a user-exported variable the value written back is the same one that was
+    loaded from the environment. When the CLI overrides configuration at runtime —
+    notably ``--cwd``, which writes the resolved directory to
+    ``cfg["WORKSPACE_ROOT"]`` — the config value deliberately wins over a stale
+    environment variable. Empty/unset values are skipped so the tool's own defaults
+    apply.
     """
     try:
         for config_key, env_key in _SHELL_GUARDRAIL_ENV:
@@ -227,6 +228,59 @@ def _tool_call_caption(arguments: Dict[str, Any]) -> str:
     return ""
 
 
+def _emit_tool_result(
+    result_text: Any,
+    *,
+    kind: str,
+    name: str,
+    preview_arguments: str,
+    caption: str,
+    show_output: bool,
+) -> str:
+    """Truncate, record and display one tool result (successful or guard-denied).
+
+    Returns the model-visible text. Guard denials go through the same pipeline as
+    successful results, so the terminal/``Ctrl+O`` view and the model context stay
+    consistent.
+    """
+    result_meta = truncate_tool_output_meta(result_text, name)
+    # K02: bound what enters the conversation. The same truncated text is shown
+    # in the terminal panel, so a huge result can not flood either channel.
+    result = result_meta.text
+    # Terminal display is head-only and independent from the model-facing cap;
+    # Ctrl+O opens the full-screen viewer with every output of the current turn.
+    display_text = strip_control_chars(result)
+    output_history.record_output(
+        kind=kind,
+        name=name,
+        arguments=preview_arguments,
+        text=display_text,
+        caption=caption,
+        total_chars=result_meta.total_chars,
+        spill_path=result_meta.spill_path,
+        truncated=result_meta.truncated,
+    )
+    if show_output:
+        preview = make_display_preview(display_text)
+        content = untrusted_text(preview.text)
+        if preview.truncated:
+            content.append("\n\n")
+            content.append(build_preview_marker(preview), style="dim")
+        title = f"{kind.title()} output"
+        if preview.truncated:
+            title = f"{title} ({preview.label})"
+        panel = Panel(
+            content,
+            title=title,
+            title_align="left",
+            expand=False,
+            border_style="blue",
+            style="dim",
+        )
+        console.print(panel)
+    return result
+
+
 def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, bool]:
     """Execute a tool call and return the result
 
@@ -284,45 +338,37 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
 
     # 3. Execute the tool
     try:
-        # K03 integration: the standalone shell tool reads its guardrails from the
-        # environment, so propagate the (env-first) config values right before use.
-        if is_function_call and tool_call.name == "execute_shell_command":
+        # K03/K11 integration: the standalone shell tool and the workspace write
+        # guard both read their configuration from the environment. Propagate the
+        # (env-first) config values right before a shell call or a filesystem
+        # mutation so config.ini / ``--cwd`` control them.
+        if is_function_call and (
+            tool_call.name == "execute_shell_command" or tool_call.name in workspace.MUTATING_TOOL_NAMES
+        ):
             _sync_shell_guardrail_env()
-        result_meta = truncate_tool_output_meta(tool.execute(**arguments), tool_call.name)
-        # K02: bound what enters the conversation. The same truncated text is shown
-        # in the terminal panel, so a huge result can not flood either channel.
-        result = result_meta.text
-        # Terminal display is head-only and independent from the model-facing cap;
-        # Ctrl+O opens the full-screen viewer with every output of the current turn.
-        display_text = strip_control_chars(result)
-        output_history.record_output(
+        guard_plan = None
+        if is_function_call and tool_call.name in workspace.MUTATING_TOOL_NAMES:
+            # K11: workspace confinement + protected paths + pre-mutation backups.
+            # A denial is an in-band result (ok=True below): the call reached the
+            # tool path, the model reads actionable JSON and the filesystem is
+            # untouched. The guard never raises and never prints.
+            guard_plan = workspace.prepare_mutation(tool_call.name, arguments)
+        if guard_plan is not None and guard_plan.denial is not None:
+            result_text = guard_plan.denial
+        else:
+            result_text = tool.execute(**arguments)
+            # Only record an undo entry when the mutation really happened: the fs_*
+            # tools report expected failures in-band as {"success": false, ...}.
+            if guard_plan is not None and guard_plan.has_originals and workspace.tool_result_succeeded(result_text):
+                workspace.push_undo(guard_plan.build_undo_entry())
+        result = _emit_tool_result(
+            result_text,
             kind=_type,
             name=tool_call.name,
-            arguments=preview_arguments,
-            text=display_text,
+            preview_arguments=preview_arguments,
             caption=caption,
-            total_chars=result_meta.total_chars,
-            spill_path=result_meta.spill_path,
-            truncated=result_meta.truncated,
+            show_output=show_output,
         )
-        if show_output:
-            preview = make_display_preview(display_text)
-            content = untrusted_text(preview.text)
-            if preview.truncated:
-                content.append("\n\n")
-                content.append(build_preview_marker(preview), style="dim")
-            title = f"{_type.title()} output"
-            if preview.truncated:
-                title = f"{title} ({preview.label})"
-            panel = Panel(
-                content,
-                title=title,
-                title_align="left",
-                expand=False,
-                border_style="blue",
-                style="dim",
-            )
-            console.print(panel)
         return result, True
     except Exception as e:
         error_msg = f"Call {_type} error: {e}\n{_type} name: {tool_call.name!r}\nArguments: {arguments!r}"

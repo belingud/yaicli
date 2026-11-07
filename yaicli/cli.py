@@ -12,7 +12,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .chat import Chat, FileChatManager, chat_mgr
-from .cmd_handler import CMD_COMPACT, CmdHandler
+from .cmd_handler import CMD_COMPACT, CMD_UNDO, CmdHandler
 from .config import cfg
 from .console import get_console, get_error_console, safe_text, untrusted_text
 from .const import (
@@ -1270,6 +1270,7 @@ class CLI:
             f"{'/permissions [revoke <tool-or-index>]':<19}: List/revoke tool permissions and session grants"
         )
         self.console.print(f"{'/show-output':<19}: View this turn's tool outputs (same as Ctrl+O)")
+        self.console.print(f"{CMD_UNDO:<19}: Undo the last file change made by a tool")
         self.console.print("[dim]  Tip: Type '@' for path completion, use Tab/arrows to select[/dim]")
         self.console.print(f"{'!<command>':<19}: Execute shell command directly (e.g., !ls -al)")
         cmd_exit = f"{CMD_EXIT}|Ctrl+D"

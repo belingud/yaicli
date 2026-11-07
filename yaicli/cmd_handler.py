@@ -26,6 +26,7 @@ from .const import (
     DefaultRoleNames,
 )
 from .tokens import estimate_context_usage, trim_messages_to_budget
+from .tools import workspace
 from .tools.approval import PermissionRule
 
 #: Slash command to manually compact the conversation (v0.19 K02).
@@ -37,6 +38,9 @@ CMD_COMPACT = "/compact"
 CMD_PERMISSIONS = "/permissions"
 #: Slash command to re-print the last tool result in full (same as ``Ctrl+O``).
 CMD_SHOW_OUTPUT = "/show-output"
+#: Slash command to restore the last file mutation made by the agent (v0.21 K11).
+#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
+CMD_UNDO = "/undo"
 #: Turn groups kept by ``/compact`` when no argument is given.
 DEFAULT_COMPACT_KEEP_ROUNDS = 5
 #: ``/context`` subcommands that print the estimated usage breakdown.
@@ -72,6 +76,7 @@ class CmdHandler:
             CMD_COMPACT: self.handle_compact,
             CMD_PERMISSIONS: self.handle_permissions,
             CMD_SHOW_OUTPUT: self.handle_show_output,
+            CMD_UNDO: self.handle_undo,
         }
 
     def handle_add_context(self, command_input: str = "") -> bool:
@@ -293,6 +298,44 @@ class CmdHandler:
             from .tools import show_last_tool_output
 
             show_last_tool_output(self.cli.console)
+        return True
+
+    def handle_undo(self) -> bool:
+        """Handle /undo: restore the last file mutation the agent made.
+
+        The undo stack is populated by ``yaicli.tools.execute_tool_call`` (K11): an
+        overwritten/edited/deleted/moved file is restored from its backup, and a
+        file/directory the agent created is deleted. Prints what was done (or a
+        friendly message when there is nothing to undo).
+
+        Returns:
+            True to continue the REPL loop
+        """
+        outcome = workspace.undo_last()
+        if outcome is None:
+            self.cli.console.print(
+                "Nothing to undo: no file changes were recorded in this session.",
+                style="yellow",
+            )
+            return True
+
+        verb = "restore" if outcome.restored else "remove"
+        self.cli.console.print(
+            f"Undid the last file change ({safe_text(outcome.tool)}): {verb} "
+            f"{len(outcome.restored) + len(outcome.deleted)} path(s).",
+            style="bold green" if not outcome.errors else "bold yellow",
+        )
+        for path in outcome.restored:
+            self.cli.console.print(f"  restored: {safe_text(path)}", style="green")
+        for path in outcome.deleted:
+            self.cli.console.print(f"  deleted: {safe_text(path)}", style="green")
+        for error in outcome.errors:
+            self.cli.console.print(f"  failed: {safe_text(error)}", style="red")
+        if outcome.errors:
+            self.cli.console.print(
+                "The undo was only partially applied; fix the reported errors and retry.",
+                style="yellow",
+            )
         return True
 
     def handle_context(self, command_input: str = "") -> bool:
