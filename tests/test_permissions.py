@@ -78,7 +78,9 @@ class FakeProvider:
         return "tool"
 
 
-def make_client(scripted, approval, *, interactive=True, tool_confirm=True, audit=True):
+def make_client(scripted, approval, *, interactive=True, tool_confirm=True, audit=False):
+    # audit defaults to off: only tests with the ``audit_log`` fixture (tmp path) opt in,
+    # so the focused suite never appends to the real user config dir.
     config = {
         "ENABLE_FUNCTIONS": True,
         "ENABLE_MCP": True,
@@ -654,7 +656,7 @@ class TestAuditLog:
         manager.configure_run(yes=True)
         read = ToolCall(id="c1", name="fs_read_file", arguments='{"file_paths": ["a.txt"]}')
         write = ToolCall(id="c2", name="fs_write_file", arguments='{"file_path": "a.txt", "content": "x"}')
-        client = make_client(script_tools(read, write), manager, interactive=False)
+        client = make_client(script_tools(read, write), manager, interactive=False, audit=True)
         run_turn(client)
 
         lines = audit_log.read_text(encoding="utf-8").splitlines()
@@ -680,7 +682,7 @@ class TestAuditLog:
         manager = make_manager(tmp_path)
         weather = ToolCall(id="c1", name="get_weather", arguments='{"city": "Paris"}')
         manager.allow_persist("get_weather")
-        client = make_client(script_tools(weather), manager, interactive=False)
+        client = make_client(script_tools(weather), manager, interactive=False, audit=True)
         run_turn(client, execute_result=("tool exploded", False))
         record = json.loads(audit_log.read_text(encoding="utf-8").splitlines()[0])
         assert record["decision"] == "error"
@@ -701,7 +703,7 @@ class TestAuditLog:
         manager = make_manager(tmp_path)
         manager.allow_persist("get_weather")
         weather = ToolCall(id="c1", name="get_weather", arguments='{"city": "Paris"}')
-        client = make_client(script_tools(weather), manager, interactive=False)
+        client = make_client(script_tools(weather), manager, interactive=False, audit=True)
         _, _, execute_mock = run_turn(client)
         execute_mock.assert_called_once()
 

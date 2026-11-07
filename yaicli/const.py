@@ -129,6 +129,12 @@ DEFAULT_ENABLE_MCP: BOOL_STR = "false"
 DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
 DEFAULT_MAX_TOOL_CALL_DEPTH: int = 8
 DEFAULT_TOOL_CONFIRM: BOOL_STR = "true"
+# Session-wide tool permission mode (v0.21 K10):
+#   readonly -> auto-allow read/network tools, hard-deny write/exec tools
+#   standard -> v0.19 behaviour (rules -> --allowed-tools -> --yes -> prompt/deny)
+#   trusted  -> auto-allow every non-dangerous tool (danger-classified shell still asks)
+DEFAULT_TOOL_POLICY = "standard"
+TOOL_POLICY_MODES = ("readonly", "standard", "trusted")
 DEFAULT_EXCLUDE_PARAMS: str = ""  # Empty by default
 
 # Agent context / tool-output economy (v0.19 K02)
@@ -250,6 +256,7 @@ DEFAULT_CONFIG_MAP = {
     "SHOW_MCP_OUTPUT": {"value": DEFAULT_SHOW_MCP_OUTPUT, "env_key": "YAI_SHOW_MCP_OUTPUT", "type": bool},
     "MAX_TOOL_CALL_DEPTH": {"value": DEFAULT_MAX_TOOL_CALL_DEPTH, "env_key": "YAI_MAX_TOOL_CALL_DEPTH", "type": int},
     "TOOL_CONFIRM": {"value": DEFAULT_TOOL_CONFIRM, "env_key": "YAI_TOOL_CONFIRM", "type": bool},
+    "TOOL_POLICY": {"value": DEFAULT_TOOL_POLICY, "env_key": "YAI_TOOL_POLICY", "type": str},
     "EXCLUDE_PARAMS": {"value": DEFAULT_EXCLUDE_PARAMS, "env_key": "YAI_EXCLUDE_PARAMS", "type": str},
     # Agent context / tool-output economy
     "TOOL_OUTPUT_MAX_CHARS": {
@@ -364,6 +371,12 @@ MAX_TOOL_CALL_DEPTH={DEFAULT_CONFIG_MAP["MAX_TOOL_CALL_DEPTH"]["value"]}
 # Set to false to execute tool calls silently (previous behavior).
 # Tools permanently allowed are stored in tool_permissions.json next to this file.
 TOOL_CONFIRM={DEFAULT_CONFIG_MAP["TOOL_CONFIRM"]["value"]}
+
+# Session-wide tool permission policy: readonly | standard | trusted
+# readonly: auto-allow read/network tools only; write/exec tools are always denied
+# standard: ask for confirmation / use tool_permissions.json rules (default)
+# trusted: auto-allow every non-dangerous tool (dangerous shell commands still ask)
+TOOL_POLICY={DEFAULT_CONFIG_MAP["TOOL_POLICY"]["value"]}
 
 # Comma-separated list of API parameters to exclude from requests
 # Example: temperature,top_p,frequency_penalty

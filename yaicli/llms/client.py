@@ -51,6 +51,12 @@ class LLMClient:
         "provider",
         "approval",
         "interactive",
+        # ---- v0.21 K10 permission policy mode ----
+        #: Effective ``TOOL_POLICY`` mode (readonly/standard/trusted), normalized
+        #: once per gate call and recorded in every audit line.
+        "tool_policy_mode",
+        #: Set after the one-time invalid-TOOL_POLICY stderr warning.
+        "_tool_policy_warned",
         # ---- v0.19 K02/K05 outcome + context state (read by the CLI) ----
         #: True when conversation history was trimmed to fit the token budget.
         "context_trimmed",
@@ -94,6 +100,9 @@ class LLMClient:
         self.enable_mcp = self.config["ENABLE_MCP"]
         self.approval = approval or ToolApprovalManager()
         self.interactive = interactive
+        # v0.21 K10: normalizes on the first gate call; "standard" keeps v0.19 behaviour.
+        self.tool_policy_mode: str = _const.DEFAULT_TOOL_POLICY
+        self._tool_policy_warned: bool = False
 
         # Use provided provider or create one
         if provider_name not in ProviderFactory.providers_map:
@@ -449,6 +458,49 @@ class LLMClient:
         """True when ``--yes`` was given for this run."""
         return bool(getattr(self.approval, "auto_allow_read", False))
 
+    # ------------------- permission policy mode (v0.21 K10) -------------------
+    def _resolve_tool_policy_mode(self) -> str:
+        """Resolve and normalize the session-wide ``TOOL_POLICY`` mode.
+
+        The mode comes from the layered config (``YAI_TOOL_POLICY`` env >
+        config.ini > default ``standard``). Comparison is case-insensitive and
+        whitespace-trimmed; an empty value means unset (uses the default silently),
+        while any other unrecognized value falls back to ``standard`` with exactly
+        ONE stderr warning per client — never per tool call. The resolved value is
+        cached on the instance and recorded in every audit line.
+        """
+        raw: Any
+        try:
+            raw = self.config.get("TOOL_POLICY", _const.DEFAULT_TOOL_POLICY)
+        except (AttributeError, TypeError):  # pragma: no cover - exotic config mappings
+            raw = _const.DEFAULT_TOOL_POLICY
+        mode = str(raw).strip().lower() if raw is not None else ""
+        if not mode:
+            mode = _const.DEFAULT_TOOL_POLICY
+        if mode in _const.TOOL_POLICY_MODES:
+            self.tool_policy_mode = mode
+            return mode
+
+        if not self._tool_policy_warned:
+            self._tool_policy_warned = True
+            self._error_console().print(
+                f"Invalid TOOL_POLICY value {raw!r}; falling back to "
+                f"'{_const.DEFAULT_TOOL_POLICY}' (valid values: {', '.join(_const.TOOL_POLICY_MODES)}).",
+                style="yellow",
+            )
+        self.tool_policy_mode = _const.DEFAULT_TOOL_POLICY
+        return self.tool_policy_mode
+
+    @staticmethod
+    def _readonly_deny_reason(gate_name: str, risk: RiskLevel) -> str:
+        """Actionable reason for a ``TOOL_POLICY=readonly`` hard deny (K10)."""
+        return (
+            f"Tool '{gate_name}' (risk: {risk.value}) is blocked by TOOL_POLICY=readonly, which denies "
+            "write/exec tools even when they are pre-approved or confirmation is disabled; the call was "
+            "declined. Set TOOL_POLICY=standard (config.ini) or YAI_TOOL_POLICY=standard (environment) "
+            "to allow it, or use a read-only tool instead."
+        )
+
     def _remember_approval(self, gate_name: str, decision: ToolConfirmDecision) -> None:
         """Store a SESSION/PERSIST prompt decision on the approval manager."""
         if decision == ToolConfirmDecision.SESSION:
@@ -520,12 +572,14 @@ class LLMClient:
         source: Optional[str],
         arguments: Any,
         duration_ms: float,
+        policy: str,
         reason: Optional[str] = None,
     ) -> None:
         """Append one JSON line per gate decision to ``const.TOOL_AUDIT_PATH``.
 
         Best effort by design: an unwritable/odd log must never affect a tool call.
-        The file is opened append-only with mode ``0600`` on creation.
+        The file is opened append-only with mode ``0600`` on creation. ``policy`` is
+        the effective ``TOOL_POLICY`` mode (v0.21 K10) recorded on every decision.
         """
         if not self._audit_enabled():
             return
@@ -534,6 +588,7 @@ class LLMClient:
                 "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "tool": str(tool),
                 "risk": risk.value if isinstance(risk, RiskLevel) else str(risk),
+                "policy": str(policy),
                 "decision": decision,
                 "source": source or "prompt",
                 "args_summary": summarize_arguments(tool, arguments),
@@ -562,19 +617,22 @@ class LLMClient:
     ) -> Generator[Union[LLMResponse, RefreshLive, ConfirmToolCall], Optional[ToolConfirmDecision], None]:
         """Execute tool calls and continue the conversation.
 
-        Each tool call passes through the v0.19 K06 permission gate before it runs:
+        Each tool call passes through the v0.19 K06 permission gate before it runs.
+        The session-wide ``TOOL_POLICY`` mode (v0.21 K10) is a hard ceiling/floor:
 
-        * ``TOOL_CONFIRM=false`` executes everything silently, except danger-classified
-          shell commands (a danger classification can never be auto-approved);
-        * a session/persistent approval (or a v2 argument rule) skips the prompt — but a
-          danger-classified shell command still requires an explicit confirmation;
-        * ``--allowed-tools`` glob patterns and ``--yes`` (``read`` risk only) are per-run
-          grants; ``--yes`` never allows write/network/exec tools;
-        * non-interactive sessions deny whatever is not granted, returning the model a
-          structured ``{"error": "tool_denied", "reason": ...}`` result so it can adapt.
+        * ``standard`` (default): the v0.19 flow — rules, then ``--allowed-tools``,
+          then ``--yes`` (read only), then prompt or non-interactive deny;
+        * ``readonly``: auto-allows ``read``/``network`` tools and hard-denies
+          ``write``/``exec`` tools (approvals, ``--yes``, ``--allowed-tools`` and
+          ``TOOL_CONFIRM=false`` cannot override the deny);
+        * ``trusted``: auto-allows every non-dangerous tool without prompting.
 
-        Denied calls still receive a matching tool result so the provider request stays
-        valid, and one audit line is appended per decision when ``TOOL_AUDIT`` is on.
+        Independently of the mode, a danger-classified shell command keeps its
+        precedence: interactive confirmation (denied when ``TOOL_CONFIRM=false``) or
+        a non-interactive deny. Denied calls still receive a matching structured
+        ``{"error": "tool_denied", "reason": ...}`` tool result so the provider request
+        stays valid, and one audit line (including the effective ``policy``) is
+        appended per decision when ``TOOL_AUDIT`` is on.
         """
         # Signal that new content is coming
         yield RefreshLive()
@@ -587,6 +645,8 @@ class LLMClient:
             confirm_enabled = bool(self.config.get("TOOL_CONFIRM", True))
         except (TypeError, AttributeError):  # pragma: no cover - exotic config mappings
             confirm_enabled = True
+        # v0.21 K10: normalize TOOL_POLICY once per gate, not per tool call.
+        policy_mode = self._resolve_tool_policy_mode()
 
         for tool_call in tool_calls:
             # Capture the gate-time name: MCP names keep the _mcp__ prefix here,
@@ -606,6 +666,7 @@ class LLMClient:
             if dangerous:
                 # A danger-classified shell command can never be auto-approved: it needs
                 # an explicit interactive confirmation, and non-interactive runs refuse it.
+                # This branch keeps its precedence in every TOOL_POLICY mode (K10).
                 if not self.interactive:
                     decision, source = ToolConfirmDecision.DENY, "non_interactive"
                     reason = self._dangerous_deny_reason(shell_risk, non_interactive=True)
@@ -616,6 +677,16 @@ class LLMClient:
                     decision = (yield ConfirmToolCall(tool_call)) or ToolConfirmDecision.DENY
                     prompted = True
                     source = "prompt"
+            elif policy_mode == "readonly":
+                # K10 hard ceiling: no approval, run-grant or TOOL_CONFIRM=false escape.
+                if risk in (RiskLevel.write, RiskLevel.exec):
+                    decision, source = ToolConfirmDecision.DENY, "policy"
+                    reason = self._readonly_deny_reason(gate_name, risk)
+                else:
+                    decision, source = ToolConfirmDecision.ONCE, "policy"
+            elif policy_mode == "trusted":
+                # K10 floor: every non-dangerous tool runs without a prompt.
+                decision, source = ToolConfirmDecision.ONCE, "policy"
             elif not confirm_enabled:
                 decision, source = ToolConfirmDecision.ONCE, "disabled"
             else:
@@ -655,6 +726,7 @@ class LLMClient:
                 self._audit_tool_decision(
                     tool=gate_name,
                     risk=risk,
+                    policy=policy_mode,
                     decision="denied",
                     source=source,
                     arguments=raw_arguments,
@@ -683,6 +755,7 @@ class LLMClient:
             self._audit_tool_decision(
                 tool=gate_name,
                 risk=risk,
+                policy=policy_mode,
                 decision="allowed" if ok else "error",
                 source=source,
                 arguments=raw_arguments,
