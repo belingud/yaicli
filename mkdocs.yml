@@ -40,11 +40,13 @@ nav:
       - Workspace Safety: usage/workspace-safety.md
       - Context & Limits: usage/context-limits.md
       - File Context Management: usage/context.md
+      - Project Context (AGENTS.md): usage/project-context.md
       - Configuration Guide: usage/configuration.md
       - Mode Switching (Chat / Execute): usage/modes.md
       - CLI Shortcuts & Hotkeys: usage/cli.md
       - Basic Usage: usage/basic.md
       - Interactive Mode: usage/interactive.md
+      - Chat Sessions & Resume: usage/sessions.md
       - Advanced Usage: usage/advanced.md
   - Providers:
       - Overview & Feature Matrix: providers/overview.md

@@ -51,6 +51,23 @@ YAICLI provides special commands that begin with a slash (`/`) or an exclamation
 
 With `!<command>`, you can execute a shell command directly without leaving the interactive mode. For example, `!ls -al` will list files in the current directory, `!git status` will show the git status, etc.
 
+## Chat Sessions & Resume
+
+Chat sessions are saved per working directory in `~/.yaicli/sessions/` since v0.21; see
+[Chat Sessions & Resume](sessions.md) for the store layout, metadata and migration of old sessions.
+
+| Command | Behaviour |
+| --- | --- |
+| `ai --chat` | Start a temporary interactive session |
+| `ai --chat "<title>"` | Continue the session with that title in the current project. A missing title prints an explicit notice and starts a new persistent session with that title (never a silent fallback) |
+| `ai --resume` | Continue the **newest** saved session of the current project (implies `--chat`). With no saved session it prints an explicit notice and starts a new temporary session |
+| `ai --list-chats` | List saved sessions of the invocation directory (the callback runs before `--cwd` applies) |
+
+`--resume` is interactive only: combined with `-p/--print` or a non-text `--output-format` it is
+ignored with a warning and the run continues one-shot; the same happens when stdin is redirected.
+It takes no title — use `--chat "<title>"` to load a specific session. Run `ai` from the project
+directory (or use `--cwd`) so the per-project store matches the session you want.
+
 ## Auto-Suggestion
 
 YAICLI offers auto-suggestions based on your command history. As you type, it shows light gray text suggesting completions from your history:

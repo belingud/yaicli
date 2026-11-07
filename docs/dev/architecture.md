@@ -42,9 +42,10 @@ with the tool results.
 | `const.py` | Defaults (`DEFAULT_CONFIG_MAP`), paths, commands/modes, default roles. |
 | `console.py` | `YaiConsole` singleton, stderr console for machine mode, EPIPE-safe broken-pipe handling, untrusted-text helpers. |
 | `context.py` | `/add` persistent context and `@path` temporary references (dirs, binaries, images). |
-| `chat.py` | `Chat` message model, JSON serialization, atomic saves, `FileChatManager`. |
-| `history.py` | Bounded prompt-toolkit history file (`$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history`). |
+| `chat.py` | `Chat` message model, JSON serialization, atomic saves, `FileChatManager`; v0.21 K13 per-project session store (`~/.yaicli/sessions/<hash>/`, `0700`/`0600`), session metadata and `--resume`. |
+| `history.py` | Bounded prompt-toolkit history file (`$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history`, mode `0600`). |
 | `role.py` | `Role`/`RoleManager`, role JSON files under `~/.config/yaicli/roles/`. |
+| `project_context.py` | v0.21 K12: discovers `.yaicli.md`/`AGENTS.md`/`CLAUDE.md` from cwd to the git root and builds the bounded system-prompt block. |
 | `schemas.py` | Shared dataclasses crossing layers: `ChatMessage`, `LLMResponse`, `ToolCall`, `ToolPolicy`. |
 | `printer.py` / `render.py` | Streaming output, reasoning, confirmation prompts, markdown rendering. |
 | `image.py` | `--image` validation, MIME detection, base64/URL handling. |
@@ -63,11 +64,13 @@ The config directory is resolved at import time: `YAI_CONFIG_DIR` > `XDG_CONFIG_
   written with mode `0600` (`ai --template` prints the defaults).
 - `<config-dir>/roles/`, `functions/`, `mcp.json`, `tool_permissions.json` — user data.
   `functions_manifest.json` records the version/hashes used to warn about stale exported copies.
-- `tool_audit.jsonl`, `tool-outputs/` — tool audit log and spilled (untruncated) tool outputs
-  (v0.19; see `docs/usage/context-limits.md` and `docs/usage/permissions.md`).
+- `<config-dir>/tool_audit.jsonl` — tool audit log; `<tempdir>/yaicli/chats/tool-outputs/` —
+  spilled (untruncated) tool outputs (`TOOL_OUTPUT_DIR` overrides; see
+  `docs/usage/context-limits.md` and `docs/usage/permissions.md`).
 - `$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history` — prompt history (bounded by
-  `MAX_HISTORY`).
-- `CHAT_HISTORY_DIR` (temp directory by default) — saved chat JSON sessions.
+  `MAX_HISTORY`, mode `0600`).
+- `~/.yaicli/sessions/<sha256(resolved cwd)[:16]>/` — saved chat JSON sessions per project (dirs
+  `0700`, files `0600`); an explicit `CHAT_HISTORY_DIR` override keeps the old flat directory.
 
 ## Modes
 

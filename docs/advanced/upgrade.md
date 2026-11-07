@@ -70,9 +70,36 @@ YAICLI only warns about stale copies; it never silently overwrites your customis
   deleted/moved files from their backup and deletes files the agent created. The stack keeps the
   last 20 mutations and is process-local, so it disappears when `ai` exits; shell-command and MCP
   side effects are not undoable.
+- **Project context on by default** — YAICLI reads `.yaicli.md` / `AGENTS.md` / `CLAUDE.md` from the
+  working directory up to the nearest git root and appends them to the system prompt. Discovery and
+  content are bounded (`PROJECT_CONTEXT_MAX_CHARS`, default 20000) and a truncated block prints one
+  stderr warning. Disable with `ENABLE_PROJECT_CONTEXT=false` (no file reads at all). Loading is
+  once per run, so restart `ai` to pick up edits. Project files are untrusted input — review them
+  before running the agent in a repository. See [Project Context](../usage/project-context.md).
+- **Per-project sessions + `--resume` (behaviour change)** — saved chat sessions moved from the old
+  shared temp directory to `~/.yaicli/sessions/<sha256(resolved cwd)[:16]>/` (directories `0700`,
+  files `0600`). Each session records `model`/`provider`/`role`/`cwd`/`created_at`/`updated_at`;
+  resumed sessions print a one-line notice with that metadata. New `--resume` continues the newest
+  session of the current project. `ai --chat "<title>"` now prints an explicit notice when the title
+  does not exist instead of silently starting a new session. An explicit `CHAT_HISTORY_DIR` /
+  `YAI_CHAT_HISTORY_DIR` override keeps the old flat layout. Existing `config.ini` files contain a
+  materialised `CHAT_HISTORY_DIR=<temp path>` line: when it matches the built-in default it counts
+  as unset (per-project store); if the temp path changed it keeps that flat directory — delete or
+  comment the line to opt into per-project sessions. **Old sessions in the temp directory are left
+  in place — there is no automatic migration**; see
+  [Chat Sessions & Resume](../usage/sessions.md#migrating-from-old-sessions). The REPL history file
+  is now created `0600` (legacy `0644` files are repaired on the next append/trim).
+- **Parallel tool calls are kept** — providers that return several tool calls in one response are no
+  longer reduced to the first one: parallel calls from Anthropic, Gemini and Ollama, and the
+  single-slot streaming providers, are all executed and their results appended (the streaming
+  providers also stop surfacing partial function-call arguments mid-stream). No configuration
+  change.
 
-No action is normally needed. If you script permissions, see [Permissions & Safety](../usage/permissions.md#permission-modes-tool_policy);
-if the agent writes files for you, see [Workspace Safety](../usage/workspace-safety.md).
+No action is normally needed. If you script permissions, see
+[Permissions & Safety](../usage/permissions.md#permission-modes-tool_policy); if the agent writes
+files for you, see [Workspace Safety](../usage/workspace-safety.md); for project instructions and
+sessions see [Project Context](../usage/project-context.md) and
+[Chat Sessions & Resume](../usage/sessions.md).
 
 ## What changed in v0.20
 
@@ -122,8 +149,10 @@ Add these to `config.ini` only if you want non-default values (see
 | Key | Default | Purpose |
 | --- | --- | --- |
 | `TOOL_POLICY` | `standard` | Session-wide permission mode (`readonly`/`standard`/`trusted`); see [Permissions & Safety](../usage/permissions.md#permission-modes-tool_policy) |
+| `ENABLE_PROJECT_CONTEXT` | `true` | Auto-load project instruction files into the system prompt (`false` = no project-file reads); see [Project Context](../usage/project-context.md) |
+| `PROJECT_CONTEXT_MAX_CHARS` | `20000` | Max characters of project context added to the system prompt (`0` = no cap) |
 | `TOOL_OUTPUT_MAX_CHARS` | `32000` | Per-tool-result character cap (`0` = unlimited) |
-| `TOOL_OUTPUT_DIR` | `<chat history>/tool-outputs` | Where full tool outputs are stored |
+| `TOOL_OUTPUT_DIR` | `<tempdir>/yaicli/chats/tool-outputs` | Where full tool outputs are stored (independent of the per-project session store) |
 | `CONTEXT_BUDGET_TOKENS` | `0` (70% of model window) | Per-request token budget |
 | `TOOL_TIMEOUT` | `120` | Shell command timeout in seconds |
 | `TOOL_ENV_INHERIT` | `false` | Pass the full parent environment to shell tools |
@@ -154,10 +183,16 @@ Files in the config directory:
 | `mcp.json` | MCP server configuration |
 | `tool_permissions.json` | Persistent tool allow rules (v2) |
 | `tool_audit.jsonl` | Tool decision audit log |
-| `tool-outputs/` | Spilled full tool outputs (by default under the chat history dir) |
 
-`HISTORY_FILE` is separate: `$XDG_STATE_HOME/yaicli/history` when `XDG_STATE_HOME` is set, otherwise
-`~/.yaicli_history`. Chat sessions live under `CHAT_HISTORY_DIR`.
+Outside the config directory:
+
+- `~/.yaicli/sessions/<hash>/` — saved chat sessions per project (dirs `0700`, files `0600`);
+  an explicit `CHAT_HISTORY_DIR` / `YAI_CHAT_HISTORY_DIR` override keeps the old flat directory
+  (see [Chat Sessions & Resume](../usage/sessions.md)).
+- `<tempdir>/yaicli/chats/tool-outputs/` — spilled full tool outputs (legacy scratch dir;
+  `TOOL_OUTPUT_DIR` overrides; independent of the per-project session store).
+- `$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history` — REPL prompt history (mode `0600` since
+  v0.21; bounded by `MAX_HISTORY`).
 
 ## If something behaves unexpectedly
 
@@ -172,6 +207,9 @@ Files in the config directory:
    path rules; the model-facing error names the reason (`outside_workspace`, `protected_path`, ...).
    See [Workspace Safety](../usage/workspace-safety.md) — and remember that pre-change backups are
    in `<workspace>/.yaicli-backups/` if you need to restore something by hand.
+6. If old chats or `--resume` do not find a session, you are probably in a different working
+   directory than the session's project store (sessions are per directory) — see
+   [Chat Sessions & Resume](../usage/sessions.md#migrating-from-old-sessions).
 
 ## Rollback
 
@@ -185,12 +223,15 @@ Your `config.ini` and permissions file remain readable by the old version (unkno
 ignored); `tool_permissions.json` stays backward compatible because v2 only adds keys. Remove
 `tool_audit.jsonl` / `tool-outputs/` if you no longer need them, and note that v0.21 may have
 created a `.yaicli-backups/` directory in your workspace — keep it if you want the stored backups,
-delete it otherwise.
+delete it otherwise. Sessions saved by v0.21 in `~/.yaicli/sessions/` are not visible to v0.20 (which
+uses the old flat directory); copy them if you plan to roll back permanently.
 
 ## See Also
 
 - [Permissions & Safety](../usage/permissions.md)
 - [Workspace Safety](../usage/workspace-safety.md)
+- [Project Context](../usage/project-context.md)
+- [Chat Sessions & Resume](../usage/sessions.md)
 - [Headless & Scripting](../usage/headless.md)
 - [Context & Limits](../usage/context-limits.md)
 - [Configuration](../usage/configuration.md)

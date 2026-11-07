@@ -87,8 +87,10 @@ SHOW_REASONING=true
 # Text alignment (default, left, center, right, full)
 JUSTIFY=default
 
-# Chat history settings
-CHAT_HISTORY_DIR=<tmpdir>/yaicli/chats
+# Chat history settings (v0.21 K13: sessions are per project by default)
+# Explicit override: keep the old flat directory. Leave/remove the line (or keep the
+# built-in default value) to use ~/.yaicli/sessions/<hash of the working directory>/.
+# CHAT_HISTORY_DIR=/home/me/yaicli-sessions
 MAX_SAVED_CHATS=20
 
 # Role settings
@@ -124,7 +126,9 @@ EXCLUDE_PARAMS=
 # Max characters of one tool result kept in the context (0 = no truncation);
 # the full output is saved to TOOL_OUTPUT_DIR.
 TOOL_OUTPUT_MAX_CHARS=32000
-TOOL_OUTPUT_DIR=<chat-history-dir>/tool-outputs
+# Scratch directory for full (untruncated) tool outputs; independent of the
+# per-project session store. Defaults to <tempdir>/yaicli/chats/tool-outputs.
+TOOL_OUTPUT_DIR=<tempdir>/yaicli/chats/tool-outputs
 # Terminal display of tool results (v0.19.1): head-only preview; the model still
 # receives TOOL_OUTPUT_MAX_CHARS. 0 = show everything.
 TOOL_DISPLAY_MAX_LINES=15
@@ -133,6 +137,14 @@ TOOL_DISPLAY_MAX_CHARS=4000
 TOOL_CALL_PREVIEW_MAX_CHARS=300
 # Token budget for one request; 0 derives 70% of the model context window.
 CONTEXT_BUDGET_TOKENS=0
+
+# Project context settings (v0.21 K12)
+# Auto-load .yaicli.md / AGENTS.md / CLAUDE.md from the working directory up to the
+# git root and add them to the system prompt. false = no project-file reads at all.
+ENABLE_PROJECT_CONTEXT=true
+# Max characters of project instructions added to the system prompt
+# (0 = no cap; a truncated block prints one warning naming the files involved).
+PROJECT_CONTEXT_MAX_CHARS=20000
 
 # Shell tool settings (v0.19)
 # Max seconds a shell command may run (killed with its process group on timeout).
@@ -185,8 +197,8 @@ TOOL_AUDIT=true
 | `AUTO_SUGGEST`         | Enable history suggestions                  | `true`                   | `YAI_AUTO_SUGGEST`         |
 | `SHOW_REASONING`       | Enable reasoning display                    | `true`                   | `YAI_SHOW_REASONING`       |
 | `JUSTIFY`              | Text alignment                              | `default`                | `YAI_JUSTIFY`              |
-| `CHAT_HISTORY_DIR`     | Chat history directory                      | `<tempdir>/yaicli/chats` | `YAI_CHAT_HISTORY_DIR`     |
-| `MAX_SAVED_CHATS`      | Max saved chats                             | `20`                     | `YAI_MAX_SAVED_CHATS`      |
+| `CHAT_HISTORY_DIR`     | Explicit session-directory override (old flat layout); a value equal to the built-in default means the per-project store | *unset* (per-project `~/.yaicli/sessions/<hash>/`) | `YAI_CHAT_HISTORY_DIR` |
+| `MAX_SAVED_CHATS`      | Max saved sessions per store                | `20`                     | `YAI_MAX_SAVED_CHATS`      |
 | `ROLE_MODIFY_WARNING`  | Warn when modifying built-in roles          | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
 | `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
 | `SHOW_FUNCTION_OUTPUT` | Show function output                        | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
@@ -196,11 +208,13 @@ TOOL_AUDIT=true
 | `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
 | `TOOL_POLICY`          | Session-wide tool permission mode: `readonly`, `standard` or `trusted` (see [Permissions & Safety](permissions.md#permission-modes-tool_policy)) | `standard` | `YAI_TOOL_POLICY` |
 | `TOOL_OUTPUT_MAX_CHARS` | Max characters of one tool result kept in context (`0` = unlimited) | `32000` | `YAI_TOOL_OUTPUT_MAX_CHARS` |
-| `TOOL_OUTPUT_DIR`      | Where full (untruncated) tool outputs are saved | `<chat-history>/tool-outputs` | `YAI_TOOL_OUTPUT_DIR` |
+| `TOOL_OUTPUT_DIR`      | Where full (untruncated) tool outputs are saved | `<tempdir>/yaicli/chats/tool-outputs` | `YAI_TOOL_OUTPUT_DIR` |
 | `TOOL_DISPLAY_MAX_LINES` | Terminal preview: max lines of one tool result shown (`0` = unlimited) | `15` | `YAI_TOOL_DISPLAY_MAX_LINES` |
 | `TOOL_DISPLAY_MAX_CHARS` | Terminal preview: max characters shown; the model cap is `TOOL_OUTPUT_MAX_CHARS` | `4000` | `YAI_TOOL_DISPLAY_MAX_CHARS` |
 | `TOOL_CALL_PREVIEW_MAX_CHARS` | Max characters of the `@Function call:` argument line (`0` = raw) | `300` | `YAI_TOOL_CALL_PREVIEW_MAX_CHARS` |
 | `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = 70% of the model window) | `0`         | `YAI_CONTEXT_BUDGET_TOKENS` |
+| `ENABLE_PROJECT_CONTEXT` | Auto-load project instruction files into the system prompt (`false` = no project-file reads) | `true` | `YAI_ENABLE_PROJECT_CONTEXT` |
+| `PROJECT_CONTEXT_MAX_CHARS` | Max characters of project context added to the system prompt (`0` = no cap) | `20000` | `YAI_PROJECT_CONTEXT_MAX_CHARS` |
 | `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
 | `TOOL_ENV_INHERIT`     | Pass the full parent environment to shell tools (old behaviour) | `false` | `YAI_TOOL_ENV_INHERIT` |
 | `WORKSPACE_ROOT`       | Workspace root: shell `cwd` and guarded file writes must stay inside it (empty = current dir; see [Workspace Safety](workspace-safety.md)) | - | `YAI_WORKSPACE_ROOT` |
@@ -226,9 +240,25 @@ Conversation context is bounded on three levels; see
 - **REPL retention**: `INTERACTIVE_ROUND` (default `25`) is the number of chat turns kept in the
   REPL (×2 messages), not a token limit. `MAX_HISTORY` (default `500`) only sizes the prompt
   history file (see [Conversation & History](../advanced/history.md)).
+- **Project instructions**: `.yaicli.md` / `AGENTS.md` / `CLAUDE.md` are auto-loaded into the
+  system prompt (`ENABLE_PROJECT_CONTEXT`, `PROJECT_CONTEXT_MAX_CHARS`; see
+  [Project Context](project-context.md)).
 
 Use `/context` to inspect the estimated usage and `/compact [keep_rounds]` to compact manually
 (see [Command Reference](commands.md#interactive-mode-commands)).
+
+## Chat Sessions
+
+Since v0.21, chat sessions are isolated per project. With the default configuration `CHAT_HISTORY_DIR`
+is unset, and sessions are stored in `~/.yaicli/sessions/<sha256(resolved cwd)[:16]>/` (directories
+`0700`, session files `0600`). Setting an explicit `CHAT_HISTORY_DIR` that differs from the built-in
+default (`<tempdir>/yaicli/chats`) restores the old flat directory for all projects; a value equal
+to the built-in default counts as unset. `MAX_SAVED_CHATS` applies within the active store.
+
+Each saved session records `model`, `provider`, `role`, `cwd`, `created_at` and `updated_at` in its
+JSON, so a resumed session describes how it was produced. Sessions saved by older versions load
+normally and are backfilled on their next save. Use `--resume` to continue the newest session of the
+current project — see [Chat Sessions & Resume](sessions.md).
 
 ## State Files
 
@@ -241,9 +271,9 @@ Use `/context` to inspect the estimated usage and `/compact [keep_rounds]` to co
 | `<config-dir>/mcp.json` | MCP server configuration |
 | `<config-dir>/tool_permissions.json` | Persistent tool allow rules (mode `0600`) |
 | `<config-dir>/tool_audit.jsonl` | Tool decision audit log |
-| `<config-dir>/tool-outputs/` | Spilled full tool outputs (unless `TOOL_OUTPUT_DIR` overrides) |
-| `$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history` | REPL prompt history |
-| `CHAT_HISTORY_DIR` (default `<tempdir>/yaicli/chats`) | Saved chat sessions |
+| `<tempdir>/yaicli/chats/tool-outputs/` | Spilled full tool outputs (legacy scratch dir; `TOOL_OUTPUT_DIR` overrides) |
+| `~/.yaicli/sessions/<hash>/` | Saved chat sessions per project, mode `0700` dirs / `0600` files (or an explicit `CHAT_HISTORY_DIR`) |
+| `$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history` | REPL prompt history (mode `0600`) |
 
 
 ## Syntax Highlighting Themes

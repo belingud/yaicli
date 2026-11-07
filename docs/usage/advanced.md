@@ -34,7 +34,11 @@ $ ai --chat "check disk usage"
 Chat title: check disk usage
 ```
 
-The session will be persisted to `CHAT_HISTORY_DIR` by default.
+The session is persisted to the current project's session store
+(`~/.yaicli/sessions/<hash>/` by default; see [Chat Sessions & Resume](sessions.md)), or to an
+explicit `CHAT_HISTORY_DIR` override. `ai --resume` continues the newest session of the current
+project, and a missing `--chat "<title>"` prints an explicit notice instead of silently starting a
+new session.
 
 ## Role Management
 
@@ -135,6 +139,9 @@ files, and `ai --install-functions` only adds built-in files that are missing.
   [Permissions & Safety](permissions.md) for the prompt, risk levels, rules and audit log.
 - `MAX_TOOL_CALL_DEPTH` (default `8`) bounds recursive tool-call rounds in one request; override
   per run with `--max-turns N`.
+- **Parallel tool calls**: when a provider returns several tool calls in one response (Anthropic,
+  Gemini, Ollama, ...), YAICLI executes every call and appends all tool results; calls are not
+  dropped or reduced to the first one.
 
 ### Reading Multiple Files in One Call
 

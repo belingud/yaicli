@@ -79,6 +79,9 @@ Or start a named session that will be automatically saved:
 ai --chat "Python Tips"
 ```
 
+Sessions are stored per working directory (`~/.yaicli/sessions/` by default since v0.21); continue
+the newest one with `ai --resume`. See [Chat Sessions & Resume](usage/sessions.md).
+
 ### How do I control output formatting?
 
 Use the `--justify` option to control text alignment:

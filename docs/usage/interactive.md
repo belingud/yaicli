@@ -152,6 +152,15 @@ Executing...
 
 ## Saved Chat
 
-Your chats will save in `CHAT_HISTORY_DIR` key in `~/.config/yaicli/config.ini`.
+Since v0.21, saved chats are isolated per project: each working directory has its own store under
+`~/.yaicli/sessions/`. Sessions record the model, provider, role and working directory they were
+created with, and `ai --resume` continues the newest session of the current project. Use
+`CHAT_HISTORY_DIR` (or `YAI_CHAT_HISTORY_DIR`) only if you want the old flat directory.
 
-You can use `ai --template` to see default `CHAT_HISTORY_DIR` value, it's a temp fold created by Python, will save in `config.ini` when you first run `ai`.
+`ai --chat "<title>"` loads a session by title from the current project; when the title does not
+exist it prints an explicit notice and starts a new session with that title. Listing with
+`ai --list-chats` uses the invocation directory (the callback runs before `--cwd` applies) — use
+`/list` inside the REPL for the current project.
+
+See [Chat Sessions & Resume](sessions.md) for the layout, metadata, `--resume` and migration of old
+sessions.

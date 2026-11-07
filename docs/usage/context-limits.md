@@ -24,9 +24,9 @@ per-tool caps on top of the global default:
 | `execute_shell_command` | 32 KB |
 | `web_search`, MCP tools, default | 32 KB |
 
-Full outputs are stored under `TOOL_OUTPUT_DIR`, which defaults to a `tool-outputs/` directory
-under the chat-history directory. The truncated text includes the path so the model can read the
-rest:
+Full outputs are stored under `TOOL_OUTPUT_DIR`, which defaults to a `tool-outputs/` directory in
+the legacy chat scratch directory (`<tempdir>/yaicli/chats/tool-outputs`) — independent of the
+per-project session store. The truncated text includes the path so the model can read the rest:
 
 ```json
 {"file_paths": ["/path/to/tool-outputs/20261104-123456-execute_shell_command.txt"], "offset": 20000, "limit": 12000}
@@ -147,7 +147,7 @@ MAX_TOOL_CALL_DEPTH=12
 | Key | Default | Purpose |
 | --- | --- | --- |
 | `TOOL_OUTPUT_MAX_CHARS` | `32000` | Per-tool-result character cap (`0` = unlimited) |
-| `TOOL_OUTPUT_DIR` | `<chat history>/tool-outputs` | Where full tool outputs are spilled |
+| `TOOL_OUTPUT_DIR` | `<tempdir>/yaicli/chats/tool-outputs` | Where full tool outputs are spilled (independent of the per-project session store) |
 | `TOOL_DISPLAY_MAX_LINES` | `15` | Terminal preview lines (`0` = unlimited; model unaffected) |
 | `TOOL_DISPLAY_MAX_CHARS` | `4000` | Terminal preview characters (`0` = unlimited; model unaffected) |
 | `TOOL_CALL_PREVIEW_MAX_CHARS` | `300` | Max characters of the `@Function call:` argument line (`0` = raw) |

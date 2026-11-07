@@ -32,11 +32,12 @@ Here's a comprehensive list of all available options:
 |--------|-------|-------------|
 | `--print` | `-p` | Explicit one-shot mode: run once, never start the REPL |
 | `--output-format text\|json\|stream-json` | | Output format for the result (default `text`; `stream-json` is NDJSON events) |
+| `--json` | | Shorthand for `--output-format json` |
 | `--quiet` | `-q` | Only print the answer to stdout (no labels/progress) |
 | `--max-turns N` | | Maximum tool-call rounds for this run (overrides `MAX_TOOL_CALL_DEPTH`) |
 | `--yes` | `-y` | Auto-approve `read`-level tools only; write/exec tools still need a rule |
 | `--allowed-tools "a,b*"` | | Per-run tool allowlist, comma-separated names or globs |
-| `--cwd DIR` | | Working directory / workspace root for the run |
+| `--cwd DIR` | | Working directory / workspace root for the run (also selects the project for sessions and project context) |
 | `--fail-on-tool-denied` | | Exit with code `3` when a tool was denied |
 
 See [Headless & Scripting](headless.md) for JSON schemas, exit codes and signal handling, and
@@ -75,7 +76,11 @@ See [Headless & Scripting](headless.md) for JSON schemas, exit codes and signal 
 
 | Option | Description |
 |--------|-------------|
-| `--list-chats` | List saved chat sessions |
+| `--resume` | Continue the most recent saved session of the current project (implies `--chat`; interactive only) |
+| `--list-chats` | List saved chat sessions of the invocation directory (runs before `--cwd` applies) |
+
+See [Chat Sessions & Resume](sessions.md) for the per-project store, `--resume` details and the
+`--list-chats` caveat.
 
 ### Display Options
 
@@ -132,6 +137,9 @@ ai --chat
 
 # Save chat with a title
 ai --chat "Python programming tips"
+
+# Continue the newest saved session of this project
+ai --resume
 
 # Generate and execute shell commands
 ai --shell "Create a backup of my Documents folder"

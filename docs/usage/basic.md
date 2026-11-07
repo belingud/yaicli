@@ -91,11 +91,13 @@ change default values):
      ai "What is the capital of France?"
      ai -p "Summarize this file" > summary.md
      ai -p "List the TODO comments in src" --output-format json | jq -r .content
+     ai -p "Summarize this repo" --json | jq -r .content
      echo "error log" | ai -p "Explain these errors"
      ai -p "Run the tests and summarize failures" -y --fail-on-tool-denied
      ai --code "Write a fibonacci generator in Python"
      ai --chat "What's the meaning of life"  # Start a chat session with a title
      ai --chat  # Start a temporary chat session
+     ai --resume  # Continue the newest chat session of this project
      ai --shell "Start docker image python:3.13.5-alpine3.22 with ports 8080"
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
@@ -128,6 +130,7 @@ change default values):
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Chat Options ───────────────────────────────────────────────────────────────────────────────────╮
 │ --chat        -c        Start in interactive chat mode.                                          │
+│ --resume                Resume the most recent chat session for the current project.             │
 │ --list-chats            List saved chat sessions.                                                │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Headless Options ───────────────────────────────────────────────────────────────────────────────╮
@@ -138,6 +141,8 @@ change default values):
 │                                                         [default: text]                          │
 │ --quiet                -q                               Only print the answer on stdout (no      │
 │                                                         labels, panels or progress).             │
+│ --json                                                  Shorthand for --output-format json       │
+│                                                         (machine-readable one-shot output).      │
 │ --max-turns                    INTEGER RANGE [x>=1]     Override the maximum number of tool-call │
 │                                                         rounds (MAX_TOOL_CALL_DEPTH).            │
 │                                                         [default: None]                          │

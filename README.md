@@ -91,6 +91,8 @@ headless approval flags.
   copy-paste between steps
 - **12 built-in tools**: filesystem read/write/edit/search/info, image reading,
   shell execution, web fetch, web search and weather
+- **Project-aware**: `.yaicli.md` / `AGENTS.md` / `CLAUDE.md` from the repository are loaded into the
+  system prompt automatically — see [Project Context](docs/usage/project-context.md)
 - **MCP (optional)**: connect external MCP servers as additional tools
 - **Bounded**: tool-call depth, token budget and per-tool output limits keep long tasks under
   control
@@ -327,8 +329,8 @@ The default configuration file is `config.ini` inside the config directory above
 | `AUTO_SUGGEST`         | Enable history suggestions                  | `true`                   | `YAI_AUTO_SUGGEST`         |
 | `SHOW_REASONING`       | Enable reasoning display                    | `true`                   | `YAI_SHOW_REASONING`       |
 | `JUSTIFY`              | Text alignment                              | `default`                | `YAI_JUSTIFY`              |
-| `CHAT_HISTORY_DIR`     | Chat history directory                      | `<tempdir>/yaicli/chats` | `YAI_CHAT_HISTORY_DIR`     |
-| `MAX_SAVED_CHATS`      | Max saved chats                             | `20`                     | `YAI_MAX_SAVED_CHATS`      |
+| `CHAT_HISTORY_DIR`     | Explicit session-directory override (old flat layout); a value equal to the built-in default means the per-project store | *unset* (per-project `~/.yaicli/sessions/<hash>/`) | `YAI_CHAT_HISTORY_DIR` |
+| `MAX_SAVED_CHATS`      | Max saved sessions per store                | `20`                     | `YAI_MAX_SAVED_CHATS`      |
 | `ROLE_MODIFY_WARNING`  | Warn when modifying built-in roles          | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
 | `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
 | `SHOW_FUNCTION_OUTPUT` | Show function output when calling function  | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
@@ -337,7 +339,9 @@ The default configuration file is `config.ini` inside the config directory above
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
 | `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
 | `TOOL_OUTPUT_MAX_CHARS` | Max characters of one tool result kept in context (`0` = unlimited) | `32000` | `YAI_TOOL_OUTPUT_MAX_CHARS` |
-| `TOOL_OUTPUT_DIR`      | Where full (untruncated) tool outputs are saved | `<chat-history>/tool-outputs` | `YAI_TOOL_OUTPUT_DIR` |
+| `TOOL_OUTPUT_DIR`      | Where full (untruncated) tool outputs are saved | `<tempdir>/yaicli/chats/tool-outputs` | `YAI_TOOL_OUTPUT_DIR` |
+| `ENABLE_PROJECT_CONTEXT` | Auto-load project instruction files into the system prompt (`false` = no project-file reads) | `true` | `YAI_ENABLE_PROJECT_CONTEXT` |
+| `PROJECT_CONTEXT_MAX_CHARS` | Max characters of project context added to the system prompt (`0` = no cap) | `20000` | `YAI_PROJECT_CONTEXT_MAX_CHARS` |
 | `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = 70% of the model window) | `0`         | `YAI_CONTEXT_BUDGET_TOKENS` |
 | `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
 | `TOOL_ENV_INHERIT`     | Pass the full parent environment to shell tools (old behaviour) | `false` | `YAI_TOOL_ENV_INHERIT` |
@@ -962,13 +966,18 @@ ai --verbose "Explain quantum computing"
 
 ### Chat Persistent
 
-The `<PROMPT>` parameter in the chat mode will be used as a title to persist the chat content to the file system, with
-the save directory being a temporary directory, which may vary between machines, and it is determined on the first run.
+The `<PROMPT>` parameter in chat mode is used as the session title. Since v0.21 sessions are saved per
+project under `~/.yaicli/sessions/<sha256(resolved working directory)[:16]>/` (directories `0700`,
+files `0600`), and each session records the model, provider, role and working directory it was
+created with.
 
-If the `<PROMPT>` parameter is not specified when entering `chat` mode, the session will be treated as a temporary
-session and will not be persisted. Of course, you can also manually call the `/save <title>` command to save during the
-chat.
-When you run the same `chat` command again, the previous session will be automatically loaded.
+If `<PROMPT>` is not specified, the session is temporary and is not persisted; use `/save <title>`
+to keep it. Running `ai --chat "<title>"` again loads that session from the current project's store;
+if no session with that title exists, YAICLI prints an explicit notice and starts a new one.
+`ai --resume` continues the newest session of the current project.
+
+Sessions from the old temp directory are left in place and are not migrated automatically — see
+[Chat Sessions & Resume](docs/usage/sessions.md).
 
 ```bash
 $ ai --chat "meaning of life"
@@ -1026,6 +1035,13 @@ Chat History:
     Hello! How can I assist you today?
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 >
+```
+
+**Resume the newest session of this project**
+
+```bash
+$ ai --resume
+Resumed session "check disk usage" (model=gpt-5.2, provider=openai, role=DEFAULT, messages=6)
 ```
 
 ### Image Input

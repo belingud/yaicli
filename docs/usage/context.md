@@ -340,6 +340,8 @@ See [Context & Limits](context-limits.md) for truncation, the token budget and s
 
 ## Related Features
 
+- **Project Context**: `.yaicli.md` / `AGENTS.md` / `CLAUDE.md` are auto-loaded from the repository —
+  see [Project Context](project-context.md)
 - **Function Calling**: Use functions to interact with the file system
 - **Pipe Input**: `cat file.txt | ai "analyze this"`
 - **MCP Tools**: External tools for file system operations

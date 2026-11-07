@@ -161,6 +161,10 @@ Saved chats:
 Loaded chat: Python tips
 ```
 
+Since v0.21, sessions are saved per working directory under `~/.yaicli/sessions/`. `ai --resume`
+continues the newest session of the current project, and `--chat "<title>"` prints an explicit
+notice when the title does not exist. See [Chat Sessions & Resume](sessions.md).
+
 ## Next Steps
 
 - Learn more about [CLI shortcuts and hotkeys](cli.md)

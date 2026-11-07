@@ -14,6 +14,10 @@ YAICLI maintains a history of your commands and interactions, allowing you to:
 By default, command history is stored in `$XDG_STATE_HOME/yaicli/history` when `XDG_STATE_HOME` is
 set, otherwise in `~/.yaicli_history` (`%USERPROFILE%\.yaicli_history` on Windows).
 
+Since v0.21 the history file is created with mode `0600` (and the directories created for it with
+`0700`) because it contains every prompt you typed, possibly including pasted secrets; a legacy
+`0644` file is repaired the next time it is appended to or trimmed.
+
 The history file uses a simple text format with each command on a new line.
 
 ### History Size
@@ -88,15 +92,29 @@ Chat saved as: Python programming
 
 ### Chat Storage Location
 
-Chat history is stored in:
-- Default: A temporary directory specific to your system
-- Configurable through `CHAT_HISTORY_DIR` setting
+Since v0.21, saved chat sessions are isolated per project:
+
+- Default: `~/.yaicli/sessions/<sha256(resolved working directory)[:16]>/` — one directory per
+  working directory, containing JSON session files. Directories are `0700`, files `0600`.
+- The store is keyed by the **working directory** (not the git root): running `ai --chat` from two
+  different directories uses two stores. Use `--cwd` (or always start from the project directory) to
+  keep one store.
+- Override with `CHAT_HISTORY_DIR` (config file) or `YAI_CHAT_HISTORY_DIR` (environment) to keep the
+  previous flat directory. A value equal to the built-in default `<tempdir>/yaicli/chats` is treated
+  as unset (per-project store).
+- `MAX_SAVED_CHATS` applies within the active store.
 
 ```ini
 [core]
+# Explicit override: keep the old flat layout in a stable directory
 CHAT_HISTORY_DIR=/path/to/custom/directory
 MAX_SAVED_CHATS=20
 ```
+
+Each session records `model`, `provider`, `role`, `cwd`, `created_at` and `updated_at`; a resumed
+session prints a one-line notice with that metadata. See
+[Chat Sessions & Resume](../usage/sessions.md) for the layout, `--resume`, the `--list-chats`
+caveat and how to migrate sessions saved by older releases.
 
 ### Listing Saved Chats
 
@@ -110,7 +128,9 @@ ai --list-chats
 💬 > /list
 ```
 
-This displays a numbered list of saved chats with their creation dates.
+This displays a numbered list of saved chats with their creation dates, scoped to the current
+project's store. (`ai --list-chats` uses the invocation directory; its option callback runs before
+`--cwd` applies.)
 
 ### Loading Saved Chats
 
@@ -166,6 +186,12 @@ message, so restoring a session preserves tool calls, images, and reasoning cont
 {
   "title": "Chat Title",
   "date": "2024-06-01T12:00:00+00:00",
+  "model": "gpt-5.2",
+  "provider": "openai",
+  "role": "DEFAULT",
+  "cwd": "/home/me/project",
+  "created_at": "2024-06-01T12:00:00+00:00",
+  "updated_at": "2024-06-01T12:05:00+00:00",
   "history": [
     {
       "role": "user",
@@ -206,7 +232,9 @@ message, so restoring a session preserves tool calls, images, and reasoning cont
 
 Optional fields are written only when they are set: `name`, `tool_call_id`, `tool_calls`,
 `reasoning`, and `images`. A `tool_calls` entry is `{"id", "name", "arguments"}`; an `images`
-entry is `{"data", "media_type", "is_url"}`.
+entry is `{"data", "media_type", "is_url"}`. Session metadata (`model`, `provider`, `role`, `cwd`,
+`created_at`, `updated_at`) was added in v0.21; legacy files without it load normally and are
+backfilled on their next save.
 
 ### Atomic Saves
 

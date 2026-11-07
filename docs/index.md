@@ -41,6 +41,8 @@ properly.
 - **Multi-step tasks**: the model plans, calls tools, reads results and continues
 - **12 built-in tools**: filesystem read/write/edit/search/info, image reading, shell execution,
   web fetch, web search and weather
+- **Project-aware**: `.yaicli.md` / `AGENTS.md` / `CLAUDE.md` are loaded into the system prompt
+  automatically — see [Project Context](usage/project-context.md)
 - **MCP (optional)**: connect external MCP servers as additional tools
 
 ### 🛡️ Safe by Default
@@ -67,8 +69,9 @@ properly.
 
 ### 💻 Terminal Experience & Compatibility
 
-- Real-time streaming, syntax highlighting, persistent chat sessions, file `@` references,
-  image input
+- Real-time streaming, syntax highlighting, file `@` references and image input
+- **Per-project chat sessions** with metadata and `--resume` — see
+  [Chat Sessions & Resume](usage/sessions.md)
 - 30+ providers and any OpenAI-compatible endpoint — a compatibility layer, not the headline
 
 ## 🪶 Lightweight & scope
@@ -102,6 +105,8 @@ compatibility layer: the agent loop and tooling are the same for every provider.
 - [Permissions & Safety](usage/permissions.md)
 - [Workspace Safety](usage/workspace-safety.md)
 - [Context & Limits](usage/context-limits.md)
+- [Project Context](usage/project-context.md)
+- [Chat Sessions & Resume](usage/sessions.md)
 - [Installation](install.md)
 - [Command Reference](usage/commands.md)
 - [Configuration](usage/configuration.md)
