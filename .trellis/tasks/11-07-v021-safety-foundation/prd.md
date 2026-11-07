@@ -42,7 +42,8 @@ was descoped from v0.20.0 (user decision at the v0.20.0 release), using
       are `ENABLE_PROJECT_CONTEXT`/`PROJECT_CONTEXT_MAX_CHARS`, not `AGENTS_NONE`)
 - [ ] K13: sessions are per-project, 0600/0700, metadata-stamped; `--resume` works; a missed title
       does not silently start a new session.
-- [ ] K14: multi-tool-call turns keep every call on Anthropic/Gemini/Ollama; provider tests cover it.
+- [x] K14: multi-tool-call turns keep every call on Anthropic/Gemini/Ollama; provider tests cover it.
+      (commit `7d5fa88`; shared accumulator `yaicli/llms/tool_calls.py`, plural `LLMResponse.tool_calls`)
 - [ ] v0.21.0 shipped to PyPI + docs; `scripts/bench.py --gate` green; task archived + journal recorded.
 
 ## Notes

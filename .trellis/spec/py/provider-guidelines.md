@@ -23,9 +23,12 @@ enforced by tests and by `LLMClient`.
 | `filter_excluded_params(params, config, verbose, console)` | static helper. Call it on the final request dict so `EXCLUDE_PARAMS` works for this provider. |
 | `CLIENT_CLS` + `get_client_params()` | convention, not declared on the ABC. `__init__` builds `self.client` from `get_client_params()`: OpenAI/Anthropic-family classes use `self.CLIENT_CLS(**self.client_params)`, native-SDK providers construct their own client or add a `create_client()` hook (Cohere). |
 
-`LLMResponse.tool_call` must be either `None` or a complete `ToolCall` — `LLMClient` never inspects
-`finish_reason`; it executes any non-`None` `tool_call` and dedups by `tool_call.id`
-(`tool_calls: dict[str, ToolCall]`, `yaicli/llms/client.py`).
+`LLMResponse.tool_calls` is the plural view (v0.21 K14): a response may carry zero or more complete
+`ToolCall` values. The legacy `LLMResponse.tool_call` field is kept in sync by `__post_init__`
+(`tool_call is tool_calls[0]`; constructing with either fills the other) so older providers/callers keep
+working, but new code should emit/read `tool_calls`. `LLMClient` never inspects `finish_reason`; it
+collects every call from every response, dedups repeated snapshots by `tool_call.id`, filters by tool
+policy and executes each call once (`tool_calls: dict[str, ToolCall]`, `yaicli/llms/client.py`).
 
 ## Provider Families
 
@@ -63,22 +66,30 @@ user-facing name.
 
 - Stream text immediately: yield one `LLMResponse(content=delta)` per chunk; see
   `_handle_stream_response()` in `yaicli/llms/providers/openai_provider.py`.
-- Tool-call arguments arrive in fragments. Accumulate them per `delta.tool_calls[i].index`
-  (`_accumulate_tool_call_chunks()` in `openai_provider.py`) and emit **each** call as its own
-  `LLMResponse` when `finish_reason == "tool_calls"`; parallel calls must never be merged into one
-  `ToolCall` (or silently dropped). `OpenAICompatibleProvider` still finalizes once the accumulated
-  arguments parse as JSON, since some proxies never send a finish reason. The legacy
+- Tool-call arguments arrive in fragments. Use the shared stdlib accumulator
+  `yaicli/llms/tool_calls.py::ToolCallAccumulator` instead of hand-rolled slots: it merges by
+  `delta.tool_calls[i].index`, falls back to id-based merging (with id↔index folding), keeps same-name
+  calls **without ids** distinct, continues a nameless fragment on the last call, supports AI21-style
+  replace semantics, and `finalize()`s an ordered list with stable generated ids. Parallel calls must
+  never be merged into one `ToolCall` or silently dropped; a response may emit the complete list either
+  as `LLMResponse(tool_calls=[...])` or as one `LLMResponse` per call.
+- `OpenAIProvider` accumulates by index and emits each call as its own `LLMResponse` when
+  `finish_reason == "tool_calls"`. `OpenAICompatibleProvider` finalizes once the accumulated arguments
+  parse as JSON (some proxies never send a finish reason) and emits each call once. The legacy
   `_process_tool_call_chunk()` helper is kept for subclasses that override streaming.
 - Re-yielding the same accumulated tool call is safe because `LLMClient` dedups by id; dropping or
   reusing ids is not, because two calls sharing an id collapse into one.
-- Anthropic streams `text` deltas and `partial_json` deltas separately, finalizes the `ToolCall` on
-  `content_block_stop` with `repair_json()`, and reports `stop_reason` in `message_delta`
+- Anthropic streams `text` deltas and `partial_json` deltas separately, finalizes calls on
+  `content_block_stop` with `repair_json()`, and emits the complete plural list at message end (never a
+  partial call); `stop_reason` comes from `message_delta`
   (`yaicli/llms/providers/anthropic_provider.py`).
 - Gemini has no tool-call deltas: accumulate `function_call` parts across chunks, synthesize ids as
-  `call_<uuid4>`, unwrap proxy-shaped args in `_normalize_fc_args()`, and disable
-  `automatic_function_calling` (`yaicli/llms/providers/gemini_provider.py`).
-- Ollama yields the tool call after the stream ends in a separate `LLMResponse`, first call only
-  (`yaicli/llms/providers/ollama_provider.py`).
+  `call_<uuid4>`, unwrap proxy-shaped args in `_normalize_fc_args()`, merge dict fragments via
+  `merge_argument_mapping()`, and disable `automatic_function_calling`
+  (`yaicli/llms/providers/gemini_provider.py`).
+- Native SDK / single-slot streaming providers (ollama, chatglm/huggingface, minimax, ai21, mistral)
+  emit the complete call list after the stream ends in a separate `LLMResponse`; never yield per-chunk
+  partial tool calls.
 - Never yield a tool call whose `arguments` are partial JSON — `execute_tool_call()` runs
   immediately.
 
@@ -168,8 +179,9 @@ LongCat strips `<longcat_tool_call>...</longcat_tool_call>` out of reasoning bef
 
 ## Response Contracts
 
-- Tool execution is driven by `tool_call is not None`, not by `finish_reason`; `finish_reason` is
-  surfaced for outcomes such as `depth_limit` (client) and may be reported by providers.
+- Tool execution is driven by a non-empty `LLMResponse.tool_calls` list (the legacy singular
+  `tool_call` mirrors `tool_calls[0]`), not by `finish_reason`; `finish_reason` is surfaced for
+  outcomes such as `depth_limit` (client) and may be reported by providers.
 - `LLMResponse` has no usage field yet (token/cost accounting is a later milestone); headless JSON
   output reports `usage` as zeros. Do not add provider-specific usage handling ad hoc.
 
@@ -190,9 +202,11 @@ LongCat strips `<longcat_tool_call>...</longcat_tool_call>` out of reasoning bef
 - The config fixture must be a complete dict for the provider: providers index keys directly
   (`self.config["ENABLE_FUNCTIONS"]`), so copy the fixture from `tests/llms/test_streaming.py` and
   add provider-specific keys.
-- Streaming tests feed a list of `MagicMock` chunks and assert that `tool_call` only appears on the
-  finishing chunk with complete arguments (`tests/llms/test_streaming.py`,
-  `tests/llms/test_openai_compatible_provider.py`).
+- Streaming tests feed a list of `MagicMock` chunks and assert that no partial tool call is emitted and
+  that complete calls appear only on the finishing chunk / after the stream ends. Parallel-call coverage
+  lives in `tests/llms/test_multi_tool_calls.py` (two anthropic blocks, gemini same-name stream, ollama
+  multiple calls, single-slot providers, end-to-end `LLMClient` two-call turn); the shared accumulator
+  rules are locked in `tests/llms/test_tool_calls.py`.
 - `tests/llms/test_client.py` patches `ProviderFactory.create_provider` or uses a `MockProvider`;
   `tests/llms/test_tool_confirmation.py` uses a `FakeProvider` plus `generator.send(decision)` to
   drive `ConfirmToolCall` — test the client there, not inside a provider.
