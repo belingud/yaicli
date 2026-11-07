@@ -248,3 +248,47 @@ Ships the full-screen Ctrl+O tool-output viewer, compact head-only tool previews
 
 - Collect UX feedback on the viewer list (compact labels, caption width) and the generation-time Ctrl+O flow
 - v0.20: startup/footprint K08-K15, permission policy v2, workspace writes/undo, session isolation
+
+
+## Session 7: v0.20.0 startup, packaging and viewer release
+<!-- trellis-session: v=2 fp=0dbc1e0572506e7c -->
+
+**Date**: 2026-11-07
+**Task**: v0.20.0 startup, packaging and viewer release
+**Branch**: `master`
+
+### Summary
+
+Ships K08 startup latency, K09 tools-complete packaging and the Ctrl+O full-tool-name fix as v0.20.0 (PyPI + docs).
+
+### Main Changes
+
+- K08: entry/cli heavy imports are lazy and the LLM client is constructed on first use; REPL first prompt proxy ~1.55s -> ~0.55s, --help no longer imports the CLI stack; new scripts/bench.py + bench.yml cold-start gate
+- K09: base install stays tools-complete (ddgs/trafilatura/fastmcp kept), anthropic[bedrock,vertex] split into [bedrock]/[vertex], [all] complete, missing-SDK AgentError hint, Bedrock/Vertex api_key fix, packaging policy tests + docs
+- Viewer: Ctrl+O list/header show full tool names again (execute_shell_command, _mcp__<tool>, ...) with caption/size unchanged; spec locks the rule and tests
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3d33651` | perf(startup): defer heavy imports and build the LLM client lazily (K08) |
+| `d874b09` | build(deps): keep tools complete in base and split Anthropic cloud extras (K09) |
+| `641d7cf` | fix(viewer): show full tool names in the output list |
+| `9be64e2` | docs(spec): require raw tool names in the Ctrl+O viewer chrome |
+| `a9f347d` | docs: refresh lightweight claims and v0.20 upgrade notes |
+| `390e045` | ci(bench): widen the one-shot local-overhead gate to 2200 ms for shared runners |
+| `8aa1cb2` | Bump version: 0.19.1 → 0.20.0 |
+| `5e69202` | docs(changelog): update changelog for v0.20.0 release |
+
+### Testing
+
+- [OK] pytest: 1922 passed; ruff clean; mkdocs build --strict ok; scripts/bench.py --gate ok (CI Startup benchmark workflow success)
+- [OK] GitHub publish.yml + deploy-docs.yml success; PyPI 0.20.0 wheel/sdist live; published wheel smoke: ai --version 0.20.0, 12 builtin functions; docs changelog shows 0.20.0
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Start v0.21 safety foundation (task 11-07-v021-safety-foundation): K10 policy modes, K11 workspace write safety + /undo, K12 AGENTS.md, K13 session isolation, K14 provider tool-call consistency

@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 6
-- **Last Active**: 2026-11-05
+- **Total Sessions**: 7
+- **Last Active**: 2026-11-07
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~250 | Active |
+| `journal-1.md` | ~294 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 7 | 2026-11-07 | v0.20.0 startup, packaging and viewer release | `3d33651`, `d874b09`, `641d7cf`, `9be64e2`, `a9f347d`, `390e045`, `8aa1cb2`, `5e69202` | `master` |
 | 6 | 2026-11-05 | v0.19.1 tool-output viewer release | `a0db5eb`, `d77e190`, `7fcea5f`, `b6709cf`, `c0874a8`, `b9337bd`, `d598955`, `f437f7e`, `2eaaadf`, `cba65ee`, `28f29f7`, `573f6d8`, `2f026ca`, `0b5a95a`, `fc8b98c` | `master` |
 | 5 | 2026-11-04 | v0.19.0 release and double Ctrl-C REPL exit | `3c401ae`, `295dfd5`, `42fca6d` | `master` |
 | 4 | 2026-11-04 | v0.19 independent verification fixes | `5fd62bc`, `4735f3d`, `f19cac6`, `bf39624`, `1868067` | `release/v0.19.0` |
