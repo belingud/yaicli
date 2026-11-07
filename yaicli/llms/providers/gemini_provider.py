@@ -14,6 +14,7 @@ from ...errors import provider_response_error, wrap_provider_exception
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools.function import get_functions_gemini_format
 from ..provider import Provider
+from ..tool_calls import ToolCallAccumulator, merge_argument_mapping
 
 
 class GeminiProvider(Provider):
@@ -289,15 +290,14 @@ class GeminiProvider(Provider):
     def _handle_stream_response(self, response) -> Generator[LLMResponse, None, None]:
         """Handle streaming response from Gemini API.
 
-        Function call data may arrive across multiple streaming chunks (especially
-        via OpenAI-to-Gemini proxies). Accumulate all function call parts during
-        streaming and yield the complete ToolCall at the end, following the same
-        pattern as OpenAI/Anthropic providers.
+        A function-call part starts a new call when it carries a name; parts with
+        an empty name continue the most recent call (OpenAI-to-Gemini proxies
+        split argument JSON that way). Calls are accumulated with the shared
+        :class:`~yaicli.llms.tool_calls.ToolCallAccumulator`, so two calls with
+        the **same name** in one stream stay two distinct calls instead of being
+        merged. Complete calls are emitted at the end, never partial arguments.
         """
-        # Accumulate function calls across streaming chunks
-        pending_calls: list[tuple[str, dict]] = []
-        current_fc_name: str | None = None
-        current_fc_args: dict = {}
+        accumulator = ToolCallAccumulator()
 
         for chunk in response:
             if not chunk.candidates:
@@ -307,21 +307,18 @@ class GeminiProvider(Provider):
             for part in chunk.candidates[0].content.parts:
                 if part.function_call:
                     fc = part.function_call
-                    name = fc.name or current_fc_name
-                    if not name:
+                    name = fc.name or ""
+                    fc_id = getattr(fc, "id", None) or None
+                    if name:
+                        call = accumulator.add_fragment(call_id=fc_id, name=name)
+                    elif fc_id:
+                        call = accumulator.add_fragment(call_id=fc_id)
+                    elif len(accumulator):
+                        call = accumulator.add_fragment()  # empty name: continuation
+                    else:
+                        # Unnamed fragment without an open call: cannot attribute it.
                         continue
-                    if name != current_fc_name:
-                        # New function call; save the previous one if any
-                        if current_fc_name:
-                            pending_calls.append((current_fc_name, current_fc_args))
-                        current_fc_name = name
-                        current_fc_args = {}
-                    # Accumulate args: concatenate string values for the same key
-                    for key, value in (fc.args or {}).items():
-                        if key in current_fc_args and isinstance(value, str) and isinstance(current_fc_args[key], str):
-                            current_fc_args[key] += value
-                        else:
-                            current_fc_args[key] = value
+                    merge_argument_mapping(call, dict(fc.args or {}))
                     continue
                 if part.thought:
                     reasoning = part.text
@@ -335,20 +332,21 @@ class GeminiProvider(Provider):
                     finish_reason=finish_reason or None,
                 )
 
-        # Save last pending function call
-        if current_fc_name:
-            pending_calls.append((current_fc_name, current_fc_args))
-
-        # Yield accumulated function calls with normalized args
-        for name, args in pending_calls:
-            final_args = self._normalize_fc_args(args)
+        # Emit every complete call (each as its own response, like the other
+        # streaming providers) with normalized/unwrapped arguments.
+        for tool_call in accumulator.finalize():
+            if not tool_call.name:
+                continue
+            try:
+                parsed_args = json.loads(tool_call.arguments) if tool_call.arguments else {}
+            except (TypeError, ValueError):
+                parsed_args = {}
+            if isinstance(parsed_args, dict):
+                parsed_args = self._normalize_fc_args(parsed_args)
+            tool_call.arguments = json.dumps(parsed_args)
             yield LLMResponse(
                 content="",
-                tool_call=ToolCall(
-                    id=f"call_{uuid4().hex[:24]}",
-                    name=name,
-                    arguments=json.dumps(final_args),
-                ),
+                tool_call=tool_call,
                 finish_reason="tool_calls",
             )
 

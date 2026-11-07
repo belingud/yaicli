@@ -1,5 +1,4 @@
 import json
-import time
 from typing import Any, Dict, Generator, List
 
 import ollama
@@ -10,8 +9,9 @@ from ...console import get_console
 from ...errors import wrap_provider_exception
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_schemas
-from ...utils import str2bool
+from ...utils import gen_tool_call_id, str2bool
 from ..provider import Provider
+from ..tool_calls import ToolCallAccumulator
 
 
 class OllamaProvider(Provider):
@@ -139,45 +139,43 @@ class OllamaProvider(Provider):
             # breaks mid-iteration) as assistant content: raise classified instead.
             raise wrap_provider_exception(e, "Ollama") from e
 
+    @staticmethod
+    def _to_tool_call(tc: dict) -> ToolCall:
+        """Convert one Ollama tool-call dict to a canonical :class:`ToolCall`."""
+        function_data = tc.get("function", {}) or {}
+        arguments = function_data.get("arguments", "")
+        if isinstance(arguments, dict):
+            arguments = json.dumps(arguments)
+        return ToolCall(
+            id=tc.get("id") or gen_tool_call_id(),
+            name=function_data.get("name", ""),
+            arguments=arguments,
+        )
+
     def _handle_normal_response(
         self,
         response: ChatResponse,
         tool_calls_enabled: bool,
     ) -> Generator[LLMResponse, None, None]:
-        """Handle normal (non-streaming) response"""
+        """Handle normal (non-streaming) response; keep every tool call."""
         content = response.message.content or ""
         reasoning = response.message.thinking or ""
 
-        # Check for tool calls in the response
-        tool_call = None
-        tool_calls = response.message.tool_calls or []
+        # Ollama returns complete calls; retain all of them (parallel tool use).
+        accumulator = ToolCallAccumulator()
+        if tool_calls_enabled:
+            for tc in response.message.tool_calls or []:
+                accumulator.add_complete(self._to_tool_call(tc))
 
-        if tool_calls and tool_calls_enabled:
-            # Get the first tool call
-            tc = tool_calls[0]
-            function_data = tc.get("function", {})
-
-            # Create tool call with appropriate data type handling
-            arguments = function_data.get("arguments", "")
-            if isinstance(arguments, dict):
-                arguments = json.dumps(arguments)
-
-            tool_call = ToolCall(
-                id=tc.get("id", f"tc_{hash(function_data.get('name', ''))}_{int(time.time())}"),
-                name=function_data.get("name", ""),
-                arguments=arguments,
-            )
-
-        yield LLMResponse(content=content, reasoning=reasoning, tool_call=tool_call)
+        yield LLMResponse(content=content, reasoning=reasoning, tool_calls=accumulator.finalize())
 
     def _handle_stream_response(
         self,
         response_generator,
         tool_calls_enabled: bool,
     ) -> Generator[LLMResponse, None, None]:
-        """Handle streaming response"""
-        accumulated_content = ""
-        tool_call = None
+        """Handle streaming response; keep every tool call from the final message."""
+        accumulator = ToolCallAccumulator()
 
         for chunk in response_generator:
             # Extract content from the current chunk
@@ -186,30 +184,18 @@ class OllamaProvider(Provider):
             reasoning = message.thinking or ""
 
             if content or reasoning:
-                accumulated_content += content
                 yield LLMResponse(content=content, reasoning=reasoning)
 
-            # Check for tool calls in the chunk
-            tool_calls = message.tool_calls or []
-            if tool_calls and tool_calls_enabled:
-                # Only handle the first tool call for now
-                tc = tool_calls[0]
-                function_data = tc.get("function", {})
+            # Ollama sends complete calls (usually once, after the text stream);
+            # collect all of them instead of only the first one.
+            if tool_calls_enabled:
+                for tc in message.tool_calls or []:
+                    accumulator.add_complete(self._to_tool_call(tc))
 
-                # Create tool call with appropriate data type handling
-                arguments = function_data.get("arguments", "")
-                if isinstance(arguments, dict):
-                    arguments = json.dumps(arguments)
-
-                tool_call = ToolCall(
-                    id=tc.get("id", None) or f"tc_{hash(function_data.get('name', ''))}_{int(time.time())}",
-                    name=function_data.get("name", ""),
-                    arguments=arguments,
-                )
-
-        # After streaming is complete, if we found a tool call, yield it
-        if tool_call:
-            yield LLMResponse(tool_call=tool_call)
+        # After streaming is complete, emit every complete tool call at once.
+        tool_calls = accumulator.finalize()
+        if tool_calls:
+            yield LLMResponse(tool_calls=tool_calls)
 
     def detect_tool_role(self) -> str:
         """Return the role to be used for tool responses"""

@@ -87,31 +87,46 @@ class TestAI21Provider:
             # Mock the _get_reasoning_content method
             provider._get_reasoning_content = MagicMock(return_value="")
 
-            # Mock the _process_tool_call_chunk method
-            tool_call = ToolCall(id="tc_123", name="get_weather", arguments='{"location": "New York"}')
-            provider._process_tool_call_chunk = MagicMock(return_value=tool_call)
+            # AI21 first chunk: function name/id; later chunk re-sends complete args.
+            first_tool = MagicMock()
+            first_tool.id = "tc_123"
+            first_tool.function.name = "get_weather"
+            first_tool.function.arguments = ""
 
-            # Create chunk with tool call
-            chunk = MagicMock(spec=ChatCompletionChunk)
-            delta = MagicMock(spec=ChoiceDelta)
-            delta.content = ""  # AI21 specific: content must not be empty for tool calls
-            delta.tool_calls = [MagicMock()]  # Just need something non-empty
-            choice = MagicMock()
-            choice.delta = delta
-            choice.finish_reason = "tool_calls"
-            chunk.choices = [choice]
+            chunk1 = MagicMock(spec=ChatCompletionChunk)
+            delta1 = MagicMock(spec=ChoiceDelta)
+            delta1.content = ""
+            delta1.tool_calls = [first_tool]
+            choice1 = MagicMock()
+            choice1.delta = delta1
+            choice1.finish_reason = None
+            chunk1.choices = [choice1]
+
+            second_tool = MagicMock()
+            second_tool.id = None
+            second_tool.function.name = None
+            second_tool.function.arguments = '{"location": "New York"}'
+
+            chunk2 = MagicMock(spec=ChatCompletionChunk)
+            delta2 = MagicMock(spec=ChoiceDelta)
+            delta2.content = ""  # AI21 specific: content must not be empty for tool calls
+            delta2.tool_calls = [second_tool]
+            choice2 = MagicMock()
+            choice2.delta = delta2
+            choice2.finish_reason = "tool_calls"
+            chunk2.choices = [choice2]
 
             # Process events
-            responses = list(provider._handle_stream_response([chunk]))
+            responses = list(provider._handle_stream_response([chunk1, chunk2]))
 
             # Verify responses - AI21 should set content to tool_call.id when empty
-            assert len(responses) == 1
-            assert responses[0].content == tool_call.id
-            assert responses[0].finish_reason == "tool_calls"
-            assert responses[0].tool_call is not None
-            assert responses[0].tool_call.id == "tc_123"
-            assert responses[0].tool_call.name == "get_weather"
-            assert responses[0].tool_call.arguments == '{"location": "New York"}'
+            assert len(responses) == 2
+            assert responses[1].content == "tc_123"
+            assert responses[1].finish_reason == "tool_calls"
+            assert responses[1].tool_call is not None
+            assert responses[1].tool_call.id == "tc_123"
+            assert responses[1].tool_call.name == "get_weather"
+            assert responses[1].tool_call.arguments == '{"location": "New York"}'
 
     def test_process_tool_call_chunk_first_chunk(self, mock_config):
         """Test _process_tool_call_chunk when processing the first chunk"""

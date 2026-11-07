@@ -45,12 +45,40 @@ class ToolPolicy:
 
 @dataclass
 class LLMResponse:
-    """Data structure for llm response with reasoning and content"""
+    """Data structure for llm response with reasoning and content.
+
+    Tool calls are exposed through two synchronised views:
+
+    * ``tool_call`` — the legacy single-call field. Existing code that reads or
+      constructs ``LLMResponse(tool_call=...)`` keeps working unchanged.
+    * ``tool_calls`` — the full list of calls carried by this response. Providers
+      that can return parallel/multiple calls in one response (stream or not)
+      should emit ``LLMResponse(tool_calls=[...])``; ``LLMClient`` collects every
+      entry.
+
+    The two fields are kept in sync by :meth:`__post_init__` (a dual-set, not a
+    property): constructing with either form fills the other, with ``tool_call``
+    always pointing at ``tool_calls[0]``. Replace a response object rather than
+    mutating one field in place, so the views never diverge.
+    """
 
     reasoning: Optional[str] = None
     content: str = ""
     finish_reason: Optional[str] = None
     tool_call: Optional[ToolCall] = None
+    tool_calls: List[ToolCall] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """Keep the legacy ``tool_call`` and plural ``tool_calls`` views in sync."""
+        if self.tool_calls is None:  # defensive: callers may pass an explicit None
+            self.tool_calls = []
+        if self.tool_calls:
+            if self.tool_call is None or self.tool_call not in self.tool_calls:
+                if self.tool_call is not None:
+                    self.tool_calls.insert(0, self.tool_call)
+            self.tool_call = self.tool_calls[0]
+        elif self.tool_call is not None:
+            self.tool_calls = [self.tool_call]
 
 
 class RefreshLive:

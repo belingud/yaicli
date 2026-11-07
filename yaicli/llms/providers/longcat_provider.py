@@ -162,7 +162,7 @@ class LongCatProvider(OpenAIProvider):
                     reasoning=chunk_response.reasoning,
                     content=chunk_response.content,
                     finish_reason=chunk_response.finish_reason,
-                    tool_call=None,
+                    tool_calls=getattr(chunk_response, "tool_calls", None) or [],
                 )
 
 
@@ -286,5 +286,5 @@ class LongCatAnthropicProvider(AnthropicProvider):
                 yield LLMResponse(
                     content=chunk_response.content,
                     finish_reason=chunk_response.finish_reason,
-                    tool_call=None,
+                    tool_calls=getattr(chunk_response, "tool_calls", None) or [],
                 )

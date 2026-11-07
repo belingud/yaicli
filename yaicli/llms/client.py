@@ -26,6 +26,7 @@ from ..tools.approval import (
 from ..tools.mcp import MCP_TOOL_NAME_PREFIX
 from ..tools.risk import RiskLevel, ShellRisk, classify_shell_command, get_tool_risk
 from .provider import ProviderFactory
+from .tool_calls import dedupe_tool_calls
 
 #: ``finish_reason`` value used when the tool-call depth limit stops the run.
 DEPTH_LIMIT_FINISH_REASON = "depth_limit"
@@ -329,8 +330,10 @@ class LLMClient:
         # Get completion from provider and collect response data
         assistant_response_content = ""
         assistant_reasoning_content = ""  # Collect reasoning content
-        # Providers may return identical tool calls with the same ID in a single response during streaming
-        tool_calls: dict[str, ToolCall] = {}
+        # A provider response/stream can carry several calls (parallel tool use).
+        # Collect every one, in arrival order; duplicates (a streaming provider
+        # re-yielding the same accumulated call) are removed by id below.
+        collected_tool_calls: List[ToolCall] = []
 
         # Stream responses and collect data
         for llm_response in self._stream_provider(messages, stream, effective_tool_policy):
@@ -344,13 +347,19 @@ class LLMClient:
                 assistant_response_content += llm_response.content
             if llm_response.reasoning:  # Collect reasoning content
                 assistant_reasoning_content += llm_response.reasoning
-            if llm_response.tool_call and llm_response.tool_call.id not in tool_calls:
-                tool_calls[llm_response.tool_call.id] = llm_response.tool_call
+            response_tool_calls = getattr(llm_response, "tool_calls", None)
+            if not response_tool_calls:
+                # Duck-typed/legacy response objects may only expose the singular view.
+                legacy_tool_call = getattr(llm_response, "tool_call", None)
+                response_tool_calls = [legacy_tool_call] if legacy_tool_call is not None else []
+            collected_tool_calls.extend(response_tool_calls)
 
-        # Always add assistant response to messages first
+        # Dedupe by id (streaming providers may repeat a snapshot) and make sure
+        # every call has an id so the assistant message and tool results match.
+        tool_calls = dedupe_tool_calls(collected_tool_calls)
         valid_tool_calls = self._get_valid_tool_calls(tool_calls, effective_tool_policy)
         if self.verbose and tool_calls and len(valid_tool_calls) != len(tool_calls):
-            skipped_tools = [tool_call.name for tool_call in tool_calls.values() if tool_call not in valid_tool_calls]
+            skipped_tools = [tool_call.name for tool_call in tool_calls if tool_call not in valid_tool_calls]
             self.console.print(f"Skipping disallowed tool calls: {', '.join(skipped_tools)}", style="dim yellow")
 
         assistant_message = ChatMessage(
@@ -373,11 +382,11 @@ class LLMClient:
             effective_tool_policy,
         )
 
-    def _get_valid_tool_calls(self, tool_calls: dict[str, ToolCall], tool_policy: ToolPolicy) -> List[ToolCall]:
-        """Filter tool calls based on enabled features"""
+    def _get_valid_tool_calls(self, tool_calls: List[ToolCall], tool_policy: ToolPolicy) -> List[ToolCall]:
+        """Filter tool calls based on enabled features, preserving arrival order."""
         valid_tool_calls = []
 
-        for tool_call in tool_calls.values():
+        for tool_call in tool_calls:
             if self.verbose:
                 self.console.print(f"Raw tool call name: {tool_call.name}")
             is_mcp = tool_call.name.startswith(MCP_TOOL_NAME_PREFIX)

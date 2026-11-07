@@ -1,5 +1,5 @@
 import json
-from typing import Generator, Optional, Union, overload
+from typing import Generator, Union, overload
 
 from openai._streaming import Stream
 from openai.types.chat.chat_completion import ChatCompletion, Choice
@@ -7,6 +7,7 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from openai.types.chat.chat_completion_chunk import Choice as ChoiceChunk
 
 from ...schemas import LLMResponse, ToolCall
+from ..tool_calls import ToolCallAccumulator
 from .openai_provider import OpenAIProvider
 
 
@@ -41,7 +42,6 @@ class ChatglmProvider(OpenAIProvider):
         # responses) may not expose reasoning_content at all, so never access it directly.
         reasoning = getattr(choice.message, "reasoning_content", None)
         finish_reason = choice.finish_reason
-        tool_call: Optional[ToolCall] = None
 
         # Check if the response contains reasoning content
         if "<think>" in content and "</think>" in content:
@@ -57,6 +57,9 @@ class ChatglmProvider(OpenAIProvider):
         elif hasattr(choice.message, "model_extra") and choice.message.model_extra:  # type: ignore
             model_extra = choice.message.model_extra  # type: ignore
             reasoning = self._get_reasoning_content(model_extra)
+        # Collect every tool call (parallel tool use included); the legacy single
+        # ``tool_call`` view is filled in by LLMResponse.__post_init__.
+        tool_calls = []
         if finish_reason == "tool_calls":
             if '{"index":' in content or '"tool_calls":' in content:
                 # Tool call data may in content after the <think> block
@@ -70,28 +73,34 @@ class ChatglmProvider(OpenAIProvider):
                     except ValueError:
                         pass
             if hasattr(choice, "message") and hasattr(choice.message, "tool_calls") and choice.message.tool_calls:  # type: ignore
-                tool = choice.message.tool_calls[0]  # type: ignore
-                tool_call = ToolCall(tool.id, tool.function.name or "", tool.function.arguments)
+                for tool in choice.message.tool_calls:  # type: ignore
+                    function = getattr(tool, "function", None)
+                    tool_calls.append(
+                        ToolCall(
+                            getattr(tool, "id", "") or "",
+                            (getattr(function, "name", None) if function else None) or "",
+                            (getattr(function, "arguments", None) if function else None) or "",
+                        )
+                    )
 
-        yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason, tool_call=tool_call)
+        yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason, tool_calls=tool_calls)
 
     def _handle_stream_response(self, response: Stream[ChatCompletionChunk]) -> Generator[LLMResponse, None, None]:
         """Handle streaming response
         Support both openai capabilities and chatglm
+
+        Tool-call fragments are accumulated per call (index/id/name) with the
+        shared :class:`~yaicli.llms.tool_calls.ToolCallAccumulator`; complete calls
+        are emitted once at the end of the stream. ChatGLM may also embed the tool
+        call JSON in the content after a ``<think>`` block, which is parsed first.
 
         Returns:
             Generator yielding LLMContent objects with:
             - reasoning: The thinking/reasoning content (if any)
             - content: The normal response content
         """
-        full_reasoning = ""
+        accumulator = ToolCallAccumulator()
         full_content = ""
-        content = ""
-        reasoning = ""
-        tool_id = ""
-        tool_call_name = ""
-        arguments = ""
-        tool_call: Optional[ToolCall] = None
         for chunk in response:
             # Check if the response contains reasoning content
             choice = chunk.choices[0]  # type: ignore
@@ -104,7 +113,6 @@ class ChatglmProvider(OpenAIProvider):
 
             # Concat reasoning
             reasoning = self._get_reasoning_content(delta)
-            full_reasoning += reasoning or ""
 
             if finish_reason == "tool_calls" or ('{"index":' in content or '"tool_calls":' in content):
                 # Tool call data may in content after the <think> block
@@ -116,16 +124,27 @@ class ChatglmProvider(OpenAIProvider):
                         choice = self.parse_choice_from_content(tmp_content, ChoiceChunk)
                     except ValueError:
                         pass
-            if hasattr(choice.delta, "tool_calls") and choice.delta.tool_calls:  # type: ignore
-                # Handle tool calls
-                tool_id = choice.delta.tool_calls[0].id or ""  # type: ignore
-                for tool in choice.delta.tool_calls:  # type: ignore
-                    if not tool.function:
-                        continue
-                    tool_call_name = tool.function.name or ""
-                    arguments += tool.function.arguments or ""
-                tool_call = ToolCall(tool_id, tool_call_name, arguments)
-            yield LLMResponse(reasoning=reasoning, content=content, tool_call=tool_call, finish_reason=finish_reason)
+
+            # Accumulate every fragment of the (possibly content-parsed) delta.
+            for position, tool in enumerate(getattr(choice.delta, "tool_calls", None) or []):  # type: ignore
+                function = getattr(tool, "function", None)
+                if function is None:
+                    continue
+                index = getattr(tool, "index", None)
+                if not isinstance(index, int):
+                    index = None
+                accumulator.add_fragment(
+                    index=index if index is not None else None,
+                    call_id=getattr(tool, "id", None) or None,
+                    name=getattr(function, "name", None) or None,
+                    arguments=getattr(function, "arguments", None) or None,
+                )
+            yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason)
+
+        # Emit the complete tool calls once the stream is finished (never partial).
+        tool_calls = accumulator.finalize()
+        if tool_calls:
+            yield LLMResponse(tool_calls=tool_calls, finish_reason="tool_calls")
 
     @overload
     def parse_choice_from_content(self, content: str, choice_class: type[ChoiceChunk] = ChoiceChunk) -> "ChoiceChunk":

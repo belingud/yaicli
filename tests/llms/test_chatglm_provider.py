@@ -331,19 +331,18 @@ class TestChatglmProvider:
             # Process events
             responses = list(provider._handle_stream_response([chunk1, chunk2, chunk3]))
 
-            # Verify responses
-            assert len(responses) == 3
+            # Content chunks are streamed as before, but partial tool calls are
+            # never surfaced: the client must never execute truncated arguments.
             assert responses[0].content == "I'll check the weather"
-            assert responses[0].tool_call is None
+            assert [response for response in responses[:-1] if response.tool_call] == []
 
-            assert responses[1].tool_call is not None
-            assert responses[1].tool_call.id == "call_123"
-            assert responses[1].tool_call.name == "get_weather"
-            assert responses[1].tool_call.arguments == '{"location": '
-
-            assert responses[2].finish_reason == "tool_calls"
-            assert responses[2].tool_call is not None
-            assert responses[2].tool_call.arguments == '{"location": "New York"}'
+            # The complete call is emitted once, after the stream finished.
+            tool_responses = [response for response in responses if response.tool_call]
+            assert len(tool_responses) == 1
+            assert tool_responses[0].tool_call.id == "call_123"
+            assert tool_responses[0].tool_call.name == "get_weather"
+            assert tool_responses[0].tool_call.arguments == '{"location": "New York"}'
+            assert tool_responses[0].finish_reason == "tool_calls"
 
     def test_parse_choice_from_content(self, mock_config):
         """Test parsing choice from content"""

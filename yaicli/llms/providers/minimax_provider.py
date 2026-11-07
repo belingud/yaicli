@@ -3,7 +3,8 @@ from typing import Any, Dict, Generator, List, Optional
 from openai._streaming import Stream
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
-from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
+from ...schemas import ChatMessage, LLMResponse, ToolPolicy
+from ..tool_calls import ToolCallAccumulator
 from .openai_provider import OpenAIProvider
 
 
@@ -92,8 +93,14 @@ class MinimaxProvider(OpenAIProvider):
         return super()._get_reasoning_content(delta)
 
     def _handle_stream_response(self, response: Stream[ChatCompletionChunk]) -> Generator[LLMResponse, None, None]:
-        """Handle streaming response with MiniMax reasoning_details support."""
-        tool_call: Optional[ToolCall] = None
+        """Handle streaming response with MiniMax reasoning_details support.
+
+        Tool-call fragments are accumulated with the shared
+        :class:`~yaicli.llms.tool_calls.ToolCallAccumulator` so parallel calls are
+        all retained (the old single-slot accumulation dropped every call but one)
+        and complete calls are emitted once, at ``finish_reason == "tool_calls"``.
+        """
+        accumulator = ToolCallAccumulator()
         started = False
 
         for chunk in response:
@@ -116,12 +123,23 @@ class MinimaxProvider(OpenAIProvider):
             model_extra = getattr(delta, "model_extra", None) or {}
             reasoning = self._get_reasoning_content(model_extra)
 
-            if hasattr(delta, "tool_calls") and delta.tool_calls:
-                tool_call = self._process_tool_call_chunk(delta.tool_calls, tool_call)
+            for position, tool in enumerate(getattr(delta, "tool_calls", None) or []):
+                function = getattr(tool, "function", None)
+                if function is None:
+                    continue
+                index = getattr(tool, "index", None)
+                if not isinstance(index, int):
+                    index = position if len(delta.tool_calls) > 1 else None
+                accumulator.add_fragment(
+                    index=index,
+                    call_id=getattr(tool, "id", None) or None,
+                    name=getattr(function, "name", None) or None,
+                    arguments=getattr(function, "arguments", None) or None,
+                )
 
             yield LLMResponse(
                 reasoning=reasoning,
                 content=content,
-                tool_call=tool_call if finish_reason == "tool_calls" else None,
+                tool_calls=accumulator.finalize() if finish_reason == "tool_calls" else [],
                 finish_reason=finish_reason,
             )

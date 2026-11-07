@@ -20,6 +20,7 @@ from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_mcp_tools, get_openai_schemas
 from ...utils import gen_tool_call_id
 from ..provider import Provider
+from ..tool_calls import ToolCallAccumulator
 
 
 class MistralProvider(Provider):
@@ -145,17 +146,36 @@ class MistralProvider(Provider):
         choice = response.choices[0]
         finish_reason = choice.finish_reason
         content = self.get_content_from_delta_content(choice.message.content) if choice.message.content else ""
-        tool_call: Optional[ToolCall] = None
 
-        # Handle tool calls if present
+        # Handle every tool call if present (parallel tool use included).
+        tool_calls = []
         if finish_reason == "tool_calls":
-            tool_call = self._process_tool_call_chunk(choice.message.tool_calls or [])
+            accumulator = ToolCallAccumulator()
+            for tool in choice.message.tool_calls or []:
+                function = getattr(tool, "function", None)
+                arguments = getattr(function, "arguments", "") if function else ""
+                if not isinstance(arguments, str):
+                    arguments = json.dumps(arguments)
+                accumulator.add_complete(
+                    ToolCall(
+                        id=getattr(tool, "id", None) or gen_tool_call_id(),
+                        name=(getattr(function, "name", None) if function else None) or "",
+                        arguments=arguments,
+                    )
+                )
+            tool_calls = accumulator.finalize()
 
-        yield LLMResponse(content=content, finish_reason=finish_reason, tool_call=tool_call)
+        yield LLMResponse(content=content, finish_reason=finish_reason, tool_calls=tool_calls)
 
     def _handle_stream_response(self, response: EventStream[CompletionEvent]) -> Generator[LLMResponse, None, None]:
-        """Handle stream response"""
-        tool_call: Optional[ToolCall] = None
+        """Handle stream response; all streamed tool calls are accumulated.
+
+        Fragments merge by ``index``/``id`` (falling back to the shared
+        accumulator's same-name/continuation rules for providers that do not send
+        an index); complete calls are emitted once, at ``finish_reason ==
+        "tool_calls"``, so parallel calls are never dropped or mixed together.
+        """
+        accumulator = ToolCallAccumulator()
 
         for chunk in response:
             choice = chunk.data.choices[0]
@@ -167,14 +187,30 @@ class MistralProvider(Provider):
             if delta_content:
                 content = self.get_content_from_delta_content(delta_content)
 
-            # Process tool call information
-            if hasattr(delta, "tool_calls") and delta.tool_calls:
-                tool_call = self._process_tool_call_chunk(delta.tool_calls, tool_call)
+            # Process tool call information (before the response is yielded so the
+            # finishing chunk carries the complete list of calls).
+            delta_tool_calls = getattr(delta, "tool_calls", None) or []
+            for position, tool in enumerate(delta_tool_calls):
+                function = getattr(tool, "function", None)
+                if function is None:
+                    continue
+                arguments = getattr(function, "arguments", None)
+                if arguments is not None and not isinstance(arguments, str):
+                    arguments = json.dumps(arguments)
+                index = getattr(tool, "index", None)
+                if not isinstance(index, int):
+                    index = position if len(delta_tool_calls) > 1 else None
+                accumulator.add_fragment(
+                    index=index,
+                    call_id=getattr(tool, "id", None),
+                    name=getattr(function, "name", None),
+                    arguments=arguments,
+                )
 
             yield LLMResponse(
                 content=content,
                 finish_reason=finish_reason,
-                tool_call=tool_call if finish_reason == "tool_calls" else None,
+                tool_calls=accumulator.finalize() if finish_reason == "tool_calls" else [],
             )
 
     def _process_tool_call_chunk(

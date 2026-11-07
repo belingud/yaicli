@@ -1,9 +1,10 @@
-from typing import Generator, Optional
+from typing import Generator
 
 from openai._streaming import Stream
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from ...schemas import LLMResponse, ToolCall
+from ..tool_calls import ToolCallAccumulator
 from .openai_provider import OpenAIProvider
 
 
@@ -36,8 +37,10 @@ class AI21Provider(OpenAIProvider):
             - content: The normal response content
             - tool_call: Tool call information when applicable
         """
-        # Initialize tool call object to accumulate tool call data across chunks
-        tool_call: Optional[ToolCall] = None
+        # Accumulate every tool call of the stream (parallel calls included), using
+        # the shared accumulator. AI21 re-sends the complete argument JSON on later
+        # chunks instead of fragments, hence ``replace_arguments=True``.
+        accumulator = ToolCallAccumulator()
 
         # Process each chunk in the response stream
         for chunk in response:
@@ -52,20 +55,35 @@ class AI21Provider(OpenAIProvider):
             reasoning = self._get_reasoning_content(getattr(delta, "model_extra", None) or delta)
 
             # Process tool call information that may be scattered across chunks
-            if hasattr(delta, "tool_calls") and delta.tool_calls:
-                tool_call = self._process_tool_call_chunk(delta.tool_calls, tool_call)
+            delta_tool_calls = getattr(delta, "tool_calls", None) or []
+            for position, tool in enumerate(delta_tool_calls):
+                function = getattr(tool, "function", None)
+                if function is None:
+                    continue
+                index = getattr(tool, "index", None)
+                if not isinstance(index, int):
+                    index = position if len(delta_tool_calls) > 1 else None
+                accumulator.add_fragment(
+                    index=index,
+                    call_id=getattr(tool, "id", None) or None,
+                    name=getattr(function, "name", None) or None,
+                    arguments=getattr(function, "arguments", None) or None,
+                    replace_arguments=True,
+                )
+
+            tool_calls = accumulator.finalize() if finish_reason == "tool_calls" else []
 
             # AI21 specific handling: content cannot be empty for tool calls
-            if finish_reason == "tool_calls" and not content:
+            if finish_reason == "tool_calls" and not content and tool_calls:
                 # tool call assistant message, content can't be empty
                 # Error code: 422 - {'detail': {'error': ['Value error, message content must not be an empty string']}}
-                content = tool_call.id if tool_call else ""
+                content = tool_calls[0].id
 
             # Generate response object
             yield LLMResponse(
                 reasoning=reasoning,
                 content=content,
-                tool_call=tool_call if finish_reason == "tool_calls" else None,
+                tool_calls=tool_calls,
                 finish_reason=finish_reason,
             )
 

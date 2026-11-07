@@ -14,6 +14,7 @@ from ...errors import provider_response_error, wrap_provider_exception
 from ...exceptions import ConfigMissingError, MCPToolsError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ..provider import Provider
+from ..tool_calls import ToolCallAccumulator
 
 
 def _require_optional_dependency(module_name: str, extra: str) -> None:
@@ -215,10 +216,11 @@ class AnthropicProvider(Provider):
             # (proxy/auth/filter): raise classified instead of faking an answer.
             raise provider_response_error("Anthropic", response.model_dump())
 
-        # Extract content from all blocks in a single pass
+        # Extract content from all blocks in a single pass. A response may contain
+        # several ``tool_use`` blocks (parallel tool use); every one is retained.
         text_content = ""
         thinking_content = ""
-        tool_call: Optional[ToolCall] = None
+        tool_calls: List[ToolCall] = []
 
         for block in response.content:
             if block.type == "text" and hasattr(block, "text"):
@@ -228,11 +230,13 @@ class AnthropicProvider(Provider):
                 thinking_content += getattr(block, "thinking", "")
             elif block.type == "tool_use":
                 # Handle tool use blocks
-                tool_call = ToolCall(
-                    id=getattr(block, "id", ""),
-                    name=block.name,
-                    # String input is already valid JSON, no need to convert
-                    arguments=block.input if isinstance(block.input, str) else json.dumps(block.input),
+                tool_calls.append(
+                    ToolCall(
+                        id=getattr(block, "id", ""),
+                        name=getattr(block, "name", "") or "",
+                        # String input is already valid JSON, no need to convert
+                        arguments=block.input if isinstance(block.input, str) else json.dumps(block.input),
+                    )
                 )
 
         # Get stop reason
@@ -243,12 +247,19 @@ class AnthropicProvider(Provider):
             reasoning=thinking_content if thinking_content else None,
             content=text_content,
             finish_reason=finish_reason,
-            tool_call=tool_call,
+            tool_calls=tool_calls,
         )
 
     def _handle_stream_response(self, response: Stream[RawMessageStreamEvent]) -> Generator[LLMResponse, None, None]:
-        """Handle streaming response from Anthropic API"""
-        tool_call: Optional[ToolCall] = None
+        """Handle streaming response from Anthropic API.
+
+        Content blocks are sequential: each ``tool_use`` block is accumulated from
+        its ``content_block_delta`` partial-JSON fragments and finalized on
+        ``content_block_stop``. Every finalized call is kept (parallel tool use),
+        then emitted together on ``message_delta``/``message_stop``. Partial calls
+        are never emitted, so the client can not execute truncated arguments.
+        """
+        accumulator = ToolCallAccumulator()
         tool_call_id = ""
         tool_call_name = ""
         tool_call_input = ""
@@ -287,12 +298,14 @@ class AnthropicProvider(Provider):
                         tool_call_input += delta.partial_json or ""
 
             elif chunk.type == "content_block_stop":
-                # Content block stop - finalize tool call if it exists
-                if tool_call_id and tool_call_name:
-                    tool_call = ToolCall(
-                        id=tool_call_id,
-                        name=tool_call_name,
-                        arguments=repair_json(tool_call_input),
+                # Content block stop - finalize this tool call if one is open
+                if tool_call_id or tool_call_name:
+                    accumulator.add_complete(
+                        ToolCall(
+                            id=tool_call_id,
+                            name=tool_call_name,
+                            arguments=repair_json(tool_call_input),
+                        )
                     )
                     # Reset tool call data
                     tool_call_id = ""
@@ -300,15 +313,18 @@ class AnthropicProvider(Provider):
                     tool_call_input = ""
 
             elif chunk.type == "message_delta":
-                # Message delta update - contains stop reason
+                # Message delta update - contains stop reason. Re-yield the full
+                # list; the client dedupes by id, so this is safe.
                 if hasattr(chunk, "delta") and hasattr(chunk.delta, "stop_reason"):
                     finish_reason = chunk.delta.stop_reason
                     if finish_reason:
-                        yield LLMResponse(content="", finish_reason=finish_reason, tool_call=tool_call)
+                        yield LLMResponse(
+                            content="", finish_reason=finish_reason, tool_calls=accumulator.finalize()
+                        )
 
             elif chunk.type == "message_stop":
                 # Message stop - final response
-                yield LLMResponse(content="", finish_reason="stop", tool_call=tool_call)
+                yield LLMResponse(content="", finish_reason="stop", tool_calls=accumulator.finalize())
 
     def detect_tool_role(self) -> str:
         """Return the role that should be used for tool responses"""
