@@ -156,6 +156,24 @@ on the left and the selected result on the right; `f` toggles the spilled full f
 `tools.show_last_tool_output()` panel. Keep the viewer display-only: never change the text that is
 appended to the model messages.
 
+### Viewer chrome must show the raw tool name
+
+`_left_fragments()` renders `entry.name` verbatim and
+`_entry_header()` repeats it in the top bar; the caption line (decoded command/path/URL) and the
+`(Nc)` size are supplements, never replacements. Do not add display aliases such as
+`execute_shell_command → shell` or strip the `_mcp__` prefix: the user opened the viewer to learn
+*which* tool ran, and an alias hides exactly that (a builtin alias also hides provenance for custom /
+MCP tools, where `entry.name` is user-controlled). The full name is intentionally repeated in the body
+pane (header + `@ Function call:`); that duplication is not noise. Render raw names literally
+(`safe_text`/`untrusted_text` rules for user-controlled names still apply).
+
+- Wrong: `f"{index}. {ALIASES.get(entry.name, entry.name)} ({entry.total_chars:,}c)"` — shell, fs and
+  MCP entries become indistinguishable and the list no longer identifies the executed tool.
+- Correct: `f"{index}. {entry.name} ({entry.total_chars:,}c)"` followed by an indented caption line.
+- Locked by tests: `tests/test_tool_output_viewer.py::TestHelpers::test_entry_header` (raw name in the
+  header) and `test_left_fragments_show_full_tool_names_for_mixed_turns` (shell/fs/web names in one
+  list); both must fail if an abbreviated label returns.
+
 In background mode (`stream_bridge`/`worker_console`) `execute_tool_call` runs on the generation
 worker thread; its announcements/panels and provider diagnostics are routed through `WorkerConsole`
 and replayed by the UI thread. Never assume `execute_tool_call` runs on the main thread in that

@@ -142,6 +142,9 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   handler; that hangs the prompt event loop), and `_run_repl()` catches the signal, runs
   `CLI._open_tool_output_viewer()` (a synchronous alt-screen `prompt_toolkit.Application`) and
   continues. `/show-output` (`CmdHandler.handle_show_output`) opens the same viewer.
+  The viewer list and header show the raw `ToolOutputEntry.name` (`f"{index}. {entry.name} (Nc)"`);
+  compact display aliases are forbidden — see
+  [function-tool-guidelines.md](./function-tool-guidelines.md#viewer-chrome-must-show-the-raw-tool-name).
 - Generation-time Ctrl+O (background generation, T1–T4): `CLI._handle_llm_response()` starts
   `GenerationKeyWatcher` and, for interactive TTY runs, wraps the completion generator in
   `yaicli/stream_bridge.py::ThreadedStream` (worker thread; FIFO events chunk/console/done/error;
