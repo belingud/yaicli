@@ -40,6 +40,8 @@ light while keeping the agent safe to leave on. W1 (this branch) = K08 + K09.
 ## Notes
 
 - W1 task subtasks (both done and archived): `11-05-k08-startup-latency`, `11-05-k09-tools-complete-packaging`.
-- Release v0.20.0 happens in W3, not here.
-- W2 to start next: K10 permission policy modes, K11 workspace write safety + `/undo`, K12 `AGENTS.md`,
-  K13 session isolation; then K14 consistency + benchmark + docs + release (W3).
+- **v0.20.0 released 2026-11-07** (commit `8aa1cb2`, tag `v0.20.0`, PyPI + docs live): K08 + K09 +
+  the Ctrl+O full-tool-name fix shipped. See `CHANGELOG.md` for the release notes.
+- W2/W3 scope was descoped from v0.20.0 at release time (user decision): K10 permission policy modes,
+  K11 workspace write safety + `/undo`, K12 `AGENTS.md`, K13 session isolation and K14 provider
+  consistency move to the v0.21 milestone (`11-07-v021-safety-foundation`).
