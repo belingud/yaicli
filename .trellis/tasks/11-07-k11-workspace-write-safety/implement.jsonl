@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/py/function-tool-guidelines.md", "reason": "builtin contract + execute_tool_call"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "REPL slash commands"}
