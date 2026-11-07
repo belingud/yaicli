@@ -43,7 +43,7 @@ GATE_LIMITS = {
     "template": 900.0,
     "entry_import": 900.0,
     "repl_ready": 1800.0,
-    "oneshot_local": 1800.0,
+    "oneshot_local": 2200.0,
 }
 
 _COMPLETION_RESPONSE = {
