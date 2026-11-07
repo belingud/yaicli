@@ -1511,6 +1511,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-changed-in-v020" class="md-nav__link">
+    <span class="md-ellipsis">
+      What changed in v0.20
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-changed-in-v019" class="md-nav__link">
     <span class="md-ellipsis">
       What changed in v0.19
@@ -1841,6 +1850,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-changed-in-v020" class="md-nav__link">
+    <span class="md-ellipsis">
+      What changed in v0.20
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-changed-in-v019" class="md-nav__link">
     <span class="md-ellipsis">
       What changed in v0.19
@@ -1914,7 +1932,7 @@
 
 
 <h1 id="upgrade-notes">Upgrade Notes<a class="headerlink" href="#upgrade-notes" title="Permanent link">&para;</a></h1>
-<p>This page explains what changes when you upgrade to <strong>v0.19</strong> and what (if anything) you must do.
+<p>This page explains what changes when you upgrade to <strong>v0.20</strong> and what (if anything) you must do.
 Old config files keep working: newly added keys simply fall back to their defaults.</p>
 <h2 id="upgrade-the-package">Upgrade the package<a class="headerlink" href="#upgrade-the-package" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># pip</span>
@@ -1944,6 +1962,23 @@ ai<span class="w"> </span>--list-functions<span class="w">         </span><span 
 <p>If a user file has the same tool name as a built-in, the user file wins. If you want the new
 built-in version, delete the old copy (or run <code>--reinstall-functions</code>) and restart <code>ai</code>.
 YAICLI only warns about stale copies; it never silently overwrites your customisations.</p>
+<h2 id="what-changed-in-v020">What changed in v0.20<a class="headerlink" href="#what-changed-in-v020" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Faster startup</strong>: the REPL shows its first prompt before the provider SDK loads (≈0.55–0.65 s in
+  the sandbox vs ≈1.55 s), and <code>--help</code>/one-shot runs no longer import prompt_toolkit. No action needed.</li>
+<li><strong>Ctrl+O viewer</strong>: the output list and header show the full tool name (<code>execute_shell_command</code>,
+  <code>fetch_webpage</code>, ...) so you can tell which tool ran. No action needed.</li>
+<li><strong>Cloud provider extras</strong>: the base install stays tools-complete, but the Anthropic Bedrock/Vertex
+  SDK closure moved out of it (see the extras below).</li>
+</ul>
+<p>The base install is still <strong>tools-complete</strong> (builtin tools and MCP work out of the box), but the
+Anthropic cloud SDK closure is no longer installed by default: <code>pip install yaicli</code> keeps the normal
+Anthropic API, while <strong>Bedrock</strong> and <strong>Vertex</strong> users must add one extra:</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span><span class="s1">&#39;yaicli[bedrock]&#39;</span><span class="w">   </span><span class="c1"># AWS Bedrock</span>
+pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span><span class="s1">&#39;yaicli[vertex]&#39;</span><span class="w">    </span><span class="c1"># Google Vertex AI</span>
+</code></pre></div>
+<p><code>pip install 'yaicli[all]'</code> still includes both. If you upgrade and see an actionable
+<code>Provider 'anthropic-bedrock' requires an optional dependency</code> message, install the extra above.</p>
 <h2 id="what-changed-in-v019">What changed in v0.19<a class="headerlink" href="#what-changed-in-v019" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

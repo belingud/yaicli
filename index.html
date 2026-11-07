@@ -2027,23 +2027,23 @@ properly.</p>
 <tbody>
 <tr>
 <td><code>ai --version</code> startup (P50)</td>
-<td>≈474–504 ms baseline → <strong>≈40–45 ms</strong> measured with the v0.19 fast path (≈38 ms prototype)</td>
+<td>≈474–504 ms baseline → <strong>≈40–45 ms</strong> (v0.19 fast path)</td>
 </tr>
 <tr>
 <td><code>--help</code> startup (P50)</td>
-<td>≈519–568 ms (dominated by the CLI framework import)</td>
+<td>≈519–568 ms baseline → <strong>≈450–500 ms</strong> after the v0.20 lazy-import work (the CLI stack is no longer imported for help)</td>
 </tr>
 <tr>
 <td>one-shot local overhead (<code>ai "hi"</code>, no network)</td>
-<td>≈1.5–1.6 s baseline, of which provider-SDK init is ≈0.9 s; further one-shot startup work is <em>planned</em> for v0.20</td>
+<td>≈1.5–1.6 s baseline → <strong>≈1.6 s</strong> in the same sandbox; prompt_toolkit is no longer imported, provider-SDK init (≈0.9 s) still dominates</td>
 </tr>
 <tr>
-<td>REPL ready (provider loaded)</td>
-<td>≈1.55–1.75 s (provider SDK loads at startup; lazy initialization is <em>planned</em> for v0.20)</td>
+<td>REPL ready (first prompt)</td>
+<td>≈1.55–1.75 s baseline → <strong>≈0.55–0.65 s</strong> (the LLM client/SDK is constructed on the first request)</td>
 </tr>
 <tr>
 <td>base install closure</td>
-<td><strong>83 dists / 134.7 MB</strong> (includes optional fetch/search/MCP/cloud SDKs; dependency slimming is <em>planned</em> for v0.20)</td>
+<td><strong>95 dists</strong> (v0.19.1: 103): fetch/search/MCP stay in base, the boto3/botocore/google-auth cloud closure (~25–29 MB) is now opt-in via <code>[bedrock]</code>/<code>[vertex]</code></td>
 </tr>
 <tr>
 <td>idle RSS</td>

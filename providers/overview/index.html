@@ -2572,12 +2572,16 @@
 </table>
 <p><strong>Legend:</strong> 🔥 = Speed level, 💰 = Cost level</p>
 <h2 id="optional-dependencies">Optional Dependencies<a class="headerlink" href="#optional-dependencies" title="Permanent link">&para;</a></h2>
-<p>Some providers require additional dependencies that can be installed using pip:</p>
+<p>The base install keeps every builtin tool and MCP working. Some provider SDKs are optional:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Install all dependencies</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli[all]&#39;</span>
 
 <span class="c1"># Install specific provider dependencies</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli[ollama,cohere,doubao,huggingface,gemini,mistral,cerebras,fireworks]&#39;</span>
+
+<span class="c1"># Anthropic on AWS Bedrock / Google Vertex AI</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli[bedrock]&#39;</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli[vertex]&#39;</span>
 </code></pre></div>
 <h2 id="provider-specific-documentation">Provider-Specific Documentation<a class="headerlink" href="#provider-specific-documentation" title="Permanent link">&para;</a></h2>
 <p>For detailed configuration options for each provider, refer to the provider-specific pages:</p>

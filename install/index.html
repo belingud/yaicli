@@ -430,6 +430,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#anthropic-on-bedrock-vertex" class="md-nav__link">
+    <span class="md-ellipsis">
+      Anthropic on Bedrock / Vertex
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1973,6 +1982,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#anthropic-on-bedrock-vertex" class="md-nav__link">
+    <span class="md-ellipsis">
+      Anthropic on Bedrock / Vertex
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2077,7 +2095,35 @@
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>yaicli
 </code></pre></div>
 <h2 id="installing-with-optional-dependencies">Installing with Optional Dependencies<a class="headerlink" href="#installing-with-optional-dependencies" title="Permanent link">&para;</a></h2>
-<p>YAICLI offers several optional dependency groups that you can install based on your needs:</p>
+<p>A plain <code>pip install yaicli</code> is <strong>tools-complete</strong>: every builtin tool (including <code>web_search</code>,
+<code>fetch_webpage</code> extraction and filesystem/shell tools) and MCP work without extras. Optional groups
+only add provider SDKs:</p>
+<table>
+<thead>
+<tr>
+<th>Extra</th>
+<th>What it adds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>all</code></td>
+<td>every optional provider SDK (including <code>anthropic[bedrock,vertex]</code>)</td>
+</tr>
+<tr>
+<td><code>bedrock</code></td>
+<td>Anthropic on AWS Bedrock (<code>anthropic[bedrock]</code>)</td>
+</tr>
+<tr>
+<td><code>vertex</code></td>
+<td>Anthropic on Google Vertex AI (<code>anthropic[vertex]</code>)</td>
+</tr>
+<tr>
+<td><code>ollama</code>, <code>cohere</code>, <code>doubao</code>, <code>huggingface</code>, <code>gemini</code>, <code>mistral</code>, <code>cerebras</code>, <code>fireworks</code></td>
+<td>that provider's SDK</td>
+</tr>
+</tbody>
+</table>
 <h3 id="all-dependencies">All Dependencies<a class="headerlink" href="#all-dependencies" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Using pip</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli[all]&#39;</span>
@@ -2091,6 +2137,10 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 
 <span class="c1"># Using uv</span>
 uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli[ollama,cohere,doubao,huggingface,gemini,mistral]&#39;</span>
+</code></pre></div>
+<h3 id="anthropic-on-bedrock-vertex">Anthropic on Bedrock / Vertex<a class="headerlink" href="#anthropic-on-bedrock-vertex" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli[bedrock]&#39;</span><span class="w">   </span><span class="c1"># AWS Bedrock</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli[vertex]&#39;</span><span class="w">    </span><span class="c1"># Google Vertex AI</span>
 </code></pre></div>
 <h2 id="installing-from-source">Installing from Source<a class="headerlink" href="#installing-from-source" title="Permanent link">&para;</a></h2>
 <p>For the latest development version:</p>
@@ -2137,7 +2187,7 @@ ai<span class="w"> </span>--list-functions<span class="w">         </span><span 
 </code></pre></div>
 <p>A user function file with the same tool name as a built-in wins over the built-in. If a stale copy
 is detected, YAICLI prints a one-line warning but keeps working.</p>
-<p>See <a href="../advanced/upgrade/">Upgrade Notes</a> for the complete v0.19 change list (new config keys,
+<p>See <a href="../advanced/upgrade/">Upgrade Notes</a> for the v0.20 and v0.19 change lists (new config keys,
 environment filtering for shell tools, output truncation, permissions v2, headless flags, state
 paths) and rollback instructions.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
