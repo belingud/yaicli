@@ -348,6 +348,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -457,6 +463,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../usage/workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../usage/context-limits/" class="md-nav__link">
         
   
@@ -486,6 +515,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -601,6 +653,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1448,7 +1523,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -1949,15 +2024,19 @@ with the tool results.</p>
 </tr>
 <tr>
 <td><code>chat.py</code></td>
-<td><code>Chat</code> message model, JSON serialization, atomic saves, <code>FileChatManager</code>.</td>
+<td><code>Chat</code> message model, JSON serialization, atomic saves, <code>FileChatManager</code>; v0.21 K13 per-project session store (<code>~/.yaicli/sessions/&lt;hash&gt;/</code>, <code>0700</code>/<code>0600</code>), session metadata and <code>--resume</code>.</td>
 </tr>
 <tr>
 <td><code>history.py</code></td>
-<td>Bounded prompt-toolkit history file (<code>$XDG_STATE_HOME/yaicli/history</code> or <code>~/.yaicli_history</code>).</td>
+<td>Bounded prompt-toolkit history file (<code>$XDG_STATE_HOME/yaicli/history</code> or <code>~/.yaicli_history</code>, mode <code>0600</code>).</td>
 </tr>
 <tr>
 <td><code>role.py</code></td>
 <td><code>Role</code>/<code>RoleManager</code>, role JSON files under <code>~/.config/yaicli/roles/</code>.</td>
+</tr>
+<tr>
+<td><code>project_context.py</code></td>
+<td>v0.21 K12: discovers <code>.yaicli.md</code>/<code>AGENTS.md</code>/<code>CLAUDE.md</code> from cwd to the git root and builds the bounded system-prompt block.</td>
 </tr>
 <tr>
 <td><code>schemas.py</code></td>
@@ -2001,11 +2080,13 @@ with the tool results.</p>
   written with mode <code>0600</code> (<code>ai --template</code> prints the defaults).</li>
 <li><code>&lt;config-dir&gt;/roles/</code>, <code>functions/</code>, <code>mcp.json</code>, <code>tool_permissions.json</code> — user data.
   <code>functions_manifest.json</code> records the version/hashes used to warn about stale exported copies.</li>
-<li><code>tool_audit.jsonl</code>, <code>tool-outputs/</code> — tool audit log and spilled (untruncated) tool outputs
-  (v0.19; see <code>docs/usage/context-limits.md</code> and <code>docs/usage/permissions.md</code>).</li>
+<li><code>&lt;config-dir&gt;/tool_audit.jsonl</code> — tool audit log; <code>&lt;tempdir&gt;/yaicli/chats/tool-outputs/</code> —
+  spilled (untruncated) tool outputs (<code>TOOL_OUTPUT_DIR</code> overrides; see
+  <code>docs/usage/context-limits.md</code> and <code>docs/usage/permissions.md</code>).</li>
 <li><code>$XDG_STATE_HOME/yaicli/history</code> or <code>~/.yaicli_history</code> — prompt history (bounded by
-  <code>MAX_HISTORY</code>).</li>
-<li><code>CHAT_HISTORY_DIR</code> (temp directory by default) — saved chat JSON sessions.</li>
+  <code>MAX_HISTORY</code>, mode <code>0600</code>).</li>
+<li><code>~/.yaicli/sessions/&lt;sha256(resolved cwd)[:16]&gt;/</code> — saved chat JSON sessions per project (dirs
+  <code>0700</code>, files <code>0600</code>); an explicit <code>CHAT_HISTORY_DIR</code> override keeps the old flat directory.</li>
 </ul>
 <h2 id="modes">Modes<a class="headerlink" href="#modes" title="Permanent link">&para;</a></h2>
 <p><code>TEMP_MODE</code> (single-shot), <code>CHAT_MODE</code> (REPL) and <code>EXEC_MODE</code> (generate + confirm a shell

@@ -484,6 +484,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -593,6 +599,29 @@
   
   
     <li class="md-nav__item">
+      <a href="usage/workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="usage/context-limits/" class="md-nav__link">
         
   
@@ -622,6 +651,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -737,6 +789,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1584,7 +1659,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -1989,6 +2064,8 @@ properly.</p>
 <li><strong>Multi-step tasks</strong>: the model plans, calls tools, reads results and continues</li>
 <li><strong>12 built-in tools</strong>: filesystem read/write/edit/search/info, image reading, shell execution,
   web fetch, web search and weather</li>
+<li><strong>Project-aware</strong>: <code>.yaicli.md</code> / <code>AGENTS.md</code> / <code>CLAUDE.md</code> are loaded into the system prompt
+  automatically — see <a href="usage/project-context/">Project Context</a></li>
 <li><strong>MCP (optional)</strong>: connect external MCP servers as additional tools</li>
 </ul>
 <h3 id="safe-by-default">🛡️ Safe by Default<a class="headerlink" href="#safe-by-default" title="Permanent link">&para;</a></h3>
@@ -1996,6 +2073,9 @@ properly.</p>
 <li><strong>Approval prompt</strong> for every tool call, with risk classes (<code>read</code>/<code>write</code>/<code>network</code>/<code>exec</code>)</li>
 <li><strong>Danger classification</strong> for shell commands and an <strong>audit log</strong> of every decision</li>
 <li><strong>Allow rules</strong> by tool name, shell argv prefix or file path glob</li>
+<li><strong>Workspace-confined writes</strong>: built-in file tools only touch files inside <code>WORKSPACE_ROOT</code>, back
+  up changes to <code>.yaicli-backups/</code>, refuse protected paths, and <code>/undo</code> reverts the last change —
+  see <a href="usage/workspace-safety/">Workspace Safety</a></li>
 <li><strong>Guarded shell</strong>: timeout, process-group kill, filtered environment, workspace-confined <code>cwd</code></li>
 </ul>
 <h3 id="headless-scriptable">📜 Headless &amp; Scriptable<a class="headerlink" href="#headless-scriptable" title="Permanent link">&para;</a></h3>
@@ -2012,8 +2092,9 @@ properly.</p>
 </ul>
 <h3 id="terminal-experience-compatibility">💻 Terminal Experience &amp; Compatibility<a class="headerlink" href="#terminal-experience-compatibility" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Real-time streaming, syntax highlighting, persistent chat sessions, file <code>@</code> references,
-  image input</li>
+<li>Real-time streaming, syntax highlighting, file <code>@</code> references and image input</li>
+<li><strong>Per-project chat sessions</strong> with metadata and <code>--resume</code> — see
+  <a href="usage/sessions/">Chat Sessions &amp; Resume</a></li>
 <li>30+ providers and any OpenAI-compatible endpoint — a compatibility layer, not the headline</li>
 </ul>
 <h2 id="lightweight-scope">🪶 Lightweight &amp; scope<a class="headerlink" href="#lightweight-scope" title="Permanent link">&para;</a></h2>
@@ -2071,7 +2152,10 @@ compatibility layer: the agent loop and tooling are the same for every provider.
 <li><a href="getting-started/">Agent Quickstart</a></li>
 <li><a href="usage/headless/">Headless &amp; Scripting</a></li>
 <li><a href="usage/permissions/">Permissions &amp; Safety</a></li>
+<li><a href="usage/workspace-safety/">Workspace Safety</a></li>
 <li><a href="usage/context-limits/">Context &amp; Limits</a></li>
+<li><a href="usage/project-context/">Project Context</a></li>
+<li><a href="usage/sessions/">Chat Sessions &amp; Resume</a></li>
 <li><a href="install/">Installation</a></li>
 <li><a href="usage/commands/">Command Reference</a></li>
 <li><a href="usage/configuration/">Configuration</a></li>

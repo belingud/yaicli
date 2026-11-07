@@ -200,4 +200,16 @@
          <loc>https://belingud.github.io/yaicli/usage/permissions/</loc>
          <lastmod>2026-11-07</lastmod>
     </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/usage/project-context/</loc>
+         <lastmod>2026-11-07</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/usage/sessions/</loc>
+         <lastmod>2026-11-07</lastmod>
+    </url>
+    <url>
+         <loc>https://belingud.github.io/yaicli/usage/workspace-safety/</loc>
+         <lastmod>2026-11-07</lastmod>
+    </url>
 </urlset>

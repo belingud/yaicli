@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://belingud.github.io/yaicli/usage/advanced/">
       
       
-        <link rel="prev" href="../interactive/">
+        <link rel="prev" href="../sessions/">
       
       
         <link rel="next" href="../../providers/overview/">
@@ -350,6 +350,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -457,6 +463,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../context-limits/" class="md-nav__link">
         
   
@@ -486,6 +515,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -601,6 +653,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1730,7 +1805,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -2273,7 +2348,11 @@ $<span class="w"> </span>ai<span class="w"> </span>--list-chats
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>ai<span class="w"> </span>--chat<span class="w"> </span><span class="s2">&quot;check disk usage&quot;</span>
 Chat<span class="w"> </span>title:<span class="w"> </span>check<span class="w"> </span>disk<span class="w"> </span>usage
 </code></pre></div>
-<p>The session will be persisted to <code>CHAT_HISTORY_DIR</code> by default.</p>
+<p>The session is persisted to the current project's session store
+(<code>~/.yaicli/sessions/&lt;hash&gt;/</code> by default; see <a href="../sessions/">Chat Sessions &amp; Resume</a>), or to an
+explicit <code>CHAT_HISTORY_DIR</code> override. <code>ai --resume</code> continues the newest session of the current
+project, and a missing <code>--chat "&lt;title&gt;"</code> prints an explicit notice instead of silently starting a
+new session.</p>
 <h2 id="role-management">Role Management<a class="headerlink" href="#role-management" title="Permanent link">&para;</a></h2>
 <p>YAICLI supports custom roles to guide AI behavior:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Create a new role</span>
@@ -2378,6 +2457,9 @@ files, and <code>ai --install-functions</code> only adds built-in files that are
   <a href="../permissions/">Permissions &amp; Safety</a> for the prompt, risk levels, rules and audit log.</li>
 <li><code>MAX_TOOL_CALL_DEPTH</code> (default <code>8</code>) bounds recursive tool-call rounds in one request; override
   per run with <code>--max-turns N</code>.</li>
+<li><strong>Parallel tool calls</strong>: when a provider returns several tool calls in one response (Anthropic,
+  Gemini, Ollama, ...), YAICLI executes every call and appends all tool results; calls are not
+  dropped or reduced to the first one.</li>
 </ul>
 <h3 id="reading-multiple-files-in-one-call">Reading Multiple Files in One Call<a class="headerlink" href="#reading-multiple-files-in-one-call" title="Permanent link">&para;</a></h3>
 <p>The built-in <code>fs_read_file</code> function accepts a list of file paths, so several

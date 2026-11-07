@@ -350,6 +350,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -457,6 +463,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../context-limits/" class="md-nav__link">
         
   
@@ -486,6 +515,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -670,6 +722,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1517,7 +1592,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -1890,11 +1965,13 @@ change default values):</p>
      ai &quot;What is the capital of France?&quot;
      ai -p &quot;Summarize this file&quot; &gt; summary.md
      ai -p &quot;List the TODO comments in src&quot; --output-format json | jq -r .content
+     ai -p &quot;Summarize this repo&quot; --json | jq -r .content
      echo &quot;error log&quot; | ai -p &quot;Explain these errors&quot;
      ai -p &quot;Run the tests and summarize failures&quot; -y --fail-on-tool-denied
      ai --code &quot;Write a fibonacci generator in Python&quot;
      ai --chat &quot;What&#39;s the meaning of life&quot;  # Start a chat session with a title
      ai --chat  # Start a temporary chat session
+     ai --resume  # Continue the newest chat session of this project
      ai --shell &quot;Start docker image python:3.13.5-alpine3.22 with ports 8080&quot;
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
@@ -1927,6 +2004,7 @@ change default values):</p>
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Chat Options ───────────────────────────────────────────────────────────────────────────────────╮
 │ --chat        -c        Start in interactive chat mode.                                          │
+│ --resume                Resume the most recent chat session for the current project.             │
 │ --list-chats            List saved chat sessions.                                                │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Headless Options ───────────────────────────────────────────────────────────────────────────────╮
@@ -1937,6 +2015,8 @@ change default values):</p>
 │                                                         [default: text]                          │
 │ --quiet                -q                               Only print the answer on stdout (no      │
 │                                                         labels, panels or progress).             │
+│ --json                                                  Shorthand for --output-format json       │
+│                                                         (machine-readable one-shot output).      │
 │ --max-turns                    INTEGER RANGE [x&gt;=1]     Override the maximum number of tool-call │
 │                                                         rounds (MAX_TOOL_CALL_DEPTH).            │
 │                                                         [default: None]                          │

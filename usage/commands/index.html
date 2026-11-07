@@ -350,6 +350,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -673,6 +679,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../context-limits/" class="md-nav__link">
         
   
@@ -702,6 +731,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -817,6 +869,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1664,7 +1739,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -2185,6 +2260,11 @@ single one-shot run, and see <a href="../headless/">Headless &amp; Scripting</a>
 <td>Output format for the result (default <code>text</code>; <code>stream-json</code> is NDJSON events)</td>
 </tr>
 <tr>
+<td><code>--json</code></td>
+<td></td>
+<td>Shorthand for <code>--output-format json</code></td>
+</tr>
+<tr>
 <td><code>--quiet</code></td>
 <td><code>-q</code></td>
 <td>Only print the answer to stdout (no labels/progress)</td>
@@ -2207,7 +2287,7 @@ single one-shot run, and see <a href="../headless/">Headless &amp; Scripting</a>
 <tr>
 <td><code>--cwd DIR</code></td>
 <td></td>
-<td>Working directory / workspace root for the run</td>
+<td>Working directory / workspace root for the run (also selects the project for sessions and project context)</td>
 </tr>
 <tr>
 <td><code>--fail-on-tool-denied</code></td>
@@ -2340,11 +2420,17 @@ single one-shot run, and see <a href="../headless/">Headless &amp; Scripting</a>
 </thead>
 <tbody>
 <tr>
+<td><code>--resume</code></td>
+<td>Continue the most recent saved session of the current project (implies <code>--chat</code>; interactive only)</td>
+</tr>
+<tr>
 <td><code>--list-chats</code></td>
-<td>List saved chat sessions</td>
+<td>List saved chat sessions of the invocation directory (runs before <code>--cwd</code> applies)</td>
 </tr>
 </tbody>
 </table>
+<p>See <a href="../sessions/">Chat Sessions &amp; Resume</a> for the per-project store, <code>--resume</code> details and the
+<code>--list-chats</code> caveat.</p>
 <h3 id="display-options">Display Options<a class="headerlink" href="#display-options" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2473,6 +2559,9 @@ ai<span class="w"> </span>--chat
 <span class="c1"># Save chat with a title</span>
 ai<span class="w"> </span>--chat<span class="w"> </span><span class="s2">&quot;Python programming tips&quot;</span>
 
+<span class="c1"># Continue the newest saved session of this project</span>
+ai<span class="w"> </span>--resume
+
 <span class="c1"># Generate and execute shell commands</span>
 ai<span class="w"> </span>--shell<span class="w"> </span><span class="s2">&quot;Create a backup of my Documents folder&quot;</span>
 
@@ -2579,6 +2668,10 @@ ai<span class="w"> </span>--image<span class="w"> </span>diagram.png
 <tr>
 <td><code>/show-output</code></td>
 <td>Open the full-screen viewer listing every tool output of the current turn (same as <code>Ctrl+O</code>)</td>
+</tr>
+<tr>
+<td><code>/undo</code></td>
+<td>Restore the last file change made by a guarded tool in this session (see <a href="../workspace-safety/#undo">Workspace Safety</a>)</td>
 </tr>
 </tbody>
 </table>

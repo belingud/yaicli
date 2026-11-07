@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://belingud.github.io/yaicli/usage/context-limits/">
       
       
-        <link rel="prev" href="../permissions/">
+        <link rel="prev" href="../workspace-safety/">
       
       
         <link rel="next" href="../context/">
@@ -350,6 +350,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -440,6 +446,29 @@
   
   <span class="md-ellipsis">
     Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
     
   </span>
   
@@ -617,6 +646,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../configuration/" class="md-nav__link">
         
   
@@ -715,6 +767,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1562,7 +1637,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -1957,9 +2032,9 @@ per-tool caps on top of the global default:</p>
 </tr>
 </tbody>
 </table>
-<p>Full outputs are stored under <code>TOOL_OUTPUT_DIR</code>, which defaults to a <code>tool-outputs/</code> directory
-under the chat-history directory. The truncated text includes the path so the model can read the
-rest:</p>
+<p>Full outputs are stored under <code>TOOL_OUTPUT_DIR</code>, which defaults to a <code>tool-outputs/</code> directory in
+the legacy chat scratch directory (<code>&lt;tempdir&gt;/yaicli/chats/tool-outputs</code>) — independent of the
+per-project session store. The truncated text includes the path so the model can read the rest:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;file_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;/path/to/tool-outputs/20261104-123456-execute_shell_command.txt&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;offset&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12000</span><span class="p">}</span>
 </code></pre></div>
 <p><code>fs_read_file</code> accepts two optional paging arguments (character based, applied per file):</p>
@@ -2119,8 +2194,8 @@ reclaim budget deliberately, or raise <code>CONTEXT_BUDGET_TOKENS</code> if your
 </tr>
 <tr>
 <td><code>TOOL_OUTPUT_DIR</code></td>
-<td><code>&lt;chat history&gt;/tool-outputs</code></td>
-<td>Where full tool outputs are spilled</td>
+<td><code>&lt;tempdir&gt;/yaicli/chats/tool-outputs</code></td>
+<td>Where full tool outputs are spilled (independent of the per-project session store)</td>
 </tr>
 <tr>
 <td><code>TOOL_DISPLAY_MAX_LINES</code></td>

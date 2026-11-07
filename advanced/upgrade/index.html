@@ -24,7 +24,7 @@
     
     
       
-        <title>Upgrading to v0.19 - YAICLI</title>
+        <title>Upgrading - YAICLI</title>
       
     
     
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Upgrading to v0.19
+              Upgrading
             
           </span>
         </div>
@@ -348,6 +348,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -457,6 +463,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../usage/workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../usage/context-limits/" class="md-nav__link">
         
   
@@ -486,6 +515,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -601,6 +653,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1457,7 +1532,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -1470,7 +1545,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -1505,6 +1580,15 @@
   <a href="#do-i-need-to-reinstall-functions" class="md-nav__link">
     <span class="md-ellipsis">
       Do I need to reinstall functions?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-changed-in-v021" class="md-nav__link">
+    <span class="md-ellipsis">
+      What changed in v0.21
     </span>
   </a>
   
@@ -1850,6 +1934,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-changed-in-v021" class="md-nav__link">
+    <span class="md-ellipsis">
+      What changed in v0.21
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-changed-in-v020" class="md-nav__link">
     <span class="md-ellipsis">
       What changed in v0.20
@@ -1932,7 +2025,7 @@
 
 
 <h1 id="upgrade-notes">Upgrade Notes<a class="headerlink" href="#upgrade-notes" title="Permanent link">&para;</a></h1>
-<p>This page explains what changes when you upgrade to <strong>v0.20</strong> and what (if anything) you must do.
+<p>This page explains what changes when you upgrade to <strong>v0.21</strong> and what (if anything) you must do.
 Old config files keep working: newly added keys simply fall back to their defaults.</p>
 <h2 id="upgrade-the-package">Upgrade the package<a class="headerlink" href="#upgrade-the-package" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># pip</span>
@@ -1962,6 +2055,63 @@ ai<span class="w"> </span>--list-functions<span class="w">         </span><span 
 <p>If a user file has the same tool name as a built-in, the user file wins. If you want the new
 built-in version, delete the old copy (or run <code>--reinstall-functions</code>) and restart <code>ai</code>.
 YAICLI only warns about stale copies; it never silently overwrites your customisations.</p>
+<h2 id="what-changed-in-v021">What changed in v0.21<a class="headerlink" href="#what-changed-in-v021" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Permission modes (<code>TOOL_POLICY</code>)</strong> — a session-wide mode: <code>readonly</code>, <code>standard</code> or <code>trusted</code>
+  (<code>TOOL_POLICY</code> in <code>config.ini</code>, <code>YAI_TOOL_POLICY</code> in the environment). <code>standard</code> is the default
+  and keeps the previous behaviour, so <strong>existing config files need no edit</strong>: a missing
+  <code>TOOL_POLICY</code> means <code>standard</code> and the line is not written into existing files. <code>readonly</code>
+  auto-allows read/network tools and hard-denies write/exec calls (approvals, <code>--yes</code>,
+  <code>--allowed-tools</code> and <code>TOOL_CONFIRM=false</code> cannot override it); <code>trusted</code> auto-runs every
+  non-dangerous tool. Danger-classified shell commands keep their confirmation/denial precedence in
+  every mode. Audit lines now include the effective <code>policy</code> field.</li>
+<li><strong>Workspace-confined writes (on by default)</strong> — <code>fs_write_file</code>, <code>fs_edit_file</code> and
+  <code>fs_file_operations</code> now only modify files inside <code>WORKSPACE_ROOT</code> (default: the directory <code>ai</code>
+  was started in; <code>--cwd</code> sets it). Absolute paths outside the workspace now fail with an in-band
+  <code>outside_workspace</code> refusal where earlier versions wrote them. To keep writing elsewhere, start
+  <code>ai</code> in that directory, set <code>WORKSPACE_ROOT</code>, or pass <code>--cwd</code>.</li>
+<li><strong>Protected paths</strong> — the guarded filesystem tools refuse <code>.git</code>/<code>.ssh</code>/<code>.aws</code>/<code>.gnupg</code> path
+  components and <code>.env</code>/<code>.env.*</code>/<code>*.pem</code>/<code>*.key</code> files even inside the workspace. Edit those
+  yourself.</li>
+<li><strong>Backups before every mutation</strong> — an existing file/directory is copied to
+  <code>&lt;workspace&gt;/.yaicli-backups/&lt;UTC stamp&gt;/&lt;path relative to the workspace root&gt;</code> (files <code>0600</code>,
+  directories <code>0700</code>) before it is overwritten, edited, appended to, deleted or moved. If the
+  backup cannot be written, the change is refused (fail closed). Add <code>.yaicli-backups/</code> to your
+  <code>.gitignore</code>; backups are not cleaned up automatically.</li>
+<li><strong><code>/undo</code></strong> — in the REPL, reverts the last guarded file change: restores overwritten/edited/
+  deleted/moved files from their backup and deletes files the agent created. The stack keeps the
+  last 20 mutations and is process-local, so it disappears when <code>ai</code> exits; shell-command and MCP
+  side effects are not undoable.</li>
+<li><strong>Project context on by default</strong> — YAICLI reads <code>.yaicli.md</code> / <code>AGENTS.md</code> / <code>CLAUDE.md</code> from the
+  working directory up to the nearest git root and appends them to the system prompt. Discovery and
+  content are bounded (<code>PROJECT_CONTEXT_MAX_CHARS</code>, default 20000) and a truncated block prints one
+  stderr warning. Disable with <code>ENABLE_PROJECT_CONTEXT=false</code> (no file reads at all). Loading is
+  once per run, so restart <code>ai</code> to pick up edits. Project files are untrusted input — review them
+  before running the agent in a repository. See <a href="../../usage/project-context/">Project Context</a>.</li>
+<li><strong>Per-project sessions + <code>--resume</code> (behaviour change)</strong> — saved chat sessions moved from the old
+  shared temp directory to <code>~/.yaicli/sessions/&lt;sha256(resolved cwd)[:16]&gt;/</code> (directories <code>0700</code>,
+  files <code>0600</code>). Each session records <code>model</code>/<code>provider</code>/<code>role</code>/<code>cwd</code>/<code>created_at</code>/<code>updated_at</code>;
+  resumed sessions print a one-line notice with that metadata. New <code>--resume</code> continues the newest
+  session of the current project. <code>ai --chat "&lt;title&gt;"</code> now prints an explicit notice when the title
+  does not exist instead of silently starting a new session. An explicit <code>CHAT_HISTORY_DIR</code> /
+  <code>YAI_CHAT_HISTORY_DIR</code> override keeps the old flat layout. Existing <code>config.ini</code> files contain a
+  materialised <code>CHAT_HISTORY_DIR=&lt;temp path&gt;</code> line: when it matches the built-in default it counts
+  as unset (per-project store); if the temp path changed it keeps that flat directory — delete or
+  comment the line to opt into per-project sessions. <strong>Old sessions in the temp directory are left
+  in place — there is no automatic migration</strong>; see
+  <a href="../../usage/sessions/#migrating-from-old-sessions">Chat Sessions &amp; Resume</a>. The REPL history file
+  is now created <code>0600</code> (legacy <code>0644</code> files are repaired on the next append/trim).</li>
+<li><strong>Parallel tool calls are kept</strong> — providers that return several tool calls in one response are no
+  longer reduced to the first one: parallel calls from Anthropic, Gemini and Ollama, and the
+  single-slot streaming providers, are all executed and their results appended (the streaming
+  providers also stop surfacing partial function-call arguments mid-stream). No configuration
+  change.</li>
+</ul>
+<p>No action is normally needed. If you script permissions, see
+<a href="../../usage/permissions/#permission-modes-tool_policy">Permissions &amp; Safety</a>; if the agent writes
+files for you, see <a href="../../usage/workspace-safety/">Workspace Safety</a>; for project instructions and
+sessions see <a href="../../usage/project-context/">Project Context</a> and
+<a href="../../usage/sessions/">Chat Sessions &amp; Resume</a>.</p>
 <h2 id="what-changed-in-v020">What changed in v0.20<a class="headerlink" href="#what-changed-in-v020" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Faster startup</strong>: the REPL shows its first prompt before the provider SDK loads (≈0.55–0.65 s in
@@ -2074,14 +2224,29 @@ pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </s
 </thead>
 <tbody>
 <tr>
+<td><code>TOOL_POLICY</code></td>
+<td><code>standard</code></td>
+<td>Session-wide permission mode (<code>readonly</code>/<code>standard</code>/<code>trusted</code>); see <a href="../../usage/permissions/#permission-modes-tool_policy">Permissions &amp; Safety</a></td>
+</tr>
+<tr>
+<td><code>ENABLE_PROJECT_CONTEXT</code></td>
+<td><code>true</code></td>
+<td>Auto-load project instruction files into the system prompt (<code>false</code> = no project-file reads); see <a href="../../usage/project-context/">Project Context</a></td>
+</tr>
+<tr>
+<td><code>PROJECT_CONTEXT_MAX_CHARS</code></td>
+<td><code>20000</code></td>
+<td>Max characters of project context added to the system prompt (<code>0</code> = no cap)</td>
+</tr>
+<tr>
 <td><code>TOOL_OUTPUT_MAX_CHARS</code></td>
 <td><code>32000</code></td>
 <td>Per-tool-result character cap (<code>0</code> = unlimited)</td>
 </tr>
 <tr>
 <td><code>TOOL_OUTPUT_DIR</code></td>
-<td><code>&lt;chat history&gt;/tool-outputs</code></td>
-<td>Where full tool outputs are stored</td>
+<td><code>&lt;tempdir&gt;/yaicli/chats/tool-outputs</code></td>
+<td>Where full tool outputs are stored (independent of the per-project session store)</td>
 </tr>
 <tr>
 <td><code>CONTEXT_BUDGET_TOKENS</code></td>
@@ -2101,7 +2266,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </s
 <tr>
 <td><code>WORKSPACE_ROOT</code></td>
 <td><em>empty</em> (current dir)</td>
-<td>Directory shell tools are confined to</td>
+<td>Workspace root for the shell <code>cwd</code> and guarded filesystem writes</td>
 </tr>
 <tr>
 <td><code>RETRY_ENABLED</code></td>
@@ -2175,14 +2340,18 @@ pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </s
 <td><code>tool_audit.jsonl</code></td>
 <td>Tool decision audit log</td>
 </tr>
-<tr>
-<td><code>tool-outputs/</code></td>
-<td>Spilled full tool outputs (by default under the chat history dir)</td>
-</tr>
 </tbody>
 </table>
-<p><code>HISTORY_FILE</code> is separate: <code>$XDG_STATE_HOME/yaicli/history</code> when <code>XDG_STATE_HOME</code> is set, otherwise
-<code>~/.yaicli_history</code>. Chat sessions live under <code>CHAT_HISTORY_DIR</code>.</p>
+<p>Outside the config directory:</p>
+<ul>
+<li><code>~/.yaicli/sessions/&lt;hash&gt;/</code> — saved chat sessions per project (dirs <code>0700</code>, files <code>0600</code>);
+  an explicit <code>CHAT_HISTORY_DIR</code> / <code>YAI_CHAT_HISTORY_DIR</code> override keeps the old flat directory
+  (see <a href="../../usage/sessions/">Chat Sessions &amp; Resume</a>).</li>
+<li><code>&lt;tempdir&gt;/yaicli/chats/tool-outputs/</code> — spilled full tool outputs (legacy scratch dir;
+  <code>TOOL_OUTPUT_DIR</code> overrides; independent of the per-project session store).</li>
+<li><code>$XDG_STATE_HOME/yaicli/history</code> or <code>~/.yaicli_history</code> — REPL prompt history (mode <code>0600</code> since
+  v0.21; bounded by <code>MAX_HISTORY</code>).</li>
+</ul>
 <h2 id="if-something-behaves-unexpectedly">If something behaves unexpectedly<a class="headerlink" href="#if-something-behaves-unexpectedly" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Run <code>ai --list-functions</code> — stale exported copies are flagged there. Refresh with
@@ -2192,18 +2361,31 @@ pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </s
 <li>Check the new defaults: environment filtering (<code>TOOL_ENV_INHERIT</code>), output truncation
    (<code>TOOL_OUTPUT_MAX_CHARS</code>), and shell timeout (<code>TOOL_TIMEOUT</code>) are the most likely reasons an old
    workflow behaves differently.</li>
+<li>If a file write is refused, check <code>WORKSPACE_ROOT</code> (<code>ai --verbose</code> prints it) and the protected-
+   path rules; the model-facing error names the reason (<code>outside_workspace</code>, <code>protected_path</code>, ...).
+   See <a href="../../usage/workspace-safety/">Workspace Safety</a> — and remember that pre-change backups are
+   in <code>&lt;workspace&gt;/.yaicli-backups/</code> if you need to restore something by hand.</li>
+<li>If old chats or <code>--resume</code> do not find a session, you are probably in a different working
+   directory than the session's project store (sessions are per directory) — see
+   <a href="../../usage/sessions/#migrating-from-old-sessions">Chat Sessions &amp; Resume</a>.</li>
 </ol>
 <h2 id="rollback">Rollback<a class="headerlink" href="#rollback" title="Permanent link">&para;</a></h2>
 <p>To go back to the previous release:</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli==0.18.0&#39;</span>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;yaicli==0.20.0&#39;</span>
 </code></pre></div>
 <p>Your <code>config.ini</code> and permissions file remain readable by the old version (unknown keys are
 ignored); <code>tool_permissions.json</code> stays backward compatible because v2 only adds keys. Remove
-<code>tool_audit.jsonl</code> / <code>tool-outputs/</code> if you no longer need them.</p>
+<code>tool_audit.jsonl</code> / <code>tool-outputs/</code> if you no longer need them, and note that v0.21 may have
+created a <code>.yaicli-backups/</code> directory in your workspace — keep it if you want the stored backups,
+delete it otherwise. Sessions saved by v0.21 in <code>~/.yaicli/sessions/</code> are not visible to v0.20 (which
+uses the old flat directory); copy them if you plan to roll back permanently.</p>
 <h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../usage/headless/">Headless &amp; Scripting</a></li>
 <li><a href="../../usage/permissions/">Permissions &amp; Safety</a></li>
+<li><a href="../../usage/workspace-safety/">Workspace Safety</a></li>
+<li><a href="../../usage/project-context/">Project Context</a></li>
+<li><a href="../../usage/sessions/">Chat Sessions &amp; Resume</a></li>
+<li><a href="../../usage/headless/">Headless &amp; Scripting</a></li>
 <li><a href="../../usage/context-limits/">Context &amp; Limits</a></li>
 <li><a href="../../usage/configuration/">Configuration</a></li>
 <li><a href="../../changelog/">Changelog</a></li>

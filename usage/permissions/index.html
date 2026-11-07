@@ -16,7 +16,7 @@
         <link rel="prev" href="../headless/">
       
       
-        <link rel="next" href="../context-limits/">
+        <link rel="next" href="../workspace-safety/">
       
       
       <link rel="icon" href="../../assets/artwork/logo.png">
@@ -350,6 +350,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -502,6 +508,48 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#permission-modes-tool_policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Permission modes: TOOL_POLICY
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Permission modes: TOOL_POLICY">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#precedence-danger-classification-comes-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      Precedence: danger classification comes first
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setting-the-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting the mode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-the-modes-interact-with-approvals" class="md-nav__link">
+    <span class="md-ellipsis">
+      How the modes interact with approvals
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#danger-classification-for-shell-commands" class="md-nav__link">
     <span class="md-ellipsis">
       Danger classification for shell commands
@@ -586,6 +634,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../context-limits/" class="md-nav__link">
         
   
@@ -615,6 +686,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -730,6 +824,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1577,7 +1694,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -1856,6 +1973,48 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#permission-modes-tool_policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Permission modes: TOOL_POLICY
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Permission modes: TOOL_POLICY">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#precedence-danger-classification-comes-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      Precedence: danger classification comes first
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setting-the-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting the mode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-the-modes-interact-with-approvals" class="md-nav__link">
+    <span class="md-ellipsis">
+      How the modes interact with approvals
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#danger-classification-for-shell-commands" class="md-nav__link">
     <span class="md-ellipsis">
       Danger classification for shell commands
@@ -1990,7 +2149,7 @@ model: JSON is repaired and validated first, shell commands are decoded and summ
 risky flags, file edits show a diff excerpt, and file writes show the target path and whether the
 file will be created or overwritten. If the preview and the execution ever disagree, that is a bug.</p>
 <h2 id="risk-levels">Risk levels<a class="headerlink" href="#risk-levels" title="Permanent link">&para;</a></h2>
-<p>Every tool has a risk class. The class decides what <code>--yes</code> and rules may auto-approve.</p>
+<p>Every tool has a risk class. The class decides what <code>--yes</code>, rules and <code>TOOL_POLICY</code> may do with it.</p>
 <table>
 <thead>
 <tr>
@@ -2023,6 +2182,103 @@ file will be created or overwritten. If the preview and the execution ever disag
 </tbody>
 </table>
 <p>MCP and custom tools default to <code>exec</code> because YAICLI cannot inspect what they do.</p>
+<h2 id="permission-modes-tool_policy">Permission modes: <code>TOOL_POLICY</code><a class="headerlink" href="#permission-modes-tool_policy" title="Permanent link">&para;</a></h2>
+<p><code>TOOL_POLICY</code> is a session-wide ceiling/floor for the tool gate. Like every setting it is layered:
+<code>YAI_TOOL_POLICY</code> (environment) &gt; <code>TOOL_POLICY</code> in <code>config.ini</code> &gt; default <code>standard</code>. Values are
+case- and whitespace-insensitive.</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Read / network tools</th>
+<th>Write / exec tools</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>standard</code> (default)</td>
+<td>Normal flow: rules → <code>--allowed-tools</code> → <code>--yes</code> → prompt / deny</td>
+<td>Same normal flow</td>
+<td>Everyday interactive and scripted use; behaves exactly like v0.19/v0.20</td>
+</tr>
+<tr>
+<td><code>readonly</code></td>
+<td><strong>Auto-allowed without a prompt</strong>, interactive or not</td>
+<td><strong>Always denied</strong> — approvals, session grants, <code>--allowed-tools</code>, <code>--yes</code> and <code>TOOL_CONFIRM=false</code> cannot override it</td>
+<td>Untrusted tasks, exploration, CI steps that should only read</td>
+</tr>
+<tr>
+<td><code>trusted</code></td>
+<td>Auto-allowed without a prompt</td>
+<td><strong>Auto-allowed without a prompt</strong> for non-dangerous writes and shell commands</td>
+<td>Fully trusted automation where prompts are pointless</td>
+</tr>
+</tbody>
+</table>
+<p>Unknown tools and MCP tools count as <code>exec</code> risk, so <code>readonly</code> denies them and <code>trusted</code>
+auto-approves them.</p>
+<h3 id="precedence-danger-classification-comes-first">Precedence: danger classification comes first<a class="headerlink" href="#precedence-danger-classification-comes-first" title="Permanent link">&para;</a></h3>
+<p>The mode never relaxes a dangerous shell command. Danger classification is evaluated <strong>before</strong> the
+mode, in every mode:</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Result in <code>standard</code>, <code>readonly</code> and <code>trusted</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Interactive, <code>TOOL_CONFIRM=true</code></td>
+<td>Explicit confirmation prompt — only <code>y</code> runs it</td>
+</tr>
+<tr>
+<td>Interactive, <code>TOOL_CONFIRM=false</code></td>
+<td>Denied (there is no prompt to confirm with)</td>
+</tr>
+<tr>
+<td>Non-interactive (pipe/CI)</td>
+<td>Denied</td>
+</tr>
+</tbody>
+</table>
+<p>So <code>readonly</code> does not turn <code>rm -r -f …</code> into an auto-deny with a different reason: an interactive
+confirmation can still run it, exactly as in <code>standard</code>. Conversely, <code>trusted</code> never runs a
+dangerous command silently.</p>
+<h3 id="setting-the-mode">Setting the mode<a class="headerlink" href="#setting-the-mode" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># config.ini</span>
+<span class="k">[core]</span>
+<span class="na">TOOL_POLICY</span><span class="o">=</span><span class="s">readonly</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Environment variable (wins over config.ini)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">YAI_TOOL_POLICY</span><span class="o">=</span><span class="nb">readonly</span>
+ai<span class="w"> </span><span class="s2">&quot;read the test failures and explain them&quot;</span>
+
+<span class="c1"># One-off for a single command</span>
+<span class="nv">YAI_TOOL_POLICY</span><span class="o">=</span>trusted<span class="w"> </span>ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;update the changelog from the git log&quot;</span>
+</code></pre></div>
+<p><code>ai --template</code> prints the current template, which includes <code>TOOL_POLICY=standard</code> (the default).
+An existing <code>config.ini</code> that predates v0.21 does <strong>not</strong> need editing: a missing <code>TOOL_POLICY</code>
+means <code>standard</code> (the previous behaviour) and the line is not materialised into existing files —
+add it only when you want a different mode.</p>
+<p>An invalid value falls back to <code>standard</code> with one warning on stderr (once per session, not per
+tool call). The effective mode is shown by <code>ai --verbose</code> and recorded in every audit-log line.</p>
+<h3 id="how-the-modes-interact-with-approvals">How the modes interact with approvals<a class="headerlink" href="#how-the-modes-interact-with-approvals" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>standard</code> keeps the v0.19/v0.20 flow: persistent rules and session approvals skip the prompt,
+  <code>--allowed-tools</code> grants a tool for the run, <code>--yes</code> auto-approves <code>read</code>-risk tools only, and
+  non-interactive runs deny whatever is not granted.</li>
+<li><code>readonly</code> is a hard ceiling: a persisted rule, an <code>A</code> (always allow) answer,
+  <code>--allowed-tools</code>, <code>--yes</code> or <code>TOOL_CONFIRM=false</code> cannot make a <code>write</code>/<code>exec</code> call run. The
+  model receives an actionable denial that names <code>TOOL_POLICY=readonly</code> and says to switch to
+  <code>standard</code>.</li>
+<li><code>trusted</code> is a floor: prompting is skipped for every non-dangerous tool, so approval rules are
+  simply unnecessary. It does not bypass the workspace write guard — files are still confined and
+  backed up (see <a href="../workspace-safety/">Workspace Safety</a>).</li>
+</ul>
+<p>Denied calls return a structured <code>{"error": "tool_denied", "reason": ...}</code> result to the model and
+are recorded in the audit log with <code>source: "policy"</code>.</p>
 <h2 id="danger-classification-for-shell-commands">Danger classification for shell commands<a class="headerlink" href="#danger-classification-for-shell-commands" title="Permanent link">&para;</a></h2>
 <p>Shell commands are analysed with <code>shlex</code> (argv- and flag-based, not string matching) and can be
 flagged as dangerous: recursive/forced deletion, filesystem formatting, raw device writes,
@@ -2031,10 +2287,11 @@ into a shell, fork bombs, and similar. Safe commands such as <code>git add</code
 not flagged.</p>
 <ul>
 <li>Interactively, a dangerous command needs an explicit confirmation even if the tool or a rule
-  already allows <code>execute_shell_command</code>.</li>
-<li>Non-interactively, a dangerous command is always denied, even with <code>--yes</code> or a matching rule.</li>
+  already allows <code>execute_shell_command</code>, and even in <code>TOOL_POLICY=trusted</code>.</li>
+<li>Non-interactively, a dangerous command is always denied, even with <code>--yes</code>, a matching rule or
+  <code>TOOL_POLICY=trusted</code>.</li>
 <li>With <code>TOOL_CONFIRM=false</code> there is no prompt to confirm with, so a dangerous command is denied
-  as well.</li>
+  as well (in every mode).</li>
 </ul>
 <p>Additional shell guardrails apply automatically: a timeout (<code>TOOL_TIMEOUT</code>, default 120 s), process
 group kill on timeout/interrupt, a filtered environment (<code>YAI_API_KEY</code> and other secrets are not
@@ -2110,7 +2367,7 @@ only <code>A</code> results persist.</p>
 <h2 id="audit-log">Audit log<a class="headerlink" href="#audit-log" title="Permanent link">&para;</a></h2>
 <p>With <code>TOOL_AUDIT=true</code> (default), every tool decision is appended as one JSON line to
 <code>tool_audit.jsonl</code> in the config directory:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-11-04T12:34:56Z&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;execute_shell_command&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;risk&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;exec&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;decision&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;denied&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;non_interactive&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;args_summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;du -sh .&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Dangerous shell command refused in a non-interactive session; ...&quot;</span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-11-07T14:34:56Z&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;execute_shell_command&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;risk&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;exec&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;policy&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;decision&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;denied&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;non_interactive&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;args_summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;du -sh .&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Dangerous shell command refused in a non-interactive session; ...&quot;</span><span class="p">}</span>
 </code></pre></div>
 <table>
 <thead>
@@ -2133,12 +2390,16 @@ only <code>A</code> results persist.</p>
 <td>Risk class of the tool</td>
 </tr>
 <tr>
+<td><code>policy</code></td>
+<td>Effective <code>TOOL_POLICY</code> mode (<code>readonly</code> / <code>standard</code> / <code>trusted</code>) for that decision</td>
+</tr>
+<tr>
 <td><code>decision</code></td>
 <td><code>allowed</code> / <code>denied</code> / <code>error</code></td>
 </tr>
 <tr>
 <td><code>source</code></td>
-<td>Why: <code>prompt</code> (you confirmed), <code>session</code>, <code>persist</code>, <code>rule</code>, <code>allowlist</code> (<code>--allowed-tools</code>), <code>yes</code>, <code>disabled</code> (<code>TOOL_CONFIRM=false</code>) or <code>non_interactive</code></td>
+<td>Why: <code>prompt</code> (you confirmed), <code>session</code>, <code>persist</code>, <code>rule</code>, <code>allowlist</code> (<code>--allowed-tools</code>), <code>yes</code>, <code>disabled</code> (<code>TOOL_CONFIRM=false</code>), <code>non_interactive</code>, or <code>policy</code> (decided by <code>TOOL_POLICY</code>)</td>
 </tr>
 <tr>
 <td><code>args_summary</code></td>
@@ -2150,7 +2411,7 @@ only <code>A</code> results persist.</p>
 </tr>
 <tr>
 <td><code>reason</code></td>
-<td>Present for denials/errors: why the call was refused or failed</td>
+<td>Present for denials/errors: why the call was refused or failed (redacted and truncated to 300 characters)</td>
 </tr>
 </tbody>
 </table>
@@ -2187,6 +2448,12 @@ default. The flags that change this are:</p>
 </table>
 <p>See <a href="../headless/">Headless &amp; Scripting</a> for the full scripting contract.</p>
 <blockquote>
+<p><strong><code>TOOL_POLICY=readonly</code> is the safe default for read-only automation.</strong> It auto-allows
+read/network tools (including <code>fs_read_file</code>, <code>web_search</code>) and denies write/exec calls even if a
+flag or rule would otherwise grant them — no per-tool grants needed. Set it through
+<code>YAI_TOOL_POLICY=readonly</code> in the environment or <code>TOOL_POLICY=readonly</code> in <code>config.ini</code>.
+Tool calls that a mode does allow are still confined to the workspace and backed up before they
+change files (see <a href="../workspace-safety/">Workspace Safety</a>).</p>
 <p><strong>Prefer narrow grants.</strong> Granting <code>execute_shell_command</code> does not make every command safe:
 individual commands are still danger-classified, but a non-malicious-looking command can still do
 damage. Rules with an <code>argv_prefix</code> are safer than a bare tool name.</p>
@@ -2195,8 +2462,11 @@ damage. Rules with an <code>argv_prefix</code> are safer than a bare tool name.<
 <ul>
 <li><strong>API keys</strong>: <code>config.ini</code> may contain <code>API_KEY</code> in plaintext. The file is created with mode
   <code>0600</code>; prefer <code>YAI_API_KEY</code> (environment) on shared machines.</li>
-<li><strong>Workspace</strong>: shell tools run inside <code>WORKSPACE_ROOT</code> (or <code>--cwd</code>); a <code>cwd</code> outside it is
-  rejected.</li>
+<li><strong>Workspace</strong>: built-in filesystem writes and shell <code>cwd</code> are confined to <code>WORKSPACE_ROOT</code>
+  (default: the directory <code>ai</code> was started in; <code>--cwd</code> overrides it). Before a write tool changes
+  an existing file it is backed up to <code>.yaicli-backups/</code>, and protected paths such as <code>.git/</code> and
+  <code>.env*</code> are refused. See <a href="../workspace-safety/">Workspace Safety</a> for the write guard, backups
+  and recovery.</li>
 <li><strong>Environment</strong>: shell commands receive a filtered environment by default. <code>TOOL_ENV_INHERIT=true</code>
   restores the old behaviour — only do that if you trust every command the model may run.</li>
 <li><strong>Read-only / container environments</strong>: state writes are best-effort, so read-only commands such
@@ -2204,6 +2474,7 @@ damage. Rules with an <code>argv_prefix</code> are safer than a bare tool name.<
 </ul>
 <h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
+<li><a href="../workspace-safety/">Workspace Safety</a></li>
 <li><a href="../headless/">Headless &amp; Scripting</a></li>
 <li><a href="../context-limits/">Context &amp; Limits</a></li>
 <li><a href="../commands/">Command Reference</a></li>

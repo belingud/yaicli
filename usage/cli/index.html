@@ -350,6 +350,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -457,6 +463,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../context-limits/" class="md-nav__link">
         
   
@@ -486,6 +515,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -635,6 +687,15 @@
   <a href="#interactive-commands" class="md-nav__link">
     <span class="md-ellipsis">
       Interactive Commands
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chat-sessions-resume" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chat Sessions &amp; Resume
     </span>
   </a>
   
@@ -799,6 +860,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1646,7 +1730,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -1949,6 +2033,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chat-sessions-resume" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chat Sessions &amp; Resume
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#auto-suggestion" class="md-nav__link">
     <span class="md-ellipsis">
       Auto-Suggestion
@@ -2217,6 +2310,39 @@
 </tbody>
 </table>
 <p>With <code>!&lt;command&gt;</code>, you can execute a shell command directly without leaving the interactive mode. For example, <code>!ls -al</code> will list files in the current directory, <code>!git status</code> will show the git status, etc.</p>
+<h2 id="chat-sessions-resume">Chat Sessions &amp; Resume<a class="headerlink" href="#chat-sessions-resume" title="Permanent link">&para;</a></h2>
+<p>Chat sessions are saved per working directory in <code>~/.yaicli/sessions/</code> since v0.21; see
+<a href="../sessions/">Chat Sessions &amp; Resume</a> for the store layout, metadata and migration of old sessions.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ai --chat</code></td>
+<td>Start a temporary interactive session</td>
+</tr>
+<tr>
+<td><code>ai --chat "&lt;title&gt;"</code></td>
+<td>Continue the session with that title in the current project. A missing title prints an explicit notice and starts a new persistent session with that title (never a silent fallback)</td>
+</tr>
+<tr>
+<td><code>ai --resume</code></td>
+<td>Continue the <strong>newest</strong> saved session of the current project (implies <code>--chat</code>). With no saved session it prints an explicit notice and starts a new temporary session</td>
+</tr>
+<tr>
+<td><code>ai --list-chats</code></td>
+<td>List saved sessions of the invocation directory (the callback runs before <code>--cwd</code> applies)</td>
+</tr>
+</tbody>
+</table>
+<p><code>--resume</code> is interactive only: combined with <code>-p/--print</code> or a non-text <code>--output-format</code> it is
+ignored with a warning and the run continues one-shot; the same happens when stdin is redirected.
+It takes no title — use <code>--chat "&lt;title&gt;"</code> to load a specific session. Run <code>ai</code> from the project
+directory (or use <code>--cwd</code>) so the per-project store matches the session you want.</p>
 <h2 id="auto-suggestion">Auto-Suggestion<a class="headerlink" href="#auto-suggestion" title="Permanent link">&para;</a></h2>
 <p>YAICLI offers auto-suggestions based on your command history. As you type, it shows light gray text suggesting completions from your history:</p>
 <ul>

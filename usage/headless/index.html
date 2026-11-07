@@ -350,6 +350,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -673,6 +679,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../context-limits/" class="md-nav__link">
         
   
@@ -702,6 +731,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -817,6 +869,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1664,7 +1739,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -2411,7 +2486,7 @@ need a few tools.</p>
 </tr>
 <tr>
 <td><code>--cwd DIR</code></td>
-<td>Working directory for the run; also becomes the workspace root for shell tools. Paths outside the workspace are rejected.</td>
+<td>Working directory for the run; also becomes <code>WORKSPACE_ROOT</code> for the shell <code>cwd</code> and the guarded file writes. Paths outside the workspace are rejected (see <a href="../workspace-safety/">Workspace Safety</a>).</td>
 </tr>
 <tr>
 <td><code>--output-format ...</code>, <code>-q</code>, <code>-p</code></td>

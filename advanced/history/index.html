@@ -348,6 +348,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -457,6 +463,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../usage/workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../usage/context-limits/" class="md-nav__link">
         
   
@@ -486,6 +515,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -601,6 +653,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1712,7 +1787,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -2223,6 +2298,9 @@
 <h3 id="history-storage">History Storage<a class="headerlink" href="#history-storage" title="Permanent link">&para;</a></h3>
 <p>By default, command history is stored in <code>$XDG_STATE_HOME/yaicli/history</code> when <code>XDG_STATE_HOME</code> is
 set, otherwise in <code>~/.yaicli_history</code> (<code>%USERPROFILE%\.yaicli_history</code> on Windows).</p>
+<p>Since v0.21 the history file is created with mode <code>0600</code> (and the directories created for it with
+<code>0700</code>) because it contains every prompt you typed, possibly including pasted secrets; a legacy
+<code>0644</code> file is repaired the next time it is appended to or trimmed.</p>
 <p>The history file uses a simple text format with each command on a new line.</p>
 <h3 id="history-size">History Size<a class="headerlink" href="#history-size" title="Permanent link">&para;</a></h3>
 <p>You can configure the maximum number of history entries to retain:</p>
@@ -2270,13 +2348,27 @@ Chat History:
 Chat saved as: Python programming
 </code></pre></div>
 <h3 id="chat-storage-location">Chat Storage Location<a class="headerlink" href="#chat-storage-location" title="Permanent link">&para;</a></h3>
-<p>Chat history is stored in:
-- Default: A temporary directory specific to your system
-- Configurable through <code>CHAT_HISTORY_DIR</code> setting</p>
+<p>Since v0.21, saved chat sessions are isolated per project:</p>
+<ul>
+<li>Default: <code>~/.yaicli/sessions/&lt;sha256(resolved working directory)[:16]&gt;/</code> — one directory per
+  working directory, containing JSON session files. Directories are <code>0700</code>, files <code>0600</code>.</li>
+<li>The store is keyed by the <strong>working directory</strong> (not the git root): running <code>ai --chat</code> from two
+  different directories uses two stores. Use <code>--cwd</code> (or always start from the project directory) to
+  keep one store.</li>
+<li>Override with <code>CHAT_HISTORY_DIR</code> (config file) or <code>YAI_CHAT_HISTORY_DIR</code> (environment) to keep the
+  previous flat directory. A value equal to the built-in default <code>&lt;tempdir&gt;/yaicli/chats</code> is treated
+  as unset (per-project store).</li>
+<li><code>MAX_SAVED_CHATS</code> applies within the active store.</li>
+</ul>
 <div class="highlight"><pre><span></span><code><span class="k">[core]</span>
+<span class="c1"># Explicit override: keep the old flat layout in a stable directory</span>
 <span class="na">CHAT_HISTORY_DIR</span><span class="o">=</span><span class="s">/path/to/custom/directory</span>
 <span class="na">MAX_SAVED_CHATS</span><span class="o">=</span><span class="s">20</span>
 </code></pre></div>
+<p>Each session records <code>model</code>, <code>provider</code>, <code>role</code>, <code>cwd</code>, <code>created_at</code> and <code>updated_at</code>; a resumed
+session prints a one-line notice with that metadata. See
+<a href="../../usage/sessions/">Chat Sessions &amp; Resume</a> for the layout, <code>--resume</code>, the <code>--list-chats</code>
+caveat and how to migrate sessions saved by older releases.</p>
 <h3 id="listing-saved-chats">Listing Saved Chats<a class="headerlink" href="#listing-saved-chats" title="Permanent link">&para;</a></h3>
 <p>To list your saved chat sessions:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># From command line</span>
@@ -2285,7 +2377,9 @@ ai<span class="w"> </span>--list-chats
 <span class="c1"># From interactive mode</span>
 💬<span class="w"> </span>&gt;<span class="w"> </span>/list
 </code></pre></div>
-<p>This displays a numbered list of saved chats with their creation dates.</p>
+<p>This displays a numbered list of saved chats with their creation dates, scoped to the current
+project's store. (<code>ai --list-chats</code> uses the invocation directory; its option callback runs before
+<code>--cwd</code> applies.)</p>
 <h3 id="loading-saved-chats">Loading Saved Chats<a class="headerlink" href="#loading-saved-chats" title="Permanent link">&para;</a></h3>
 <p>You can load saved chats in two ways:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># From command line (using the chat title)</span>
@@ -2319,6 +2413,12 @@ message, so restoring a session preserves tool calls, images, and reasoning cont
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Chat Title&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-06-01T12:00:00+00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;model&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gpt-5.2&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;provider&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;openai&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DEFAULT&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cwd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/home/me/project&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-06-01T12:00:00+00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;updated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-06-01T12:05:00+00:00&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;history&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
@@ -2358,7 +2458,9 @@ message, so restoring a session preserves tool calls, images, and reasoning cont
 </code></pre></div>
 <p>Optional fields are written only when they are set: <code>name</code>, <code>tool_call_id</code>, <code>tool_calls</code>,
 <code>reasoning</code>, and <code>images</code>. A <code>tool_calls</code> entry is <code>{"id", "name", "arguments"}</code>; an <code>images</code>
-entry is <code>{"data", "media_type", "is_url"}</code>.</p>
+entry is <code>{"data", "media_type", "is_url"}</code>. Session metadata (<code>model</code>, <code>provider</code>, <code>role</code>, <code>cwd</code>,
+<code>created_at</code>, <code>updated_at</code>) was added in v0.21; legacy files without it load normally and are
+backfilled on their next save.</p>
 <h3 id="atomic-saves">Atomic Saves<a class="headerlink" href="#atomic-saves" title="Permanent link">&para;</a></h3>
 <p>Sessions are written atomically: the new JSON is written to a hidden temporary file in the
 same directory (<code>.filename.pid.tmp</code>), flushed/<code>fsync</code>-ed, and then moved over the target file

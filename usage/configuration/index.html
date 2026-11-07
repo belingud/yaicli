@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://belingud.github.io/yaicli/usage/configuration/">
       
       
-        <link rel="prev" href="../context/">
+        <link rel="prev" href="../project-context/">
       
       
         <link rel="next" href="../modes/">
@@ -350,6 +350,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -457,6 +463,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../workspace-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../context-limits/" class="md-nav__link">
         
   
@@ -486,6 +515,29 @@
   
   <span class="md-ellipsis">
     File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
     
   </span>
   
@@ -631,6 +683,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chat-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chat Sessions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#state-files" class="md-nav__link">
     <span class="md-ellipsis">
       State Files
@@ -766,6 +827,29 @@
   
   <span class="md-ellipsis">
     Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
     
   </span>
   
@@ -1613,7 +1697,7 @@
   
   
   <span class="md-ellipsis">
-    Upgrading to v0.19
+    Upgrading
     
   </span>
   
@@ -1952,6 +2036,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chat-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chat Sessions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#state-files" class="md-nav__link">
     <span class="md-ellipsis">
       State Files
@@ -2089,8 +2182,10 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="c1"># Text alignment (default, left, center, right, full)</span>
 <span class="na">JUSTIFY</span><span class="o">=</span><span class="s">default</span>
 
-<span class="c1"># Chat history settings</span>
-<span class="na">CHAT_HISTORY_DIR</span><span class="o">=</span><span class="s">&lt;tmpdir&gt;/yaicli/chats</span>
+<span class="c1"># Chat history settings (v0.21 K13: sessions are per project by default)</span>
+<span class="c1"># Explicit override: keep the old flat directory. Leave/remove the line (or keep the</span>
+<span class="c1"># built-in default value) to use ~/.yaicli/sessions/&lt;hash of the working directory&gt;/.</span>
+<span class="c1"># CHAT_HISTORY_DIR=/home/me/yaicli-sessions</span>
 <span class="na">MAX_SAVED_CHATS</span><span class="o">=</span><span class="s">20</span>
 
 <span class="c1"># Role settings</span>
@@ -2110,6 +2205,12 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="c1"># Tool confirmation (set to false to restore silent execution)</span>
 <span class="na">TOOL_CONFIRM</span><span class="o">=</span><span class="s">true</span>
 
+<span class="c1"># Session-wide tool permission mode (v0.21): readonly | standard | trusted</span>
+<span class="c1"># readonly: auto-allow read/network tools only; write/exec tools are always denied</span>
+<span class="c1"># standard: ask for confirmation / use tool_permissions.json rules (default)</span>
+<span class="c1"># trusted: auto-allow every non-dangerous tool (dangerous shell commands still ask)</span>
+<span class="na">TOOL_POLICY</span><span class="o">=</span><span class="s">standard</span>
+
 <span class="c1"># Maximum recursive tool-call rounds per request</span>
 <span class="na">MAX_TOOL_CALL_DEPTH</span><span class="o">=</span><span class="s">8</span>
 
@@ -2120,7 +2221,9 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="c1"># Max characters of one tool result kept in the context (0 = no truncation);</span>
 <span class="c1"># the full output is saved to TOOL_OUTPUT_DIR.</span>
 <span class="na">TOOL_OUTPUT_MAX_CHARS</span><span class="o">=</span><span class="s">32000</span>
-<span class="na">TOOL_OUTPUT_DIR</span><span class="o">=</span><span class="s">&lt;chat-history-dir&gt;/tool-outputs</span>
+<span class="c1"># Scratch directory for full (untruncated) tool outputs; independent of the</span>
+<span class="c1"># per-project session store. Defaults to &lt;tempdir&gt;/yaicli/chats/tool-outputs.</span>
+<span class="na">TOOL_OUTPUT_DIR</span><span class="o">=</span><span class="s">&lt;tempdir&gt;/yaicli/chats/tool-outputs</span>
 <span class="c1"># Terminal display of tool results (v0.19.1): head-only preview; the model still</span>
 <span class="c1"># receives TOOL_OUTPUT_MAX_CHARS. 0 = show everything.</span>
 <span class="na">TOOL_DISPLAY_MAX_LINES</span><span class="o">=</span><span class="s">15</span>
@@ -2130,13 +2233,21 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="c1"># Token budget for one request; 0 derives 70% of the model context window.</span>
 <span class="na">CONTEXT_BUDGET_TOKENS</span><span class="o">=</span><span class="s">0</span>
 
+<span class="c1"># Project context settings (v0.21 K12)</span>
+<span class="c1"># Auto-load .yaicli.md / AGENTS.md / CLAUDE.md from the working directory up to the</span>
+<span class="c1"># git root and add them to the system prompt. false = no project-file reads at all.</span>
+<span class="na">ENABLE_PROJECT_CONTEXT</span><span class="o">=</span><span class="s">true</span>
+<span class="c1"># Max characters of project instructions added to the system prompt</span>
+<span class="c1"># (0 = no cap; a truncated block prints one warning naming the files involved).</span>
+<span class="na">PROJECT_CONTEXT_MAX_CHARS</span><span class="o">=</span><span class="s">20000</span>
+
 <span class="c1"># Shell tool settings (v0.19)</span>
 <span class="c1"># Max seconds a shell command may run (killed with its process group on timeout).</span>
 <span class="na">TOOL_TIMEOUT</span><span class="o">=</span><span class="s">120</span>
 <span class="c1"># true = pass the full parent environment to shell commands (old behaviour);</span>
 <span class="c1"># false = filtered environment, secrets such as YAI_API_KEY are not passed.</span>
 <span class="na">TOOL_ENV_INHERIT</span><span class="o">=</span><span class="s">false</span>
-<span class="c1"># Shell commands may only run inside this directory (empty = current directory).</span>
+<span class="c1"># Workspace root for shell cwd and guarded file writes (empty = current directory).</span>
 <span class="na">WORKSPACE_ROOT</span><span class="o">=</span>
 
 <span class="c1"># Reliability settings (v0.19)</span>
@@ -2300,13 +2411,13 @@ provider name invalid).</p>
 </tr>
 <tr>
 <td><code>CHAT_HISTORY_DIR</code></td>
-<td>Chat history directory</td>
-<td><code>&lt;tempdir&gt;/yaicli/chats</code></td>
+<td>Explicit session-directory override (old flat layout); a value equal to the built-in default means the per-project store</td>
+<td><em>unset</em> (per-project <code>~/.yaicli/sessions/&lt;hash&gt;/</code>)</td>
 <td><code>YAI_CHAT_HISTORY_DIR</code></td>
 </tr>
 <tr>
 <td><code>MAX_SAVED_CHATS</code></td>
-<td>Max saved chats</td>
+<td>Max saved sessions per store</td>
 <td><code>20</code></td>
 <td><code>YAI_MAX_SAVED_CHATS</code></td>
 </tr>
@@ -2353,6 +2464,12 @@ provider name invalid).</p>
 <td><code>YAI_TOOL_CONFIRM</code></td>
 </tr>
 <tr>
+<td><code>TOOL_POLICY</code></td>
+<td>Session-wide tool permission mode: <code>readonly</code>, <code>standard</code> or <code>trusted</code> (see <a href="../permissions/#permission-modes-tool_policy">Permissions &amp; Safety</a>)</td>
+<td><code>standard</code></td>
+<td><code>YAI_TOOL_POLICY</code></td>
+</tr>
+<tr>
 <td><code>TOOL_OUTPUT_MAX_CHARS</code></td>
 <td>Max characters of one tool result kept in context (<code>0</code> = unlimited)</td>
 <td><code>32000</code></td>
@@ -2361,7 +2478,7 @@ provider name invalid).</p>
 <tr>
 <td><code>TOOL_OUTPUT_DIR</code></td>
 <td>Where full (untruncated) tool outputs are saved</td>
-<td><code>&lt;chat-history&gt;/tool-outputs</code></td>
+<td><code>&lt;tempdir&gt;/yaicli/chats/tool-outputs</code></td>
 <td><code>YAI_TOOL_OUTPUT_DIR</code></td>
 </tr>
 <tr>
@@ -2389,6 +2506,18 @@ provider name invalid).</p>
 <td><code>YAI_CONTEXT_BUDGET_TOKENS</code></td>
 </tr>
 <tr>
+<td><code>ENABLE_PROJECT_CONTEXT</code></td>
+<td>Auto-load project instruction files into the system prompt (<code>false</code> = no project-file reads)</td>
+<td><code>true</code></td>
+<td><code>YAI_ENABLE_PROJECT_CONTEXT</code></td>
+</tr>
+<tr>
+<td><code>PROJECT_CONTEXT_MAX_CHARS</code></td>
+<td>Max characters of project context added to the system prompt (<code>0</code> = no cap)</td>
+<td><code>20000</code></td>
+<td><code>YAI_PROJECT_CONTEXT_MAX_CHARS</code></td>
+</tr>
+<tr>
 <td><code>TOOL_TIMEOUT</code></td>
 <td>Max seconds a shell tool command may run</td>
 <td><code>120</code></td>
@@ -2402,7 +2531,7 @@ provider name invalid).</p>
 </tr>
 <tr>
 <td><code>WORKSPACE_ROOT</code></td>
-<td>Directory shell tools are confined to (empty = current dir)</td>
+<td>Workspace root: shell <code>cwd</code> and guarded file writes must stay inside it (empty = current dir; see <a href="../workspace-safety/">Workspace Safety</a>)</td>
 <td>-</td>
 <td><code>YAI_WORKSPACE_ROOT</code></td>
 </tr>
@@ -2462,9 +2591,22 @@ provider name invalid).</p>
 <li><strong>REPL retention</strong>: <code>INTERACTIVE_ROUND</code> (default <code>25</code>) is the number of chat turns kept in the
   REPL (×2 messages), not a token limit. <code>MAX_HISTORY</code> (default <code>500</code>) only sizes the prompt
   history file (see <a href="../../advanced/history/">Conversation &amp; History</a>).</li>
+<li><strong>Project instructions</strong>: <code>.yaicli.md</code> / <code>AGENTS.md</code> / <code>CLAUDE.md</code> are auto-loaded into the
+  system prompt (<code>ENABLE_PROJECT_CONTEXT</code>, <code>PROJECT_CONTEXT_MAX_CHARS</code>; see
+  <a href="../project-context/">Project Context</a>).</li>
 </ul>
 <p>Use <code>/context</code> to inspect the estimated usage and <code>/compact [keep_rounds]</code> to compact manually
 (see <a href="../commands/#interactive-mode-commands">Command Reference</a>).</p>
+<h2 id="chat-sessions">Chat Sessions<a class="headerlink" href="#chat-sessions" title="Permanent link">&para;</a></h2>
+<p>Since v0.21, chat sessions are isolated per project. With the default configuration <code>CHAT_HISTORY_DIR</code>
+is unset, and sessions are stored in <code>~/.yaicli/sessions/&lt;sha256(resolved cwd)[:16]&gt;/</code> (directories
+<code>0700</code>, session files <code>0600</code>). Setting an explicit <code>CHAT_HISTORY_DIR</code> that differs from the built-in
+default (<code>&lt;tempdir&gt;/yaicli/chats</code>) restores the old flat directory for all projects; a value equal
+to the built-in default counts as unset. <code>MAX_SAVED_CHATS</code> applies within the active store.</p>
+<p>Each saved session records <code>model</code>, <code>provider</code>, <code>role</code>, <code>cwd</code>, <code>created_at</code> and <code>updated_at</code> in its
+JSON, so a resumed session describes how it was produced. Sessions saved by older versions load
+normally and are backfilled on their next save. Use <code>--resume</code> to continue the newest session of the
+current project — see <a href="../sessions/">Chat Sessions &amp; Resume</a>.</p>
 <h2 id="state-files">State Files<a class="headerlink" href="#state-files" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2503,16 +2645,16 @@ provider name invalid).</p>
 <td>Tool decision audit log</td>
 </tr>
 <tr>
-<td><code>&lt;config-dir&gt;/tool-outputs/</code></td>
-<td>Spilled full tool outputs (unless <code>TOOL_OUTPUT_DIR</code> overrides)</td>
+<td><code>&lt;tempdir&gt;/yaicli/chats/tool-outputs/</code></td>
+<td>Spilled full tool outputs (legacy scratch dir; <code>TOOL_OUTPUT_DIR</code> overrides)</td>
+</tr>
+<tr>
+<td><code>~/.yaicli/sessions/&lt;hash&gt;/</code></td>
+<td>Saved chat sessions per project, mode <code>0700</code> dirs / <code>0600</code> files (or an explicit <code>CHAT_HISTORY_DIR</code>)</td>
 </tr>
 <tr>
 <td><code>$XDG_STATE_HOME/yaicli/history</code> or <code>~/.yaicli_history</code></td>
-<td>REPL prompt history</td>
-</tr>
-<tr>
-<td><code>CHAT_HISTORY_DIR</code> (default <code>&lt;tempdir&gt;/yaicli/chats</code>)</td>
-<td>Saved chat sessions</td>
+<td>REPL prompt history (mode <code>0600</code>)</td>
 </tr>
 </tbody>
 </table>

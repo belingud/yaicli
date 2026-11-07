@@ -1,0 +1,2403 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="An advanced CLI tool for interacting with AI models">
+      
+      
+      
+        <link rel="canonical" href="https://belingud.github.io/yaicli/usage/workspace-safety/">
+      
+      
+        <link rel="prev" href="../permissions/">
+      
+      
+        <link rel="next" href="../context-limits/">
+      
+      
+      <link rel="icon" href="../../assets/artwork/logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+    
+    
+      
+        <title>Workspace Safety - YAICLI</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#workspace-safety-writes-backups-undo" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="YAICLI" class="md-header__button md-logo" aria-label="YAICLI" data-md-component="logo">
+      
+  <img src="../../assets/artwork/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            YAICLI
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Workspace Safety
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/belingud/yaicli" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    belingud/yaicli
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="YAICLI" class="md-nav__button md-logo" aria-label="YAICLI" data-md-component="logo">
+      
+  <img src="../../assets/artwork/logo.png" alt="logo">
+
+    </a>
+    YAICLI
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/belingud/yaicli" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    belingud/yaicli
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Agent Quickstart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Usage
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Usage
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../headless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Headless & Scripting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions & Safety
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Workspace Safety
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-guarded" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is guarded
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-workspace-root" class="md-nav__link">
+    <span class="md-ellipsis">
+      The workspace root
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#path-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Path rules
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protected-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      Protected paths
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backups
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#undo" class="md-nav__link">
+    <span class="md-ellipsis">
+      /undo
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#denials" class="md-nav__link">
+    <span class="md-ellipsis">
+      Denials
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known limits
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Context & Limits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    File Context Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Project Context (AGENTS.md)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Mode Switching (Chat / Execute)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Shortcuts & Hotkeys
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../basic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Basic Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interactive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Interactive Mode
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Chat Sessions & Resume
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Advanced Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Providers
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Providers
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview & Feature Matrix
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/openai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    OpenAI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/anthropic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Anthropic (Claude)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/gemini/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Gemini
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/cohere/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Cohere
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/ollama/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Ollama
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/mistral/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Mistral
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/deepseek/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DeepSeek
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/groq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Groq
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/together/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Together
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/vertexai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    VertexAI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/openrouter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    OpenRouter
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/huggingface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    HuggingFace
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/xai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    XAI (Grok)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/yi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Yi (01.AI)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/cerebras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Cerebras
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/doubao/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Doubao
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/nvidia/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NVIDIA NIM
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/sambanova/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SambaNova
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/moonshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Moonshot
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/modelscope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ModelScope
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/chatglm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ChatGLM
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/bailian/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Bailian
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/minimax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Minimax
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/fireworks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fireworks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../providers/longcat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LongCat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Advanced
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prompt Template System
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Conversation & History
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Debugging & Logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Developer Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/add-provider/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Add a New Provider
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/debug-cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Debugging
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ & Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Changelog
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-guarded" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is guarded
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-workspace-root" class="md-nav__link">
+    <span class="md-ellipsis">
+      The workspace root
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#path-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Path rules
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protected-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      Protected paths
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backups
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#undo" class="md-nav__link">
+    <span class="md-ellipsis">
+      /undo
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#denials" class="md-nav__link">
+    <span class="md-ellipsis">
+      Denials
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known limits
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="workspace-safety-writes-backups-undo">Workspace Safety: Writes, Backups &amp; Undo<a class="headerlink" href="#workspace-safety-writes-backups-undo" title="Permanent link">&para;</a></h1>
+<p>Agents write files. Since v0.21, YAICLI's built-in filesystem tools treat your project directory
+as a <strong>workspace</strong>: writes are confined to it, the most sensitive paths are refused, existing files
+are backed up before they change, and <code>/undo</code> reverts the last change.</p>
+<p>This page documents the write guard. For <em>which</em> tool calls are allowed to run at all, see
+<a href="../permissions/">Permissions &amp; Safety</a>.</p>
+<h2 id="what-is-guarded">What is guarded<a class="headerlink" href="#what-is-guarded" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Guarded operations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fs_write_file</code></td>
+<td>create, overwrite and append (<code>append=true</code>)</td>
+</tr>
+<tr>
+<td><code>fs_edit_file</code></td>
+<td>every edit type (<code>replace</code>, <code>replace_line</code>, <code>insert_line</code>, <code>delete_line</code>, <code>append</code>); <code>dry_run=true</code> previews do not mutate, back up or create an undo entry</td>
+</tr>
+<tr>
+<td><code>fs_file_operations</code></td>
+<td><code>delete</code>, <code>move</code>, <code>copy</code>, <code>create_dir</code>; the read-only operations (<code>exists</code>, <code>get_info</code>) do not mutate and are not guarded</td>
+</tr>
+</tbody>
+</table>
+<p>The guard runs in the tool execution layer <em>before</em> the tool executes. If it refuses a call, the
+filesystem is untouched and the model receives an in-band JSON result it can read (see
+<a href="#denials">Denials</a>).</p>
+<p><strong>Not guarded:</strong> shell commands (<code>execute_shell_command</code>), MCP tools and custom functions. Shell
+commands are confined by their working directory and their own guardrails (timeout, filtered
+environment) but their file effects are not backed up and cannot be undone — use git for those.
+MCP tools and custom functions run as their servers/authors implement them.</p>
+<h2 id="the-workspace-root">The workspace root<a class="headerlink" href="#the-workspace-root" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WORKSPACE_ROOT</code> in <code>config.ini</code></td>
+<td>Workspace root for guarded writes and the shell <code>cwd</code></td>
+</tr>
+<tr>
+<td><code>YAI_WORKSPACE_ROOT</code> (environment)</td>
+<td>Same, higher priority than <code>config.ini</code></td>
+</tr>
+<tr>
+<td><code>--cwd DIR</code></td>
+<td>Changes into <code>DIR</code> for the run and sets the workspace root to it</td>
+</tr>
+<tr>
+<td><em>(none of the above)</em></td>
+<td>The process working directory — the directory you started <code>ai</code> in</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1"># Confine a run to a project, even if started somewhere else</span>
+ai<span class="w"> </span>--cwd<span class="w"> </span>~/projects/my-app<span class="w"> </span><span class="s2">&quot;refactor the config loader&quot;</span>
+
+<span class="c1"># Equivalent for a whole shell session</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">YAI_WORKSPACE_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>The root is resolved to a real path when the mutation runs. A not-yet-existing root is allowed at
+resolution time, but the write then fails closed (in-band error) if it cannot be created or is not
+writable.</p>
+<blockquote>
+<p><strong>Relative paths resolve against the process working directory</strong>, not against the workspace
+root: <code>main.py</code> means <code>&lt;cwd&gt;/main.py</code>, then that path must still be inside the workspace root. If
+you set <code>WORKSPACE_ROOT</code> to a directory different from where you launched <code>ai</code>, relative tool
+paths will usually resolve outside it and be refused. Either launch <code>ai</code> from the project (or use
+<code>--cwd</code>), or give the model absolute paths inside the workspace.</p>
+</blockquote>
+<h2 id="path-rules">Path rules<a class="headerlink" href="#path-rules" title="Permanent link">&para;</a></h2>
+<p>Before running a write tool, the guard resolves the target and checks it:</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Relative path</td>
+<td>Resolved against the process working directory, then checked against the workspace root</td>
+</tr>
+<tr>
+<td>Absolute path inside the workspace</td>
+<td>Allowed</td>
+</tr>
+<tr>
+<td>Absolute path outside the workspace (<code>/tmp/x</code>, <code>~/.ssh/id_rsa</code>, <code>../other-project/file</code>)</td>
+<td>Refused: <code>outside_workspace</code></td>
+</tr>
+<tr>
+<td><code>..</code> segments that escape the root</td>
+<td>Resolved first, then refused because the result is outside</td>
+</tr>
+<tr>
+<td>Symlink pointing outside the workspace</td>
+<td>Refused (<code>outside_workspace</code>); the real target is outside</td>
+</tr>
+<tr>
+<td>Symlink pointing inside the workspace</td>
+<td>Allowed; the operation applies to the resolved target</td>
+</tr>
+<tr>
+<td>A file that does not exist yet but is inside the root</td>
+<td>Allowed (creating a new file is the normal case)</td>
+</tr>
+<tr>
+<td>The workspace root itself</td>
+<td>Refused: <code>workspace_root</code> — the root cannot be written, moved or deleted as a whole</td>
+</tr>
+<tr>
+<td>A protected path (see below)</td>
+<td>Refused: <code>protected_path</code>, even inside the workspace</td>
+</tr>
+</tbody>
+</table>
+<p>For <code>fs_file_operations</code> the guard also checks the <strong>destination</strong> of <code>move</code>/<code>copy</code>, including the
+implicit destination when a file is moved/copied into an existing directory
+(<code>dest/file.txt</code>).</p>
+<h2 id="protected-paths">Protected paths<a class="headerlink" href="#protected-paths" title="Permanent link">&para;</a></h2>
+<p>These are refused even when they are inside the workspace:</p>
+<table>
+<thead>
+<tr>
+<th>Protected</th>
+<th>Matches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.git</code>, <code>.ssh</code>, <code>.aws</code>, <code>.gnupg</code> directories</td>
+<td>Any path component with one of those names (any depth, case-insensitive)</td>
+</tr>
+<tr>
+<td><code>.env</code> files</td>
+<td>Basename <code>.env</code> or <code>.env.*</code> (<code>.env.local</code>, <code>.env.production</code>, ...)</td>
+</tr>
+<tr>
+<td>Certificate / key files</td>
+<td>Basenames ending in <code>.pem</code> or <code>.key</code> (case-insensitive)</td>
+</tr>
+</tbody>
+</table>
+<p>Normal project files are not affected: <code>.gitignore</code>, <code>.github/</code>, <code>.envrc</code>, <code>keys/README.md</code> and
+<code>backups.db</code> are all writable. The backup directory <code>.yaicli-backups</code> is intentionally not
+protected (the guard itself writes there).</p>
+<p>The protected-path check applies to every guarded target: writing, editing, deleting, and the
+source or destination of a move/copy. To change such a file, do it yourself (or export an
+environment variable / use a secret manager) — the agent will only get a refusal.</p>
+<h2 id="backups">Backups<a class="headerlink" href="#backups" title="Permanent link">&para;</a></h2>
+<p>Before an <strong>existing</strong> file or directory is overwritten, edited, appended to, deleted or moved, it
+is copied into the workspace:</p>
+<div class="highlight"><pre><span></span><code>&lt;workspace&gt;/.yaicli-backups/&lt;UTC stamp&gt;/&lt;path relative to the workspace root&gt;
+</code></pre></div>
+<p>The stamp is generated once per mutation: <code>YYYYMMDDTHHMMSSffffffZ</code> (UTC, microsecond precision), for
+example:</p>
+<div class="highlight"><pre><span></span><code>my-project/
+├── .yaicli-backups/
+│   └── 20261107T143456123456Z/
+│       └── src/config.py        # copy of the previous src/config.py
+├── .gitignore
+└── src/config.py                # the new version
+</code></pre></div>
+<ul>
+<li><strong>Modes</strong>: backup directories are created <code>0700</code> and files are copied with mode <code>0600</code> (best
+  effort; tool arguments can contain secrets, so backups are private).</li>
+<li><strong>Directories</strong> are copied recursively, preserving symlinks (they are not followed).</li>
+<li><strong>Created files have no backup</strong>: <code>undo</code> deletes them instead.</li>
+<li><strong><code>fs_edit_file(dry_run=true)</code></strong> creates no backup.</li>
+<li><strong>Fail closed</strong>: if a backup cannot be written (disk full, permissions), the mutation is
+  <strong>refused</strong> with a <code>backup_failed</code> denial and the original file is left untouched. YAICLI never
+  changes a file it cannot back up.</li>
+<li><strong>No automatic cleanup</strong>: backups accumulate until you delete them. The directory is created on
+  the first backup, inside the workspace root.</li>
+</ul>
+<blockquote>
+<p><strong>Add <code>.yaicli-backups/</code> to your <code>.gitignore</code></strong> so agent backups are not committed:</p>
+<div class="highlight"><pre><span></span><code>.yaicli-backups/
+</code></pre></div>
+<p>Use a global gitignore if you do not want to edit each repository. Backups may contain secrets,
+so delete old stamps once you no longer need them: they are ordinary files inside the workspace,
+readable (and writable) by both you and the agent — old versions of a file may contain API keys
+that you have since rotated.</p>
+</blockquote>
+<h2 id="undo"><code>/undo</code><a class="headerlink" href="#undo" title="Permanent link">&para;</a></h2>
+<p>In the interactive REPL, <code>/undo</code> reverts the <strong>last</strong> file change made by a guarded tool:</p>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>What <code>/undo</code> does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Overwrote, edited or appended a file</td>
+<td>Restores its previous content from the backup, recreating missing parent directories</td>
+</tr>
+<tr>
+<td>Deleted a file or directory</td>
+<td>Restores it from the backup</td>
+</tr>
+<tr>
+<td>Moved a file/directory</td>
+<td>Restores the source (and the destination's previous content, if it was overwritten)</td>
+</tr>
+<tr>
+<td>Created a file or directory</td>
+<td>Deletes it; a copied/moved directory tree is removed in full</td>
+</tr>
+</tbody>
+</table>
+<p>A restored file also gets its previous permission bits back (best effort).</p>
+<ul>
+<li><strong>One mutation per command.</strong> Undo the last change, then run <code>/undo</code> again for the one before it.</li>
+<li><strong>Bounded:</strong> the last <strong>20</strong> mutations are kept in memory; older entries are dropped silently.</li>
+<li><strong>Process-local:</strong> the undo stack lives in the running <code>ai</code> process and is lost when it exits.
+  A one-shot run that mutates files and exits can no longer be <code>/undo</code>-ed; its backups are still in
+  <code>.yaicli-backups/</code>, so you can restore by hand.</li>
+<li><strong>Only guarded tools:</strong> shell commands, MCP tools and custom functions are not recorded.</li>
+<li>The command reports what it restored and deleted, and lists partial failures. If a created
+  directory is no longer empty (the agent wrote files into it afterwards), undo reports an error and
+  leaves it in place — undo the later writes first.</li>
+<li>With an empty stack: <code>Nothing to undo: no file changes were recorded in this session.</code></li>
+</ul>
+<p>Example session:</p>
+<div class="highlight"><pre><span></span><code>💬<span class="w"> </span>&gt;<span class="w"> </span>refactor<span class="w"> </span>src/config.py<span class="w"> </span>and<span class="w"> </span>update<span class="w"> </span>the<span class="w"> </span>README
+Assistant:
+...
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>/undo
+Undid<span class="w"> </span>the<span class="w"> </span>last<span class="w"> </span>file<span class="w"> </span>change<span class="w"> </span><span class="o">(</span>fs_edit_file<span class="o">)</span>:<span class="w"> </span>restore<span class="w"> </span><span class="m">1</span><span class="w"> </span>path<span class="o">(</span>s<span class="o">)</span>.
+<span class="w">  </span>restored:<span class="w"> </span>src/config.py
+
+💬<span class="w"> </span>&gt;<span class="w"> </span>/undo
+Undid<span class="w"> </span>the<span class="w"> </span>last<span class="w"> </span>file<span class="w"> </span>change<span class="w"> </span><span class="o">(</span>fs_write_file<span class="o">)</span>:<span class="w"> </span>remove<span class="w"> </span><span class="m">1</span><span class="w"> </span>path<span class="o">(</span>s<span class="o">)</span>.
+<span class="w">  </span>deleted:<span class="w"> </span>README.bak
+</code></pre></div>
+<h2 id="denials">Denials<a class="headerlink" href="#denials" title="Permanent link">&para;</a></h2>
+<p>A refused mutation is an <strong>in-band result</strong>, not an exception and not a permission-gate denial:
+the model sees the reason, the filesystem stays untouched, and the agent loop continues so the
+model can choose another path. The payload looks like:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Refusing to modify &#39;/tmp/report.md&#39;: it resolves outside the workspace root &#39;/home/me/project&#39;. ...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;outside_workspace&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/tmp/report.md&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;workspace_root&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/home/me/project&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th><code>reason</code></th>
+<th>Meaning</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>outside_workspace</code></td>
+<td>Target is outside <code>WORKSPACE_ROOT</code></td>
+<td>Run <code>ai</code> in the right directory, pass <code>--cwd</code>, or set <code>WORKSPACE_ROOT</code></td>
+</tr>
+<tr>
+<td><code>protected_path</code></td>
+<td>Target is <code>.git</code>/<code>.ssh</code>/<code>.aws</code>/<code>.gnupg</code> or a <code>.env*</code>/<code>*.pem</code>/<code>*.key</code> file</td>
+<td>Edit it yourself</td>
+</tr>
+<tr>
+<td><code>workspace_root</code></td>
+<td>Target is the workspace root itself</td>
+<td>Choose a file inside it</td>
+</tr>
+<tr>
+<td><code>backup_failed</code></td>
+<td>The pre-change backup could not be written</td>
+<td>Fix disk space/permissions; the file was not modified</td>
+</tr>
+<tr>
+<td><code>workspace_guard_error</code></td>
+<td>The guard itself failed</td>
+<td>Nothing was changed; run <code>ai --verbose</code> and report a bug</td>
+</tr>
+</tbody>
+</table>
+<p>Because these denials are not permission-gate denials, <code>--fail-on-tool-denied</code> does not exit on
+them; the model simply receives the refusal.</p>
+<h2 id="known-limits">Known limits<a class="headerlink" href="#known-limits" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Directory targets are not expanded.</strong> Deleting or moving a directory is checked at the
+  directory path itself; a protected path <em>inside</em> it (for example <code>project/.git</code> when deleting
+  <code>project/</code>) does not block that delete. The whole tree is backed up first, so <code>/undo</code> can restore
+  it — but do not rely on the protected-path check for directory-level operations.</li>
+<li><strong>Shell side effects are not guarded or undoable.</strong> Only the shell's working directory and its
+  timeout/environment guardrails apply.</li>
+<li><strong>MCP and custom functions are not guarded.</strong> They can write anywhere the process can.</li>
+<li><strong>Only the REPL has <code>/undo</code>.</strong> Headless/one-shot runs still get confinement and backups, but the
+  undo stack dies with the process; restore from <code>.yaicli-backups/</code> manually if needed.</li>
+<li><strong>It is a cooperating-tool guard, not an OS sandbox.</strong> Shell commands and MCP/custom tools can
+  still write outside the workspace; the guard protects against mistakes by the built-in
+  filesystem tools, not against a malicious tool.</li>
+<li><strong>Windows</strong>: symlink escape protection depends on OS symlink support; private backup modes are
+  best effort on filesystems without POSIX permissions.</li>
+</ul>
+<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../permissions/">Permissions &amp; Safety</a> — approval prompt, <code>TOOL_POLICY</code> modes, danger
+  classification and the audit log</li>
+<li><a href="../configuration/">Configuration</a> — <code>WORKSPACE_ROOT</code>, <code>TOOL_POLICY</code> and the other tool settings</li>
+<li><a href="../commands/">Command Reference</a> — <code>/undo</code> and the other REPL commands</li>
+<li><a href="../../advanced/upgrade/">Upgrade Notes</a> — what changed in v0.21</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/belingud/yaicli" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.expand", "navigation.indexes", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      
+    
+  </body>
+</html>
