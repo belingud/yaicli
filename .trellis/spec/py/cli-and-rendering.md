@@ -98,9 +98,18 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 
 ## Message Assembly & Tool Policy
 
-- `_build_messages()` is the single request assembler, in order: role system prompt → persistent context
+- `_build_messages()` is the single request assembler, in order: role system prompt **with the project
+  context block appended** (v0.21 K12; see below) → persistent context
   (`ContextManager.get_context_messages()`) → temporary `@` refs as a system message → `chat.history` →
   user message with `images + at_images`. The `NO_VISION_PROVIDERS` (`const.py`) guard drops images here.
+- Project context (v0.21 K12): `CLI._get_project_context()` lazily calls
+  `yaicli/project_context.py::load_project_context()` once per CLI instance and caches the bounded text;
+  the block is appended to the existing first system message (no extra system message, message count
+  unchanged, byte-identical payload when no files exist). Config: `ENABLE_PROJECT_CONTEXT` (default true,
+  disabled = zero filesystem reads) and `PROJECT_CONTEXT_MAX_CHARS` (default 20000, `0` = no cap);
+  truncation prints ONE stderr notice. Discovery/order lives in `project_context.py` (cwd → nearest git
+  root inclusive, outermost first, `.yaicli.md` → `AGENTS.md` → `CLAUDE.md` per directory, symlinked
+  duplicates loaded once). Editing a project file mid-session requires a restart (block is cached).
 - Images: repeatable `--image/-i` is processed in `entry.main` by `process_image_source()` (http(s) URL →
   `ImageData(is_url=True)`; local path → `validate_local_image()` then base64, `typer.BadParameter` → exit
   1). `@image.png` becomes `ImageData` via `ContextManager.parse_at_references()` instead of text.

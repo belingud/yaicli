@@ -37,8 +37,9 @@ was descoped from v0.20.0 (user decision at the v0.20.0 release), using
       non-interactive runs; audit log records the effective policy. (commit `09a41ad`)
 - [x] K11: writes outside `WORKSPACE_ROOT` are refused with an actionable error; protected paths are
       denied; a write can be reverted with `/undo`; backup files are 0600. (commit `d305e92`)
-- [ ] K12: `AGENTS.md` content reaches the system prompt with a size cap and a stderr notice;
-      `AGENTS_NONE`/config disables it; no file → no extra request cost.
+- [x] K12: `AGENTS.md` content reaches the system prompt with a size cap and a stderr notice;
+      `AGENTS_NONE`/config disables it; no file → no extra request cost. (commit `001258f`; config keys
+      are `ENABLE_PROJECT_CONTEXT`/`PROJECT_CONTEXT_MAX_CHARS`, not `AGENTS_NONE`)
 - [ ] K13: sessions are per-project, 0600/0700, metadata-stamped; `--resume` works; a missed title
       does not silently start a new session.
 - [ ] K14: multi-tool-call turns keep every call on Anthropic/Gemini/Ollama; provider tests cover it.

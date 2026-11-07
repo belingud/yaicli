@@ -146,6 +146,25 @@ Two mechanisms share one manager (`ctx_mgr` global), and `CLI._build_messages()`
 - Tests (`tests/test_context.py`) use `tmp_path`, `monkeypatch.chdir` for relative `@` refs, `os.mkfifo` for the
   unsupported-type branch, and patch `yaicli.context.console` for output assertions.
 
+## Project Context (`project_context.py`, v0.21 K12)
+
+- `yaicli/project_context.py` is stdlib-only and side-effect free: `find_git_root()`,
+  `iter_project_context_files()` and `collect_project_context()` walk from the current working directory
+  up to the nearest `.git` (directory **or** worktree file, inclusive; no git root → filesystem root),
+  emitting directories outermost→innermost so the most specific instructions come last; within one
+  directory the order is `.yaicli.md` → `AGENTS.md` → `CLAUDE.md`, and files resolving to the same real
+  path are loaded once.
+- `load_project_context()` is the CLI entry: it reads the config keys, returns an empty result **before any
+  filesystem access** when disabled, bounds the whole emitted block to `PROJECT_CONTEXT_MAX_CHARS`
+  (default 20000, `0` = no cap), prints exactly one stderr warning when content is truncated/omitted, and
+  skips unreadable files with a single warning. It never raises.
+- Config keys `ENABLE_PROJECT_CONTEXT` (`YAI_ENABLE_PROJECT_CONTEXT`, bool, default true) and
+  `PROJECT_CONTEXT_MAX_CHARS` (`YAI_PROJECT_CONTEXT_MAX_CHARS`, int, default 20000) live in both
+  `DEFAULT_CONFIG_MAP` and `DEFAULT_CONFIG_INI`. Existing config files without the keys keep working via
+  the map default (no materialization).
+- The block is inserted by `cli.py::_build_messages` into the first system message, after the role prompt
+  (see [cli-and-rendering.md](./cli-and-rendering.md)); the CLI caches it once and toggles nothing else.
+
 ## Prompt History (`history.py`)
 
 `LimitedFileHistory(FileHistory)` writes to `HISTORY_FILE` (`get_history_file()`: `XDG_STATE_HOME/yaicli/history`
