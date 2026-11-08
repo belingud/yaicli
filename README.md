@@ -1300,6 +1300,9 @@ work immediately with no `--install-functions` step:
   is only needed if you have exported copies in the functions directory.
 - Function calling is enabled by default (`ENABLE_FUNCTIONS`); use `--enable-functions` /
   `--disable-functions` to toggle it per run, and `--hide-function-output` to hide tool output.
+- Offer only the tools a task needs to shrink the per-request schema payload: `--tools
+  'fs_*,web_search'` (or the persistent `ENABLED_TOOLS` config key). MCP tools are matched with
+  their `_mcp__` prefix, e.g. `--tools '_mcp__github_*'`.
 
 Every tool call asks for confirmation by default (`TOOL_CONFIRM`; allow once, for the session,
 permanently, or deny); shell commands and writes get an extra risk check, and every decision is

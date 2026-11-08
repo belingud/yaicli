@@ -16,7 +16,7 @@ from ..tokens import (
     trim_messages_to_budget,
     trim_oldest_group,
 )
-from ..tools import execute_tool_call
+from ..tools import execute_tool_call, tool_enabled
 from ..tools.approval import (
     ToolApprovalManager,
     parse_tool_arguments,
@@ -719,6 +719,37 @@ class LLMClient:
             risk = get_tool_risk(gate_name)
             shell_risk = self._gate_shell_risk(gate_name, parsed_arguments)
             dangerous = bool(shell_risk is not None and shell_risk.dangerous)
+
+            # v0.22 K19: a tool that ENABLED_TOOLS/--tools does not offer is not
+            # advertised to the model, so a call to it can only be a hallucination or
+            # a stale history replay. Refuse it in-band (the assistant message keeps
+            # the call so tool_call_id pairing stays valid) with an actionable reason;
+            # this is not a permission denial and does not affect the exit code.
+            if not tool_enabled(gate_name):
+                reason = (
+                    f"Tool '{gate_name}' is not offered in this run (ENABLED_TOOLS/--tools selection); "
+                    "it was not executed. Use one of the offered tools, or add this tool to ENABLED_TOOLS "
+                    "and ask again."
+                )
+                messages.append(
+                    ChatMessage(
+                        role=tool_role,
+                        content=json.dumps({"error": "tool_disabled", "reason": reason}, ensure_ascii=False),
+                        name=gate_name.removeprefix(MCP_TOOL_NAME_PREFIX),
+                        tool_call_id=tool_call.id,
+                    )
+                )
+                self._audit_tool_decision(
+                    tool=gate_name,
+                    risk=risk,
+                    policy=policy_mode,
+                    decision="disabled",
+                    source="tool_selection",
+                    arguments=raw_arguments,
+                    duration_ms=0.0,
+                    reason=reason,
+                )
+                continue
 
             decision = ToolConfirmDecision.ONCE
             source: Optional[str] = None

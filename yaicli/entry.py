@@ -539,6 +539,17 @@ class FunctionOptions:
         callback=override_config,
     )
 
+    enabled_tools = typer.Option(
+        "",
+        "--tools",
+        help=(
+            "Comma-separated tool-name globs to offer the model (empty = all tools; "
+            "MCP tools use the _mcp__ prefix, e.g. fs_*,web_search or _mcp__github_*)."
+        ),
+        rich_help_panel="Function Options",
+        callback=override_config,
+    )
+
 
 def _apply_cwd(cwd: str) -> str:
     """Validate ``--cwd``, chdir into it and use it as the tool workspace root."""
@@ -636,6 +647,7 @@ def main(
     list_functions: bool = FunctionOptions.list_functions,  # noqa: F841
     enable_functions: bool = FunctionOptions.enable_functions,  # noqa: F841
     show_function_output: bool = FunctionOptions.show_function_output,  # noqa: F841
+    enabled_tools: str = FunctionOptions.enabled_tools,  # noqa: F841
     # ------------------- MCP Options -------------------
     enable_mcp: bool = MCPOptions.enable_mcp,  # noqa: F841
     show_mcp_output: bool = MCPOptions.show_mcp_output,  # noqa: F841

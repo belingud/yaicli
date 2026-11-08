@@ -98,6 +98,12 @@ See [Chat Sessions & Resume](sessions.md) for the per-project store, `--resume` 
 | `--list-functions` | List loaded tools, their source (`builtin`/`user`) and stale-copy warnings | |
 | `--enable-functions` / `--disable-functions` | Enable/disable function calling in API requests | enabled |
 | `--show-function-output` / `--hide-function-output` | Show/hide function output | show |
+| `--tools` | Comma-separated tool-name globs to offer the model (`fnmatch`; MCP tools use the `_mcp__` prefix). Empty = all tools. Shrinks the per-request schema payload, e.g. `--tools 'fs_*,web_search'` | all tools |
+
+Selecting a subset is also possible persistently with `ENABLED_TOOLS` in
+`config.ini` / `YAI_ENABLED_TOOLS` (see [Configuration](configuration.md)).
+A tool that is not offered is also refused if the model calls it anyway, with an
+in-band error the model can read.
 
 See [Advanced Usage — Function Calling](advanced.md#function-calling) for custom functions,
 updating after an upgrade, and built-in safety contracts. See
