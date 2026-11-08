@@ -2068,6 +2068,11 @@
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><code>API_VERSION</code> falls back to the <code>OPENAI_API_VERSION</code> environment variable when it is not set in
+the config file. <code>AZURE_AD_TOKEN_PROVIDER</code> (a callable) and <code>DEFAULT_HEADERS</code> (a dict) are only
+available when embedding YAICLI in Python; they cannot be expressed in <code>config.ini</code>.</p>
+</blockquote>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
 <ul>
 <li>✅ Streaming responses</li>

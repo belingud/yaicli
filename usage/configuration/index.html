@@ -2177,6 +2177,12 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="na">ENABLE_MCP</span><span class="o">=</span><span class="s">false</span>
 <span class="na">SHOW_MCP_OUTPUT</span><span class="o">=</span><span class="s">false</span>
 
+<span class="c1"># Provider-specific settings</span>
+<span class="c1"># MiniMax: request reasoning content separately (interleaved thinking); ignored by others</span>
+<span class="na">MINIMAX_REASONING_SPLIT</span><span class="o">=</span><span class="s">true</span>
+<span class="c1"># Anthropic: true = one tool call per response (compatibility default); false = allow parallel calls</span>
+<span class="na">DISABLE_PARALLEL_TOOL_USE</span><span class="o">=</span><span class="s">true</span>
+
 <span class="c1"># Tool confirmation (set to false to restore silent execution)</span>
 <span class="na">TOOL_CONFIRM</span><span class="o">=</span><span class="s">true</span>
 
@@ -2229,6 +2235,8 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="na">RETRY_ENABLED</span><span class="o">=</span><span class="s">true</span>
 <span class="na">RETRY_MAX</span><span class="o">=</span><span class="s">2</span>
 <span class="na">RETRY_BASE_DELAY</span><span class="o">=</span><span class="s">1.0</span>
+<span class="c1"># Maximum delay between retries in seconds (caps the exponential backoff)</span>
+<span class="na">RETRY_MAX_DELAY</span><span class="o">=</span><span class="s">8.0</span>
 <span class="c1"># Exit non-zero in one-shot mode when the tool-call depth limit is reached.</span>
 <span class="na">EXIT_ON_DEPTH_LIMIT</span><span class="o">=</span><span class="s">true</span>
 
@@ -2323,6 +2331,12 @@ provider name invalid).</p>
 <td>Reasoning effort</td>
 <td>-</td>
 <td><code>YAI_REASONING_EFFORT</code></td>
+</tr>
+<tr>
+<td><code>DISABLE_PARALLEL_TOOL_USE</code></td>
+<td>Anthropic: send <code>disable_parallel_tool_use</code> (<code>true</code> = one tool call per response, the compatibility default; <code>false</code> = allow parallel calls)</td>
+<td><code>true</code></td>
+<td><code>YAI_DISABLE_PARALLEL_TOOL_USE</code></td>
 </tr>
 <tr>
 <td><code>INTERACTIVE_ROUND</code></td>
@@ -2527,6 +2541,12 @@ provider name invalid).</p>
 <td>Base backoff delay in seconds</td>
 <td><code>1.0</code></td>
 <td><code>YAI_RETRY_BASE_DELAY</code></td>
+</tr>
+<tr>
+<td><code>RETRY_MAX_DELAY</code></td>
+<td>Maximum backoff delay in seconds (cap)</td>
+<td><code>8.0</code></td>
+<td><code>YAI_RETRY_MAX_DELAY</code></td>
 </tr>
 <tr>
 <td><code>EXIT_ON_DEPTH_LIMIT</code></td>
