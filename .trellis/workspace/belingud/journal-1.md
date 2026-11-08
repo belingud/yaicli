@@ -371,3 +371,53 @@ K18 REPL experience, K19 on-demand tool schemas.
 ### Status
 
 [OK] **Completed**
+
+
+## Session 9: v0.22.0 ecosystem & observability (K16–K20)
+<!-- trellis-session: v=2 fp=b1f5b58b8a4725ee -->
+
+**Date**: 2026-11-08
+**Task**: v0.22.0 ecosystem & observability (K16–K20)
+**Branch**: `master`
+
+### Summary
+
+Shipped v0.22.0: MCP hardening, real usage/cost observability, secret redaction on disk, tool-schema narrowing and the REPL agent UX (prompt model/role/context, slash completion, /model /role /retry, multi-line).
+
+### Main Changes
+
+- K17 usage observability: new stdlib usage.py (Usage/UsageTracker/estimate_cost + provider converters), LLMResponse.usage, real JSON/stream-json usage + finish_reason, MAX_TOKENS warning, SHOW_USAGE per-turn line, /cost command; OpenAI stream_options include_usage with 400 fallback, Anthropic/Gemini/Mistral/Ollama capture, estimation fallback.
+- K16 MCP hardening: broken mcp.json/missing fastmcp degrade to [] with one actionable stderr warning; MCP_TIMEOUT bounds list/call; MCP_MAX_TOOLS caps injected tools; descriptions sanitized/ANSI-stripped/capped/source-labelled; results join all blocks and mark is_error.
+- K20 secret redaction: new redaction.py (provider keys, AWS/GitHub/Slack/Google tokens, Bearer, PEM blocks, env assignments, URL userinfo, JWTs; control chars) applied to tool-output spill files and saved/auto-saved sessions, configurable via REDACT_SECRETS; audit redaction reuses the same implementation.
+- K19 schema narrowing: ENABLED_TOOLS config + --tools flag (fnmatch globs, builtin and _mcp__ names), per-pattern caching, unknown-name warning, and an in-band tool_disabled refusal for non-offered calls.
+- K18 REPL UX: prompt shows model/role/context %, slash-command completion from a single CommandInfo metadata source, /model /role /retry commands, Alt+Enter/Ctrl+J multi-line input; /model vs /mode prefix ambiguity fixed.
+- Config/docs: six new keys (MCP_TIMEOUT, MCP_MAX_TOOLS, SHOW_USAGE, MODEL_PRICING, ENABLED_TOOLS, REDACT_SECRETS) wired through const.py template, README and configuration.md drift guard; README/feature pages and CLI reference snapshot updated.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cf823fb` | feat(config): add v0.22 keys for MCP hardening, usage and redaction |
+| `f61da5d` | feat(mcp): harden MCP config, timeouts, tool caps and result handling |
+| `1ff622d` | feat(security): redact secrets before tool output and sessions hit disk |
+| `cdb8158` | feat(usage): surface provider token usage, cost and finish reasons |
+| `101b097` | feat(tools): narrow offered tool schemas with ENABLED_TOOLS/--tools |
+| `631f305` | feat(repl): show model/role/context in the prompt, add /model /role /retry and slash completion |
+| `64f2e40` | docs: document the v0.22 observability, MCP, redaction and REPL features |
+| `75bc821` | Bump version: 0.21.2 → 0.22.0 |
+| `94cf58b` | docs(changelog): update changelog for v0.22.0 release |
+
+### Testing
+
+- [OK] Full suite 2435 passed; ruff check clean; mkdocs build --strict pass; scripts/bench.py --gate ok on an idle machine (version 71/250, help 554/900, template 555/900, entry_import 442/900, repl_ready 668/1800, oneshot_local 1873/2200).
+- [OK] Released-wheel smoke in a clean venv: ai --version 0.22.0; template lists all six keys; non-stream and streaming mock-provider runs report real usage (123/45 and 77/11), cost and finish_reason in JSON.
+- [OK] Local ~/.config/yaicli/config.ini gained the v0.22 keys and parses with correct types (int/bool/dict/str).
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Installed ai tool still reports 0.21.0 (uv tool install; PyPI mirror lag) — upgrade later with the usual uv tool upgrade, no forced reinstall.
+- Optional cleanup: strip remaining milestone-ID labels (K16/K17/K19/K20) from code comments if the K18-style clean-up should apply repo-wide.
