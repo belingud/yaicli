@@ -102,10 +102,24 @@ ROLE_MODIFY_WARNING=true
 ENABLE_FUNCTIONS=true
 # Set to false to disable showing function output in the response
 SHOW_FUNCTION_OUTPUT=true
+# Comma-separated tool-name globs to offer the model (empty = all tools).
+# Builtin and MCP tools are both matched; MCP names carry the _mcp__ prefix.
+ENABLED_TOOLS=
 
 # MCP settings
 ENABLE_MCP=false
 SHOW_MCP_OUTPUT=false
+# Seconds one MCP list/call operation may take (0 = no timeout)
+MCP_TIMEOUT=30
+# Max MCP tools offered to the model per request (0 = unlimited)
+MCP_MAX_TOOLS=64
+
+# Observability & cost (v0.22)
+# Print one token/cost line after each interactive turn
+SHOW_USAGE=true
+# json string overriding the built-in price table, e.g.
+# {"gpt-4o": {"input": 2.5, "output": 10}}  (USD per 1M tokens)
+MODEL_PRICING=
 
 # Provider-specific settings
 # MiniMax: request reasoning content separately (interleaved thinking); ignored by others
@@ -135,6 +149,10 @@ TOOL_OUTPUT_MAX_CHARS=32000
 # Scratch directory for full (untruncated) tool outputs; independent of the
 # per-project session store. Defaults to <tempdir>/yaicli/chats/tool-outputs.
 TOOL_OUTPUT_DIR=<tempdir>/yaicli/chats/tool-outputs
+# Redact known secret shapes (API keys, tokens, private keys, ...) before tool
+# output and saved sessions are written to disk. The model still sees the real
+# content; only the on-disk copies are sanitized.
+REDACT_SECRETS=true
 # Terminal display of tool results (v0.19.1): head-only preview; the model still
 # receives TOOL_OUTPUT_MAX_CHARS. 0 = show everything.
 TOOL_DISPLAY_MAX_LINES=15
@@ -211,13 +229,19 @@ TOOL_AUDIT=true
 | `ROLE_MODIFY_WARNING`  | Warn when modifying built-in roles          | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
 | `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
 | `SHOW_FUNCTION_OUTPUT` | Show function output                        | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
+| `ENABLED_TOOLS`        | Comma-separated tool-name globs offered to the model (`fnmatch`; MCP names keep the `_mcp__` prefix; empty = all tools) | - | `YAI_ENABLED_TOOLS` |
 | `ENABLE_MCP`           | Enable MCP tools                            | `false`                  | `YAI_ENABLE_MCP`           |
 | `SHOW_MCP_OUTPUT`      | Show MCP output                             | `false`                  | `YAI_SHOW_MCP_OUTPUT`      |
+| `MCP_TIMEOUT`          | Seconds one MCP list/call operation may take (`0` = no timeout) | `30` | `YAI_MCP_TIMEOUT` |
+| `MCP_MAX_TOOLS`        | Max MCP tools offered to the model per request (`0` = unlimited) | `64` | `YAI_MCP_MAX_TOOLS` |
+| `SHOW_USAGE`           | Print one token/cost line after each interactive turn | `true`          | `YAI_SHOW_USAGE`           |
+| `MODEL_PRICING`        | JSON price overrides: `{"model-prefix": {"input": 2.5, "output": 10}}` (USD per 1M tokens) | - | `YAI_MODEL_PRICING` |
 | `MAX_TOOL_CALL_DEPTH`  | Max tool calls in one request               | `8`                      | `YAI_MAX_TOOL_CALL_DEPTH`  |
 | `TOOL_CONFIRM`         | Confirm each tool call before running it    | `true`                   | `YAI_TOOL_CONFIRM`         |
 | `TOOL_POLICY`          | Session-wide tool permission mode: `readonly`, `standard` or `trusted` (see [Permissions & Safety](permissions.md#permission-modes-tool_policy)) | `standard` | `YAI_TOOL_POLICY` |
 | `TOOL_OUTPUT_MAX_CHARS` | Max characters of one tool result kept in context (`0` = unlimited) | `32000` | `YAI_TOOL_OUTPUT_MAX_CHARS` |
 | `TOOL_OUTPUT_DIR`      | Where full (untruncated) tool outputs are saved | `<tempdir>/yaicli/chats/tool-outputs` | `YAI_TOOL_OUTPUT_DIR` |
+| `REDACT_SECRETS`       | Redact known secret shapes before tool output/sessions are written to disk | `true` | `YAI_REDACT_SECRETS` |
 | `TOOL_DISPLAY_MAX_LINES` | Terminal preview: max lines of one tool result shown (`0` = unlimited) | `15` | `YAI_TOOL_DISPLAY_MAX_LINES` |
 | `TOOL_DISPLAY_MAX_CHARS` | Terminal preview: max characters shown; the model cap is `TOOL_OUTPUT_MAX_CHARS` | `4000` | `YAI_TOOL_DISPLAY_MAX_CHARS` |
 | `TOOL_CALL_PREVIEW_MAX_CHARS` | Max characters of the `@Function call:` argument line (`0` = raw) | `300` | `YAI_TOOL_CALL_PREVIEW_MAX_CHARS` |

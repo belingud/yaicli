@@ -166,6 +166,11 @@ DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium", "default", "
 DEFAULT_DISABLE_PARALLEL_TOOL_USE: BOOL_STR = "true"
 DEFAULT_ENABLE_MCP: BOOL_STR = "false"
 DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
+# MCP hardening (v0.22 K16): each MCP list/call operation is bounded by this
+# timeout (seconds; 0 = no timeout) and at most MCP_MAX_TOOLS tools are injected
+# per request (0 = unlimited).
+DEFAULT_MCP_TIMEOUT: int = 30
+DEFAULT_MCP_MAX_TOOLS: int = 64
 # MiniMax only: request reasoning separately (interleaved thinking)
 DEFAULT_MINIMAX_REASONING_SPLIT: BOOL_STR = "true"
 DEFAULT_MAX_TOOL_CALL_DEPTH: int = 8
@@ -206,6 +211,16 @@ DEFAULT_RETRY_MAX_DELAY: float = 8.0
 DEFAULT_EXIT_ON_DEPTH_LIMIT: BOOL_STR = "true"
 # Tool audit log (v0.19 K06)
 DEFAULT_TOOL_AUDIT: BOOL_STR = "true"
+# Observability: usage/cost reporting (v0.22 K17)
+DEFAULT_SHOW_USAGE: BOOL_STR = "true"
+# JSON overrides for the built-in price table: {"model-prefix": {"input": 0.15, "output": 0.6}}
+# (USD per 1M tokens). Empty = only the built-in table is used.
+DEFAULT_MODEL_PRICING: str = "{}"
+# Tool schema narrowing (v0.22 K19): comma-separated glob patterns matched against
+# builtin and MCP tool names; empty = every tool is offered to the model.
+DEFAULT_ENABLED_TOOLS: str = ""
+# Secret redaction before tool output / sessions are written to disk (v0.22 K20).
+DEFAULT_REDACT_SECRETS: BOOL_STR = "true"
 # Headless output (v0.19 K04)
 DEFAULT_OUTPUT_FORMAT: str = "text"
 
@@ -301,8 +316,12 @@ DEFAULT_CONFIG_MAP = {
         "env_key": "YAI_SHOW_FUNCTION_OUTPUT",
         "type": bool,
     },
+    # Tool schema narrowing (v0.22 K19): comma-separated tool-name globs.
+    "ENABLED_TOOLS": {"value": DEFAULT_ENABLED_TOOLS, "env_key": "YAI_ENABLED_TOOLS", "type": str},
     "ENABLE_MCP": {"value": DEFAULT_ENABLE_MCP, "env_key": "YAI_ENABLE_MCP", "type": bool},
     "SHOW_MCP_OUTPUT": {"value": DEFAULT_SHOW_MCP_OUTPUT, "env_key": "YAI_SHOW_MCP_OUTPUT", "type": bool},
+    "MCP_TIMEOUT": {"value": DEFAULT_MCP_TIMEOUT, "env_key": "YAI_MCP_TIMEOUT", "type": int},
+    "MCP_MAX_TOOLS": {"value": DEFAULT_MCP_MAX_TOOLS, "env_key": "YAI_MCP_MAX_TOOLS", "type": int},
     "MAX_TOOL_CALL_DEPTH": {"value": DEFAULT_MAX_TOOL_CALL_DEPTH, "env_key": "YAI_MAX_TOOL_CALL_DEPTH", "type": int},
     "TOOL_CONFIRM": {"value": DEFAULT_TOOL_CONFIRM, "env_key": "YAI_TOOL_CONFIRM", "type": bool},
     "TOOL_POLICY": {"value": DEFAULT_TOOL_POLICY, "env_key": "YAI_TOOL_POLICY", "type": str},
@@ -358,6 +377,11 @@ DEFAULT_CONFIG_MAP = {
     "EXIT_ON_DEPTH_LIMIT": {"value": DEFAULT_EXIT_ON_DEPTH_LIMIT, "env_key": "YAI_EXIT_ON_DEPTH_LIMIT", "type": bool},
     # Tool audit log
     "TOOL_AUDIT": {"value": DEFAULT_TOOL_AUDIT, "env_key": "YAI_TOOL_AUDIT", "type": bool},
+    # Usage / cost reporting (v0.22 K17)
+    "SHOW_USAGE": {"value": DEFAULT_SHOW_USAGE, "env_key": "YAI_SHOW_USAGE", "type": bool},
+    "MODEL_PRICING": {"value": DEFAULT_MODEL_PRICING, "env_key": "YAI_MODEL_PRICING", "type": dict},
+    # Secret redaction before tool output/sessions are written to disk (v0.22 K20)
+    "REDACT_SECRETS": {"value": DEFAULT_REDACT_SECRETS, "env_key": "YAI_REDACT_SECRETS", "type": bool},
     # MiniMax specific settings
     "MINIMAX_REASONING_SPLIT": {
         "value": DEFAULT_MINIMAX_REASONING_SPLIT,
@@ -418,12 +442,27 @@ ROLE_MODIFY_WARNING={DEFAULT_CONFIG_MAP["ROLE_MODIFY_WARNING"]["value"]}
 ENABLE_FUNCTIONS={DEFAULT_CONFIG_MAP["ENABLE_FUNCTIONS"]["value"]}
 # Set to false to disable showing function output when calling functions
 SHOW_FUNCTION_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_FUNCTION_OUTPUT"]["value"]}
+# Comma-separated tool-name globs to offer the model (empty = all tools).
+# Builtin and MCP tools are both matched; MCP names carry the _mcp__ prefix.
+# Example: fs_read_file,fs_list_directory,execute_*
+ENABLED_TOOLS=
 
 # MCP settings
 # Set to false to disable MCP in API requests
 ENABLE_MCP={DEFAULT_CONFIG_MAP["ENABLE_MCP"]["value"]}
 # Set to false to disable showing MCP output when calling MCP tools
 SHOW_MCP_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_MCP_OUTPUT"]["value"]}
+# Seconds one MCP list/call operation may take (0 = no timeout)
+MCP_TIMEOUT={DEFAULT_CONFIG_MAP["MCP_TIMEOUT"]["value"]}
+# Max MCP tools offered to the model per request (0 = unlimited)
+MCP_MAX_TOOLS={DEFAULT_CONFIG_MAP["MCP_MAX_TOOLS"]["value"]}
+
+# Observability & cost (v0.22 K17)
+# Print one token/cost line after each interactive turn
+SHOW_USAGE={DEFAULT_CONFIG_MAP["SHOW_USAGE"]["value"]}
+# json string overriding the built-in price table, e.g.
+# {{"gpt-4o": {{"input": 2.5, "output": 10}}}}  (USD per 1M tokens)
+MODEL_PRICING=
 
 # Provider-specific settings
 # MiniMax: request reasoning content separately (interleaved thinking); ignored by others
@@ -456,6 +495,10 @@ EXCLUDE_PARAMS=
 TOOL_OUTPUT_MAX_CHARS={DEFAULT_CONFIG_MAP["TOOL_OUTPUT_MAX_CHARS"]["value"]}
 # Directory where full (untruncated) tool outputs are saved
 TOOL_OUTPUT_DIR={DEFAULT_CONFIG_MAP["TOOL_OUTPUT_DIR"]["value"]}
+# Redact known secret shapes (API keys, tokens, private keys, ...) before tool
+# output and saved sessions are written to disk. The model still sees the real
+# content; only the on-disk copies are sanitized. Set to false to keep raw bytes.
+REDACT_SECRETS={DEFAULT_CONFIG_MAP["REDACT_SECRETS"]["value"]}
 # Terminal display of a tool result: only the first N lines / characters are
 # shown; the model still receives TOOL_OUTPUT_MAX_CHARS characters.
 # Set either to 0 to show everything (not recommended for large outputs).
