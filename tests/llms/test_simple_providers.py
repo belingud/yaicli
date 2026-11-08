@@ -12,39 +12,7 @@ from yaicli.llms.providers.openrouter_provider import OpenRouterProvider
 from yaicli.llms.providers.siliconflow_provider import SiliconFlowProvider
 from yaicli.llms.providers.together_provider import TogetherProvider
 from yaicli.llms.providers.xai_provider import XaiProvider
-from yaicli.llms.providers.yi_provider import YiProvider
 from yaicli.schemas import ToolPolicy
-
-
-class TestYiProvider:
-    """Tests for Yi provider implementation"""
-
-    @pytest.fixture
-    def mock_config(self):
-        """Fixture to create a mock configuration"""
-        return {
-            "API_KEY": "fake_api_key",
-            "BASE_URL": None,  # Will use DEFAULT_BASE_URL
-            "MODEL": "yi-large",
-            "TEMPERATURE": 0.7,
-            "TOP_P": 0.9,
-            "MAX_TOKENS": 1024,
-            "TIMEOUT": 10,
-            "EXTRA_HEADERS": None,
-            "EXTRA_BODY": None,
-            "ENABLE_FUNCTIONS": True,
-            "ENABLE_MCP": False,
-        }
-
-    def test_init(self, mock_config):
-        """Test initialization of YiProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
-            provider = YiProvider(config=mock_config)
-
-            # Check initialization parameters
-            assert provider.client_params["base_url"] == YiProvider.DEFAULT_BASE_URL
-            assert provider.client_params["base_url"] == "https://api.lingyiwanwu.com/v1"
-            assert provider.client_params["api_key"] == mock_config["API_KEY"]
 
 
 class TestChutesProvider:
@@ -418,10 +386,6 @@ class TestCustomBaseURL:
     def test_custom_base_url(self, mock_config):
         """Test providers with custom base URL"""
         with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
-            # Test with Yi provider
-            provider = YiProvider(config=mock_config)
-            assert provider.client_params["base_url"] == mock_config["BASE_URL"]
-
             # Test with Chutes provider
             provider = ChutesProvider(config=mock_config)
             assert provider.client_params["base_url"] == mock_config["BASE_URL"]

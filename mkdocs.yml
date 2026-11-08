@@ -63,7 +63,6 @@ nav:
       - OpenRouter: providers/openrouter.md
       - HuggingFace: providers/huggingface.md
       - XAI (Grok): providers/xai.md
-      - Yi (01.AI): providers/yi.md
       - Cerebras: providers/cerebras.md
       - Doubao: providers/doubao.md
       - NVIDIA NIM: providers/nvidia.md

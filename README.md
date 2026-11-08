@@ -274,7 +274,6 @@ can point it at any of these providers (or any OpenAI-compatible endpoint) by ch
 - Together
 - Vertex AI
 - xAI
-- Yi
 
 Any other OpenAI-compatible endpoint can be used with the `openai` or `openai-compatible`
 provider plus a custom `BASE_URL`. See the [provider overview](docs/providers/overview.md) for
@@ -702,14 +701,6 @@ MODEL=deepseek-v3
 PROVIDER=siliconflow
 API_KEY=
 MODEL=Qwen/Qwen3-32B
-```
-
-#### Yi
-
-```ini
-PROVIDER=yi
-API_KEY=
-MODEL=yi-lightning
 ```
 
 #### Cohere

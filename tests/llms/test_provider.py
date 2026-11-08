@@ -220,7 +220,6 @@ class TestProviderFactory:
             "siliconflow",
             "chutes",
             "infini-ai",
-            "yi",
             "deepseek",
             "doubao",
             "groq",

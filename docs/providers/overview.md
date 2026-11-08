@@ -46,7 +46,6 @@ YAICLI currently integrates with the following LLM providers:
 | ---------- | ----------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------- |
 | DeepSeek   | Code and reasoning specialist | `https://api.deepseek.com/v1`                       | [Docs](https://platform.deepseek.com)                                   |
 | XAI (Grok) | Real-time information models  | `https://api.xai.com/v1`                            | [Docs](https://docs.x.ai/)                                              |
-| Yi (01.AI) | Multilingual AI models        | `https://api.lingyiwanwu.com/v1`                    | [Docs](https://platform.01.ai/)                                         |
 | Doubao     | ByteDance AI models           | `https://ark.cn-beijing.volces.com/api/v3`          | [Docs](https://www.volcengine.com/docs/82379)                           |
 | ChatGLM    | Zhipu AI models               | `https://open.bigmodel.cn/api/paas/v4/`             | [Docs](https://open.bigmodel.cn/dev/api)                                |
 | Moonshot   | Chinese AI models             | `https://api.moonshot.cn/v1`                        | [Docs](https://platform.moonshot.cn/docs/api/chat)                      |
@@ -81,7 +80,6 @@ YAICLI currently integrates with the following LLM providers:
 | Vertex AI          | ✅        | ✅               | ✅          |
 | DeepSeek           | ✅        | ✅               | ✅          |
 | XAI (Grok)         | ✅        | ✅               | ✅          |
-| Yi (01.AI)         | ✅        | ✅               | ✅          |
 | Doubao             | ✅        | ✅               | ✅          |
 | ChatGLM            | ✅        | ✅               | ✅          |
 | LongCat            | ✅        | ✅               | ✅          |
@@ -132,7 +130,6 @@ For detailed configuration options for each provider, refer to the provider-spec
 - [ChatGLM](chatglm.md)
 - [Moonshot](moonshot.md)
 - [XAI (Grok)](xai.md)
-- [Yi (01.AI)](yi.md)
 - [Doubao](doubao.md)
 - [Minimax](minimax.md)
 
