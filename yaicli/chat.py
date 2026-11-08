@@ -12,6 +12,7 @@ from .config import cfg
 from .console import YaiConsole, get_console, safe_text, untrusted_text
 from .const import DEFAULT_CHAT_HISTORY_DIR, get_project_sessions_dir, get_sessions_dir
 from .exceptions import ChatDeleteError, ChatLoadError, ChatSaveError
+from .redaction import is_redaction_enabled, redact_message_dict
 from .schemas import ChatMessage, ImageData, ToolCall
 from .utils import option_callback
 
@@ -178,8 +179,13 @@ class Chat:
             self.created_at = self.date or datetime.now().isoformat()
         self.updated_at = datetime.now().isoformat()
 
-    def to_dict(self) -> Dict:
-        """Convert to dictionary representation, preserving every message field."""
+    def _raw_dict(self) -> Dict:
+        """Build the session payload from the raw in-memory history.
+
+        This is the untouched representation (what the model and the display
+        see). It is never written to disk directly: :meth:`to_dict` adds the
+        on-disk redaction (v0.22 K20).
+        """
         return {
             "title": self.title,
             "date": self.date,
@@ -191,6 +197,22 @@ class Chat:
             "updated_at": self.updated_at,
             "history": [_message_to_dict(msg) for msg in self.history],
         }
+
+    def to_dict(self) -> Dict:
+        """Build the persisted (on-disk) representation of this session.
+
+        The in-memory :attr:`history` stays raw; only this serialized payload is
+        redacted. With ``REDACT_SECRETS`` enabled (default) every message's
+        ``content``/``reasoning``/``name`` and tool-call ``arguments`` have known
+        secret shapes replaced by ``[redacted]``; with it disabled the payload is
+        byte-identical to :meth:`_raw_dict`. Keys and structure are unchanged, so
+        :meth:`from_dict`/:meth:`load` keep working with redacted files.
+        """
+        data = self._raw_dict()
+        if not is_redaction_enabled():
+            return data
+        data["history"] = [redact_message_dict(payload) for payload in data["history"]]
+        return data
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Chat":
@@ -243,7 +265,10 @@ class Chat:
 
         The chat is written to a temporary file in the same directory and then
         moved into place with :func:`os.replace`, so a failed or interrupted
-        save never truncates a previously saved session file.
+        save never truncates a previously saved session file. The payload comes
+        from :meth:`to_dict`, so known secret shapes are redacted before the
+        bytes hit the disk (``REDACT_SECRETS``, default on) while the in-memory
+        history stays raw.
 
         Args:
             chat_dir: Directory to save chat file

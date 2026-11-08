@@ -207,6 +207,41 @@ With `TOOL_AUDIT=true` (default), every tool decision is appended as one JSON li
 Set `TOOL_AUDIT=false` to disable, or point the log elsewhere by changing the config directory.
 The audit log records decisions, not full command output.
 
+## Secret redaction on disk
+
+Tool output (an environment dump, a file full of credentials) and chat sessions used to be written to
+disk verbatim. Since v0.22 every on-disk copy YAICLI writes goes through the shared redactor first:
+
+| File | Where | Redaction |
+| --- | --- | --- |
+| Spilled tool output (the full text of a truncated tool result) | `TOOL_OUTPUT_DIR` | `REDACT_SECRETS` (default on) |
+| Saved chat sessions (`/save`, auto-save, resumed history) | session store (`~/.yaicli/sessions/<project>/`) | `REDACT_SECRETS` (default on) |
+| Audit log `args_summary` / `reason` | `tool_audit.jsonl` | Always (since v0.19, independent of the key) |
+
+Recognized credential shapes are replaced with `[redacted]`:
+
+- provider API keys (`sk-…`, `sk-ant-…`, `sk-proj-…`, `sk-or-v1-…`, and `rk_`/`pk_` keys);
+- AWS access key ids (`AKIA…`/`ASIA…`) and `aws_secret_access_key` values;
+- GitHub (`ghp_`/`gho_`/`ghu_`/`ghs_`/`ghr_`/`github_pat_`), Slack (`xox[baprs]-…`) and Google
+  (`AIza…`) tokens;
+- `Bearer` headers, PEM private-key blocks and JWT-looking `eyJ…` tokens;
+- env-style assignments (`API_KEY=…`, `SECRET=…`, `TOKEN=…`, `PASSWORD=…`, …) and URL userinfo
+  credentials (`scheme://user:password@host` becomes `scheme://user:[redacted]@host`).
+
+Ordinary prose and program output are left alone: a value only matches with a distinctive token
+prefix or a secret-looking key followed by a long (8+ character) value. Inside a saved session the
+structure is kept as well — `role`, `tool_call_id`, image data and metadata survive, while message
+`content`/`reasoning`/`name` and tool-call `arguments` are redacted.
+
+This is a **disk-only** measure. The in-memory conversation, what the model sees during the session
+and what the terminal renders are never modified, so the assistant can keep using a key it just read.
+Only the persisted copy is sanitized: replaying a saved session shows `[redacted]` where the original
+had a secret, and paging a spill file with `fs_read_file` returns the redacted text.
+
+Set `REDACT_SECRETS=false` (`YAI_REDACT_SECRETS=false` in the environment or `REDACT_SECRETS=false`
+in `config.ini`) to write the raw bytes as before. The key controls only the spill/session copies,
+not the audit log, which always redacts.
+
 ## Headless / non-interactive runs
 
 When there is no TTY (piped stdin/stdout, CI), YAICLI cannot ask, so unapproved tools are denied by

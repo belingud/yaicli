@@ -34,6 +34,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 from json_repair import repair_json
 
 from .. import const
+from ..redaction import redact_json_value, redact_text
 
 # Keys used by the v1 file and by the v2 object form.
 _ALLOWLIST_KEY = "always_allow"
@@ -132,47 +133,15 @@ def canonical_arguments(arguments: Any) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Secret redaction for audit summaries
+# Secret redaction for audit summaries (v0.22 K20: shared implementation)
 # ---------------------------------------------------------------------------
-_SECRET_KEY_RE = re.compile(
-    r"(?i)(api[_-]?key|apikey|secret|token|password|passwd|authorization|credential|bearer|private[_-]?key)"
-)
-_SECRET_VALUE_RES = (
-    re.compile(r"(?i)\b(?:sk|rk|pk)-[A-Za-z0-9_-]{8,}"),
-    re.compile(r"\bAKIA[0-9A-Z]{12,}\b"),
-    re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}\b"),
-    re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),
-    re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{8,}"),
-    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"),
-)
-_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
-_REDACTED = "[redacted]"
-
-
-def redact_text(text: str) -> str:
-    """Redact well-known secret shapes from a string."""
-    if not isinstance(text, str):
-        text = str(text)
-    for pattern in _SECRET_VALUE_RES:
-        text = pattern.sub(_REDACTED, text)
-    return _CONTROL_CHARS_RE.sub("", text)
-
-
-def _redact_value(value: Any) -> Any:
-    """Recursively redact secret-looking keys/values in parsed JSON."""
-    if isinstance(value, dict):
-        redacted: Dict[str, Any] = {}
-        for key, item in value.items():
-            if isinstance(key, str) and _SECRET_KEY_RE.search(key):
-                redacted[key] = _REDACTED
-            else:
-                redacted[key] = _redact_value(item)
-        return redacted
-    if isinstance(value, (list, tuple)):
-        return [_redact_value(item) for item in value]
-    if isinstance(value, str):
-        return redact_text(value)
-    return value
+# The value-shape patterns and the key-name JSON redaction live in
+# ``yaicli.redaction`` so the audit log, the tool-output spill files and the
+# saved chat sessions all use the same rules. Audit redaction stays
+# unconditional: it must not depend on ``REDACT_SECRETS`` (that key only
+# controls the on-disk spill/session copies).
+#: Backwards-compatible alias for the recursive JSON redactor.
+_redact_value = redact_json_value
 
 
 def summarize_arguments(tool_name: str, arguments: Any, limit: int = 500) -> str:

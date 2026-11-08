@@ -13,6 +13,7 @@ from yaicli.chat import (
     ChatSaveError,
     FileChatManager,
 )
+from yaicli.config import cfg
 from yaicli.llms.provider import Provider
 from yaicli.schemas import ChatMessage, ImageData, ToolCall
 
@@ -787,3 +788,128 @@ class TestSaveChatReplacementSafety:
         assert manager.save_chat(chat) == "Fresh"
 
         assert len(list(tmp_path.glob("*.json"))) == 1
+
+
+class TestSessionFileRedaction:
+    """v0.22 K20: /save and auto-save redact secrets before writing the JSON session."""
+
+    # Built from parts on purpose: no complete secret-shaped literal may live in
+    # the repository (GitHub push protection rejects provider token formats).
+    SECRET = "sk-" + "live-" + "DEADBEEF0123456789"
+    AWS_KEY_ID = "AKIA" + "IOSFODNN7EXAMPLE"
+    REASONING_SECRET = "ghp_" + "abcdefghijklmnopqrstuvwxyz0123456789"
+    PRIVATE_KEY = (
+        "-----BEGIN " + "RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA1234567890\n-----END " + "RSA PRIVATE KEY-----"
+    )
+    PRIVATE_KEY_HEADER = "-----BEGIN " + "RSA PRIVATE KEY-----"
+
+    @pytest.fixture(autouse=True)
+    def _redaction_on(self, monkeypatch):
+        """Make the on-disk behavior deterministic regardless of the developer's env."""
+        monkeypatch.setitem(cfg, "REDACT_SECRETS", True)
+
+    def _chat_with_secrets(self) -> Chat:
+        return Chat(
+            title="Secret Chat",
+            history=[
+                ChatMessage(role="user", content=f"my api key is {self.SECRET}"),
+                ChatMessage(
+                    role="assistant",
+                    content=f"I saw {self.AWS_KEY_ID}",
+                    reasoning=f"the token {self.REASONING_SECRET} works",
+                    tool_calls=[
+                        ToolCall(
+                            id="call_1",
+                            name="execute_shell_command",
+                            arguments=json.dumps({"command": f"export API_KEY={self.SECRET}"}),
+                        )
+                    ],
+                ),
+                ChatMessage(
+                    role="tool",
+                    content=self.PRIVATE_KEY,
+                    name="execute_shell_command",
+                    tool_call_id="call_1",
+                ),
+            ],
+        )
+
+    def test_saved_session_is_redacted_but_in_memory_history_stays_raw(self, tmp_path):
+        chat = self._chat_with_secrets()
+        raw_contents = [message.content for message in chat.history]
+        raw_arguments = chat.history[1].tool_calls[0].arguments
+
+        assert chat.save(tmp_path) is True
+        on_disk = chat.path.read_text(encoding="utf-8")
+        assert self.SECRET not in on_disk
+        assert self.AWS_KEY_ID not in on_disk
+        assert self.REASONING_SECRET not in on_disk
+        assert self.PRIVATE_KEY_HEADER not in on_disk
+        assert "[redacted]" in on_disk
+
+        # In-memory Chat is the model/display copy: untouched.
+        assert [message.content for message in chat.history] == raw_contents
+        assert chat.history[1].tool_calls[0].arguments == raw_arguments
+        assert chat.history[1].reasoning == f"the token {self.REASONING_SECRET} works"
+
+    def test_redacted_session_reloads(self, tmp_path):
+        chat = self._chat_with_secrets()
+        chat.save(tmp_path)
+
+        reloaded = Chat(path=chat.path)
+        assert reloaded.load() is True
+        assert len(reloaded.history) == 3
+
+        assert "[redacted]" in reloaded.history[0].content
+        assert self.SECRET not in reloaded.history[0].content
+
+        assistant = reloaded.history[1]
+        assert "[redacted]" in assistant.reasoning
+        assert len(assistant.tool_calls) == 1
+        assert assistant.tool_calls[0].id == "call_1"
+        assert assistant.tool_calls[0].name == "execute_shell_command"
+        assert self.SECRET not in assistant.tool_calls[0].arguments
+        assert "[redacted]" in assistant.tool_calls[0].arguments
+
+        tool_message = reloaded.history[2]
+        assert tool_message.tool_call_id == "call_1"
+        assert tool_message.name == "execute_shell_command"
+
+    def test_to_dict_is_the_persisted_redacted_form(self):
+        chat = self._chat_with_secrets()
+        raw = chat._raw_dict()
+        persisted = chat.to_dict()
+
+        # The raw seam still carries the real content, the persisted one does not.
+        assert self.SECRET in raw["history"][0]["content"]
+        assert self.SECRET not in persisted["history"][0]["content"]
+        assert "[redacted]" in persisted["history"][1]["tool_calls"][0]["arguments"]
+        # Structure and keys are identical, so load()/from_dict() keep working.
+        assert set(persisted) == set(raw)
+        assert list(persisted["history"][1]) == list(raw["history"][1])
+
+    def test_redaction_disabled_writes_raw_session(self, tmp_path, monkeypatch):
+        monkeypatch.setitem(cfg, "REDACT_SECRETS", False)
+        chat = self._chat_with_secrets()
+
+        assert chat.save(tmp_path) is True
+        on_disk = chat.path.read_text(encoding="utf-8")
+        assert self.SECRET in on_disk
+        assert f"my api key is {self.SECRET}" in on_disk
+        assert "[redacted]" not in on_disk
+
+        reloaded = Chat(path=chat.path)
+        assert reloaded.load() is True
+        assert reloaded.history == chat.history
+
+    def test_manager_save_chat_redacts(self, tmp_path):
+        manager = FileChatManager(chat_dir=tmp_path)
+        chat = self._chat_with_secrets()
+
+        manager.save_chat(chat)
+
+        session_files = list(tmp_path.glob("*.json"))
+        assert len(session_files) == 1
+        assert self.SECRET not in session_files[0].read_text(encoding="utf-8")
+        loaded = manager.load_chat_by_title("Secret Chat")
+        assert "[redacted]" in loaded.history[0].content

@@ -41,6 +41,7 @@ from ..const import (
     DEFAULT_TOOL_OUTPUT_DIR,
     DEFAULT_TOOL_OUTPUT_MAX_CHARS,
 )
+from ..redaction import is_redaction_enabled, redact_text
 
 #: Default cap (characters) when neither the tool nor the config overrides it.
 DEFAULT_OUTPUT_MAX_CHARS = DEFAULT_TOOL_OUTPUT_MAX_CHARS
@@ -121,12 +122,34 @@ def resolve_output_cap(tool_name: str, max_chars: Optional[int] = None) -> int:
     return TOOL_OUTPUT_CAPS.get(tool_name, DEFAULT_OUTPUT_MAX_CHARS)
 
 
+def _redact_for_spill(text: str) -> str:
+    """Return the text to write to the spill file (v0.22 K20).
+
+    Tool output may contain API keys read from the environment or a file. When
+    ``REDACT_SECRETS`` is enabled (the default), the copy written to disk is
+    redacted; the model-visible in-memory result is built from the original text
+    elsewhere and is never modified here.
+
+    Redaction is best effort: if the redactor itself raises, the raw text is
+    spilled (a spill is still better than no spill), and the caller's existing
+    ``OSError`` handling is untouched.
+    """
+    try:
+        if is_redaction_enabled():
+            return redact_text(text)
+    except Exception:  # pragma: no cover - redaction must never break spilling
+        pass
+    return text
+
+
 def spill_tool_output(text: str, tool_name: str) -> Optional[Path]:
     """Write the full ``text`` to ``TOOL_OUTPUT_DIR``; return the path or ``None``.
 
     The file is created with mode ``0600`` (best effort): tool output may contain
     secrets read from files, the environment or command output, so it must not be
-    world-readable just because of the process umask.
+    world-readable just because of the process umask. When ``REDACT_SECRETS`` is
+    enabled (default ``true``) the spilled copy is additionally redacted with
+    :func:`yaicli.redaction.redact_text`; the model-visible result is untouched.
 
     Every failure path (missing/read-only directory, permission error, bad
     config value) returns ``None``: truncation then proceeds without a path.
@@ -138,7 +161,7 @@ def spill_tool_output(text: str, tool_name: str) -> Optional[Path]:
         safe_name = _FILENAME_UNSAFE_RE.sub("_", str(tool_name or "tool")).strip("_")[:48] or "tool"
         filename = f"{time.strftime('%Y%m%d-%H%M%S')}-{safe_name}-{uuid.uuid4().hex[:8]}.txt"
         path = directory / filename
-        path.write_text(text, encoding="utf-8")
+        path.write_text(_redact_for_spill(text), encoding="utf-8")
         try:
             os.chmod(path, 0o600)
         except OSError:  # pragma: no cover - Windows / exotic filesystems
