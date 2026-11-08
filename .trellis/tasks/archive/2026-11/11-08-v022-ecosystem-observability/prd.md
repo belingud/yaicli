@@ -111,8 +111,13 @@ Feature owners own their module + tests + feature doc page; no commits are made 
       names warn once, disabled tool calls are refused in-band; default payload unchanged.
 - [x] K18: prompt shows model/role/context; `/` completion lists every command; `/model`, `/role`,
       `/retry` work; Alt+Enter inserts a newline; tests for completion/prompt/commands.
-- [ ] Full suite + `ruff check yaicli tests` + `uv run mkdocs build --strict` +
+- [x] Full suite + `ruff check yaicli tests` + `uv run mkdocs build --strict` +
       `uv run python scripts/bench.py --gate` green; docs site shows the new keys/pages.
+
+## Release
+
+- v0.22.0 shipped: tag `v0.22.0` (bump `75bc821`), changelog `94cf58b`; PyPI wheel `yaicli-0.22.0-py3-none-any.whl` (316,793 B) + sdist live; docs deployed to the `docs` branch; CI Publish-to-PyPI / Deploy-MkDocs / Startup-benchmark all green.
+- Verification: 2435 tests, ruff clean, mkdocs strict pass, bench gate ok (idle machine; the shared sandbox can spike, a controlled A/B against v0.21.2 showed no startup regression).
 
 ## Notes
 
