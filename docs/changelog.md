@@ -1,5 +1,37 @@
 
 ---
+## [0.21.1](https://github.com/belingud/yaicli/compare/v0.21.0..v0.21.1) - 2026-11-08
+
+### ⛰️  Features
+
+- feat(provider)!: drop Yi (01.AI) provider support
+
+Yi (01.AI) is no longer supported, so stop shipping the provider: remove the
+yi_provider module and the "yi" ProviderFactory key, delete the provider docs
+page plus its overview matrix rows and mkdocs nav entry, and drop the related
+tests. README no longer lists Yi in the compatibility list or the
+configuration examples.
+
+BREAKING CHANGE: PROVIDER=yi now fails with "Unknown provider: yi". Consumers
+that still need a Yi-compatible endpoint can use PROVIDER=openai-compatible
+with BASE_URL set. - ([37d5775](https://github.com/belingud/yaicli/commit/37d57758056f6b0c2985a100c832fb56c4c6175d)) - Belingud
+
+### 📚 Documentation
+
+- docs(changelog): update changelog for v0.21.0 release - ([dc52fa1](https://github.com/belingud/yaicli/commit/dc52fa1b93b011108c93f4bb222cea6f1ec8ab5e)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore(task): archive the v0.21.0 safety foundation milestone
+
+Moves the v0.21 parent task and K10-K14 subtasks to the archive, marks the
+milestone acceptance complete, and records the v0.21.0 release session
+(K10-K14, verification, release evidence, v0.22 next steps) in the
+developer journal. - ([161de73](https://github.com/belingud/yaicli/commit/161de738e63ebf94d37680681213be219bf09987)) - Belingud
+- chore: record journal - ([5e3a8ee](https://github.com/belingud/yaicli/commit/5e3a8eeab89368f956b7d8b03da3639e3f002988)) - Belingud
+
+
+---
 ## [0.21.0](https://github.com/belingud/yaicli/compare/v0.20.0..v0.21.0) - 2026-11-07
 
 ### ⛰️  Features
