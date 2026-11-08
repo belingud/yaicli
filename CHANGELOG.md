@@ -1,5 +1,32 @@
 
 ---
+## [0.22.0](https://github.com/belingud/yaicli/compare/v0.21.2..v0.22.0) - 2026-11-08
+
+### ⚠️ Behaviour changes
+
+- `--output-format json` now carries real token counts, estimated cost and tool metrics in its
+  `usage` object, plus a new `finish_reason` field (`length` also prints an stderr warning).
+- Tool-output spill files and saved/resumed sessions are redacted by default (`REDACT_SECRETS`);
+  set `REDACT_SECRETS=false` to keep raw bytes on disk. The model still sees the real content.
+- The interactive prompt now shows the model, role and context usage; `/model`, `/role`, `/retry`
+  and `/cost` are available and `/` triggers command completion.
+
+### ⛰️  Features
+
+- feat(repl): show model/role/context in the prompt, add /model /role /retry and slash completion - ([c34620c](https://github.com/belingud/yaicli/commit/631f305801794e24d3925d9ba4023dd93ba2f698)) - Belingud
+- feat(tools): narrow offered tool schemas with ENABLED_TOOLS/--tools - ([98cd3b7](https://github.com/belingud/yaicli/commit/101b097dad01e7548d08e42dda3df3ac825500f6)) - Belingud
+- feat(usage): surface provider token usage, cost and finish reasons - ([64ae9c6](https://github.com/belingud/yaicli/commit/cdb8158cd6dd0ecdd834134f055b98bb5c7e478f)) - Belingud
+- feat(security): redact secrets before tool output and sessions hit disk - ([4274473](https://github.com/belingud/yaicli/commit/1ff622d4b9e26ecfd3f884c31574e279308e1b95)) - Belingud
+- feat(mcp): harden MCP config, timeouts, tool caps and result handling - ([f61da5d](https://github.com/belingud/yaicli/commit/f61da5d053cf917364153cf964f7b81809a96f9d)) - Belingud
+- feat(config): add v0.22 keys for MCP hardening, usage and redaction - ([cf823fb](https://github.com/belingud/yaicli/commit/cf823fb015cd73fbc7b40340db9f099ac1e90ad6)) - Belingud
+
+### 📚 Documentation
+
+- docs: document the v0.22 observability, MCP, redaction and REPL features - ([83ef2ab](https://github.com/belingud/yaicli/commit/64f2e405b51974a8814315889a5edf8b17d1531c)) - Belingud
+- docs(changelog): update changelog for v0.21.2 release - ([d142223](https://github.com/belingud/yaicli/commit/d142223a6a8e783dd0e19434f87e93beb431841f)) - Belingud
+
+
+---
 ## [0.21.2](https://github.com/belingud/yaicli/compare/v0.21.1..v0.21.2) - 2026-11-08
 
 ### 🐛 Bug Fixes
