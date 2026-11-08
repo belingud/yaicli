@@ -245,6 +245,41 @@ class TestAnthropicProvider:
 
     @patch("yaicli.llms.providers.anthropic_provider.Anthropic")
     @patch("yaicli.tools.get_anthropic_schemas", return_value=[{"name": "test_function"}])
+    def test_disable_parallel_tool_use_accepts_string_false(
+        self, mock_get_schemas, mock_anthropic_cls, mock_config
+    ):
+        """A direct config dict with "false" must send a bool, not a truthy string.
+
+        config.ini values used to reach the provider as raw strings; str2bool in
+        the provider keeps the tool_choice payload correct either way.
+        """
+        real_cls = AnthropicProvider.CLIENT_CLS
+        try:
+            AnthropicProvider.CLIENT_CLS = mock_anthropic_cls
+
+            mock_client = MagicMock()
+            mock_anthropic_cls.return_value = mock_client
+
+            mock_text_block = MagicMock()
+            mock_text_block.type = "text"
+            mock_text_block.text = "ok"
+
+            mock_response = MagicMock()
+            mock_response.content = [mock_text_block]
+            mock_response.stop_reason = "stop"
+            mock_client.messages.create.return_value = mock_response
+
+            mock_config["DISABLE_PARALLEL_TOOL_USE"] = "false"
+            provider = AnthropicProvider(config=mock_config)
+            list(provider.completion([ChatMessage(role="user", content="hi")]))
+
+            call_kwargs = mock_client.messages.create.call_args.kwargs
+            assert call_kwargs["tool_choice"] == {"type": "auto", "disable_parallel_tool_use": False}
+        finally:
+            AnthropicProvider.CLIENT_CLS = real_cls
+
+    @patch("yaicli.llms.providers.anthropic_provider.Anthropic")
+    @patch("yaicli.tools.get_anthropic_schemas", return_value=[{"name": "test_function"}])
     def test_completion_with_thinking_blocks(self, mock_get_schemas, mock_anthropic_cls, mock_config):
         """Test completion with thinking blocks (reasoning content)"""
         real_cls = AnthropicProvider.CLIENT_CLS

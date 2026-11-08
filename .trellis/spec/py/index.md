@@ -111,7 +111,7 @@ some filesystems). `entry.version_callback` prints the same constant.
 | New builtin function | `functions/buildin/<name>.py` -> `tests/tools/test_<name>.py` -> mention in README/docs |
 | Provider-agnostic tool policy / approval change | `tools/approval.py` + `llms/client.py` gate; update `openspec/specs/` when behavior is specified |
 | New rendering/streaming behavior | `printer.py` / `render.py` -> `tests/test_printer.py` / `tests/test_render.py` |
-| New config value | `const.DEFAULT_CONFIG_MAP` (env key + type) -> `config.py` wiring -> docs `usage/configuration.md` |
+| New config value | `const.DEFAULT_CONFIG_MAP` (env key + type) -> `config.py` wiring -> docs `usage/configuration.md` + README table (drift-guarded by `tests/test_docs_config.py`) |
 | New headless flag / exit code | `entry.py` option + `CLI.configure_headless` contract -> `cli.py` output path -> `tests/test_headless_contract.py` -> docs `usage/headless.md` |
 | New error kind / retry rule | `errors.py` (`ErrorKind`, classifier) -> client retry/self-heal -> `tests/test_errors.py` |
 | New tool risk class / danger rule | `tools/risk.py` -> approval gate in `llms/client.py` -> `tests/test_shell_tool.py`/`tests/test_permissions.py` |

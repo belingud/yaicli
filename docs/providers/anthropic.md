@@ -23,6 +23,7 @@ MAX_TOKENS=1024
 | `TOP_K`       | Top-k sampling               | -       |
 | `MAX_TOKENS`  | Max response tokens          | `1024`  |
 | `TIMEOUT`     | Request timeout (seconds)    | `60`    |
+| `DISABLE_PARALLEL_TOOL_USE` | Send `disable_parallel_tool_use` (true = one tool call per response; false = allow parallel tool calls) | `true` |
 
 ## AWS Bedrock Integration
 

@@ -51,6 +51,10 @@ MODEL=gpt-4
 | `AZURE_AD_TOKEN`  | Azure AD OAuth token (optional) | -            |
 | `DEFAULT_QUERY` | Default query parameters        | -            |
 
+> `API_VERSION` falls back to the `OPENAI_API_VERSION` environment variable when it is not set in
+> the config file. `AZURE_AD_TOKEN_PROVIDER` (a callable) and `DEFAULT_HEADERS` (a dict) are only
+> available when embedding YAICLI in Python; they cannot be expressed in `config.ini`.
+
 ## Features
 
 - ✅ Streaming responses

@@ -379,6 +379,48 @@ EXTRA_BODY={"custom_param": 123, "option": true}
             # Should pick up the new URL
             assert config["BASE_URL"] == "https://updated-api.com/v1"
 
+    def test_provider_specific_keys_are_typed_from_file(self, mock_console):
+        """Parallel-tool / retry-delay / MiniMax keys load with real types (0.21.2).
+
+        These used to bypass ``DEFAULT_CONFIG_MAP``: a config-file ``false`` was
+        read as the truthy string ``"false"`` and sent to the API.
+        """
+        mock_config_content = """[core]
+DISABLE_PARALLEL_TOOL_USE=false
+RETRY_MAX_DELAY=3.5
+MINIMAX_REASONING_SPLIT=false
+"""
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data=mock_config_content)),
+            patch("yaicli.config.getenv", return_value=None),
+        ):
+            config = Config(mock_console)
+
+            assert config["DISABLE_PARALLEL_TOOL_USE"] is False
+            assert config["MINIMAX_REASONING_SPLIT"] is False
+            assert config["RETRY_MAX_DELAY"] == 3.5
+            assert isinstance(config["RETRY_MAX_DELAY"], float)
+
+    def test_provider_specific_keys_env_override(self, mock_console):
+        """The new typed keys also honour their ``YAI_*`` environment aliases."""
+
+        def mock_getenv(key, default=None):
+            env_vars = {"YAI_DISABLE_PARALLEL_TOOL_USE": "false", "YAI_RETRY_MAX_DELAY": "2.5"}
+            return env_vars.get(key, default)
+
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            patch("builtins.open", mock_open()),
+            patch("pathlib.Path.mkdir"),
+            patch("yaicli.config.getenv", side_effect=mock_getenv),
+        ):
+            config = Config(mock_console)
+
+            assert config["DISABLE_PARALLEL_TOOL_USE"] is False
+            assert config["RETRY_MAX_DELAY"] == 2.5
+            assert isinstance(config["RETRY_MAX_DELAY"], float)
+
 
 def test_get_config_exits_nonzero_on_config_error():
     """A ConfigError must terminate with a non-zero status (entry can hit this at import)."""

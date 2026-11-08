@@ -13,6 +13,7 @@ from ...console import get_console
 from ...errors import provider_response_error, wrap_provider_exception
 from ...exceptions import ConfigMissingError, MCPToolsError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
+from ...utils import str2bool
 from ..provider import Provider
 from ..tool_calls import ToolCallAccumulator
 
@@ -172,8 +173,11 @@ class AnthropicProvider(Provider):
 
         if tools:
             params["tools"] = tools
-            # Disable parallel tool use by default for better compatibility
-            disable_parallel = self.config.get("DISABLE_PARALLEL_TOOL_USE", True)
+            # Disable parallel tool use by default for better compatibility.
+            # The typed config already yields a bool; str2bool keeps a direct dict
+            # config (e.g. {"DISABLE_PARALLEL_TOOL_USE": "false"}) from sending a
+            # truthy string to the API.
+            disable_parallel = str2bool(self.config.get("DISABLE_PARALLEL_TOOL_USE", True))
             params["tool_choice"] = {"type": "auto", "disable_parallel_tool_use": disable_parallel}
 
         if self.verbose:

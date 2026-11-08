@@ -162,8 +162,12 @@ DEFAULT_ENABLE_FUNCTIONS: BOOL_STR = "true"
 DEFAULT_SHOW_FUNCTION_OUTPUT: BOOL_STR = "true"
 # low/high/medium for openai, default/null for groq
 DEFAULT_REASONING_EFFORT: Optional[Literal["low", "high", "medium", "default", "null"]] = None
+# Anthropic only: send disable_parallel_tool_use (one tool call per response when true)
+DEFAULT_DISABLE_PARALLEL_TOOL_USE: BOOL_STR = "true"
 DEFAULT_ENABLE_MCP: BOOL_STR = "false"
 DEFAULT_SHOW_MCP_OUTPUT: BOOL_STR = "false"
+# MiniMax only: request reasoning separately (interleaved thinking)
+DEFAULT_MINIMAX_REASONING_SPLIT: BOOL_STR = "true"
 DEFAULT_MAX_TOOL_CALL_DEPTH: int = 8
 DEFAULT_TOOL_CONFIRM: BOOL_STR = "true"
 # Session-wide tool permission mode (v0.21 K10):
@@ -269,6 +273,11 @@ DEFAULT_CONFIG_MAP = {
     "EXTRA_HEADERS": {"value": DEFAULT_EXTRA_HEADERS, "env_key": "YAI_EXTRA_HEADERS", "type": dict},
     "EXTRA_BODY": {"value": DEFAULT_EXTRA_BODY, "env_key": "YAI_EXTRA_BODY", "type": dict},
     "REASONING_EFFORT": {"value": DEFAULT_REASONING_EFFORT, "env_key": "YAI_REASONING_EFFORT", "type": str},
+    "DISABLE_PARALLEL_TOOL_USE": {
+        "value": DEFAULT_DISABLE_PARALLEL_TOOL_USE,
+        "env_key": "YAI_DISABLE_PARALLEL_TOOL_USE",
+        "type": bool,
+    },
     "INTERACTIVE_ROUND": {
         "value": DEFAULT_INTERACTIVE_ROUND,
         "env_key": "YAI_INTERACTIVE_ROUND",
@@ -345,12 +354,13 @@ DEFAULT_CONFIG_MAP = {
     "RETRY_ENABLED": {"value": DEFAULT_RETRY_ENABLED, "env_key": "YAI_RETRY_ENABLED", "type": bool},
     "RETRY_MAX": {"value": DEFAULT_RETRY_MAX, "env_key": "YAI_RETRY_MAX", "type": int},
     "RETRY_BASE_DELAY": {"value": DEFAULT_RETRY_BASE_DELAY, "env_key": "YAI_RETRY_BASE_DELAY", "type": float},
+    "RETRY_MAX_DELAY": {"value": DEFAULT_RETRY_MAX_DELAY, "env_key": "YAI_RETRY_MAX_DELAY", "type": float},
     "EXIT_ON_DEPTH_LIMIT": {"value": DEFAULT_EXIT_ON_DEPTH_LIMIT, "env_key": "YAI_EXIT_ON_DEPTH_LIMIT", "type": bool},
     # Tool audit log
     "TOOL_AUDIT": {"value": DEFAULT_TOOL_AUDIT, "env_key": "YAI_TOOL_AUDIT", "type": bool},
     # MiniMax specific settings
     "MINIMAX_REASONING_SPLIT": {
-        "value": True,
+        "value": DEFAULT_MINIMAX_REASONING_SPLIT,
         "env_key": "YAI_MINIMAX_REASONING_SPLIT",
         "type": bool,
     },
@@ -415,6 +425,12 @@ ENABLE_MCP={DEFAULT_CONFIG_MAP["ENABLE_MCP"]["value"]}
 # Set to false to disable showing MCP output when calling MCP tools
 SHOW_MCP_OUTPUT={DEFAULT_CONFIG_MAP["SHOW_MCP_OUTPUT"]["value"]}
 
+# Provider-specific settings
+# MiniMax: request reasoning content separately (interleaved thinking); ignored by others
+MINIMAX_REASONING_SPLIT={DEFAULT_CONFIG_MAP["MINIMAX_REASONING_SPLIT"]["value"]}
+# Anthropic: true = one tool call per response (compatibility default); false = allow parallel calls
+DISABLE_PARALLEL_TOOL_USE={DEFAULT_CONFIG_MAP["DISABLE_PARALLEL_TOOL_USE"]["value"]}
+
 # Maximum number of tool calls to make in a single request
 MAX_TOOL_CALL_DEPTH={DEFAULT_CONFIG_MAP["MAX_TOOL_CALL_DEPTH"]["value"]}
 
@@ -472,6 +488,8 @@ WORKSPACE_ROOT=
 RETRY_ENABLED={DEFAULT_CONFIG_MAP["RETRY_ENABLED"]["value"]}
 RETRY_MAX={DEFAULT_CONFIG_MAP["RETRY_MAX"]["value"]}
 RETRY_BASE_DELAY={DEFAULT_CONFIG_MAP["RETRY_BASE_DELAY"]["value"]}
+# Maximum delay between retries in seconds (caps the exponential backoff)
+RETRY_MAX_DELAY={DEFAULT_CONFIG_MAP["RETRY_MAX_DELAY"]["value"]}
 # Exit non-zero in one-shot mode when the tool-call depth limit is reached
 EXIT_ON_DEPTH_LIMIT={DEFAULT_CONFIG_MAP["EXIT_ON_DEPTH_LIMIT"]["value"]}
 

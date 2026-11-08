@@ -107,6 +107,12 @@ SHOW_FUNCTION_OUTPUT=true
 ENABLE_MCP=false
 SHOW_MCP_OUTPUT=false
 
+# Provider-specific settings
+# MiniMax: request reasoning content separately (interleaved thinking); ignored by others
+MINIMAX_REASONING_SPLIT=true
+# Anthropic: true = one tool call per response (compatibility default); false = allow parallel calls
+DISABLE_PARALLEL_TOOL_USE=true
+
 # Tool confirmation (set to false to restore silent execution)
 TOOL_CONFIRM=true
 
@@ -159,6 +165,8 @@ WORKSPACE_ROOT=
 RETRY_ENABLED=true
 RETRY_MAX=2
 RETRY_BASE_DELAY=1.0
+# Maximum delay between retries in seconds (caps the exponential backoff)
+RETRY_MAX_DELAY=8.0
 # Exit non-zero in one-shot mode when the tool-call depth limit is reached.
 EXIT_ON_DEPTH_LIMIT=true
 
@@ -187,6 +195,7 @@ TOOL_AUDIT=true
 | `EXTRA_HEADERS`        | Extra headers                               | -                        | `YAI_EXTRA_HEADERS`        |
 | `EXTRA_BODY`           | Extra body                                  | -                        | `YAI_EXTRA_BODY`           |
 | `REASONING_EFFORT`     | Reasoning effort                            | -                        | `YAI_REASONING_EFFORT`     |
+| `DISABLE_PARALLEL_TOOL_USE` | Anthropic: send `disable_parallel_tool_use` (`true` = one tool call per response, the compatibility default; `false` = allow parallel calls) | `true` | `YAI_DISABLE_PARALLEL_TOOL_USE` |
 | `INTERACTIVE_ROUND`    | Interactive mode rounds                     | `25`                     | `YAI_INTERACTIVE_ROUND`    |
 | `CODE_THEME`           | Syntax highlighting theme                   | `monokai`                | `YAI_CODE_THEME`           |
 | `TEMPERATURE`          | Response randomness                         | `0.3`                    | `YAI_TEMPERATURE`          |
@@ -221,6 +230,7 @@ TOOL_AUDIT=true
 | `RETRY_ENABLED`        | Retry retryable API failures (429/5xx/network/timeout) | `true`         | `YAI_RETRY_ENABLED`        |
 | `RETRY_MAX`            | Maximum retry attempts                      | `2`                      | `YAI_RETRY_MAX`            |
 | `RETRY_BASE_DELAY`     | Base backoff delay in seconds               | `1.0`                    | `YAI_RETRY_BASE_DELAY`     |
+| `RETRY_MAX_DELAY`      | Maximum backoff delay in seconds (cap)      | `8.0`                    | `YAI_RETRY_MAX_DELAY`      |
 | `EXIT_ON_DEPTH_LIMIT`  | Exit non-zero in one-shot mode when the tool-round limit is reached | `true` | `YAI_EXIT_ON_DEPTH_LIMIT` |
 | `TOOL_AUDIT`           | Write tool decisions to `tool_audit.jsonl`  | `true`                   | `YAI_TOOL_AUDIT`           |
 | `EXCLUDE_PARAMS`       | Comma-separated API parameters to omit      | -                        | `YAI_EXCLUDE_PARAMS`       |

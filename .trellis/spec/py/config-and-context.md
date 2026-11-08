@@ -68,7 +68,9 @@ on demand by `ensure_config_file()` (first real run, never for `--version`/`--he
    per `CONFIG_PATH` and appended only by `ensure_config_file()` on a real run, deduped and skipped when
    the key already exists (a freshly created template already contains every default key); OSError only
    warns and keeps them pending.
-5. Update `docs/usage/configuration.md` and any `entry.py` option default mirroring it.
+5. Update `docs/usage/configuration.md` (reference table + file-structure snippet) **and** the README reference
+   table. `tests/test_docs_config.py` is the drift guard: table key sets must equal `DEFAULT_CONFIG_MAP`, the
+   env/default columns must match, and the template + docs snippet must contain every key.
 6. Test in `tests/test_config.py` with `patch("yaicli.config.getenv")` + `mock_open`/`Path.exists` patch.
 
 ## CLI ↔ Config Wiring
