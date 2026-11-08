@@ -109,14 +109,22 @@ headless approval flags.
   `/undo` reverts the last change — see [Workspace Safety](docs/usage/workspace-safety.md)
 - **Guarded shell**: timeout, process-group kill, filtered environment (no API keys leaked to
   commands), workspace-confined `cwd`
+- **Secret redaction on disk**: API keys, tokens and private keys are replaced with `[redacted]`
+  before tool output is spilled or a session is saved (`REDACT_SECRETS`, on by default); the model
+  still sees the real content — see [Permissions & Safety](docs/usage/permissions.md#secret-redaction-on-disk)
 
 ### 📜 Headless & Scriptable
 
 - **`-p/--print`** for explicit one-shot runs, **`-q/--quiet`** for answer-only output
 - **`--output-format json|stream-json`** — one JSON object, or one NDJSON event per line
+- **Token/cost accounting** — the JSON `usage` object and stream-json `usage` event carry real
+  prompt/completion tokens, estimated USD cost, tool count/duration and `finish_reason`;
+  `SHOW_USAGE` adds a one-line summary after each interactive turn
 - **stdout only carries the result**; labels, warnings and errors go to stderr
 - **Deterministic exit codes** (`0/1/2/3/130/141`) and SIGINT/EPIPE handling
 - **Non-interactive approvals** with `--yes`, `--allowed-tools` and `--fail-on-tool-denied`
+- **Tool schema narrowing** with `--tools 'fs_*,web_search'` (or `ENABLED_TOOLS`) to cut the
+  per-request payload down to the tools a script actually needs
 
 ### 🧠 Context Economy
 
@@ -127,6 +135,8 @@ headless approval flags.
 - **Self-healing**: a provider `context_length` error is retried once after trimming instead of
   failing permanently
 - **`/context`** shows what occupies the window, **`/compact [keep_rounds]`** compresses it on demand
+- **`/cost`** reports the session's tokens, estimated USD cost, per-model breakdown and tool
+  time/size; truncated answers (`finish_reason=length`) print a warning instead of silently ending
 
 ### 🔄 Multiple Interaction Modes
 
@@ -137,6 +147,8 @@ headless approval flags.
 ### 💻 Enhanced Terminal Experience
 
 - **Real-time Streaming**: See responses as they're generated with cursor animation
+- **Agent-aware prompt**: shows the current model, role and context usage, with `/` command completion
+  and multi-line editing (Alt+Enter)
 - **Rich History Management**: Manage histories with 500 entries by default
 - **Syntax Highlighting**: Beautiful code formatting with customizable themes
 
@@ -932,13 +944,18 @@ ai --verbose "Explain quantum computing"
 - `/mode chat|exec` - Switch modes
 - `/add <path>` - Add file/dir to context
 - `/context|/ctx` - Context usage and file context (list, add, remove, clear)
+- `/cost` - Session tokens, estimated USD cost, per-model breakdown and tool time/size
 - `/compact [keep_rounds]` - Compress the conversation, keeping the last N turns
 - `/permissions` - List/revoke tool approval rules
+- `/model [name]` - Show or switch the model for the current session
+- `/role [name]` - Show or switch the assistant role
+- `/retry` - Re-run the last user turn (e.g. after an API error)
 - `/show-output` - Open the full-screen tool-output viewer for this turn
 
 **Keyboard Shortcuts**
 
 - `Shift+Tab` - Toggle between Chat/Execute modes
+- `Alt+Enter` / `Ctrl+J` - Insert a newline (multi-line prompt without submitting)
 - `Ctrl+C` - Clear the current input (during generation: cancel the turn); press twice quickly to exit
 - `Ctrl+D` - Exit
 - `Ctrl+R` - Search history
@@ -1316,6 +1333,17 @@ command/flag reference and custom-function guide.
 Add your MCP config in `~/.config/yaicli/mcp.json` (`C:\Users\<user>\.config\yaicli\mcp.json` on Windows.).
 
 `--enable-mcp` option is corresponds to the configuration key `ENABLE_MCP`.
+
+MCP servers are external processes, so YAICLI treats them defensively:
+
+- a missing or malformed `mcp.json` (or a broken server) never aborts the turn — MCP tools are
+  skipped with one actionable stderr warning;
+- each list/call operation is bounded by `MCP_TIMEOUT` (default 30s) and at most `MCP_MAX_TOOLS`
+  (default 64) tools are injected per request;
+- tool descriptions are sanitized (control/ANSI stripped, length-capped) and labelled as coming
+  from an external server whose output is untrusted data, not instructions;
+- every content block of a result is returned (not just the first), and server-side errors are
+  marked `[MCP error]`.
 
 Example:
 

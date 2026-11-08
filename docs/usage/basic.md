@@ -76,6 +76,7 @@ The authoritative list is `ai --help`. A representative snapshot (stable default
 change default values):
 
 ```
+
  Usage: ai [OPTIONS] [PROMPT]
 
  YAICLI: a lightweight agent in your terminal.
@@ -117,12 +118,12 @@ change default values):
 │ --top-p        -P                 FLOAT RANGE [0.0<=x<=1.0]  Specify the top-p to use.           │
 │                                                              [default: 1.0]                      │
 │ --max-tokens                      INTEGER RANGE [x>=1]       Specify the max tokens to use.      │
-│                                                              [default: 1024]                     │
+│                                                              [default: 6144]                     │
 │ --stream           --no-stream                               Specify whether to stream the       │
 │                                                              response. (default: stream)         │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Role Options ───────────────────────────────────────────────────────────────────────────────────╮
-│ --role         -r      TEXT  Specify the assistant role to use. [default: DEFAULT]               │
+│ --role         -r      TEXT  Specify the assistant role to use. [default: master]                │
 │ --create-role          TEXT  Create a new role with the specified name.                          │
 │ --delete-role          TEXT  Delete a role with the specified name.                              │
 │ --list-roles                 List all available roles.                                           │
@@ -180,23 +181,29 @@ change default values):
 │                                                                       [default: default]         │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Function Options ───────────────────────────────────────────────────────────────────────────────╮
-│ --install-functions                                   Export editable copies of builtin          │
-│                                                       functions (builtins load automatically;    │
-│                                                       existing files are skipped).               │
-│ --reinstall-functions                                 Refresh exported builtin function copies   │
-│                                                       (preserves user-defined functions).        │
-│ --list-functions                                      List loaded tools and their source         │
-│                                                       (builtin/user).                            │
-│ --enable-functions        --disable-functions         Enable/disable function calling in API     │
-│                                                       requests (default: enabled)                │
-│ --show-function-output    --hide-function-output      Show the output of functions (default:     │
-│                                                       show)                                      │
+│ --install-functions                                       Export editable copies of builtin      │
+│                                                           functions (builtins load               │
+│                                                           automatically; existing files are      │
+│                                                           skipped).                              │
+│ --reinstall-functions                                     Refresh exported builtin function      │
+│                                                           copies (preserves user-defined         │
+│                                                           functions).                            │
+│ --list-functions                                          List loaded tools and their source     │
+│                                                           (builtin/user).                        │
+│ --enable-functions        --disable-functions             Enable/disable function calling in API │
+│                                                           requests (default: enabled)            │
+│ --show-function-output    --hide-function-output          Show the output of functions (default: │
+│                                                           show)                                  │
+│ --tools                                             TEXT  Comma-separated tool-name globs to     │
+│                                                           offer the model (empty = all tools;    │
+│                                                           MCP tools use the _mcp__ prefix, e.g.  │
+│                                                           fs_*,web_search or _mcp__github_*).    │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ MCP Options ────────────────────────────────────────────────────────────────────────────────────╮
 │ --enable-mcp         --disable-mcp          Enable/disable MCP in API requests (default:         │
 │                                             disabled)                                            │
 │                                             [default: disable-mcp]                               │
-│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: hide)               │
+│ --show-mcp-output    --hide-mcp-output      Show the output of MCP (default: show)               │
 │ --list-mcp                                  List all available mcp.                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Image Options ──────────────────────────────────────────────────────────────────────────────────╮
@@ -204,6 +211,7 @@ change default values):
 │                        multiple times.                                                           │
 │                        [default: None]                                                           │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
 ```
 
 > See [Command Reference](commands.md) for the option tables with short descriptions, and

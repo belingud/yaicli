@@ -99,22 +99,25 @@ Feature owners own their module + tests + feature doc page; no commits are made 
 
 ## Acceptance Criteria
 
-- [ ] K17: provider-reported usage reaches `LLMResponse`, `/cost` and `--output-format json`
+- [x] K17: provider-reported usage reaches `LLMResponse`, `/cost` and `--output-format json`
       (`usage` non-zero from at least OpenAI-compatible + Anthropic paths); `finish_reason=length`
       produces a visible warning and is reported in JSON; tests mock each usage shape.
-- [ ] K16: broken `mcp.json`/missing fastmcp keeps the REPL alive with one actionable stderr line;
+- [x] K16: broken `mcp.json`/missing fastmcp keeps the REPL alive with one actionable stderr line;
       description sanitization + source label covered by tests; `MCP_TIMEOUT` covered by a fake
       slow call; `MCP_MAX_TOOLS` truncation covered; multi-block result + `is_error` covered.
-- [ ] K20: `/save` + spill files contain `[redacted]` instead of `sk-*`/`AKIA*`/private keys while
+- [x] K20: `/save` + spill files contain `[redacted]` instead of `sk-*`/`AKIA*`/private keys while
       the in-memory/model-visible content is unchanged; `REDACT_SECRETS=false` disables; tests.
-- [ ] K19: `ENABLED_TOOLS`/`--tools` shrink the request schema set (byte-count assertion), unknown
+- [x] K19: `ENABLED_TOOLS`/`--tools` shrink the request schema set (byte-count assertion), unknown
       names warn once, disabled tool calls are refused in-band; default payload unchanged.
-- [ ] K18: prompt shows model/role/context; `/` completion lists every command; `/model`, `/role`,
+- [x] K18: prompt shows model/role/context; `/` completion lists every command; `/model`, `/role`,
       `/retry` work; Alt+Enter inserts a newline; tests for completion/prompt/commands.
 - [ ] Full suite + `ruff check yaicli tests` + `uv run mkdocs build --strict` +
       `uv run python scripts/bench.py --gate` green; docs site shows the new keys/pages.
 
 ## Notes
+
+- Shipped commits: K16 `f61da5d`, K20 `4274473`, K17 `64ae9c6`, K19 `98cd3b7`, K18 `c34620c`.
+- Release v0.22.0: bump/changelog/docs deploy after the final gates.
 
 - K16/K17/K20 are independent; K18 depends on K17's usage API and `/cost`.
 - K19 (Lead) can run in parallel with W1: it touches `tools/__init__.py` + `entry.py` only.
