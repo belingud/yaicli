@@ -1,5 +1,40 @@
 
 ---
+## [0.21.2](https://github.com/belingud/yaicli/compare/v0.21.1..v0.21.2) - 2026-11-08
+
+### 🐛 Bug Fixes
+
+- fix(config): type provider/retry keys and keep the docs in sync
+
+Two settings were read straight from the config dict without a typed
+DEFAULT_CONFIG_MAP entry, so a config-file `false` arrived as the truthy
+string "false": toggling DISABLE_PARALLEL_TOOL_USE never re-enabled Anthropic
+parallel tool calls, and RETRY_MAX_DELAY was invisible (no template line, no
+YAI_ alias). Both are now typed map keys with environment aliases and template
+entries, and the Anthropic provider coerces the flag with str2bool for direct
+dict configs.
+
+MINIMAX_REASONING_SPLIT was documented but missing from `ai --template`; it is
+now part of the shipped template. (It stays MiniMax-specific: only that
+provider sends `reasoning_split`.)
+
+Docs: the README reference table gains the four keys it had missed (TOOL_POLICY,
+TOOL_DISPLAY_MAX_LINES/CHARS, TOOL_CALL_PREVIEW_MAX_CHARS) plus the new keys;
+configuration.md documents DISABLE_PARALLEL_TOOL_USE/RETRY_MAX_DELAY and the
+file-structure snippet matches the template; the provider pages note the
+Anthropic switch, Azure OPENAI_API_VERSION and the programmatic-only
+AZURE_AD_TOKEN_PROVIDER/DEFAULT_HEADERS.
+
+tests/test_docs_config.py is the drift guard: docs table, README table, shipped
+template and docs snippet must all match DEFAULT_CONFIG_MAP (keys, env vars and
+defaults). - ([5f0ddbe](https://github.com/belingud/yaicli/commit/5f0ddbe0bf3692615c266f2b334bf96c95d20550)) - Belingud
+
+### 📚 Documentation
+
+- docs(changelog): update changelog for v0.21.1 release - ([e6ed590](https://github.com/belingud/yaicli/commit/e6ed5909f65f74efc1f1142eb184977e3ef2ca84)) - Belingud
+
+
+---
 ## [0.21.1](https://github.com/belingud/yaicli/compare/v0.21.0..v0.21.1) - 2026-11-08
 
 ### ⛰️  Features
