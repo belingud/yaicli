@@ -19,20 +19,28 @@ Press Shift+Tab to switch mode
 /help|?            : Show help message
 /clear             : Clear chat history
 /his               : Show chat history
-/list              : List saved chats
+/list|/chats       : List saved chats
 /save <title>      : Save current chat
 /load <index>      : Load a saved chat
-/del <index>       : Delete a saved chat
+/del|/delete <index>: Delete a saved chat
 /add <path>        : Add @file/dir to context
-/context, /ctx     : Manage context (list, add, remove, clear)
+/context, /ctx     : Show context/token usage; manage context (list, add, remove, clear, budget)
 /cost              : Show session token usage and estimated cost
-  Tip: Type '@' for path completion, use Tab/arrows to select
-!<command>         : Execute shell command directly (e.g., !ls -al)
-/exit|Ctrl+D       : Exit
-Ctrl+C             : Clear input / cancel turn; press twice to exit
+/compact [keep_rounds]: Compact history, keeping the last N turn groups (default 5)
+/permissions [revoke <tool-or-index>]: List/revoke tool permissions and session grants
+/show-output       : View this turn's tool outputs (same as Ctrl+O)
+/undo              : Undo the last file change made by a tool
+/model [name]      : Show or switch the model for this session
+/role [name]       : Show or switch the assistant role
+/retry             : Re-run the last user turn (e.g. after an API error)
+/exit|Ctrl+D       : Exit (Ctrl+D also exits)
 /mode chat|exec    : Switch mode (Case insensitive)
+!<command>         : Execute shell command directly (e.g., !ls -al)
+Ctrl+C             : Clear input / cancel turn; press twice to exit
+Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
+  Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 💬 >
+ 💬 gpt-4o · 12% >
 ```
 
 Or use `ai --chat` to start a temporary session.
@@ -52,21 +60,48 @@ Press Shift+Tab to switch mode
 /help|?            : Show help message
 /clear             : Clear chat history
 /his               : Show chat history
-/list              : List saved chats
+/list|/chats       : List saved chats
 /save <title>      : Save current chat
 /load <index>      : Load a saved chat
-/del <index>       : Delete a saved chat
+/del|/delete <index>: Delete a saved chat
 /add <path>        : Add @file/dir to context
-/context, /ctx     : Manage context (list, add, remove, clear)
+/context, /ctx     : Show context/token usage; manage context (list, add, remove, clear, budget)
 /cost              : Show session token usage and estimated cost
-  Tip: Type '@' for path completion, use Tab/arrows to select
-!<command>         : Execute shell command directly (e.g., !ls -al)
-/exit|Ctrl+D       : Exit
-Ctrl+C             : Clear input / cancel turn; press twice to exit
+/compact [keep_rounds]: Compact history, keeping the last N turn groups (default 5)
+/permissions [revoke <tool-or-index>]: List/revoke tool permissions and session grants
+/show-output       : View this turn's tool outputs (same as Ctrl+O)
+/undo              : Undo the last file change made by a tool
+/model [name]      : Show or switch the model for this session
+/role [name]       : Show or switch the assistant role
+/retry             : Re-run the last user turn (e.g. after an API error)
+/exit|Ctrl+D       : Exit (Ctrl+D also exits)
 /mode chat|exec    : Switch mode (Case insensitive)
+!<command>         : Execute shell command directly (e.g., !ls -al)
+Ctrl+C             : Clear input / cancel turn; press twice to exit
+Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
+  Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 💬 >
+ 💬 gpt-4o · 12% >
 ```
+
+## Prompt
+
+The prompt starts with the current mode icon and adds up to three context fields:
+
+```text
+ 💬 gpt-4o · coder · 12% >
+ │  │      │       └── last-known context usage (estimated % of the context budget)
+ │  │      └────────── active role, shown only when it is not the DEFAULT role
+ │  └───────────────── current model short name (a provider prefix like "openai/" is dropped)
+ └──────────────────── mode icon: 💬 chat, 🚀 execute
+```
+
+- The model and role update immediately after `/model` / `/role` or a `Shift+Tab` mode switch.
+- The context percentage is cached and refreshed after every completed turn and after
+  `/compact`, `/clear`, `/load` and `/model` — never on each keystroke. It is omitted
+  until the conversation has at least one message, and for bare/legacy CLI objects
+  (e.g. integrations constructing `CLI.__new__`).
+- Headless/one-shot runs never render this prompt; their output is unaffected.
 
 ## Commands
 
@@ -81,11 +116,25 @@ Ctrl+C             : Clear input / cancel turn; press twice to exit
 - `/context` or `/ctx` - Show context/token usage, or manage file context (`list`, `add`, `remove`, `clear`)
 - `/cost` - Show session token usage, estimated cost, per-model breakdown and tool metrics
 - `/compact [keep_rounds]` - Compact the conversation, keeping the last N turns
+- `/model` - Show the current model and provider
+- `/model <name>` - Switch the model for this session: the provider client is rebuilt on the next
+  request, the chat history is kept, and the change is not written to the config file. The notice
+  names the previous model so you can revert with `/model <old-name>`.
+- `/role` - Show the current role and the available roles
+- `/role <name>` - Switch the assistant role for this session (case-insensitive; an unknown name
+  lists the available roles). The change is session-only; restart to use the configured role.
+- `/retry` - Re-run the last user turn from its pre-turn snapshot. Useful after an API error: the
+  failed turn's partial messages are discarded before the same input is sent again.
 - `/permissions` - List (and revoke) persistent tool approval rules
 - `/show-output` - Open the full-screen tool-output viewer for this turn
+- `/undo` - Restore the last file change made by a tool in this session
 - `!<command>` - Execute a shell command directly
 - `/exit` - Exit the application
 - `/mode chat|exec` - Switch modes
+
+Typing `/` opens the slash-command completion menu: every command is listed with a one-line
+description, `/co` filters the list, and `Tab`/arrow keys select an entry. `@` path completion
+still works as before and shares the same prompt.
 
 ## Usage & cost
 
@@ -120,6 +169,12 @@ JSON runs report usage through their structured output instead.
   pane, `f` full text, `q`/`Esc` close). It also works while the assistant is generating:
   generation continues in the background and closing the viewer redraws the accumulated answer
 - `↑/↓` - Navigate through history
+- `Alt+Enter` (or `Esc` then `Enter`) - Insert a newline instead of submitting
+- `Ctrl+J` - Insert a newline (same as `Alt+Enter`); `Enter` still submits the whole input
+- `/` - Open the slash-command completion menu (see [Commands](#commands))
+
+Multiline text is useful for pasting or composing long prompts; press `Enter` once you are done
+to send the whole buffer as one turn.
 
 ## Chat Mode (💬)
 
@@ -132,7 +187,7 @@ In Chat Mode, you can have natural conversations with the AI while maintaining c
 $ ai --chat
 ...
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 💬 > Tell me about the solar system
+ 💬 gpt-4o · 12% > Tell me about the solar system
 
 A:
 Solar System Overview

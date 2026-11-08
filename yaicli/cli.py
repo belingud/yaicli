@@ -13,20 +13,11 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .chat import Chat, FileChatManager, chat_mgr, resolve_default_chat_dir
-from .cmd_handler import CMD_COMPACT, CMD_COST, CMD_UNDO, CmdHandler
+from .cmd_handler import COMMAND_INFO, CmdHandler
 from .config import cfg
 from .console import get_console, get_error_console, safe_text, untrusted_text
 from .const import (
     CHAT_MODE,
-    CMD_CLEAR,
-    CMD_DELETE_CHAT,
-    CMD_EXIT,
-    CMD_HELP,
-    CMD_HISTORY,
-    CMD_LIST_CHATS,
-    CMD_LOAD_CHAT,
-    CMD_MODE,
-    CMD_SAVE_CHAT,
     CONFIG_PATH,
     DEFAULT_OS_NAME,
     DEFAULT_OUTPUT_FORMAT,
@@ -38,13 +29,25 @@ from .const import (
     DefaultRoleNames,
 )
 from .context import ContextManager, ctx_mgr
-from .errors import EXIT_ERROR, EXIT_OK, EXIT_SIGINT, EXIT_TOOL_DENIED, ErrorKind, classify_exception
+from .errors import (
+    EXIT_ERROR,
+    EXIT_OK,
+    EXIT_SIGINT,
+    EXIT_TOOL_DENIED,
+    ErrorKind,
+    classify_exception,
+)
 from .exceptions import ChatLoadError, ChatSaveError, YaicliError
 from .printer import Printer
 from .project_context import load_project_context
 from .role import Role, RoleManager, role_mgr
 from .schemas import ChatMessage, ImageData, RefreshLive, ToolPolicy
-from .tokens import resolve_context_budget, trim_messages_to_budget, trim_oldest_group
+from .tokens import (
+    estimate_context_usage,
+    resolve_context_budget,
+    trim_messages_to_budget,
+    trim_oldest_group,
+)
 from .tools.approval import ToolApprovalManager
 from .usage import Usage, estimate_cost
 from .utils import detect_os, detect_shell, filter_command
@@ -58,6 +61,7 @@ from .utils import detect_os, detect_shell, filter_command
 PromptSession = None  # type: ignore[assignment]
 prompt = None  # type: ignore[assignment]
 AtPathCompleter = None  # type: ignore[assignment]
+ReplCompleter = None  # type: ignore[assignment]
 LimitedFileHistory = None  # type: ignore[assignment]
 LLMClient = None  # type: ignore[assignment]
 
@@ -92,6 +96,16 @@ def _at_path_completer_class() -> Any:
     return AtPathCompleter
 
 
+def _repl_completer_class() -> Any:
+    """Import the composite REPL completer (slash commands + ``@path``) lazily."""
+    global ReplCompleter
+    if ReplCompleter is None:
+        from .completer import ReplCompleter as _ReplCompleter
+
+        ReplCompleter = _ReplCompleter
+    return ReplCompleter
+
+
 def _limited_history_class() -> Any:
     """Import the file-backed prompt history lazily (it needs prompt_toolkit)."""
     global LimitedFileHistory
@@ -119,6 +133,13 @@ TOOL_DENIED_MARKERS = ("declined to execute", "tool_denied")
 #: Ctrl-C twice within this many seconds exits the REPL (a single press only clears
 #: the current input line / cancels the current turn). Matches common shell/REPL UX.
 DOUBLE_CTRL_C_WINDOW_SECONDS = 2.0
+
+#: Short labels for the non-default built-in roles shown in the REPL prompt.
+#: User-created roles are displayed by their own name (bounded in the prompt).
+PROMPT_ROLE_LABELS: Dict[str, str] = {
+    DefaultRoleNames.CODER.value: "coder",
+    DefaultRoleNames.SHELL.value: "shell",
+}
 
 
 class CLI:
@@ -174,6 +195,11 @@ class CLI:
         #: K12: project instruction files are discovered once, on the first request.
         "_project_context_loaded",
         "_project_context_text",
+        #: last-known context usage percentage for the prompt (updated once per
+        #: turn / history-mutating command; the prompt render must never estimate).
+        "_context_percent",
+        #: history + input + images of the last turn, used by ``/retry``.
+        "_last_turn_snapshot",
         #: Text typed while the assistant was generating (Ctrl+O watcher); used as
         #: the initial prompt buffer for the next input.
         "_pending_prompt_text",
@@ -268,6 +294,10 @@ class CLI:
         # lazily on the first request so CLI construction stays write/read-free.
         self._project_context_loaded = False
         self._project_context_text = ""
+        # prompt context percentage is cached (never computed during render) and
+        # the last turn is snapshotted once so ``/retry`` can replay it cleanly.
+        self._context_percent: Optional[float] = None
+        self._last_turn_snapshot: Optional[Dict[str, Any]] = None
         # Typed-ahead text captured by the generation-time Ctrl+O watcher.
         self._pending_prompt_text = ""
         self.chat_start_time = None
@@ -781,10 +811,82 @@ class CLI:
             return role
         return DefaultRoleNames.DEFAULT
 
+    # ------------------- prompt (model / role / context) -------------------
+    @staticmethod
+    def _prompt_model_name() -> str:
+        """Return the short model name for the prompt (``""`` when unknown)."""
+        try:
+            model = cfg.get("MODEL") if hasattr(cfg, "get") else ""
+        except Exception:  # pragma: no cover - config lookups must never break the prompt
+            return ""
+        if not isinstance(model, str):
+            return ""
+        # Provider-prefixed ids ("openai/gpt-4o") are shown without the prefix.
+        model = model.strip().rsplit("/", 1)[-1]
+        return model if len(model) <= 32 else model[:31] + "…"
+
+    def _prompt_role_label(self) -> str:
+        """Return the active role label for the prompt; empty for the DEFAULT role."""
+        role_name = getattr(self, "role_name", "")
+        if not isinstance(role_name, str) or not role_name:
+            return ""
+        if role_name == DefaultRoleNames.DEFAULT:
+            return ""
+        label = PROMPT_ROLE_LABELS.get(role_name, role_name)
+        return label if len(label) <= 24 else label[:23] + "…"
+
     def get_prompt_tokens(self) -> list[tuple[str, str]]:
-        """Return prompt tokens for current mode"""
-        mode_icon = "💬" if self.current_mode == CHAT_MODE else "🚀" if self.current_mode == EXEC_MODE else "📝"
-        return [("class:qmark", f" {mode_icon} "), ("class:prompt", "> ")]
+        """Return the REPL prompt tokens: mode icon, model, role and context %.
+
+        The context percentage is the cached ``_context_percent`` value (updated
+        once per completed turn and after history-mutating commands): this callback
+        runs on every keypress, so it must never estimate tokens here. Every
+        segment degrades to "omitted" for bare/legacy CLI objects built via
+        ``CLI.__new__`` or when the config/history is unavailable.
+        """
+        mode = getattr(self, "current_mode", TEMP_MODE)
+        mode_icon = "💬" if mode == CHAT_MODE else "🚀" if mode == EXEC_MODE else "📝"
+        tokens: list[tuple[str, str]] = [("class:qmark", f" {mode_icon} ")]
+        segments: list[tuple[str, str]] = []
+        model = self._prompt_model_name()
+        if model:
+            segments.append(("class:prompt-model", model))
+        role = self._prompt_role_label()
+        if role:
+            segments.append(("class:prompt-role", role))
+        percent = getattr(self, "_context_percent", None)
+        if isinstance(percent, (int, float)) and not isinstance(percent, bool):
+            segments.append(("class:prompt-context", f"{max(0.0, float(percent)):.0f}%"))
+        for index, (class_name, text) in enumerate(segments):
+            if index:
+                tokens.append(("class:prompt-sep", " · "))
+            tokens.append((class_name, text))
+        tokens.append(("class:prompt", " > " if segments else "> "))
+        return tokens
+
+    def _update_context_percent(self) -> None:
+        """Recompute the cached prompt context percentage.
+
+        Never called from the prompt render path: the value is refreshed once per
+        completed turn and after history-mutating commands (``/compact``,
+        ``/clear``, ``/load``, ``/model``). A missing history/role prompt or a
+        failing estimator degrades to ``None`` (the segment is then omitted).
+        """
+        try:
+            history = getattr(getattr(self, "chat", None), "history", None)
+            if not isinstance(history, list) or not history:
+                self._context_percent = None
+                return
+            role = getattr(self, "role", None)
+            system_text = getattr(role, "prompt", "") if role is not None else ""
+            usage = estimate_context_usage(
+                history,
+                config=cfg if hasattr(cfg, "get") else None,
+                system_text=system_text if isinstance(system_text, str) else "",
+            )
+            self._context_percent = float(usage.used_percent)
+        except Exception:  # pragma: no cover - prompt decoration must never break a turn
+            self._context_percent = None
 
     def _check_history_len(self) -> None:
         """Keep the in-conversation history inside the token budget, group-aligned.
@@ -894,6 +996,10 @@ class CLI:
         self.chat = chat_data
         self.chat_start_time = chat_data.date
         self.is_temp_session = False
+        # the loaded conversation has its own turn history — forget the old
+        # /retry snapshot and refresh the prompt's context percentage immediately.
+        self._last_turn_snapshot = None
+        self._update_context_percent()
 
         self.console.print(f"Loaded chat: {safe_text(self.chat.title)}", style="bold green")
         return True
@@ -1308,6 +1414,46 @@ class CLI:
             style="dim yellow",
         )
 
+    def _remember_turn_for_retry(self, user_input: str, images: Optional[List[ImageData]] = None) -> None:
+        """Snapshot the conversation + input *before* a turn so ``/retry`` can replay it.
+
+        The snapshot is restored by :meth:`_retry_last_turn`, which drops any
+        partial/duplicated assistant or tool messages a failed turn produced
+        before sending the same input again.
+        """
+        try:
+            history = getattr(getattr(self, "chat", None), "history", None)
+            history_snapshot = list(history) if isinstance(history, list) else []
+        except (AttributeError, TypeError):  # pragma: no cover - bare/legacy CLI objects
+            history_snapshot = []
+        self._last_turn_snapshot = {
+            "input": user_input,
+            "images": list(images or []),
+            "history": history_snapshot,
+        }
+
+    def _retry_last_turn(self) -> bool:
+        """Re-run the last user turn from its pre-turn snapshot (``/retry``).
+
+        Restores the history recorded before the last turn (so the failed turn's
+        partial messages are not duplicated), then re-processes the same input and
+        images. With no previous turn it only prints a friendly notice.
+        """
+        snapshot = getattr(self, "_last_turn_snapshot", None)
+        user_input = snapshot.get("input") if isinstance(snapshot, dict) else None
+        if not isinstance(user_input, str) or not user_input.strip():
+            self.console.print("Nothing to retry: no previous user turn in this session.", style="yellow")
+            return True
+        history = snapshot.get("history")
+        if isinstance(history, list):
+            try:
+                self.chat.history = list(history)
+            except (AttributeError, TypeError):  # pragma: no cover - bare/legacy chat objects
+                pass
+        images = snapshot.get("images")
+        self.console.print(f"Retrying last turn: {safe_text(user_input)}", style="dim")
+        return self._process_user_input(user_input, images=list(images) if isinstance(images, list) else [])
+
     def _process_user_input(self, user_input: str, images: Optional[List[ImageData]] = None) -> bool:
         """Process user input: get response, print, update history, maybe execute.
         Returns True to continue REPL, False to exit on critical error.
@@ -1316,6 +1462,8 @@ class CLI:
 
         # Every user input opens a new turn; the Ctrl+O viewer groups tool outputs by it.
         begin_turn()
+        # capture the pre-turn state first so /retry can replay this exact turn.
+        self._remember_turn_for_retry(user_input, images=images)
         # K17: snapshot the session usage before the turn so the interactive line
         # shows this turn's tokens, not the whole session's.
         usage_before = self._client_usage_snapshot()
@@ -1336,6 +1484,8 @@ class CLI:
             self.chat.history = [msg for msg in updated_messages if msg.role != "system"]
 
         self._check_history_len()
+        # refresh the cached prompt context percentage once per completed turn.
+        self._update_context_percent()
 
         result_text = content or ""
         if self.current_mode == EXEC_MODE:
@@ -1451,6 +1601,8 @@ class CLI:
     def prepare_chat_loop(self) -> None:
         """Setup key bindings and history for interactive modes."""
         self.current_mode = CHAT_MODE
+        # seed the cached prompt context percentage for a resumed/loaded session.
+        self._update_context_percent()
         self._setup_key_bindings()
 
         # K21: a read-only HOME (containers/CI/sandbox) must not crash the REPL
@@ -1480,7 +1632,9 @@ class CLI:
                 history=history,
                 auto_suggest=AutoSuggestFromHistory() if cfg.get("AUTO_SUGGEST", True) else None,
                 enable_history_search=True,
-                completer=_at_path_completer_class()(),
+                # composite completer — slash commands plus the existing @path
+                # completer (kept as the patchable ``AtPathCompleter`` seam).
+                completer=_repl_completer_class()(path_completer=_at_path_completer_class()()),
                 complete_while_typing=True,  # Enable auto-completion for @ trigger
                 complete_in_thread=True,  # Don't block on completion
             )
@@ -1489,8 +1643,9 @@ class CLI:
             self.session = PromptSessionClass(key_bindings=self.bindings)
 
     def _setup_key_bindings(self) -> None:
-        """Setup keyboard shortcuts: Shift+Tab for mode switching, Ctrl+O for the
-        full-screen tool-output viewer. Imports prompt_toolkit lazily (K08)."""
+        """Setup keyboard shortcuts: Shift+Tab mode switch, Ctrl+O viewer and
+        multiline input (Alt+Enter / Ctrl+J insert a newline, Enter still submits).
+        Imports prompt_toolkit lazily (K08)."""
         from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 
         if self.bindings is None:
@@ -1508,6 +1663,16 @@ class CLI:
             from .tool_output_viewer import ToolOutputViewerRequested
 
             event.app.exit(exception=ToolOutputViewerRequested())
+
+        @self.bindings.add("escape", "enter")  # Alt+Enter / Esc,Enter: newline
+        def _(event: KeyPressEvent) -> None:
+            """Insert a newline instead of submitting (multiline input)."""
+            event.current_buffer.insert_text("\n")
+
+        @self.bindings.add("c-j")  # Ctrl+J: newline (terminal-friendly Alt+Enter)
+        def _(event: KeyPressEvent) -> None:
+            """Insert a newline instead of submitting (multiline input)."""
+            event.current_buffer.insert_text("\n")
 
     def _open_tool_output_viewer(self) -> None:
         """Open the full-screen tool-output viewer (``Ctrl+O`` / ``/show-output``)."""
@@ -1540,38 +1705,23 @@ class CLI:
         self.print_help()
 
     def print_help(self):
+        """Print the REPL help table.
+
+        Command rows come from ``cmd_handler.COMMAND_INFO`` — the same metadata the
+        slash-command completion menu uses, so help and completion cannot drift
+        apart. Rows are printed without Rich markup so usage strings with
+        ``[optional]`` arguments are shown verbatim.
+        """
         self.console.print("Press [bold yellow]Shift+Tab[/bold yellow] to switch mode")
-        help_cmd = "|".join(CMD_HELP)
-        self.console.print(f"{help_cmd:<19}: Show help message")
-        self.console.print(f"{CMD_CLEAR:<19}: Clear chat history")
-        self.console.print(f"{CMD_HISTORY:<19}: Show chat history")
-        self.console.print(f"{CMD_LIST_CHATS:<19}: List saved chats")
-        save_cmd = f"{CMD_SAVE_CHAT} <title>"
-        self.console.print(f"{save_cmd:<19}: Save current chat")
-        load_cmd = f"{CMD_LOAD_CHAT} <index>"
-        self.console.print(f"{load_cmd:<19}: Load a saved chat")
-        delete_cmd = f"{CMD_DELETE_CHAT} <index>"
-        self.console.print(f"{delete_cmd:<19}: Delete a saved chat")
-        self.console.print(f"{'/add <path>':<19}: Add @file/dir to context")
-        self.console.print(
-            f"{'/context, /ctx':<19}: Show context/token usage; manage context (list, add, remove, clear, budget)"
-        )
-        self.console.print(f"{CMD_COST:<19}: Show session token usage and estimated cost")
-        self.console.print(
-            f"{CMD_COMPACT + ' [keep_rounds]':<19}: Compact history, keeping the last N turn groups (default 5)"
-        )
-        self.console.print(
-            f"{'/permissions [revoke <tool-or-index>]':<19}: List/revoke tool permissions and session grants"
-        )
-        self.console.print(f"{'/show-output':<19}: View this turn's tool outputs (same as Ctrl+O)")
-        self.console.print(f"{CMD_UNDO:<19}: Undo the last file change made by a tool")
-        self.console.print("[dim]  Tip: Type '@' for path completion, use Tab/arrows to select[/dim]")
+        for info in COMMAND_INFO:
+            self.console.print(f"{info.help_text:<19}: {info.description}", markup=False)
         self.console.print(f"{'!<command>':<19}: Execute shell command directly (e.g., !ls -al)")
-        cmd_exit = f"{CMD_EXIT}|Ctrl+D"
-        self.console.print(f"{cmd_exit:<19}: Exit")
         self.console.print(f"{'Ctrl+C':<19}: Clear input / cancel turn; press twice to exit")
-        cmd_mode = f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"
-        self.console.print(f"{cmd_mode:<19}: Switch mode (Case insensitive)", style="dim")
+        self.console.print(f"{'Alt+Enter/Ctrl+J':<19}: Insert a newline (Enter still submits)")
+        self.console.print(
+            "  Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select",
+            style="dim",
+        )
 
     def _run_repl(self) -> None:
         """Run the main Read-Eval-Print Loop (REPL).

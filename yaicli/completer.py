@@ -1,10 +1,12 @@
-"""Custom path completer for yaicli."""
+"""Custom completers for yaicli (``@path`` references and slash commands)."""
 
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Optional, Tuple
 
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.document import Document
+
+from .cmd_handler import command_completions
 
 
 class AtPathCompleter(Completer):
@@ -139,3 +141,52 @@ class AtPathCompleter(Completer):
         except (OSError, PermissionError):
             # Silently ignore permission errors
             return
+
+
+class SlashCommandCompleter(Completer):
+    """Slash-command completer with a one-line description in the meta column.
+
+    It fires only while the first token is being typed (text before the cursor
+    starts with ``/`` and has no whitespace yet), so argument completion still
+    belongs to :class:`AtPathCompleter` and the individual commands. The command
+    list comes from ``cmd_handler.command_completions()`` — the same metadata
+    source ``CLI.print_help()`` renders.
+    """
+
+    def __init__(self, commands: Optional[Iterable[Tuple[str, str]]] = None):
+        self.commands: Tuple[Tuple[str, str], ...] = tuple(commands) if commands is not None else command_completions()
+
+    def get_completions(self, document: Document, complete_event) -> Iterable[Completion]:
+        """Offer every registered command matching the typed ``/`` prefix."""
+        text = document.text_before_cursor
+        if not text.startswith("/") or any(char.isspace() for char in text):
+            return
+        lowered = text.lower()
+        for command, description in self.commands:
+            if command.lower().startswith(lowered):
+                yield Completion(
+                    text=command,
+                    start_position=-len(text),
+                    display=command,
+                    display_meta=description,
+                )
+
+
+class ReplCompleter(Completer):
+    """Composite REPL completer: slash commands plus the existing ``@path`` one.
+
+    The two completers trigger on different input shapes (``/token`` vs ``@`` or
+    the ``/add``/``/context add`` prefixes), so composing them keeps ``@path``
+    completion intact while adding command completion.
+    """
+
+    def __init__(self, path_completer: Optional[Completer] = None, commands=None, base_dir: Optional[Path] = None):
+        self.path_completer: Completer = (
+            path_completer if path_completer is not None else AtPathCompleter(base_dir=base_dir)
+        )
+        self.slash_completer = SlashCommandCompleter(commands)
+
+    def get_completions(self, document: Document, complete_event) -> Iterable[Completion]:
+        """Merge slash-command and path completions for the current input."""
+        yield from self.slash_completer.get_completions(document, complete_event)
+        yield from self.path_completer.get_completions(document, complete_event)

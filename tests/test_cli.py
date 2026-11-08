@@ -836,10 +836,13 @@ class TestKeyBindingsAndSetup:
 
         cli._setup_key_bindings()
 
-        # Shift+Tab toggles the mode; Ctrl+O opens the tool-output viewer.
+        # Shift+Tab toggles the mode; Ctrl+O opens the tool-output viewer; Alt+Enter
+        # (Escape,Enter) and Ctrl+J insert a newline while Enter still submits.
         cli.bindings.add.assert_any_call("s-tab")
         cli.bindings.add.assert_any_call("c-o")
-        assert cli.bindings.add.call_count == 2
+        cli.bindings.add.assert_any_call("escape", "enter")
+        cli.bindings.add.assert_any_call("c-j")
+        assert cli.bindings.add.call_count == 4
 
     def test_ctrl_o_binding_requests_viewer(self, cli_with_mocks):
         """Ctrl+O closes prompt() with the viewer signal (never prints inline)."""
@@ -1790,3 +1793,279 @@ class TestBackgroundCancellation:
         fake_routing.restore.assert_not_called()
         printed = [str(c.args[0]) for c in cli.console.print.call_args_list if c.args]
         assert any("still finishing" in text for text in printed)
+
+
+class TestPromptTokens:
+    """The REPL prompt shows model, active role and cached context %."""
+
+    @staticmethod
+    def _joined(cli):
+        return "".join(text for _, text in cli.get_prompt_tokens())
+
+    def test_prompt_shows_model_and_context_percent(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
+        cli.role_name = DefaultRoleNames.DEFAULT
+        cli._context_percent = 42.6
+        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
+            tokens = cli.get_prompt_tokens()
+            joined = self._joined(cli)
+
+        assert tokens[0][1] == " 💬 "  # mode icon stays first
+        assert joined == " 💬 gpt-4o · 43% > "
+
+    def test_prompt_shows_non_default_role(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
+        cli.role_name = DefaultRoleNames.CODER
+        cli._context_percent = 5.0
+        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
+            joined = self._joined(cli)
+        assert joined == " 💬 gpt-4o · coder · 5% > "
+
+    def test_prompt_shows_custom_role_name(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
+        cli.role_name = "SQL Expert"
+        cli._context_percent = None
+        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
+            joined = self._joined(cli)
+        assert joined == " 💬 gpt-4o · SQL Expert > "
+
+    def test_prompt_omits_default_role_and_unknown_context(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
+        cli.role_name = DefaultRoleNames.DEFAULT
+        cli._context_percent = None
+        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
+            joined = self._joined(cli)
+        assert joined == " 💬 gpt-4o > "
+
+    def test_prompt_shortens_provider_prefixed_model(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
+        cli.role_name = DefaultRoleNames.DEFAULT
+        cli._context_percent = None
+        with patch("yaicli.cli.cfg", {"MODEL": "openai/gpt-4o"}):
+            joined = self._joined(cli)
+        assert "gpt-4o" in joined
+        assert "openai/" not in joined
+
+    def test_prompt_truncates_very_long_model_names(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.current_mode = TEMP_MODE
+        cli.role_name = DefaultRoleNames.DEFAULT
+        cli._context_percent = None
+        with patch("yaicli.cli.cfg", {"MODEL": "m" * 40}):
+            joined = self._joined(cli)
+        assert ("m" * 31 + "…") in joined
+
+    def test_prompt_degrades_for_bare_cli_objects(self):
+        """A CLI built via __new__ without state/config still renders a prompt."""
+        bare = CLI.__new__(CLI)
+        bare.current_mode = CHAT_MODE
+        with patch("yaicli.cli.cfg", {}):
+            tokens = bare.get_prompt_tokens()
+        assert tokens[0][1] == " 💬 "
+        assert tokens[-1] == ("class:prompt", "> ")
+        assert "".join(text for _, text in tokens) == " 💬 > "
+
+    def test_update_context_percent_caches_and_renders(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage
+
+        cli = cli_with_mocks
+        cli.chat.history = [ChatMessage(role="user", content="hello " * 200)]
+        cli.role = MagicMock()
+        cli.role.prompt = "You are a helpful assistant."
+        cli._update_context_percent()
+        assert isinstance(cli._context_percent, float)
+        assert cli._context_percent > 0
+        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
+            assert "%" in self._joined(cli)
+
+    def test_update_context_percent_empty_history_clears(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli._context_percent = 50.0
+        cli.chat.history = []
+        cli._update_context_percent()
+        assert cli._context_percent is None
+
+    def test_update_context_percent_degrades_on_estimator_error(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage
+
+        cli = cli_with_mocks
+        cli.chat.history = [ChatMessage(role="user", content="hello")]
+        cli._context_percent = 10.0
+        with patch("yaicli.cli.estimate_context_usage", side_effect=RuntimeError("boom")):
+            cli._update_context_percent()
+        assert cli._context_percent is None
+
+    def test_process_user_input_refreshes_cached_percent(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage
+
+        cli = cli_with_mocks
+        messages = [
+            ChatMessage(role="system", content="system"),
+            ChatMessage(role="user", content="hi"),
+            ChatMessage(role="assistant", content="hello"),
+        ]
+        with patch.object(CLI, "_handle_llm_response", return_value=("hello", messages)):
+            cli._process_user_input("hi")
+        assert isinstance(cli._context_percent, float)
+        assert cli._context_percent > 0
+
+
+class TestRetrySnapshot:
+    """/retry replays the last turn from a pre-turn snapshot."""
+
+    def test_process_user_input_snapshots_pre_turn_state(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage
+
+        cli = cli_with_mocks
+        original = [
+            ChatMessage(role="user", content="older question"),
+            ChatMessage(role="assistant", content="older answer"),
+        ]
+        cli.chat.history = list(original)
+        new_messages = list(original) + [
+            ChatMessage(role="user", content="new question"),
+            ChatMessage(role="assistant", content="new answer"),
+        ]
+        with patch.object(CLI, "_handle_llm_response", return_value=("new answer", new_messages)):
+            cli._process_user_input("new question")
+
+        snapshot = cli._last_turn_snapshot
+        assert snapshot["input"] == "new question"
+        assert snapshot["images"] == []
+        assert snapshot["history"] is not cli.chat.history
+        assert [message.content for message in snapshot["history"]] == ["older question", "older answer"]
+        assert [message.content for message in cli.chat.history] == [
+            "older question",
+            "older answer",
+            "new question",
+            "new answer",
+        ]
+
+    def test_retry_restores_snapshot_and_reprocesses_same_input(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage
+
+        cli = cli_with_mocks
+        original = [ChatMessage(role="user", content="first turn")]
+        cli.chat.history = list(original)
+        calls = []
+
+        def fake_handle(user_input, images=None):
+            calls.append(user_input)
+            if len(calls) == 1:
+                # simulate a failed turn that polluted the history with a partial reply
+                cli.chat.history.append(ChatMessage(role="assistant", content="partial"))
+                return None, []
+            return "ok", list(original) + [
+                ChatMessage(role="user", content=user_input),
+                ChatMessage(role="assistant", content="ok"),
+            ]
+
+        with patch.object(CLI, "_handle_llm_response", side_effect=fake_handle):
+            cli._process_user_input("please answer")
+            assert [message.content for message in cli._last_turn_snapshot["history"]] == ["first turn"]
+            assert [message.content for message in cli.chat.history] == ["first turn", "partial"]
+            assert cli._retry_last_turn() is True
+
+        assert calls == ["please answer", "please answer"]
+        # The partial failed-turn message is gone and the reply was not duplicated.
+        assert [message.content for message in cli.chat.history] == ["first turn", "please answer", "ok"]
+        # The retry turn re-snapshotted the same pre-turn history, so /retry repeats.
+        assert [message.content for message in cli._last_turn_snapshot["history"]] == ["first turn"]
+
+    def test_retry_passes_saved_images(self, cli_with_mocks):
+        from yaicli.schemas import ImageData
+
+        cli = cli_with_mocks
+        cli.chat.history = []
+        image = ImageData(data="x", media_type="image/png", is_url=False)
+        with patch.object(CLI, "_handle_llm_response", side_effect=[(None, []), ("ok", [])]) as mock_handle:
+            cli._process_user_input("look at this", images=[image])
+            cli._retry_last_turn()
+
+        assert mock_handle.call_count == 2
+        assert mock_handle.call_args_list[0].kwargs["images"] == [image]
+        assert mock_handle.call_args_list[1].kwargs["images"] == [image]
+
+    def test_retry_without_previous_turn_is_friendly(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli._last_turn_snapshot = None
+        with patch.object(CLI, "_process_user_input") as mock_process:
+            assert cli._retry_last_turn() is True
+        mock_process.assert_not_called()
+        printed = [str(call.args[0]) for call in cli.console.print.call_args_list if call.args]
+        assert any("Nothing to retry" in text for text in printed)
+
+    def test_clear_command_resets_retry_snapshot_and_percent(self, cli_with_mocks):
+        from yaicli.schemas import ChatMessage
+
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
+        cli.chat.history = [ChatMessage(role="user", content="hi")]
+        cli._last_turn_snapshot = {"input": "hi", "images": [], "history": []}
+        cli._context_percent = 12.0
+
+        cli._handle_special_commands("/clear")
+
+        assert cli._last_turn_snapshot is None
+        assert cli._context_percent is None
+
+    def test_load_chat_resets_retry_snapshot_and_refreshes_percent(self, cli_with_mocks):
+        from yaicli.chat import Chat
+        from yaicli.schemas import ChatMessage
+
+        cli = cli_with_mocks
+        loaded = Chat(title="Loaded", history=[ChatMessage(role="user", content="old question")])
+        cli.chat_manager.validate_chat_index.return_value = True
+        cli.chat_manager.load_chat_by_index.return_value = loaded
+        cli._last_turn_snapshot = {"input": "stale", "images": [], "history": []}
+
+        assert cli._load_chat_by_index("1") is True
+        assert cli._last_turn_snapshot is None
+        assert isinstance(cli._context_percent, float)
+
+
+class TestMultilineAndCompositeCompleter:
+    """Multiline key bindings, composite completer, help table."""
+
+    def test_multiline_bindings_insert_newline(self, cli_with_mocks):
+        from prompt_toolkit.key_binding import KeyBindings
+
+        cli = cli_with_mocks
+        cli.bindings = KeyBindings()
+        cli._setup_key_bindings()
+
+        bindings = list(cli.bindings.bindings)
+        by_keys = {tuple(getattr(key, "value", None) for key in binding.keys): binding for binding in bindings}
+        for keys in (("escape", "c-m"), ("c-j",)):
+            event = MagicMock()
+            by_keys[keys].handler(event)
+            event.current_buffer.insert_text.assert_called_once_with("\n")
+
+    def test_prepare_chat_loop_uses_composite_completer(self, cli_with_mocks):
+        from yaicli.completer import ReplCompleter
+
+        cli = cli_with_mocks
+        with (
+            patch("yaicli.cli.CLI._setup_key_bindings"),
+            patch("yaicli.cli.PromptSession") as mock_session,
+            patch("yaicli.cli.LimitedFileHistory"),
+        ):
+            cli.prepare_chat_loop()
+
+        completer = mock_session.call_args.kwargs.get("completer")
+        assert isinstance(completer, ReplCompleter)
+
+    def test_print_help_lists_new_commands_and_multiline(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.print_help()
+        printed = [str(call.args[0]) for call in cli.console.print.call_args_list if call.args]
+        joined = "\n".join(printed)
+        for command in ("/cost", "/model", "/role", "/retry"):
+            assert command in joined, command
+        assert "Alt+Enter/Ctrl+J" in joined
+        assert "newline" in joined.lower()

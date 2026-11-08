@@ -1,9 +1,12 @@
-"""Tests for path completer."""
+"""Tests for the REPL completers (``@path`` and slash commands)."""
+
+from unittest.mock import MagicMock
 
 import pytest
 from prompt_toolkit.document import Document
 
-from yaicli.completer import AtPathCompleter
+from yaicli.cmd_handler import COMMAND_INFO, CmdHandler, command_completions
+from yaicli.completer import AtPathCompleter, ReplCompleter, SlashCommandCompleter
 
 
 @pytest.fixture
@@ -27,6 +30,11 @@ def temp_workspace(tmp_path):
 def completer(temp_workspace):
     """Create a completer with test workspace as base."""
     return AtPathCompleter(base_dir=temp_workspace)
+
+
+def _completions(completer, text):
+    """Run a completer against a document holding ``text`` before the cursor."""
+    return list(completer.get_completions(Document(text, cursor_position=len(text)), None))
 
 
 def test_at_trigger_completion(completer, temp_workspace):
@@ -110,3 +118,102 @@ def test_space_add_quotes(completer, temp_workspace):
     assert len(space_files) > 0
     # Should be quoted
     assert space_files[0].text == '"space file.txt"'
+
+
+# ---------------------------------------------------------------------------
+# slash-command completion + composition with @path completion
+# ---------------------------------------------------------------------------
+def _all_slash_completions():
+    return _completions(SlashCommandCompleter(), "/")
+
+
+def _completion_texts(completions):
+    return [completion.text for completion in completions]
+
+
+def test_slash_lists_every_registered_command():
+    """/ lists every command registered in CmdHandler.commands (slash spellings)."""
+    handler = CmdHandler(MagicMock())
+    registered = {command for command in handler.commands if command.startswith("/")}
+    completions = _all_slash_completions()
+
+    assert set(_completion_texts(completions)) == registered
+    assert {"/cost", "/model", "/role", "/retry", "/compact", "/context"} <= registered
+
+
+def test_slash_completions_have_descriptions():
+    """Every completion carries a non-empty one-line description in its meta."""
+    completions = _all_slash_completions()
+    assert completions
+    for completion in completions:
+        assert completion.display_meta_text, f"{completion.text} has no description"
+
+
+def test_slash_prefix_filters_commands():
+    """/co filters the menu to commands starting with "/co"."""
+    completions = _completions(SlashCommandCompleter(), "/co")
+
+    assert set(_completion_texts(completions)) == {"/compact", "/context", "/cost"}
+    assert all(completion.start_position == -len("/co") for completion in completions)
+
+
+def test_slash_prefix_is_case_insensitive():
+    completions = _completions(SlashCommandCompleter(), "/CO")
+    assert set(_completion_texts(completions)) == {"/compact", "/context", "/cost"}
+
+
+def test_slash_alias_is_offered():
+    completions = _completions(SlashCommandCompleter(), "/ct")
+    assert "/ctx" in _completion_texts(completions)
+
+    completions = _completions(SlashCommandCompleter(), "/ch")
+    assert "/chats" in _completion_texts(completions)
+
+
+def test_slash_meta_uses_shared_metadata_description():
+    completions = _completions(SlashCommandCompleter(), "/cost")
+
+    assert len(completions) == 1
+    assert completions[0].display_meta_text == next(
+        info.description for info in COMMAND_INFO if info.command == "/cost"
+    )
+
+
+def test_slash_completion_ignores_arguments_and_plain_text():
+    """Only the first token is a command: arguments and normal text are not completed."""
+    slash = SlashCommandCompleter()
+
+    assert _completions(slash, "/model gpt-4o") == []
+    assert _completions(slash, "/add file") == []
+    assert _completions(slash, "hello ") == []
+    assert _completions(slash, "@file") == []
+
+
+def test_slash_completions_match_command_metadata_helper():
+    """command_completions() is the single shared source (commands + aliases)."""
+    pairs = command_completions()
+    assert ("/cost", "Show session token usage and estimated cost") in pairs
+    assert ("/ctx", dict(pairs)["/context"]) in pairs
+
+
+def test_repl_completer_keeps_at_path_completion(temp_workspace):
+    """Composing the slash completer must not break normal @path completion."""
+    repl = ReplCompleter(base_dir=temp_workspace)
+    completions = _completions(repl, "analyze @file")
+
+    assert completions
+    assert any("file" in completion.text for completion in completions)
+
+
+def test_repl_completer_keeps_context_command_path_completion(temp_workspace):
+    repl = ReplCompleter(base_dir=temp_workspace)
+
+    assert any("subdir" in completion.text for completion in _completions(repl, "/context add sub"))
+    assert any("file" in completion.text for completion in _completions(repl, "/add file"))
+
+
+def test_repl_completer_offers_commands_and_paths():
+    repl = ReplCompleter()
+
+    assert {"/cost", "/model", "/role", "/retry"} <= set(_completion_texts(_completions(repl, "/")))
+    assert _completions(repl, "regular text") == []

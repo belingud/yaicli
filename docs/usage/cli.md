@@ -16,6 +16,9 @@ These shortcuts work in all interactive modes:
 | `Ctrl+R`             | Search command history            |
 | `Ctrl+O`             | Open the full-screen tool-output viewer for this turn (`↑/↓` select, `Tab` switch pane, `f` full text, `q`/`Esc` close). Also works while the assistant is generating: generation continues in the background and closing the viewer redraws the accumulated answer |
 | `↑/↓`                | Navigate through command history  |
+| `Alt+Enter` (`Esc`, `Enter`) | Insert a newline instead of submitting the prompt |
+| `Ctrl+J`             | Insert a newline (same as `Alt+Enter`); `Enter` still submits the whole input |
+| `/`                  | Open the slash-command completion menu (all commands with descriptions; `/co` filters; `Tab`/arrows select) |
 | `Ctrl+L`             | Clear the screen                  |
 | `Ctrl+A`             | Move cursor to beginning of line  |
 | `Ctrl+E`             | Move cursor to end of line        |
@@ -47,6 +50,11 @@ YAICLI provides special commands that begin with a slash (`/`) or an exclamation
 | `/del <index>`     | Delete a saved chat session                |
 | `/exit`            | Exit the application                       |
 | `/mode chat\|exec` | Switch between chat and execute modes      |
+| `/cost`            | Show session token usage and estimated cost |
+| `/compact [keep_rounds]` | Compact the conversation, keeping the last N turn groups |
+| `/model [name]`    | Show or switch the model for this session  |
+| `/role [name]`     | Show or switch the assistant role          |
+| `/retry`           | Re-run the last user turn from its pre-turn snapshot |
 | `!<command>`       | Execute a shell command directly           |
 
 With `!<command>`, you can execute a shell command directly without leaving the interactive mode. For example, `!ls -al` will list files in the current directory, `!git status` will show the git status, etc.
@@ -80,9 +88,12 @@ To disable auto-suggestions, set `AUTO_SUGGEST=false` in your configuration.
 
 ## Multi-line and Long Input
 
-The interactive prompt is deliberately single-line: `Enter` submits the current line, so
-`Alt+Enter` / `Esc+Enter` also submit rather than insert a newline. For long or multi-line
-prompts, pass the text as a quoted argument or pipe it:
+The prompt supports multiline editing: press `Alt+Enter` (or `Esc` then `Enter`) or `Ctrl+J` to
+insert a newline, and `Enter` alone to submit the whole buffer. This is handy for pasting logs or
+composing long instructions. The prompt shows the current model and role, plus the last-known
+context-usage percentage (see [Interactive Mode](interactive.md#prompt)).
+
+For long or multi-line prompts in scripts, pass the text as a quoted argument or pipe it:
 
 ```bash
 # Quote a multi-line string

@@ -204,6 +204,12 @@ When in interactive chat or shell mode, you can use these special commands:
 | `/permissions revoke <tool-or-index>` | Remove a persistent permission by tool name or rule number (the tool will ask again) |
 | `/show-output` | Open the full-screen viewer listing every tool output of the current turn (same as `Ctrl+O`) |
 | `/undo` | Restore the last file change made by a guarded tool in this session (see [Workspace Safety](workspace-safety.md#undo)) |
+| `/cost` | Show session token usage, estimated cost, per-model breakdown and tool metrics |
+| `/model` | Show the current model and provider |
+| `/model <name>` | Switch the model for this session; the provider client is rebuilt on the next request, the chat history is kept, and the notice names the previous model so it can be reverted |
+| `/role` | Show the current role and the available roles |
+| `/role <name>` | Switch the assistant role for this session (case-insensitive; unknown names list the available roles) |
+| `/retry` | Re-run the last user turn from its pre-turn snapshot (useful after an API error; partial messages from the failed turn are discarded) |
 
 #### Context Management Commands
 
@@ -311,6 +317,9 @@ In addition to persistent context, you can temporarily reference files using the
 | `Ctrl+R` | Search history |
 | `Ctrl+O` | Open the full-screen tool-output viewer for this turn (`q`/`Esc` to close); works during generation too (generation continues in the background; closing redraws the accumulated answer) |
 | `↑/↓` | Navigate through history |
+| `Alt+Enter` (or `Esc`, `Enter`) | Insert a newline instead of submitting |
+| `Ctrl+J` | Insert a newline (same as `Alt+Enter`); `Enter` still submits |
+| `/` | Open the slash-command completion menu (every command plus a one-line description; `/co` filters) |
 
 ## Next Steps
 

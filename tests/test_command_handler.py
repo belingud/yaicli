@@ -1,8 +1,18 @@
+from types import MappingProxyType
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from yaicli.cmd_handler import CMD_COST, CmdHandler
+from yaicli.cmd_handler import (
+    CMD_COMPACT,
+    CMD_COST,
+    CMD_MODEL,
+    CMD_RETRY,
+    CMD_ROLE,
+    COMMAND_INFO,
+    CmdHandler,
+    command_completions,
+)
 from yaicli.const import (
     CHAT_MODE,
     EXEC_MODE,
@@ -415,3 +425,197 @@ class TestHandleCost:
         assert handler.handle_cost() is True
 
         assert "No usage recorded yet" in _printed_text(handler.cli.console)
+
+
+# ---------------------------------------------------------------------------
+# /model, /role, /retry + shared help/completion metadata
+# ---------------------------------------------------------------------------
+_FAKE_MODEL_CFG = {"MODEL": "gpt-4o-mini", "PROVIDER": "openai"}
+
+
+def _model_handler():
+    cli = MagicMock()
+    cli.console = MagicMock()
+    cli._client = MagicMock()
+    return cli, CmdHandler(cli)
+
+
+class TestHandleModel:
+    """/model shows and switches the session model."""
+
+    def test_model_is_registered(self, cmd_handler):
+        assert CMD_MODEL in cmd_handler.commands
+        assert CMD_MODEL in {command for command, _ in command_completions()}
+
+    def test_show_current_model_and_provider(self):
+        cli, handler = _model_handler()
+        with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)):
+            assert handler.handle_command(CMD_MODEL) is True
+
+        printed = _printed_text(cli.console)
+        assert "gpt-4o-mini" in printed
+        assert "openai" in printed
+
+    def test_switch_model_updates_config_and_invalidates_client(self):
+        cli, handler = _model_handler()
+        old_client = cli._client
+        with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)) as fake_cfg:
+            assert handler.handle_command(f"{CMD_MODEL} gpt-4o") is True
+            assert fake_cfg["MODEL"] == "gpt-4o"
+
+        assert cli._client is None
+        assert cli._client is not old_client
+        printed = _printed_text(cli.console)
+        assert "Model switched: gpt-4o-mini -> gpt-4o" in printed
+        # The notice says how to revert.
+        assert "Revert with /model gpt-4o-mini" in printed
+
+    def test_switch_to_same_model_is_a_noop(self):
+        cli, handler = _model_handler()
+        with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)):
+            handler.handle_command(f"{CMD_MODEL} gpt-4o-mini")
+
+        assert cli._client is cli._client  # untouched client slot
+        assert "Already using model" in _printed_text(cli.console)
+
+    def test_switch_without_writable_config_prints_error(self):
+        cli, handler = _model_handler()
+        # A mapping without __setitem__ models a read-only config object.
+        with patch("yaicli.cmd_handler.cfg", MappingProxyType(dict(_FAKE_MODEL_CFG))):
+            assert handler.handle_command(f"{CMD_MODEL} other-model") is True
+
+        assert "Could not update the session model" in _printed_text(cli.console)
+
+
+class TestHandleRole:
+    """/role lists/switches the assistant role."""
+
+    @staticmethod
+    def _role_handler():
+        cli = MagicMock()
+        cli.console = MagicMock()
+        cli.role_name = "DEFAULT"
+        cli.init_role = "DEFAULT"
+        cli.current_mode = CHAT_MODE
+        cli.role_manager = MagicMock()
+        cli.role_manager.list_roles.return_value = [
+            {"id": "DEFAULT", "name": "DEFAULT"},
+            {"id": "Code Assistant", "name": "Code Assistant"},
+            {"id": "SQL Expert", "name": "SQL Expert"},
+        ]
+        return cli, CmdHandler(cli)
+
+    def test_role_is_registered(self, cmd_handler):
+        assert CMD_ROLE in cmd_handler.commands
+        assert CMD_ROLE in {command for command, _ in command_completions()}
+
+    def test_show_current_role_and_available(self):
+        cli, handler = self._role_handler()
+        assert handler.handle_command(CMD_ROLE) is True
+
+        printed = _printed_text(cli.console)
+        assert "Role: DEFAULT" in printed
+        assert "SQL Expert" in printed
+
+    def test_switch_role_case_insensitively(self):
+        cli, handler = self._role_handler()
+        assert handler.handle_command(f"{CMD_ROLE} sql expert") is True
+
+        cli.set_role.assert_called_once_with("SQL Expert")
+        assert cli.init_role == "SQL Expert"
+        printed = _printed_text(cli.console)
+        assert "Role switched: DEFAULT -> SQL Expert" in printed
+        assert "Revert with /role DEFAULT" in printed
+
+    def test_unknown_role_lists_available_and_does_not_switch(self):
+        cli, handler = self._role_handler()
+        assert handler.handle_command(f"{CMD_ROLE} nope") is True
+
+        cli.set_role.assert_not_called()
+        printed = _printed_text(cli.console)
+        assert "Unknown role: nope" in printed
+        assert "Available roles:" in printed
+        assert "Code Assistant" in printed
+
+    def test_switching_to_non_shell_role_returns_to_chat_mode(self):
+        cli, handler = self._role_handler()
+        cli.current_mode = EXEC_MODE
+        handler.handle_command(f"{CMD_ROLE} SQL Expert")
+        assert cli.current_mode == CHAT_MODE
+
+
+class TestHandleRetry:
+    """/retry replays the last user turn from its snapshot."""
+
+    def test_retry_is_registered(self, cmd_handler):
+        assert CMD_RETRY in cmd_handler.commands
+        assert CMD_RETRY in {command for command, _ in command_completions()}
+
+    def test_retry_delegates_to_cli(self):
+        cli = MagicMock()
+        cli.console = MagicMock()
+        handler = CmdHandler(cli)
+
+        assert handler.handle_command(CMD_RETRY) is True
+        cli._retry_last_turn.assert_called_once()
+
+    def test_retry_without_snapshot_support_is_friendly(self):
+        cli = MagicMock(spec=["console"])
+        cli.console = MagicMock()
+        handler = CmdHandler(cli)
+
+        assert handler.handle_retry() is True
+        assert "Nothing to retry" in _printed_text(cli.console)
+
+    def test_retry_failure_does_not_escape(self):
+        cli = MagicMock()
+        cli.console = MagicMock()
+        cli._retry_last_turn.side_effect = RuntimeError("boom")
+        handler = CmdHandler(cli)
+
+        assert handler.handle_retry() is True
+        assert "Retry failed: boom" in _printed_text(cli.console)
+
+
+class TestCommandMetadata:
+    """The help table and the completion menu share one metadata source."""
+
+    def test_every_metadata_entry_is_registered(self, cmd_handler):
+        for info in COMMAND_INFO:
+            assert info.command in cmd_handler.commands, info.command
+            for alias in info.aliases:
+                assert alias in cmd_handler.commands, alias
+
+    def test_registered_slash_commands_are_all_offered_by_completion(self, cmd_handler):
+        registered = {command for command in cmd_handler.commands if command.startswith("/")}
+        offered = {command for command, _ in command_completions()}
+        assert offered == registered
+
+    def test_cost_is_registered_and_offered(self, cmd_handler):
+        assert "/cost" in cmd_handler.commands
+        assert "/cost" in {command for command, _ in command_completions()}
+
+
+class TestHistoryCommandsRefreshPromptState:
+    """History-mutating commands refresh the cached prompt context %."""
+
+    def test_compact_refreshes_percent_and_drops_retry_snapshot(self):
+        from yaicli.schemas import ChatMessage
+
+        cli = MagicMock()
+        cli.console = MagicMock()
+        cli.current_mode = CHAT_MODE
+        history = []
+        for index in range(3):
+            history += [
+                ChatMessage(role="user", content=f"question {index}"),
+                ChatMessage(role="assistant", content=f"answer {index}"),
+            ]
+        cli.chat.history = history
+        cli._last_turn_snapshot = {"input": "old", "images": [], "history": []}
+        handler = CmdHandler(cli)
+
+        assert handler.handle_command(f"{CMD_COMPACT} 1") is True
+
+        cli._update_context_percent.assert_called_once()
+        assert cli._last_turn_snapshot is None

@@ -2,7 +2,8 @@
 
 import shlex
 import subprocess
-from typing import Union
+from dataclasses import dataclass
+from typing import Optional, Tuple, Union
 
 from rich.markdown import Markdown
 from rich.padding import Padding
@@ -44,10 +45,101 @@ CMD_UNDO = "/undo"
 #: Slash command to show session token usage and estimated cost (v0.22 K17).
 #: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
 CMD_COST = "/cost"
+#: Slash command to show or switch the model for the current session.
+#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
+CMD_MODEL = "/model"
+#: Slash command to show or switch the assistant role.
+#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
+CMD_ROLE = "/role"
+#: Slash command to re-run the last user turn from its pre-turn snapshot.
+#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
+CMD_RETRY = "/retry"
 #: Turn groups kept by ``/compact`` when no argument is given.
 DEFAULT_COMPACT_KEEP_ROUNDS = 5
 #: ``/context`` subcommands that print the estimated usage breakdown.
 CONTEXT_BUDGET_SUBCOMMANDS = ("budget", "stats", "usage")
+
+
+@dataclass(frozen=True)
+class CommandInfo:
+    """One slash command's help/completion metadata.
+
+    ``command`` is the token inserted by the REPL completion menu and
+    ``description`` its one-line explanation. ``usage`` is the spelling shown in
+    the help table (defaults to ``command``) and ``aliases`` are alternate
+    registered slash spellings offered by completion with the same description.
+    """
+
+    command: str
+    description: str
+    usage: Optional[str] = None
+    aliases: Tuple[str, ...] = ()
+
+    @property
+    def help_text(self) -> str:
+        """The usage column shown by ``CLI.print_help``."""
+        return self.usage or self.command
+
+
+#: Single source of truth for the REPL help table *and* the slash-command
+#: completion menu: ``CLI.print_help`` renders it and :class:`SlashCommandCompleter`
+#: offers it, so the two can never diverge. Keep it in sync with
+#: ``CmdHandler.commands`` (tests/test_command_handler.py asserts the parity).
+COMMAND_INFO: Tuple[CommandInfo, ...] = (
+    CommandInfo(CMD_HELP[0], "Show help message", usage="|".join(CMD_HELP)),
+    CommandInfo(CMD_CLEAR, "Clear chat history"),
+    CommandInfo(CMD_HISTORY, "Show chat history"),
+    CommandInfo(CMD_LIST_CHATS, "List saved chats", usage=f"{CMD_LIST_CHATS}|/chats", aliases=("/chats",)),
+    CommandInfo(CMD_SAVE_CHAT, "Save current chat", usage=f"{CMD_SAVE_CHAT} <title>"),
+    CommandInfo(CMD_LOAD_CHAT, "Load a saved chat", usage=f"{CMD_LOAD_CHAT} <index>"),
+    CommandInfo(
+        CMD_DELETE_CHAT,
+        "Delete a saved chat",
+        usage=f"{CMD_DELETE_CHAT}|/delete <index>",
+        aliases=("/delete",),
+    ),
+    CommandInfo(CMD_ADD, "Add @file/dir to context", usage=f"{CMD_ADD} <path>"),
+    CommandInfo(
+        CMD_CONTEXT[0],
+        "Show context/token usage; manage context (list, add, remove, clear, budget)",
+        usage="/context, /ctx",
+        aliases=("/ctx",),
+    ),
+    CommandInfo(CMD_COST, "Show session token usage and estimated cost"),
+    CommandInfo(
+        CMD_COMPACT,
+        f"Compact history, keeping the last N turn groups (default {DEFAULT_COMPACT_KEEP_ROUNDS})",
+        usage=f"{CMD_COMPACT} [keep_rounds]",
+    ),
+    CommandInfo(
+        CMD_PERMISSIONS,
+        "List/revoke tool permissions and session grants",
+        usage=f"{CMD_PERMISSIONS} [revoke <tool-or-index>]",
+    ),
+    CommandInfo(CMD_SHOW_OUTPUT, "View this turn's tool outputs (same as Ctrl+O)"),
+    CommandInfo(CMD_UNDO, "Undo the last file change made by a tool"),
+    CommandInfo(CMD_MODEL, "Show or switch the model for this session", usage=f"{CMD_MODEL} [name]"),
+    CommandInfo(CMD_ROLE, "Show or switch the assistant role", usage=f"{CMD_ROLE} [name]"),
+    CommandInfo(CMD_RETRY, "Re-run the last user turn (e.g. after an API error)"),
+    CommandInfo(CMD_EXIT, "Exit (Ctrl+D also exits)", usage=f"{CMD_EXIT}|Ctrl+D"),
+    CommandInfo(CMD_MODE, "Switch mode (Case insensitive)", usage=f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"),
+)
+
+
+def command_completions() -> Tuple[Tuple[str, str], ...]:
+    """Return ``(command, description)`` pairs for the REPL completion menu.
+
+    Canonical commands come first, then every slash alias with the same
+    description. Non-slash aliases (``?``) are not offered: completion only fires
+    on a leading ``/``.
+    """
+    entries = []
+    for info in COMMAND_INFO:
+        entries.append((info.command, info.description))
+        for alias in info.aliases:
+            if alias.startswith("/"):
+                entries.append((alias, info.description))
+    return tuple(entries)
 
 
 class CmdHandler:
@@ -72,6 +164,7 @@ class CmdHandler:
             CMD_SAVE_CHAT: self.handle_save,
             CMD_LOAD_CHAT: self.handle_load,
             CMD_DELETE_CHAT: self.handle_delete,
+            "/delete": self.handle_delete,  # long-form alias (accepted since prefixes matched)
             CMD_MODE: self.handle_mode,
             CMD_ADD: self.handle_add_context,
             CMD_CONTEXT[0] if isinstance(CMD_CONTEXT, tuple) else CMD_CONTEXT: self.handle_context,
@@ -81,6 +174,9 @@ class CmdHandler:
             CMD_SHOW_OUTPUT: self.handle_show_output,
             CMD_UNDO: self.handle_undo,
             CMD_COST: self.handle_cost,
+            CMD_MODEL: self.handle_model,
+            CMD_ROLE: self.handle_role,
+            CMD_RETRY: self.handle_retry,
         }
 
     def handle_add_context(self, command_input: str = "") -> bool:
@@ -182,6 +278,10 @@ class CmdHandler:
             f"({result.removed_count} message(s) removed, keeping the last {keep_rounds} turn groups).",
             style="bold green",
         )
+        # The conversation moved on: refresh the prompt's context % and drop the
+        # /retry snapshot (restoring it would undo the compaction).
+        self._clear_retry_snapshot()
+        self._refresh_context_percent()
         return True
 
     # ------------------- permission commands (v0.19 K06) -------------------
@@ -453,6 +553,232 @@ class CmdHandler:
                 console.print(f"  {safe_text(str(name))}: {model_in:,} in / {model_out:,} out, {cost_text}")
         return True
 
+    # ------------------- model / role / retry commands -------------------
+    @staticmethod
+    def _cfg_value(key: str, default=""):
+        """Read a config value defensively (never raise on mock/legacy config)."""
+        try:
+            if hasattr(cfg, "get"):
+                value = cfg.get(key, default)
+                return value if value is not None else default
+        except Exception:  # pragma: no cover - config lookups must never break a command
+            return default
+        return default
+
+    @staticmethod
+    def _set_cfg_value(key: str, value) -> bool:
+        """Write one config value for this session (returns False when unsupported)."""
+        try:
+            cfg[key] = value
+            return True
+        except Exception:  # pragma: no cover - read-only/legacy config objects
+            return False
+
+    def _invalidate_client(self) -> None:
+        """Drop the lazily-created LLM client so the next request rebuilds it."""
+        try:
+            self.cli._client = None
+        except (AttributeError, TypeError):  # pragma: no cover - bare/legacy CLI objects
+            pass
+
+    def _refresh_context_percent(self) -> None:
+        """Refresh the CLI's cached context-usage percentage after a history change."""
+        updater = getattr(self.cli, "_update_context_percent", None)
+        if not callable(updater):  # pragma: no cover - lightweight CLI stand-ins
+            return
+        try:
+            updater()
+        except Exception:  # pragma: no cover - prompt decoration must never break a command
+            pass
+
+    def _clear_retry_snapshot(self) -> None:
+        """Forget the ``/retry`` snapshot: the conversation it belonged to moved on."""
+        try:
+            self.cli._last_turn_snapshot = None
+        except (AttributeError, TypeError):  # pragma: no cover - bare/legacy CLI objects
+            pass
+
+    def _current_role_name(self) -> str:
+        """Return the active role name (``""`` when unknown)."""
+        value = getattr(self.cli, "role_name", "")
+        return value if isinstance(value, str) else ""
+
+    def _available_role_names(self) -> list:
+        """Return the registered role ids/names (empty when the manager cannot list)."""
+        manager = getattr(self.cli, "role_manager", None)
+        lister = getattr(manager, "list_roles", None)
+        if not callable(lister):
+            return []
+        try:
+            entries = lister()
+        except Exception:  # pragma: no cover - listing must never break the command
+            return []
+        if not isinstance(entries, (list, tuple)):
+            return []
+        names: list = []
+        for entry in entries:
+            if isinstance(entry, dict):
+                name = entry.get("id") or entry.get("name")
+            else:
+                name = getattr(entry, "name", None)
+            if isinstance(name, str) and name and name not in names:
+                names.append(name)
+        return names
+
+    def _resolve_role_name(self, requested: str) -> Optional[str]:
+        """Resolve a role name exactly, then case-insensitively; ``None`` if unknown."""
+        names = self._available_role_names()
+        if requested in names:
+            return requested
+        folded = requested.casefold()
+        for name in names:
+            if name.casefold() == folded:
+                return name
+        if names:
+            return None
+        # A manager that cannot list roles may still resolve the exact name.
+        manager = getattr(self.cli, "role_manager", None)
+        getter = getattr(manager, "get_role", None)
+        if not callable(getter):  # pragma: no cover - lightweight CLI stand-ins
+            return None
+        try:
+            role = getter(requested)
+        except Exception:
+            return None
+        name = getattr(role, "name", None)
+        return name if isinstance(name, str) and name else requested
+
+    def handle_model(self, command_input: str = "") -> bool:
+        """Handle ``/model [name]``: show or switch the model for this session.
+
+        Switching writes ``cfg["MODEL"]``, drops the lazily-created provider client
+        so the next request rebuilds it, and keeps the chat history. The change is
+        session-only; the notice names the previous model so it can be restored.
+
+        Args:
+            command_input: "/model" or "/model <name>"
+
+        Returns:
+            True to continue the REPL loop
+        """
+        console = self.cli.console
+        current = self._cfg_value("MODEL")
+        provider = self._cfg_value("PROVIDER")
+        parts = command_input.split(maxsplit=1)
+        requested = parts[1].strip() if len(parts) > 1 else ""
+
+        if not requested:
+            console.print(f"Model    : {safe_text(str(current or 'unknown'))}")
+            console.print(f"Provider : {safe_text(str(provider or 'unknown'))}")
+            console.print(
+                f"[dim]  Use {CMD_MODEL} <name> to switch the model for this session; "
+                f"changes are not written to the config file.[/dim]"
+            )
+            return True
+
+        if requested == current:
+            console.print(f"Already using model '{safe_text(requested)}'.", style="yellow")
+            return True
+
+        if not self._set_cfg_value("MODEL", requested):
+            console.print("Could not update the session model for this CLI.", style="red")
+            return True
+
+        # The provider/client captured the old model at construction: rebuild it on
+        # the next request so the switch takes effect without touching the history.
+        self._invalidate_client()
+        self._refresh_context_percent()
+        old = str(current) if current else "unknown"
+        console.print(
+            f"Model switched: {safe_text(old)} -> {safe_text(requested)} (session only).",
+            style="bold green",
+        )
+        console.print(
+            f"[dim]  Chat history is kept and the provider client is rebuilt on the next request. "
+            f"Revert with {CMD_MODEL} {safe_text(old)}, or restart to use the configured model.[/dim]"
+        )
+        return True
+
+    def handle_role(self, command_input: str = "") -> bool:
+        """Handle ``/role [name]``: show or switch the assistant role.
+
+        Role names resolve exactly first, then case-insensitively. An unknown role
+        prints the available names instead of raising. Switching keeps the prompt
+        in sync (``CLI.set_role`` updates the role prompt); a non-shell role returns
+        the session to chat mode.
+
+        Args:
+            command_input: "/role" or "/role <name>"
+
+        Returns:
+            True to continue the REPL loop
+        """
+        console = self.cli.console
+        current = self._current_role_name()
+        available = self._available_role_names()
+        parts = command_input.split(maxsplit=1)
+        requested = parts[1].strip() if len(parts) > 1 else ""
+
+        if not requested:
+            console.print(f"Role: {safe_text(current or 'unknown')}", style="bold")
+            if available:
+                console.print(f"[dim]  Available: {safe_text(', '.join(available))}[/dim]")
+            console.print(f"[dim]  Use {CMD_ROLE} <name> to switch the assistant role.[/dim]")
+            return True
+
+        resolved = self._resolve_role_name(requested)
+        if resolved is None:
+            console.print(f"Unknown role: {safe_text(requested)}", style="yellow")
+            if available:
+                console.print(f"Available roles: {safe_text(', '.join(available))}")
+                console.print("[dim]  Use --list-roles outside the REPL for role details.[/dim]")
+            else:  # pragma: no cover - a manager without a role list
+                console.print("Use --list-roles outside the REPL to see the available roles.", style="dim")
+            return True
+
+        if resolved == current:
+            console.print(f"Already using role '{safe_text(resolved)}'.", style="yellow")
+            return True
+
+        setter = getattr(self.cli, "set_role", None)
+        if not callable(setter):  # pragma: no cover - lightweight CLI stand-ins
+            console.print("This CLI cannot switch roles in the current session.", style="yellow")
+            return True
+
+        setter(resolved)
+        # Keep Shift+Tab/mode switching consistent with the newly selected role.
+        try:
+            self.cli.init_role = resolved
+        except (AttributeError, TypeError):  # pragma: no cover - bare/legacy CLI objects
+            pass
+        if resolved != DefaultRoleNames.SHELL and getattr(self.cli, "current_mode", None) == EXEC_MODE:
+            self.cli.current_mode = CHAT_MODE
+        self._refresh_context_percent()
+        old = current or "unknown"
+        console.print(f"Role switched: {safe_text(old)} -> {safe_text(resolved)}.", style="bold green")
+        console.print(f"[dim]  Revert with {CMD_ROLE} {safe_text(old)}, or restart to use the configured role.[/dim]")
+        return True
+
+    def handle_retry(self) -> bool:
+        """Handle ``/retry``: re-run the last user turn from its pre-turn snapshot.
+
+        The CLI snapshots history + input + images before each turn, so a turn
+        that failed (e.g. an API error) can be replayed without duplicating the
+        partial assistant/tool messages it produced.
+
+        Returns:
+            True to continue the REPL loop
+        """
+        retry = getattr(self.cli, "_retry_last_turn", None)
+        if not callable(retry):
+            self.cli.console.print("Nothing to retry: this CLI has no turn snapshot.", style="yellow")
+            return True
+        try:
+            retry()
+        except Exception as e:  # the REPL must survive a failed retry
+            self.cli.console.print(f"Retry failed: {safe_text(e)}", style="red")
+        return True
+
     def handle_context(self, command_input: str = "") -> bool:
         """Handle /context (or /ctx) command.
 
@@ -534,18 +860,26 @@ class CmdHandler:
         if lower_input in self.commands:
             return self.commands[lower_input]()
 
-        # Check for commands with parameters (save, load, delete, mode, add, context)
-        for cmd_prefix, handler in self.commands.items():
-            if lower_input.startswith(cmd_prefix) and cmd_prefix in (
+        # Check for commands with parameters. Match the first whitespace-delimited
+        # token (not a raw string prefix) so e.g. ``/model`` is never mistaken for
+        # ``/mode`` and an unknown ``/modelx`` stays a normal prompt.
+        parts = lower_input.split(maxsplit=1)
+        if len(parts) == 2:
+            command_token = parts[0]
+            handler = self.commands.get(command_token)
+            if handler is not None and command_token in (
                 CMD_SAVE_CHAT,
                 CMD_LOAD_CHAT,
                 CMD_DELETE_CHAT,
+                "/delete",  # long-form alias of /del
                 CMD_MODE,
                 CMD_ADD,
                 CMD_CONTEXT[0] if isinstance(CMD_CONTEXT, tuple) else CMD_CONTEXT,
                 "/ctx",  # Also handle the /ctx alias
                 CMD_COMPACT,
                 CMD_PERMISSIONS,
+                CMD_MODEL,
+                CMD_ROLE,
             ):
                 return handler(user_input)
 
@@ -597,6 +931,9 @@ class CmdHandler:
         if self.cli.current_mode == CHAT_MODE:
             self.cli.chat.history.clear()
             self.cli.console.print("Chat history cleared", style="bold yellow")
+            # A cleared conversation has no turn to retry and no context to report.
+            self._clear_retry_snapshot()
+            self._refresh_context_percent()
         return True
 
     def handle_history(self) -> bool:
