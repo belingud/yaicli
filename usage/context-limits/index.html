@@ -572,9 +572,42 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-session-and-memory-limits" class="md-nav__link">
+  <a href="#5-tokens-cost" class="md-nav__link">
     <span class="md-ellipsis">
-      5. Session and memory limits
+      5. Tokens &amp; cost
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Tokens &amp; cost">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cost
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#showing-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Showing usage
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-session-and-memory-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Session and memory limits
     </span>
   </a>
   
@@ -1909,9 +1942,42 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-session-and-memory-limits" class="md-nav__link">
+  <a href="#5-tokens-cost" class="md-nav__link">
     <span class="md-ellipsis">
-      5. Session and memory limits
+      5. Tokens &amp; cost
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Tokens &amp; cost">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cost
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#showing-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Showing usage
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-session-and-memory-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Session and memory limits
     </span>
   </a>
   
@@ -2132,7 +2198,63 @@ window differs per model). When that happens, YAICLI:</p>
 </table>
 <p>Use <code>/context</code> when a session starts behaving as if it forgot earlier steps; then <code>/compact</code> to
 reclaim budget deliberately, or raise <code>CONTEXT_BUDGET_TOKENS</code> if your model has a larger window.</p>
-<h2 id="5-session-and-memory-limits">5. Session and memory limits<a class="headerlink" href="#5-session-and-memory-limits" title="Permanent link">&para;</a></h2>
+<h2 id="5-tokens-cost">5. Tokens &amp; cost<a class="headerlink" href="#5-tokens-cost" title="Permanent link">&para;</a></h2>
+<p>YAICLI measures what a run actually costs (v0.22 K17). Token counts come from the provider
+response whenever the provider reports them, so they are exact for the request. When a provider
+does not report usage (or an OpenAI-compatible proxy rejects the streaming usage option), YAICLI
+falls back to the same heuristic as the budget estimator and marks the numbers as <strong>estimated</strong>
+instead of hiding them.</p>
+<ul>
+<li>per request: prompt/completion/total tokens, plus prompt-cache hits (<code>cached_tokens</code>) and
+  reasoning tokens (<code>reasoning_tokens</code>) when the provider reports them;</li>
+<li>per session: totals <strong>per model</strong>, request count, and tool metrics (call count, total wall-clock
+  duration, result characters the model saw);</li>
+<li>per run: the last provider <code>finish_reason</code> (so a <code>"length"</code> truncation is visible).</li>
+</ul>
+<h3 id="cost">Cost<a class="headerlink" href="#cost" title="Permanent link">&para;</a></h3>
+<p>Cost is an <strong>estimate</strong> in USD, computed as <code>tokens / 1M × price</code> per model. The built-in price
+table covers common OpenAI, Anthropic, Gemini, DeepSeek, Qwen and GLM models (approximate public
+list prices). Override it for exact accounting — and to price models the table does not know — with
+<code>MODEL_PRICING</code>, a JSON object of model-prefix to USD-per-1M-token prices:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[core]</span>
+<span class="c1"># JSON; prefixes are matched longest-first, and override the built-in table</span>
+<span class="na">MODEL_PRICING</span><span class="o">=</span><span class="s">{&quot;gpt-4o&quot;: {&quot;input&quot;: 2.5, &quot;output&quot;: 10}, &quot;my-local-model&quot;: {&quot;input&quot;: 0, &quot;output&quot;: 0}}</span>
+</code></pre></div>
+<p>Unknown models are reported as "unknown model pricing" (and <code>cost_usd: null</code> in JSON output)
+instead of a guessed number. With cache pricing the estimate is intentionally conservative: cached
+tokens are still billed at the full input price.</p>
+<h3 id="showing-usage">Showing usage<a class="headerlink" href="#showing-usage" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Where</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SHOW_USAGE</code> (default <code>true</code>)</td>
+<td>One dim line after each interactive turn, e.g. <code>tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop</code>. Unknown cost is simply omitted; machine/headless output never prints it.</td>
+</tr>
+<tr>
+<td><code>/cost</code> (interactive)</td>
+<td>Session totals, per-model breakdown, estimated USD cost, tool call metrics and the last finish reason.</td>
+</tr>
+<tr>
+<td><code>--output-format json</code></td>
+<td>The full <code>usage</code> object + <code>finish_reason</code> (see <a href="../headless/">Headless &amp; Scripting</a>).</td>
+</tr>
+<tr>
+<td><code>--output-format stream-json</code></td>
+<td>A final <code>usage</code> event with the same numbers.</td>
+</tr>
+</tbody>
+</table>
+<p>When <code>finish_reason</code> is <code>"length"</code> the answer was truncated by the output token limit: YAICLI
+prints one <code>MAX_TOKENS</code> warning to stderr in every mode and reports <code>finish_reason: "length"</code> in
+structured output. Raise <code>MAX_TOKENS</code> (or reduce the context/tool output sent) to get complete
+answers.</p>
+<h2 id="6-session-and-memory-limits">6. Session and memory limits<a class="headerlink" href="#6-session-and-memory-limits" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>INTERACTIVE_ROUND</code> (default <code>25</code>) is the number of chat turns kept in the REPL
   (×2 messages), not a token limit. Token trimming is described above.</li>
@@ -2206,6 +2328,16 @@ reclaim budget deliberately, or raise <code>CONTEXT_BUDGET_TOKENS</code> if your
 <td><code>INTERACTIVE_ROUND</code></td>
 <td><code>25</code></td>
 <td>Chat turns kept in the REPL</td>
+</tr>
+<tr>
+<td><code>SHOW_USAGE</code></td>
+<td><code>true</code></td>
+<td>Print one dim token/cost line after each interactive turn</td>
+</tr>
+<tr>
+<td><code>MODEL_PRICING</code></td>
+<td><code>{}</code></td>
+<td>JSON price overrides (<code>{"model-prefix": {"input": x, "output": y}}</code>, USD per 1M tokens)</td>
 </tr>
 </tbody>
 </table>

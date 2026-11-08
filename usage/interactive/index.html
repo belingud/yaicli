@@ -697,9 +697,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prompt
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#commands" class="md-nav__link">
     <span class="md-ellipsis">
       Commands
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage &amp; cost
     </span>
   </a>
   
@@ -1846,9 +1864,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prompt
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#commands" class="md-nav__link">
     <span class="md-ellipsis">
       Commands
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage &amp; cost
     </span>
   </a>
   
@@ -1926,19 +1962,28 @@ Current:<span class="w"> </span>Persistent<span class="w"> </span>Session:<span 
 <span class="s1">/help|?            : Show help message</span>
 <span class="s1">/clear             : Clear chat history</span>
 <span class="s1">/his               : Show chat history</span>
-<span class="s1">/list              : List saved chats</span>
+<span class="s1">/list|/chats       : List saved chats</span>
 <span class="s1">/save &lt;title&gt;      : Save current chat</span>
 <span class="s1">/load &lt;index&gt;      : Load a saved chat</span>
-<span class="s1">/del &lt;index&gt;       : Delete a saved chat</span>
+<span class="s1">/del|/delete &lt;index&gt;: Delete a saved chat</span>
 <span class="s1">/add &lt;path&gt;        : Add @file/dir to context</span>
-<span class="s1">/context, /ctx     : Manage context (list, add, remove, clear)</span>
-<span class="s1">  Tip: Type &#39;</span>@<span class="err">&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span>completion,<span class="w"> </span>use<span class="w"> </span>Tab/arrows<span class="w"> </span>to<span class="w"> </span><span class="k">select</span>
-!&lt;command&gt;<span class="w">         </span>:<span class="w"> </span>Execute<span class="w"> </span>shell<span class="w"> </span><span class="nb">command</span><span class="w"> </span>directly<span class="w"> </span><span class="o">(</span>e.g.,<span class="w"> </span>!ls<span class="w"> </span>-al<span class="o">)</span>
-/exit<span class="p">|</span>Ctrl+D<span class="w">       </span>:<span class="w"> </span>Exit
-Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span class="w"> </span>input<span class="w"> </span>/<span class="w"> </span>cancel<span class="w"> </span>turn<span class="p">;</span><span class="w"> </span>press<span class="w"> </span>twice<span class="w"> </span>to<span class="w"> </span><span class="nb">exit</span>
+<span class="s1">/context, /ctx     : Show context/token usage; manage context (list, add, remove, clear, budget)</span>
+<span class="s1">/cost              : Show session token usage and estimated cost</span>
+<span class="s1">/compact [keep_rounds]: Compact history, keeping the last N turn groups (default 5)</span>
+<span class="s1">/permissions [revoke &lt;tool-or-index&gt;]: List/revoke tool permissions and session grants</span>
+<span class="s1">/show-output       : View this turn&#39;</span>s<span class="w"> </span>tool<span class="w"> </span>outputs<span class="w"> </span><span class="o">(</span>same<span class="w"> </span>as<span class="w"> </span>Ctrl+O<span class="o">)</span>
+/undo<span class="w">              </span>:<span class="w"> </span>Undo<span class="w"> </span>the<span class="w"> </span>last<span class="w"> </span>file<span class="w"> </span>change<span class="w"> </span>made<span class="w"> </span>by<span class="w"> </span>a<span class="w"> </span>tool
+/model<span class="w"> </span><span class="o">[</span>name<span class="o">]</span><span class="w">      </span>:<span class="w"> </span>Show<span class="w"> </span>or<span class="w"> </span>switch<span class="w"> </span>the<span class="w"> </span>model<span class="w"> </span><span class="k">for</span><span class="w"> </span>this<span class="w"> </span>session
+/role<span class="w"> </span><span class="o">[</span>name<span class="o">]</span><span class="w">       </span>:<span class="w"> </span>Show<span class="w"> </span>or<span class="w"> </span>switch<span class="w"> </span>the<span class="w"> </span>assistant<span class="w"> </span>role
+/retry<span class="w">             </span>:<span class="w"> </span>Re-run<span class="w"> </span>the<span class="w"> </span>last<span class="w"> </span>user<span class="w"> </span>turn<span class="w"> </span><span class="o">(</span>e.g.<span class="w"> </span>after<span class="w"> </span>an<span class="w"> </span>API<span class="w"> </span>error<span class="o">)</span>
+/exit<span class="p">|</span>Ctrl+D<span class="w">       </span>:<span class="w"> </span>Exit<span class="w"> </span><span class="o">(</span>Ctrl+D<span class="w"> </span>also<span class="w"> </span>exits<span class="o">)</span>
 /mode<span class="w"> </span>chat<span class="p">|</span><span class="nb">exec</span><span class="w">    </span>:<span class="w"> </span>Switch<span class="w"> </span>mode<span class="w"> </span><span class="o">(</span>Case<span class="w"> </span>insensitive<span class="o">)</span>
+!&lt;command&gt;<span class="w">         </span>:<span class="w"> </span>Execute<span class="w"> </span>shell<span class="w"> </span><span class="nb">command</span><span class="w"> </span>directly<span class="w"> </span><span class="o">(</span>e.g.,<span class="w"> </span>!ls<span class="w"> </span>-al<span class="o">)</span>
+Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span class="w"> </span>input<span class="w"> </span>/<span class="w"> </span>cancel<span class="w"> </span>turn<span class="p">;</span><span class="w"> </span>press<span class="w"> </span>twice<span class="w"> </span>to<span class="w"> </span><span class="nb">exit</span>
+Alt+Enter/Ctrl+J<span class="w">   </span>:<span class="w"> </span>Insert<span class="w"> </span>a<span class="w"> </span>newline<span class="w"> </span><span class="o">(</span>Enter<span class="w"> </span>still<span class="w"> </span>submits<span class="o">)</span>
+<span class="w">  </span>Tip:<span class="w"> </span>Type<span class="w"> </span><span class="s1">&#39;@&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>file<span class="w"> </span>paths<span class="w"> </span>and<span class="w"> </span><span class="s1">&#39;/&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>slash<span class="w"> </span>commands<span class="p">;</span><span class="w"> </span>use<span class="w"> </span>Tab/arrows<span class="w"> </span>to<span class="w"> </span><span class="k">select</span>
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-<span class="w"> </span>💬<span class="w"> </span>&gt;
+<span class="w"> </span>💬<span class="w"> </span>gpt-4o<span class="w"> </span>·<span class="w"> </span><span class="m">12</span>%<span class="w"> </span>&gt;
 </code></pre></div>
 <p>Or use <code>ai --chat</code> to start a temporary session.</p>
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--chat
@@ -1955,20 +2000,45 @@ Press<span class="w"> </span>Shift+Tab<span class="w"> </span>to<span class="w">
 /help<span class="p">|</span>?<span class="w">            </span>:<span class="w"> </span>Show<span class="w"> </span><span class="nb">help</span><span class="w"> </span>message
 /clear<span class="w">             </span>:<span class="w"> </span>Clear<span class="w"> </span>chat<span class="w"> </span><span class="nb">history</span>
 /his<span class="w">               </span>:<span class="w"> </span>Show<span class="w"> </span>chat<span class="w"> </span><span class="nb">history</span>
-/list<span class="w">              </span>:<span class="w"> </span>List<span class="w"> </span>saved<span class="w"> </span>chats
+/list<span class="p">|</span>/chats<span class="w">       </span>:<span class="w"> </span>List<span class="w"> </span>saved<span class="w"> </span>chats
 /save<span class="w"> </span>&lt;title&gt;<span class="w">      </span>:<span class="w"> </span>Save<span class="w"> </span>current<span class="w"> </span>chat
 /load<span class="w"> </span>&lt;index&gt;<span class="w">      </span>:<span class="w"> </span>Load<span class="w"> </span>a<span class="w"> </span>saved<span class="w"> </span>chat
-/del<span class="w"> </span>&lt;index&gt;<span class="w">       </span>:<span class="w"> </span>Delete<span class="w"> </span>a<span class="w"> </span>saved<span class="w"> </span>chat
+/del<span class="p">|</span>/delete<span class="w"> </span>&lt;index&gt;:<span class="w"> </span>Delete<span class="w"> </span>a<span class="w"> </span>saved<span class="w"> </span>chat
 /add<span class="w"> </span>&lt;path&gt;<span class="w">        </span>:<span class="w"> </span>Add<span class="w"> </span>@file/dir<span class="w"> </span>to<span class="w"> </span>context
-/context,<span class="w"> </span>/ctx<span class="w">     </span>:<span class="w"> </span>Manage<span class="w"> </span>context<span class="w"> </span><span class="o">(</span>list,<span class="w"> </span>add,<span class="w"> </span>remove,<span class="w"> </span>clear<span class="o">)</span>
-<span class="w">  </span>Tip:<span class="w"> </span>Type<span class="w"> </span><span class="s1">&#39;@&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span>completion,<span class="w"> </span>use<span class="w"> </span>Tab/arrows<span class="w"> </span>to<span class="w"> </span><span class="k">select</span>
-!&lt;command&gt;<span class="w">         </span>:<span class="w"> </span>Execute<span class="w"> </span>shell<span class="w"> </span><span class="nb">command</span><span class="w"> </span>directly<span class="w"> </span><span class="o">(</span>e.g.,<span class="w"> </span>!ls<span class="w"> </span>-al<span class="o">)</span>
-/exit<span class="p">|</span>Ctrl+D<span class="w">       </span>:<span class="w"> </span>Exit
-Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span class="w"> </span>input<span class="w"> </span>/<span class="w"> </span>cancel<span class="w"> </span>turn<span class="p">;</span><span class="w"> </span>press<span class="w"> </span>twice<span class="w"> </span>to<span class="w"> </span><span class="nb">exit</span>
-/mode<span class="w"> </span>chat<span class="p">|</span><span class="nb">exec</span><span class="w">    </span>:<span class="w"> </span>Switch<span class="w"> </span>mode<span class="w"> </span><span class="o">(</span>Case<span class="w"> </span>insensitive<span class="o">)</span>
+/context,<span class="w"> </span>/ctx<span class="w">     </span>:<span class="w"> </span>Show<span class="w"> </span>context/token<span class="w"> </span>usage<span class="p">;</span><span class="w"> </span>manage<span class="w"> </span>context<span class="w"> </span><span class="o">(</span>list,<span class="w"> </span>add,<span class="w"> </span>remove,<span class="w"> </span>clear,<span class="w"> </span>budget<span class="o">)</span>
+/cost<span class="w">              </span>:<span class="w"> </span>Show<span class="w"> </span>session<span class="w"> </span>token<span class="w"> </span>usage<span class="w"> </span>and<span class="w"> </span>estimated<span class="w"> </span>cost
+/compact<span class="w"> </span><span class="o">[</span>keep_rounds<span class="o">]</span>:<span class="w"> </span>Compact<span class="w"> </span>history,<span class="w"> </span>keeping<span class="w"> </span>the<span class="w"> </span>last<span class="w"> </span>N<span class="w"> </span>turn<span class="w"> </span>groups<span class="w"> </span><span class="o">(</span>default<span class="w"> </span><span class="m">5</span><span class="o">)</span>
+/permissions<span class="w"> </span><span class="o">[</span>revoke<span class="w"> </span>&lt;tool-or-index&gt;<span class="o">]</span>:<span class="w"> </span>List/revoke<span class="w"> </span>tool<span class="w"> </span>permissions<span class="w"> </span>and<span class="w"> </span>session<span class="w"> </span>grants
+/show-output<span class="w">       </span>:<span class="w"> </span>View<span class="w"> </span>this<span class="w"> </span>turn<span class="s1">&#39;s tool outputs (same as Ctrl+O)</span>
+<span class="s1">/undo              : Undo the last file change made by a tool</span>
+<span class="s1">/model [name]      : Show or switch the model for this session</span>
+<span class="s1">/role [name]       : Show or switch the assistant role</span>
+<span class="s1">/retry             : Re-run the last user turn (e.g. after an API error)</span>
+<span class="s1">/exit|Ctrl+D       : Exit (Ctrl+D also exits)</span>
+<span class="s1">/mode chat|exec    : Switch mode (Case insensitive)</span>
+<span class="s1">!&lt;command&gt;         : Execute shell command directly (e.g., !ls -al)</span>
+<span class="s1">Ctrl+C             : Clear input / cancel turn; press twice to exit</span>
+<span class="s1">Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)</span>
+<span class="s1">  Tip: Type &#39;</span>@<span class="s1">&#39; for file paths and &#39;</span>/<span class="err">&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>slash<span class="w"> </span>commands<span class="p">;</span><span class="w"> </span>use<span class="w"> </span>Tab/arrows<span class="w"> </span>to<span class="w"> </span><span class="k">select</span>
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-<span class="w"> </span>💬<span class="w"> </span>&gt;
+<span class="w"> </span>💬<span class="w"> </span>gpt-4o<span class="w"> </span>·<span class="w"> </span><span class="m">12</span>%<span class="w"> </span>&gt;
 </code></pre></div>
+<h2 id="prompt">Prompt<a class="headerlink" href="#prompt" title="Permanent link">&para;</a></h2>
+<p>The prompt starts with the current mode icon and adds up to three context fields:</p>
+<div class="highlight"><pre><span></span><code> 💬 gpt-4o · coder · 12% &gt;
+ │  │      │       └── last-known context usage (estimated % of the context budget)
+ │  │      └────────── active role, shown only when it is not the DEFAULT role
+ │  └───────────────── current model short name (a provider prefix like &quot;openai/&quot; is dropped)
+ └──────────────────── mode icon: 💬 chat, 🚀 execute
+</code></pre></div>
+<ul>
+<li>The model and role update immediately after <code>/model</code> / <code>/role</code> or a <code>Shift+Tab</code> mode switch.</li>
+<li>The context percentage is cached and refreshed after every completed turn and after
+  <code>/compact</code>, <code>/clear</code>, <code>/load</code> and <code>/model</code> — never on each keystroke. It is omitted
+  until the conversation has at least one message, and for bare/legacy CLI objects
+  (e.g. integrations constructing <code>CLI.__new__</code>).</li>
+<li>Headless/one-shot runs never render this prompt; their output is unaffected.</li>
+</ul>
 <h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>/help|?</code> - Show help message</li>
@@ -1980,12 +2050,44 @@ Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span cl
 <li><code>/del &lt;index&gt;</code> - Delete a saved chat</li>
 <li><code>/add &lt;path&gt;</code> - Add a file or directory to the persistent context</li>
 <li><code>/context</code> or <code>/ctx</code> - Show context/token usage, or manage file context (<code>list</code>, <code>add</code>, <code>remove</code>, <code>clear</code>)</li>
+<li><code>/cost</code> - Show session token usage, estimated cost, per-model breakdown and tool metrics</li>
 <li><code>/compact [keep_rounds]</code> - Compact the conversation, keeping the last N turns</li>
+<li><code>/model</code> - Show the current model and provider</li>
+<li><code>/model &lt;name&gt;</code> - Switch the model for this session: the provider client is rebuilt on the next
+  request, the chat history is kept, and the change is not written to the config file. The notice
+  names the previous model so you can revert with <code>/model &lt;old-name&gt;</code>.</li>
+<li><code>/role</code> - Show the current role and the available roles</li>
+<li><code>/role &lt;name&gt;</code> - Switch the assistant role for this session (case-insensitive; an unknown name
+  lists the available roles). The change is session-only; restart to use the configured role.</li>
+<li><code>/retry</code> - Re-run the last user turn from its pre-turn snapshot. Useful after an API error: the
+  failed turn's partial messages are discarded before the same input is sent again.</li>
 <li><code>/permissions</code> - List (and revoke) persistent tool approval rules</li>
 <li><code>/show-output</code> - Open the full-screen tool-output viewer for this turn</li>
+<li><code>/undo</code> - Restore the last file change made by a tool in this session</li>
 <li><code>!&lt;command&gt;</code> - Execute a shell command directly</li>
 <li><code>/exit</code> - Exit the application</li>
 <li><code>/mode chat|exec</code> - Switch modes</li>
+</ul>
+<p>Typing <code>/</code> opens the slash-command completion menu: every command is listed with a one-line
+description, <code>/co</code> filters the list, and <code>Tab</code>/arrow keys select an entry. <code>@</code> path completion
+still works as before and shares the same prompt.</p>
+<h2 id="usage-cost">Usage &amp; cost<a class="headerlink" href="#usage-cost" title="Permanent link">&para;</a></h2>
+<p>Each turn closes with one dim line showing what it cost (v0.22 K17), for example:</p>
+<div class="highlight"><pre><span></span><code>tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop
+</code></pre></div>
+<p>The numbers come from the provider when it reports them; a provider that reports no usage gets a
+clearly estimated count instead. Unknown model pricing simply omits the <code>$</code> segment. The line is
+controlled by <code>SHOW_USAGE</code> (default <code>true</code>) and only appears in interactive output — headless /
+JSON runs report usage through their structured output instead.</p>
+<ul>
+<li><code>/cost</code> prints the session totals (tokens in/out, requests, estimated flag), a per-model
+  breakdown, the estimated USD cost, tool-call count/duration/result size and the last finish
+  reason. It works even when the model has no known price ("unknown model pricing").</li>
+<li>When the model hits the output token limit, the answer is truncated at <code>finish_reason="length"</code>;
+  YAICLI prints one <code>Response stopped at MAX_TOKENS; ...</code> warning to stderr — raise <code>MAX_TOKENS</code>
+  to get complete answers.</li>
+<li>Prices are approximate built-in estimates (USD per 1M tokens); override them with
+  <code>MODEL_PRICING</code> for exact accounting. See <a href="../context-limits/">Context &amp; Limits</a>.</li>
 </ul>
 <h2 id="keyboard-shortcuts">Keyboard Shortcuts<a class="headerlink" href="#keyboard-shortcuts" title="Permanent link">&para;</a></h2>
 <ul>
@@ -1998,7 +2100,12 @@ Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span cl
   pane, <code>f</code> full text, <code>q</code>/<code>Esc</code> close). It also works while the assistant is generating:
   generation continues in the background and closing the viewer redraws the accumulated answer</li>
 <li><code>↑/↓</code> - Navigate through history</li>
+<li><code>Alt+Enter</code> (or <code>Esc</code> then <code>Enter</code>) - Insert a newline instead of submitting</li>
+<li><code>Ctrl+J</code> - Insert a newline (same as <code>Alt+Enter</code>); <code>Enter</code> still submits the whole input</li>
+<li><code>/</code> - Open the slash-command completion menu (see <a href="#commands">Commands</a>)</li>
 </ul>
+<p>Multiline text is useful for pasting or composing long prompts; press <code>Enter</code> once you are done
+to send the whole buffer as one turn.</p>
 <h2 id="chat-mode">Chat Mode (💬)<a class="headerlink" href="#chat-mode" title="Permanent link">&para;</a></h2>
 <p>In Chat Mode, you can have natural conversations with the AI while maintaining context:
 - Full conversation history is maintained
@@ -2007,7 +2114,7 @@ Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span cl
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>ai<span class="w"> </span>--chat
 ...
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-<span class="w"> </span>💬<span class="w"> </span>&gt;<span class="w"> </span>Tell<span class="w"> </span>me<span class="w"> </span>about<span class="w"> </span>the<span class="w"> </span>solar<span class="w"> </span>system
+<span class="w"> </span>💬<span class="w"> </span>gpt-4o<span class="w"> </span>·<span class="w"> </span><span class="m">12</span>%<span class="w"> </span>&gt;<span class="w"> </span>Tell<span class="w"> </span>me<span class="w"> </span>about<span class="w"> </span>the<span class="w"> </span>solar<span class="w"> </span>system
 
 A:
 Solar<span class="w"> </span>System<span class="w"> </span>Overview

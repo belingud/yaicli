@@ -2172,10 +2172,24 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="na">ENABLE_FUNCTIONS</span><span class="o">=</span><span class="s">true</span>
 <span class="c1"># Set to false to disable showing function output in the response</span>
 <span class="na">SHOW_FUNCTION_OUTPUT</span><span class="o">=</span><span class="s">true</span>
+<span class="c1"># Comma-separated tool-name globs to offer the model (empty = all tools).</span>
+<span class="c1"># Builtin and MCP tools are both matched; MCP names carry the _mcp__ prefix.</span>
+<span class="na">ENABLED_TOOLS</span><span class="o">=</span>
 
 <span class="c1"># MCP settings</span>
 <span class="na">ENABLE_MCP</span><span class="o">=</span><span class="s">false</span>
 <span class="na">SHOW_MCP_OUTPUT</span><span class="o">=</span><span class="s">false</span>
+<span class="c1"># Seconds one MCP list/call operation may take (0 = no timeout)</span>
+<span class="na">MCP_TIMEOUT</span><span class="o">=</span><span class="s">30</span>
+<span class="c1"># Max MCP tools offered to the model per request (0 = unlimited)</span>
+<span class="na">MCP_MAX_TOOLS</span><span class="o">=</span><span class="s">64</span>
+
+<span class="c1"># Observability &amp; cost (v0.22)</span>
+<span class="c1"># Print one token/cost line after each interactive turn</span>
+<span class="na">SHOW_USAGE</span><span class="o">=</span><span class="s">true</span>
+<span class="c1"># json string overriding the built-in price table, e.g.</span>
+<span class="c1"># {&quot;gpt-4o&quot;: {&quot;input&quot;: 2.5, &quot;output&quot;: 10}}  (USD per 1M tokens)</span>
+<span class="na">MODEL_PRICING</span><span class="o">=</span>
 
 <span class="c1"># Provider-specific settings</span>
 <span class="c1"># MiniMax: request reasoning content separately (interleaved thinking); ignored by others</span>
@@ -2205,6 +2219,10 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="c1"># Scratch directory for full (untruncated) tool outputs; independent of the</span>
 <span class="c1"># per-project session store. Defaults to &lt;tempdir&gt;/yaicli/chats/tool-outputs.</span>
 <span class="na">TOOL_OUTPUT_DIR</span><span class="o">=</span><span class="s">&lt;tempdir&gt;/yaicli/chats/tool-outputs</span>
+<span class="c1"># Redact known secret shapes (API keys, tokens, private keys, ...) before tool</span>
+<span class="c1"># output and saved sessions are written to disk. The model still sees the real</span>
+<span class="c1"># content; only the on-disk copies are sanitized.</span>
+<span class="na">REDACT_SECRETS</span><span class="o">=</span><span class="s">true</span>
 <span class="c1"># Terminal display of tool results (v0.19.1): head-only preview; the model still</span>
 <span class="c1"># receives TOOL_OUTPUT_MAX_CHARS. 0 = show everything.</span>
 <span class="na">TOOL_DISPLAY_MAX_LINES</span><span class="o">=</span><span class="s">15</span>
@@ -2429,6 +2447,12 @@ provider name invalid).</p>
 <td><code>YAI_SHOW_FUNCTION_OUTPUT</code></td>
 </tr>
 <tr>
+<td><code>ENABLED_TOOLS</code></td>
+<td>Comma-separated tool-name globs offered to the model (<code>fnmatch</code>; MCP names keep the <code>_mcp__</code> prefix; empty = all tools)</td>
+<td>-</td>
+<td><code>YAI_ENABLED_TOOLS</code></td>
+</tr>
+<tr>
 <td><code>ENABLE_MCP</code></td>
 <td>Enable MCP tools</td>
 <td><code>false</code></td>
@@ -2439,6 +2463,30 @@ provider name invalid).</p>
 <td>Show MCP output</td>
 <td><code>false</code></td>
 <td><code>YAI_SHOW_MCP_OUTPUT</code></td>
+</tr>
+<tr>
+<td><code>MCP_TIMEOUT</code></td>
+<td>Seconds one MCP list/call operation may take (<code>0</code> = no timeout)</td>
+<td><code>30</code></td>
+<td><code>YAI_MCP_TIMEOUT</code></td>
+</tr>
+<tr>
+<td><code>MCP_MAX_TOOLS</code></td>
+<td>Max MCP tools offered to the model per request (<code>0</code> = unlimited)</td>
+<td><code>64</code></td>
+<td><code>YAI_MCP_MAX_TOOLS</code></td>
+</tr>
+<tr>
+<td><code>SHOW_USAGE</code></td>
+<td>Print one token/cost line after each interactive turn</td>
+<td><code>true</code></td>
+<td><code>YAI_SHOW_USAGE</code></td>
+</tr>
+<tr>
+<td><code>MODEL_PRICING</code></td>
+<td>JSON price overrides: <code>{"model-prefix": {"input": 2.5, "output": 10}}</code> (USD per 1M tokens)</td>
+<td>-</td>
+<td><code>YAI_MODEL_PRICING</code></td>
 </tr>
 <tr>
 <td><code>MAX_TOOL_CALL_DEPTH</code></td>
@@ -2469,6 +2517,12 @@ provider name invalid).</p>
 <td>Where full (untruncated) tool outputs are saved</td>
 <td><code>&lt;tempdir&gt;/yaicli/chats/tool-outputs</code></td>
 <td><code>YAI_TOOL_OUTPUT_DIR</code></td>
+</tr>
+<tr>
+<td><code>REDACT_SECRETS</code></td>
+<td>Redact known secret shapes before tool output/sessions are written to disk</td>
+<td><code>true</code></td>
+<td><code>YAI_REDACT_SECRETS</code></td>
 </tr>
 <tr>
 <td><code>TOOL_DISPLAY_MAX_LINES</code></td>

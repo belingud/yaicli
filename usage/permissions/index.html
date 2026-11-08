@@ -592,6 +592,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#secret-redaction-on-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      Secret redaction on disk
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#headless-non-interactive-runs" class="md-nav__link">
     <span class="md-ellipsis">
       Headless / non-interactive runs
@@ -2032,6 +2041,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#secret-redaction-on-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      Secret redaction on disk
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#headless-non-interactive-runs" class="md-nav__link">
     <span class="md-ellipsis">
       Headless / non-interactive runs
@@ -2392,6 +2410,56 @@ only <code>A</code> results persist.</p>
 </table>
 <p>Set <code>TOOL_AUDIT=false</code> to disable, or point the log elsewhere by changing the config directory.
 The audit log records decisions, not full command output.</p>
+<h2 id="secret-redaction-on-disk">Secret redaction on disk<a class="headerlink" href="#secret-redaction-on-disk" title="Permanent link">&para;</a></h2>
+<p>Tool output (an environment dump, a file full of credentials) and chat sessions used to be written to
+disk verbatim. Since v0.22 every on-disk copy YAICLI writes goes through the shared redactor first:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Where</th>
+<th>Redaction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spilled tool output (the full text of a truncated tool result)</td>
+<td><code>TOOL_OUTPUT_DIR</code></td>
+<td><code>REDACT_SECRETS</code> (default on)</td>
+</tr>
+<tr>
+<td>Saved chat sessions (<code>/save</code>, auto-save, resumed history)</td>
+<td>session store (<code>~/.yaicli/sessions/&lt;project&gt;/</code>)</td>
+<td><code>REDACT_SECRETS</code> (default on)</td>
+</tr>
+<tr>
+<td>Audit log <code>args_summary</code> / <code>reason</code></td>
+<td><code>tool_audit.jsonl</code></td>
+<td>Always (since v0.19, independent of the key)</td>
+</tr>
+</tbody>
+</table>
+<p>Recognized credential shapes are replaced with <code>[redacted]</code>:</p>
+<ul>
+<li>provider API keys (<code>sk-…</code>, <code>sk-ant-…</code>, <code>sk-proj-…</code>, <code>sk-or-v1-…</code>, and <code>rk_</code>/<code>pk_</code> keys);</li>
+<li>AWS access key ids (<code>AKIA…</code>/<code>ASIA…</code>) and <code>aws_secret_access_key</code> values;</li>
+<li>GitHub (<code>ghp_</code>/<code>gho_</code>/<code>ghu_</code>/<code>ghs_</code>/<code>ghr_</code>/<code>github_pat_</code>), Slack (<code>xox[baprs]-…</code>) and Google
+  (<code>AIza…</code>) tokens;</li>
+<li><code>Bearer</code> headers, PEM private-key blocks and JWT-looking <code>eyJ…</code> tokens;</li>
+<li>env-style assignments (<code>API_KEY=…</code>, <code>SECRET=…</code>, <code>TOKEN=…</code>, <code>PASSWORD=…</code>, …) and URL userinfo
+  credentials (<code>scheme://user:password@host</code> becomes <code>scheme://user:[redacted]@host</code>).</li>
+</ul>
+<p>Ordinary prose and program output are left alone: a value only matches with a distinctive token
+prefix or a secret-looking key followed by a long (8+ character) value. Inside a saved session the
+structure is kept as well — <code>role</code>, <code>tool_call_id</code>, image data and metadata survive, while message
+<code>content</code>/<code>reasoning</code>/<code>name</code> and tool-call <code>arguments</code> are redacted.</p>
+<p>This is a <strong>disk-only</strong> measure. The in-memory conversation, what the model sees during the session
+and what the terminal renders are never modified, so the assistant can keep using a key it just read.
+Only the persisted copy is sanitized: replaying a saved session shows <code>[redacted]</code> where the original
+had a secret, and paging a spill file with <code>fs_read_file</code> returns the redacted text.</p>
+<p>Set <code>REDACT_SECRETS=false</code> (<code>YAI_REDACT_SECRETS=false</code> in the environment or <code>REDACT_SECRETS=false</code>
+in <code>config.ini</code>) to write the raw bytes as before. The key controls only the spill/session copies,
+not the audit log, which always redacts.</p>
 <h2 id="headless-non-interactive-runs">Headless / non-interactive runs<a class="headerlink" href="#headless-non-interactive-runs" title="Permanent link">&para;</a></h2>
 <p>When there is no TTY (piped stdin/stdout, CI), YAICLI cannot ask, so unapproved tools are denied by
 default. The flags that change this are:</p>

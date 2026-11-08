@@ -2249,8 +2249,28 @@ animation, no ANSI/box drawing. The output ends with exactly one newline.</p>
 <span class="w">  </span><span class="nt">&quot;tool_calls&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fs_read_file&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;arguments&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;file_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;README.md&quot;</span><span class="p">]},</span><span class="w"> </span><span class="nt">&quot;result&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">}</span>
 <span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;usage&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;prompt_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1234</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;completion_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">456</span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;model&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gpt-5.2&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;usage&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;prompt_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1234</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;completion_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">456</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;total_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1690</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;cached_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;reasoning_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;estimated&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;requests&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;cost_usd&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0077</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;models&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;gpt-4o-mini&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;prompt_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1234</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;completion_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">456</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;total_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1690</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;estimated&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;cost_usd&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0077</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;tools&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">42.0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;result_chars&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1024</span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;finish_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stop&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;model&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;provider&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;openai&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;exit_code&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
@@ -2274,7 +2294,11 @@ animation, no ANSI/box drawing. The output ends with exactly one newline.</p>
 </tr>
 <tr>
 <td><code>usage</code></td>
-<td>Token usage (<code>{"prompt_tokens": ..., "completion_tokens": ...}</code>). v0.19 reports zeros here because usage is not yet propagated from providers</td>
+<td>Real token usage and cost for the run (see below)</td>
+</tr>
+<tr>
+<td><code>finish_reason</code></td>
+<td>Last provider <code>finish_reason</code> (<code>"stop"</code>, <code>"length"</code>, <code>"tool_calls"</code>, <code>"depth_limit"</code>, or <code>null</code> when unknown)</td>
 </tr>
 <tr>
 <td><code>model</code>, <code>provider</code></td>
@@ -2290,13 +2314,58 @@ animation, no ANSI/box drawing. The output ends with exactly one newline.</p>
 </tr>
 </tbody>
 </table>
-<p>In v0.19 <code>usage</code> is intentionally reported as zeros — token usage from providers is not yet
-propagated to the payload (token accounting lands in a later v0.19 change). One limitation:
-failures that happen <em>before</em> a result exists (for example an invalid provider configuration, a
-missing API key during client creation, or a usage error such as exit <code>2</code>) print a diagnostic to
-stderr and exit non-zero <strong>without</strong> emitting the JSON object; every run that reaches a result
-emits exactly one object. An interrupted one-shot run is reported both ways: exit <code>130</code> and, if
-JSON output was active, <code>error.kind = "interrupted"</code>.</p>
+<p><code>usage</code> is no longer zeroed (v0.22 K17):</p>
+<table>
+<thead>
+<tr>
+<th><code>usage</code> key</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prompt_tokens</code>, <code>completion_tokens</code>, <code>total_tokens</code></td>
+<td>Provider-reported token counts. <code>prompt_tokens</code>/<code>completion_tokens</code> are kept at the top level for backwards compatibility.</td>
+</tr>
+<tr>
+<td><code>cached_tokens</code></td>
+<td>Prompt-cache hits (provider-dependent; <code>0</code> when not reported)</td>
+</tr>
+<tr>
+<td><code>reasoning_tokens</code></td>
+<td>Reasoning/thinking tokens included in <code>completion_tokens</code> (provider-dependent)</td>
+</tr>
+<tr>
+<td><code>estimated</code></td>
+<td><code>true</code> when the provider reported no usage and the numbers are a heuristic estimate (see <a href="../context-limits/">Context &amp; Limits</a>)</td>
+</tr>
+<tr>
+<td><code>requests</code></td>
+<td>Number of provider requests made during the run (tool rounds included)</td>
+</tr>
+<tr>
+<td><code>cost_usd</code></td>
+<td>Estimated cost in USD from the built-in price table, overridden by <code>MODEL_PRICING</code>. <code>null</code> when no price is known for the model.</td>
+</tr>
+<tr>
+<td><code>models</code></td>
+<td>Per-model breakdown (<code>prompt_tokens</code>, <code>completion_tokens</code>, <code>total_tokens</code>, <code>estimated</code>, <code>cost_usd</code>)</td>
+</tr>
+<tr>
+<td><code>tools</code></td>
+<td>Executed tool calls: <code>count</code>, <code>duration_ms</code> (wall clock) and <code>result_chars</code> (size of the results the model saw)</td>
+</tr>
+</tbody>
+</table>
+<p>When the model stops because the output token limit was reached, <code>finish_reason</code> is <code>"length"</code>
+and one <code>Response stopped at MAX_TOKENS; ...</code> warning is printed to stderr in every output mode
+(stdout stays clean/parseable). Increase <code>MAX_TOKENS</code> (or shrink the prompt/tool output) to get a
+complete answer.</p>
+<p>One limitation: failures that happen <em>before</em> a result exists (for example an invalid provider
+configuration, a missing API key during client creation, or a usage error such as exit <code>2</code>) print a
+diagnostic to stderr and exit non-zero <strong>without</strong> emitting the JSON object; every run that reaches
+a result emits exactly one object. An interrupted one-shot run is reported both ways: exit <code>130</code>
+and, if JSON output was active, <code>error.kind = "interrupted"</code>.</p>
 <h3 id="-output-format-stream-json"><code>--output-format stream-json</code><a class="headerlink" href="#-output-format-stream-json" title="Permanent link">&para;</a></h3>
 <p>Newline-delimited JSON (NDJSON): one event object per line, in order. This is the format to use for
 progress UIs, cancellation and tool-trace collection.</p>
@@ -2331,8 +2400,8 @@ progress UIs, cancellation and tool-trace collection.</p>
 </tr>
 <tr>
 <td><code>usage</code></td>
-<td>Token usage is reported</td>
-<td><code>type</code>, <code>prompt_tokens</code>, <code>completion_tokens</code> (zeros in v0.19)</td>
+<td>The run finished collecting usage</td>
+<td><code>type</code>, <code>prompt_tokens</code>, <code>completion_tokens</code>, <code>total_tokens</code>, <code>cached_tokens</code>, <code>reasoning_tokens</code>, <code>estimated</code>, <code>requests</code>, <code>cost_usd</code>, <code>models</code>, <code>tools</code>, and <code>finish_reason</code> when known (same values as the JSON <code>usage</code> object)</td>
 </tr>
 <tr>
 <td><code>done</code></td>
@@ -2349,7 +2418,7 @@ ignored by consumers so that new event kinds can be added without breaking scrip
 <span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;text_delta&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;delta&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;I will check the &quot;</span><span class="p">}</span>
 <span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tool_call&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fs_read_file&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;arguments&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;file_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;README.md&quot;</span><span class="p">]}}</span>
 <span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tool_result&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fs_read_file&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;result&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;# YAICLI ...&quot;</span><span class="p">}</span>
-<span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;usage&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;prompt_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;completion_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;usage&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;prompt_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1234</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;completion_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">456</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;total_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1690</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;cached_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reasoning_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;estimated&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;requests&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;cost_usd&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0077</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;models&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;gpt-4o-mini&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;prompt_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1234</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;completion_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">456</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;total_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1690</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;estimated&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;cost_usd&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0077</span><span class="p">}},</span><span class="w"> </span><span class="nt">&quot;tools&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">42.0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;result_chars&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1024</span><span class="p">},</span><span class="w"> </span><span class="nt">&quot;finish_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stop&quot;</span><span class="p">}</span>
 <span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;done&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;exit_code&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}</span>
 </code></pre></div>
 <h3 id="-q-quiet"><code>-q/--quiet</code><a class="headerlink" href="#-q-quiet" title="Permanent link">&para;</a></h3>
@@ -2500,6 +2569,8 @@ jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.conte
   covers read-level tools.</li>
 <li><strong>Exit code <code>130</code> in CI</strong>: the job sent SIGINT (timeout/cancel) — check the CI timeout settings.</li>
 <li><strong>Long tasks stop early</strong>: raise <code>--max-turns</code>; the run reports a depth-limit message on stderr.</li>
+<li><strong>Answers are cut off mid-sentence</strong>: <code>finish_reason</code> is <code>"length"</code> and a <code>MAX_TOKENS</code> warning is
+  printed to stderr — raise <code>MAX_TOKENS</code> (or lower the amount of context/tool output sent).</li>
 </ul>
 <h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>

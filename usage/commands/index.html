@@ -2466,8 +2466,17 @@ single one-shot run, and see <a href="../headless/">Headless &amp; Scripting</a>
 <td>Show/hide function output</td>
 <td>show</td>
 </tr>
+<tr>
+<td><code>--tools</code></td>
+<td>Comma-separated tool-name globs to offer the model (<code>fnmatch</code>; MCP tools use the <code>_mcp__</code> prefix). Empty = all tools. Shrinks the per-request schema payload, e.g. <code>--tools 'fs_*,web_search'</code></td>
+<td>all tools</td>
+</tr>
 </tbody>
 </table>
+<p>Selecting a subset is also possible persistently with <code>ENABLED_TOOLS</code> in
+<code>config.ini</code> / <code>YAI_ENABLED_TOOLS</code> (see <a href="../configuration/">Configuration</a>).
+A tool that is not offered is also refused if the model calls it anyway, with an
+in-band error the model can read.</p>
 <p>See <a href="../advanced/#function-calling">Advanced Usage — Function Calling</a> for custom functions,
 updating after an upgrade, and built-in safety contracts. See
 <a href="../permissions/">Permissions &amp; Safety</a> for the confirmation protocol, rules and audit log.</p>
@@ -2648,6 +2657,30 @@ ai<span class="w"> </span>--image<span class="w"> </span>diagram.png
 <td><code>/undo</code></td>
 <td>Restore the last file change made by a guarded tool in this session (see <a href="../workspace-safety/#undo">Workspace Safety</a>)</td>
 </tr>
+<tr>
+<td><code>/cost</code></td>
+<td>Show session token usage, estimated cost, per-model breakdown and tool metrics</td>
+</tr>
+<tr>
+<td><code>/model</code></td>
+<td>Show the current model and provider</td>
+</tr>
+<tr>
+<td><code>/model &lt;name&gt;</code></td>
+<td>Switch the model for this session; the provider client is rebuilt on the next request, the chat history is kept, and the notice names the previous model so it can be reverted</td>
+</tr>
+<tr>
+<td><code>/role</code></td>
+<td>Show the current role and the available roles</td>
+</tr>
+<tr>
+<td><code>/role &lt;name&gt;</code></td>
+<td>Switch the assistant role for this session (case-insensitive; unknown names list the available roles)</td>
+</tr>
+<tr>
+<td><code>/retry</code></td>
+<td>Re-run the last user turn from its pre-turn snapshot (useful after an API error; partial messages from the failed turn are discarded)</td>
+</tr>
 </tbody>
 </table>
 <h4 id="context-management-commands">Context Management Commands<a class="headerlink" href="#context-management-commands" title="Permanent link">&para;</a></h4>
@@ -2810,6 +2843,18 @@ Context<span class="w"> </span>cleared.
 <tr>
 <td><code>↑/↓</code></td>
 <td>Navigate through history</td>
+</tr>
+<tr>
+<td><code>Alt+Enter</code> (or <code>Esc</code>, <code>Enter</code>)</td>
+<td>Insert a newline instead of submitting</td>
+</tr>
+<tr>
+<td><code>Ctrl+J</code></td>
+<td>Insert a newline (same as <code>Alt+Enter</code>); <code>Enter</code> still submits</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>Open the slash-command completion menu (every command plus a one-line description; <code>/co</code> filters)</td>
 </tr>
 </tbody>
 </table>

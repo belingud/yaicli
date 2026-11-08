@@ -2187,6 +2187,18 @@
 <td>Navigate through command history</td>
 </tr>
 <tr>
+<td><code>Alt+Enter</code> (<code>Esc</code>, <code>Enter</code>)</td>
+<td>Insert a newline instead of submitting the prompt</td>
+</tr>
+<tr>
+<td><code>Ctrl+J</code></td>
+<td>Insert a newline (same as <code>Alt+Enter</code>); <code>Enter</code> still submits the whole input</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>Open the slash-command completion menu (all commands with descriptions; <code>/co</code> filters; <code>Tab</code>/arrows select)</td>
+</tr>
+<tr>
 <td><code>Ctrl+L</code></td>
 <td>Clear the screen</td>
 </tr>
@@ -2279,6 +2291,26 @@
 <td>Switch between chat and execute modes</td>
 </tr>
 <tr>
+<td><code>/cost</code></td>
+<td>Show session token usage and estimated cost</td>
+</tr>
+<tr>
+<td><code>/compact [keep_rounds]</code></td>
+<td>Compact the conversation, keeping the last N turn groups</td>
+</tr>
+<tr>
+<td><code>/model [name]</code></td>
+<td>Show or switch the model for this session</td>
+</tr>
+<tr>
+<td><code>/role [name]</code></td>
+<td>Show or switch the assistant role</td>
+</tr>
+<tr>
+<td><code>/retry</code></td>
+<td>Re-run the last user turn from its pre-turn snapshot</td>
+</tr>
+<tr>
 <td><code>!&lt;command&gt;</code></td>
 <td>Execute a shell command directly</td>
 </tr>
@@ -2327,9 +2359,11 @@ directory (or use <code>--cwd</code>) so the per-project store matches the sessi
 </ul>
 <p>To disable auto-suggestions, set <code>AUTO_SUGGEST=false</code> in your configuration.</p>
 <h2 id="multi-line-and-long-input">Multi-line and Long Input<a class="headerlink" href="#multi-line-and-long-input" title="Permanent link">&para;</a></h2>
-<p>The interactive prompt is deliberately single-line: <code>Enter</code> submits the current line, so
-<code>Alt+Enter</code> / <code>Esc+Enter</code> also submit rather than insert a newline. For long or multi-line
-prompts, pass the text as a quoted argument or pipe it:</p>
+<p>The prompt supports multiline editing: press <code>Alt+Enter</code> (or <code>Esc</code> then <code>Enter</code>) or <code>Ctrl+J</code> to
+insert a newline, and <code>Enter</code> alone to submit the whole buffer. This is handy for pasting logs or
+composing long instructions. The prompt shows the current model and role, plus the last-known
+context-usage percentage (see <a href="../interactive/#prompt">Interactive Mode</a>).</p>
+<p>For long or multi-line prompts in scripts, pass the text as a quoted argument or pipe it:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Quote a multi-line string</span>
 ai<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>cat<span class="w"> </span>prompt.txt<span class="k">)</span><span class="s2">&quot;</span>
 
