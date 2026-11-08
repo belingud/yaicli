@@ -18,6 +18,7 @@ from ...errors import provider_response_error, wrap_provider_exception
 from ...exceptions import MCPToolsError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_mcp_tools, get_openai_schemas
+from ...usage import usage_from_mistral
 from ...utils import gen_tool_call_id
 from ..provider import Provider
 from ..tool_calls import ToolCallAccumulator
@@ -165,7 +166,12 @@ class MistralProvider(Provider):
                 )
             tool_calls = accumulator.finalize()
 
-        yield LLMResponse(content=content, finish_reason=finish_reason, tool_calls=tool_calls)
+        yield LLMResponse(
+            content=content,
+            finish_reason=finish_reason,
+            tool_calls=tool_calls,
+            usage=usage_from_mistral(response),
+        )
 
     def _handle_stream_response(self, response: EventStream[CompletionEvent]) -> Generator[LLMResponse, None, None]:
         """Handle stream response; all streamed tool calls are accumulated.
@@ -174,10 +180,16 @@ class MistralProvider(Provider):
         accumulator's same-name/continuation rules for providers that do not send
         an index); complete calls are emitted once, at ``finish_reason ==
         "tool_calls"``, so parallel calls are never dropped or mixed together.
+        Usage reported by the stream (``chunk.data.usage``) is attached to a
+        terminal usage-only response.
         """
         accumulator = ToolCallAccumulator()
+        stream_usage = None
 
         for chunk in response:
+            chunk_usage = usage_from_mistral(chunk)
+            if chunk_usage is not None:
+                stream_usage = chunk_usage
             choice = chunk.data.choices[0]
             finish_reason = choice.finish_reason
             delta_content = choice.delta.content
@@ -212,6 +224,10 @@ class MistralProvider(Provider):
                 finish_reason=finish_reason,
                 tool_calls=accumulator.finalize() if finish_reason == "tool_calls" else [],
             )
+
+        if stream_usage is not None:
+            # Terminal usage-only response: empty content, no tool call.
+            yield LLMResponse(usage=stream_usage)
 
     def _process_tool_call_chunk(
         self, tool_calls: List[MistralToolCall], existing_tool_call: Optional[ToolCall] = None

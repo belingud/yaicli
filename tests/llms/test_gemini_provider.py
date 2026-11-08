@@ -7,6 +7,7 @@ import pytest
 from yaicli.errors import AgentError, ErrorKind
 from yaicli.llms.providers.gemini_provider import GeminiProvider
 from yaicli.schemas import ChatMessage, ImageData, ToolCall, ToolPolicy
+from yaicli.usage import Usage
 from yaicli.tools.function import wrap_gemini_function
 
 
@@ -1261,3 +1262,113 @@ class TestGeminiProvider:
         assert [r.content for r in collected] == ["partial"]
         assert excinfo.value.kind is ErrorKind.TIMEOUT
         assert excinfo.value.retryable is True
+
+
+class TestGeminiUsage:
+    """v0.22 K17: ``usage_metadata`` reaches LLMResponse."""
+
+    @pytest.fixture
+    def mock_config(self):
+        return {
+            "API_KEY": "fake_api_key",
+            "BASE_URL": None,
+            "MODEL": "gemini-2.5-flash",
+            "TEMPERATURE": 0.7,
+            "TOP_P": 0.9,
+            "TOP_K": 40,
+            "MAX_TOKENS": 1024,
+            "TIMEOUT": 10,
+            "PRESENCE_PENALTY": 0.0,
+            "FREQUENCY_PENALTY": 0.0,
+            "SEED": None,
+            "INCLUDE_THOUGHTS": True,
+            "EXTRA_HEADERS": {},
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+        }
+
+    def _provider(self, config):
+        with patch("google.genai.Client", return_value=MagicMock()):
+            return GeminiProvider(config=config)
+
+    @staticmethod
+    def _text_part(text):
+        part = MagicMock()
+        part.text = text
+        part.thought = None
+        part.function_call = None
+        return part
+
+    @staticmethod
+    def _usage_metadata(prompt=7, completion=3, total=10, cached=1, thoughts=2):
+        metadata = MagicMock()
+        metadata.prompt_token_count = prompt
+        metadata.candidates_token_count = completion
+        metadata.total_token_count = total
+        metadata.cached_content_token_count = cached
+        metadata.thoughts_token_count = thoughts
+        return metadata
+
+    def test_non_stream_usage_attached(self, mock_config):
+        provider = self._provider(mock_config)
+        response = MagicMock()
+        content = MagicMock()
+        content.parts = [self._text_part("hello")]
+        candidate = MagicMock()
+        candidate.content = content
+        response.candidates = [candidate]
+        response.usage_metadata = self._usage_metadata()
+
+        responses = list(provider._handle_normal_response(response))
+
+        assert len(responses) == 1
+        assert responses[0].content == "hello"
+        assert responses[0].usage == Usage(
+            prompt_tokens=7, completion_tokens=3, total_tokens=10, cached_tokens=1, reasoning_tokens=2
+        )
+
+    def test_non_stream_parallel_calls_attach_usage_to_first_only(self, mock_config):
+        provider = self._provider(mock_config)
+        parts = []
+        for index in range(2):
+            part = MagicMock()
+            part.function_call.name = f"fs_read_file_{index}"
+            part.function_call.args = {"path": "a.txt"}
+            part.function_call.id = f"call_{index}"
+            parts.append(part)
+        response = MagicMock()
+        content = MagicMock()
+        content.parts = parts
+        candidate = MagicMock()
+        candidate.content = content
+        response.candidates = [candidate]
+        response.usage_metadata = self._usage_metadata()
+
+        responses = list(provider._handle_normal_response(response))
+
+        assert len(responses) == 2
+        assert responses[0].usage is not None
+        assert responses[1].usage is None
+
+    def test_stream_usage_terminal_response(self, mock_config):
+        provider = self._provider(mock_config)
+        chunks = []
+        for text, finish_reason in (("Hello", None), (" world", "stop")):
+            chunk = MagicMock()
+            content = MagicMock()
+            content.parts = [self._text_part(text)]
+            candidate = MagicMock()
+            candidate.content = content
+            candidate.finish_reason = finish_reason
+            chunk.candidates = [candidate]
+            chunks.append(chunk)
+        chunks[-1].usage_metadata = self._usage_metadata()
+
+        responses = list(provider._handle_stream_response(chunks))
+
+        assert [response.content for response in responses] == ["Hello", " world", ""]
+        assert responses[-1].usage == Usage(
+            prompt_tokens=7, completion_tokens=3, total_tokens=10, cached_tokens=1, reasoning_tokens=2
+        )
+        # Usage is attached to one terminal response only.
+        assert sum(1 for response in responses if response.usage is not None) == 1

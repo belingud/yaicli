@@ -13,6 +13,7 @@ from ...console import get_console
 from ...errors import provider_response_error, wrap_provider_exception
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools.function import get_functions_gemini_format
+from ...usage import usage_from_gemini
 from ..provider import Provider
 from ..tool_calls import ToolCallAccumulator, merge_argument_mapping
 
@@ -260,13 +261,19 @@ class GeminiProvider(Provider):
         return args
 
     def _handle_normal_response(self, response) -> Generator[LLMResponse, None, None]:
-        """Handle normal (non-streaming) response"""
+        """Handle normal (non-streaming) response.
+
+        The response may contain several parts (text/thought/function_call); token
+        usage is attached to the first emitted ``LLMResponse`` only, so a parallel
+        tool-call round can not double-count it.
+        """
         if not response or not response.candidates:
             # HTTP 200 with no candidates is an in-band failure (proxy error,
             # blocked prompt, bad model): raise classified instead of echoing the
             # error document as assistant text.
             body = response.to_json_dict() if response is not None else {}
             raise provider_response_error("Gemini", body)
+        first_usage = usage_from_gemini(response)
         for part in response.candidates[0].content.parts:
             if part.function_call:
                 fc = part.function_call
@@ -280,12 +287,15 @@ class GeminiProvider(Provider):
                             arguments=json.dumps(args),
                         ),
                         finish_reason="tool_calls",
+                        usage=first_usage,
                     )
+                    first_usage = None
                 continue
             if part.thought:
-                yield LLMResponse(reasoning=part.text, finish_reason="stop")
+                yield LLMResponse(reasoning=part.text, finish_reason="stop", usage=first_usage)
             else:
-                yield LLMResponse(reasoning=None, content=part.text, finish_reason="stop")
+                yield LLMResponse(reasoning=None, content=part.text, finish_reason="stop", usage=first_usage)
+            first_usage = None
 
     def _handle_stream_response(self, response) -> Generator[LLMResponse, None, None]:
         """Handle streaming response from Gemini API.
@@ -296,10 +306,18 @@ class GeminiProvider(Provider):
         :class:`~yaicli.llms.tool_calls.ToolCallAccumulator`, so two calls with
         the **same name** in one stream stay two distinct calls instead of being
         merged. Complete calls are emitted at the end, never partial arguments.
+
+        ``usage_metadata`` (when reported, usually on the final chunk) is
+        accumulated as the latest snapshot and attached to one terminal
+        usage-only response after the tool calls are emitted.
         """
         accumulator = ToolCallAccumulator()
+        stream_usage = None
 
         for chunk in response:
+            chunk_usage = usage_from_gemini(chunk)
+            if chunk_usage is not None:
+                stream_usage = chunk_usage
             if not chunk.candidates:
                 continue
             candidate = chunk.candidates[0]
@@ -349,6 +367,10 @@ class GeminiProvider(Provider):
                 tool_call=tool_call,
                 finish_reason="tool_calls",
             )
+
+        if stream_usage is not None:
+            # Terminal usage-only response: empty content, no tool call.
+            yield LLMResponse(usage=stream_usage)
 
     def detect_tool_role(self) -> str:
         """Return the role that should be used for tool responses.

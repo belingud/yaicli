@@ -1,7 +1,10 @@
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from .const import StrEnum
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle guard, annotation only
+    from .usage import Usage
 
 
 @dataclass
@@ -60,6 +63,11 @@ class LLMResponse:
     property): constructing with either form fills the other, with ``tool_call``
     always pointing at ``tool_calls[0]``. Replace a response object rather than
     mutating one field in place, so the views never diverge.
+
+    ``usage`` (v0.22 K17) carries provider-reported token usage. A provider
+    attaches it to exactly one response per request round (the first response in
+    non-streaming mode, a terminal response when streaming) so the client can
+    accumulate it without double-counting parallel tool-call responses.
     """
 
     reasoning: Optional[str] = None
@@ -67,6 +75,7 @@ class LLMResponse:
     finish_reason: Optional[str] = None
     tool_call: Optional[ToolCall] = None
     tool_calls: List[ToolCall] = field(default_factory=list)
+    usage: Optional["Usage"] = None
 
     def __post_init__(self) -> None:
         """Keep the legacy ``tool_call`` and plural ``tool_calls`` views in sync."""

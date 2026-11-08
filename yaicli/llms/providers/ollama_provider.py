@@ -9,6 +9,7 @@ from ...console import get_console
 from ...errors import wrap_provider_exception
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_schemas
+from ...usage import usage_from_ollama
 from ...utils import gen_tool_call_id, str2bool
 from ..provider import Provider
 from ..tool_calls import ToolCallAccumulator
@@ -157,7 +158,11 @@ class OllamaProvider(Provider):
         response: ChatResponse,
         tool_calls_enabled: bool,
     ) -> Generator[LLMResponse, None, None]:
-        """Handle normal (non-streaming) response; keep every tool call."""
+        """Handle normal (non-streaming) response; keep every tool call.
+
+        Ollama reports usage as ``prompt_eval_count``/``eval_count``; it is
+        attached to the single emitted response.
+        """
         content = response.message.content or ""
         reasoning = response.message.thinking or ""
 
@@ -167,17 +172,31 @@ class OllamaProvider(Provider):
             for tc in response.message.tool_calls or []:
                 accumulator.add_complete(self._to_tool_call(tc))
 
-        yield LLMResponse(content=content, reasoning=reasoning, tool_calls=accumulator.finalize())
+        yield LLMResponse(
+            content=content,
+            reasoning=reasoning,
+            tool_calls=accumulator.finalize(),
+            usage=usage_from_ollama(response),
+        )
 
     def _handle_stream_response(
         self,
         response_generator,
         tool_calls_enabled: bool,
     ) -> Generator[LLMResponse, None, None]:
-        """Handle streaming response; keep every tool call from the final message."""
+        """Handle streaming response; keep every tool call from the final message.
+
+        Ollama only reports usage counts on the final stream message; the latest
+        snapshot is attached to the closing response (the tool-call response when
+        there is one, otherwise a terminal usage-only response).
+        """
         accumulator = ToolCallAccumulator()
+        stream_usage = None
 
         for chunk in response_generator:
+            chunk_usage = usage_from_ollama(chunk)
+            if chunk_usage is not None:
+                stream_usage = chunk_usage
             # Extract content from the current chunk
             message = chunk.message
             content = message.content or ""
@@ -195,7 +214,9 @@ class OllamaProvider(Provider):
         # After streaming is complete, emit every complete tool call at once.
         tool_calls = accumulator.finalize()
         if tool_calls:
-            yield LLMResponse(tool_calls=tool_calls)
+            yield LLMResponse(tool_calls=tool_calls, usage=stream_usage)
+        elif stream_usage is not None:
+            yield LLMResponse(usage=stream_usage)
 
     def detect_tool_role(self) -> str:
         """Return the role to be used for tool responses"""

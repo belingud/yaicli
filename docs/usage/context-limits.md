@@ -119,7 +119,52 @@ In the interactive REPL:
 Use `/context` when a session starts behaving as if it forgot earlier steps; then `/compact` to
 reclaim budget deliberately, or raise `CONTEXT_BUDGET_TOKENS` if your model has a larger window.
 
-## 5. Session and memory limits
+## 5. Tokens & cost
+
+YAICLI measures what a run actually costs (v0.22 K17). Token counts come from the provider
+response whenever the provider reports them, so they are exact for the request. When a provider
+does not report usage (or an OpenAI-compatible proxy rejects the streaming usage option), YAICLI
+falls back to the same heuristic as the budget estimator and marks the numbers as **estimated**
+instead of hiding them.
+
+- per request: prompt/completion/total tokens, plus prompt-cache hits (`cached_tokens`) and
+  reasoning tokens (`reasoning_tokens`) when the provider reports them;
+- per session: totals **per model**, request count, and tool metrics (call count, total wall-clock
+  duration, result characters the model saw);
+- per run: the last provider `finish_reason` (so a `"length"` truncation is visible).
+
+### Cost
+
+Cost is an **estimate** in USD, computed as `tokens / 1M × price` per model. The built-in price
+table covers common OpenAI, Anthropic, Gemini, DeepSeek, Qwen and GLM models (approximate public
+list prices). Override it for exact accounting — and to price models the table does not know — with
+`MODEL_PRICING`, a JSON object of model-prefix to USD-per-1M-token prices:
+
+```ini
+[core]
+# JSON; prefixes are matched longest-first, and override the built-in table
+MODEL_PRICING={"gpt-4o": {"input": 2.5, "output": 10}, "my-local-model": {"input": 0, "output": 0}}
+```
+
+Unknown models are reported as "unknown model pricing" (and `cost_usd: null` in JSON output)
+instead of a guessed number. With cache pricing the estimate is intentionally conservative: cached
+tokens are still billed at the full input price.
+
+### Showing usage
+
+| Where | What |
+| --- | --- |
+| `SHOW_USAGE` (default `true`) | One dim line after each interactive turn, e.g. `tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop`. Unknown cost is simply omitted; machine/headless output never prints it. |
+| `/cost` (interactive) | Session totals, per-model breakdown, estimated USD cost, tool call metrics and the last finish reason. |
+| `--output-format json` | The full `usage` object + `finish_reason` (see [Headless & Scripting](headless.md)). |
+| `--output-format stream-json` | A final `usage` event with the same numbers. |
+
+When `finish_reason` is `"length"` the answer was truncated by the output token limit: YAICLI
+prints one `MAX_TOKENS` warning to stderr in every mode and reports `finish_reason: "length"` in
+structured output. Raise `MAX_TOKENS` (or reduce the context/tool output sent) to get complete
+answers.
+
+## 6. Session and memory limits
 
 - `INTERACTIVE_ROUND` (default `25`) is the number of chat turns kept in the REPL
   (×2 messages), not a token limit. Token trimming is described above.
@@ -155,6 +200,8 @@ MAX_TOOL_CALL_DEPTH=12
 | `MAX_TOOL_CALL_DEPTH` | `8` | Tool rounds per request (`--max-turns` overrides per run) |
 | `EXIT_ON_DEPTH_LIMIT` | `true` | One-shot run exits non-zero when the tool-round limit is reached |
 | `INTERACTIVE_ROUND` | `25` | Chat turns kept in the REPL |
+| `SHOW_USAGE` | `true` | Print one dim token/cost line after each interactive turn |
+| `MODEL_PRICING` | `{}` | JSON price overrides (`{"model-prefix": {"input": x, "output": y}}`, USD per 1M tokens) |
 
 ## See Also
 

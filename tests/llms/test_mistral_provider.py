@@ -10,6 +10,7 @@ from yaicli.errors import AgentError, ErrorKind
 from yaicli.exceptions import MCPToolsError
 from yaicli.llms.providers.mistral_provider import MistralProvider
 from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
+from yaicli.usage import Usage
 
 
 class TestMistralProvider:
@@ -600,3 +601,65 @@ class TestMistralProvider:
 
         assert excinfo.value.kind is ErrorKind.TIMEOUT
         assert excinfo.value.retryable is True
+
+
+class TestMistralUsage:
+    """v0.22 K17: Mistral ``UsageInfo`` reaches LLMResponse."""
+
+    @pytest.fixture
+    def mock_config(self):
+        return {
+            "API_KEY": "fake_api_key",
+            "BASE_URL": None,
+            "SERVER": None,
+            "MODEL": "mistral-large-latest",
+            "TEMPERATURE": 0.7,
+            "TOP_P": 0.9,
+            "MAX_TOKENS": 1024,
+            "TIMEOUT": 30,
+            "EXTRA_HEADERS": None,
+            "STREAM": True,
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+            "FREQUENCY_PENALTY": 0.0,
+        }
+
+    def _provider(self, config):
+        with patch("mistralai.Mistral"), patch("warnings.filterwarnings"):
+            return MistralProvider(config=config)
+
+    @staticmethod
+    def _usage(prompt=8, completion=2, total=10):
+        usage = MagicMock()
+        usage.prompt_tokens = prompt
+        usage.completion_tokens = completion
+        usage.total_tokens = total
+        return usage
+
+    def test_non_stream_usage_attached(self, mock_config):
+        provider = self._provider(mock_config)
+        response = MagicMock(spec=ChatCompletionResponse)
+        choice = MagicMock()
+        choice.message.content = "hi"
+        choice.message.tool_calls = None
+        choice.finish_reason = "stop"
+        response.choices = [choice]
+        response.usage = self._usage()
+
+        responses = list(provider._handle_normal_response(response))
+
+        assert len(responses) == 1
+        assert responses[0].usage == Usage(8, 2, 10)
+
+    def test_stream_usage_terminal_response(self, mock_config):
+        provider = self._provider(mock_config)
+        chunk = MagicMock()
+        chunk.data.choices[0].delta.content = "hi"
+        chunk.data.choices[0].finish_reason = "stop"
+        chunk.data.usage = self._usage()
+
+        responses = list(provider._handle_stream_response([chunk]))
+
+        assert responses[0].content == "hi"
+        assert responses[-1].usage == Usage(8, 2, 10)
+        assert sum(1 for response in responses if response.usage is not None) == 1

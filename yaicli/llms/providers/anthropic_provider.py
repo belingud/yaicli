@@ -13,6 +13,7 @@ from ...console import get_console
 from ...errors import provider_response_error, wrap_provider_exception
 from ...exceptions import ConfigMissingError, MCPToolsError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
+from ...usage import Usage, usage_from_anthropic
 from ...utils import str2bool
 from ..provider import Provider
 from ..tool_calls import ToolCallAccumulator
@@ -246,12 +247,14 @@ class AnthropicProvider(Provider):
         # Get stop reason
         finish_reason = response.stop_reason or "stop"
 
-        # Yield response with all content types
+        # Yield response with all content types; token usage is attached here (the
+        # non-streaming response is a single LLMResponse, so it can not double-count).
         yield LLMResponse(
             reasoning=thinking_content if thinking_content else None,
             content=text_content,
             finish_reason=finish_reason,
             tool_calls=tool_calls,
+            usage=usage_from_anthropic(response),
         )
 
     def _handle_stream_response(self, response: Stream[RawMessageStreamEvent]) -> Generator[LLMResponse, None, None]:
@@ -267,12 +270,34 @@ class AnthropicProvider(Provider):
         tool_call_id = ""
         tool_call_name = ""
         tool_call_input = ""
+        # Streaming usage: ``message_start`` reports input tokens while the final
+        # ``message_delta`` reports cumulative output tokens. Keep both halves and
+        # combine them into one Usage attached to the closing response only.
+        start_usage: Optional[Usage] = None
+        output_usage: Optional[Usage] = None
+        usage_sent = False
+
+        def _combined_usage() -> Optional[Usage]:
+            if start_usage is None and output_usage is None:
+                return None
+            prompt = start_usage.prompt_tokens if start_usage is not None else 0
+            completion = output_usage.completion_tokens if output_usage is not None else 0
+            if output_usage is not None and output_usage.prompt_tokens:
+                prompt = output_usage.prompt_tokens
+            cached = start_usage.cached_tokens if start_usage is not None else 0
+            return Usage(
+                prompt_tokens=prompt,
+                completion_tokens=completion,
+                total_tokens=prompt + completion,
+                cached_tokens=cached,
+            )
 
         # Process each chunk in the response stream
         for chunk in response:
             # Handle different event types
             if chunk.type == "message_start":
-                # Message start, no need to handle
+                # The message payload (and its usage) is nested under ``message``.
+                start_usage = usage_from_anthropic(chunk)
                 continue
 
             elif chunk.type == "content_block_start":
@@ -317,18 +342,30 @@ class AnthropicProvider(Provider):
                     tool_call_input = ""
 
             elif chunk.type == "message_delta":
-                # Message delta update - contains stop reason. Re-yield the full
-                # list; the client dedupes by id, so this is safe.
+                # Message delta update - contains stop reason (and the final output
+                # token count). Re-yield the full call list; the client dedupes by id,
+                # so this is safe. Usage is attached to the closing message_stop.
+                output_usage = usage_from_anthropic(chunk)
                 if hasattr(chunk, "delta") and hasattr(chunk.delta, "stop_reason"):
                     finish_reason = chunk.delta.stop_reason
                     if finish_reason:
-                        yield LLMResponse(
-                            content="", finish_reason=finish_reason, tool_calls=accumulator.finalize()
-                        )
+                        yield LLMResponse(content="", finish_reason=finish_reason, tool_calls=accumulator.finalize())
 
             elif chunk.type == "message_stop":
-                # Message stop - final response
-                yield LLMResponse(content="", finish_reason="stop", tool_calls=accumulator.finalize())
+                # Message stop - final response; the only response carrying usage.
+                final_usage = _combined_usage()
+                usage_sent = final_usage is not None
+                yield LLMResponse(
+                    content="", finish_reason="stop", tool_calls=accumulator.finalize(), usage=final_usage
+                )
+
+        if not usage_sent:
+            # A proxy may omit message_stop; never lose the captured usage.
+            final_usage = _combined_usage()
+            if final_usage is not None:
+                yield LLMResponse(
+                    content="", finish_reason="stop", tool_calls=accumulator.finalize(), usage=final_usage
+                )
 
     def detect_tool_role(self) -> str:
         """Return the role that should be used for tool responses"""

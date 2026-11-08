@@ -25,6 +25,7 @@ Press Shift+Tab to switch mode
 /del <index>       : Delete a saved chat
 /add <path>        : Add @file/dir to context
 /context, /ctx     : Manage context (list, add, remove, clear)
+/cost              : Show session token usage and estimated cost
   Tip: Type '@' for path completion, use Tab/arrows to select
 !<command>         : Execute shell command directly (e.g., !ls -al)
 /exit|Ctrl+D       : Exit
@@ -57,6 +58,7 @@ Press Shift+Tab to switch mode
 /del <index>       : Delete a saved chat
 /add <path>        : Add @file/dir to context
 /context, /ctx     : Manage context (list, add, remove, clear)
+/cost              : Show session token usage and estimated cost
   Tip: Type '@' for path completion, use Tab/arrows to select
 !<command>         : Execute shell command directly (e.g., !ls -al)
 /exit|Ctrl+D       : Exit
@@ -77,12 +79,35 @@ Ctrl+C             : Clear input / cancel turn; press twice to exit
 - `/del <index>` - Delete a saved chat
 - `/add <path>` - Add a file or directory to the persistent context
 - `/context` or `/ctx` - Show context/token usage, or manage file context (`list`, `add`, `remove`, `clear`)
+- `/cost` - Show session token usage, estimated cost, per-model breakdown and tool metrics
 - `/compact [keep_rounds]` - Compact the conversation, keeping the last N turns
 - `/permissions` - List (and revoke) persistent tool approval rules
 - `/show-output` - Open the full-screen tool-output viewer for this turn
 - `!<command>` - Execute a shell command directly
 - `/exit` - Exit the application
 - `/mode chat|exec` - Switch modes
+
+## Usage & cost
+
+Each turn closes with one dim line showing what it cost (v0.22 K17), for example:
+
+```text
+tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop
+```
+
+The numbers come from the provider when it reports them; a provider that reports no usage gets a
+clearly estimated count instead. Unknown model pricing simply omits the `$` segment. The line is
+controlled by `SHOW_USAGE` (default `true`) and only appears in interactive output — headless /
+JSON runs report usage through their structured output instead.
+
+- `/cost` prints the session totals (tokens in/out, requests, estimated flag), a per-model
+  breakdown, the estimated USD cost, tool-call count/duration/result size and the last finish
+  reason. It works even when the model has no known price ("unknown model pricing").
+- When the model hits the output token limit, the answer is truncated at `finish_reason="length"`;
+  YAICLI prints one `Response stopped at MAX_TOKENS; ...` warning to stderr — raise `MAX_TOKENS`
+  to get complete answers.
+- Prices are approximate built-in estimates (USD per 1M tokens); override them with
+  `MODEL_PRICING` for exact accounting. See [Context & Limits](context-limits.md).
 
 ## Keyboard Shortcuts
 

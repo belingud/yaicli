@@ -67,8 +67,28 @@ One JSON object on stdout. All diagnostics go to stderr.
   "tool_calls": [
     {"name": "fs_read_file", "arguments": {"file_paths": ["README.md"]}, "result": "..."}
   ],
-  "usage": {"prompt_tokens": 1234, "completion_tokens": 456},
-  "model": "gpt-5.2",
+  "usage": {
+    "prompt_tokens": 1234,
+    "completion_tokens": 456,
+    "total_tokens": 1690,
+    "cached_tokens": 0,
+    "reasoning_tokens": 0,
+    "estimated": false,
+    "requests": 1,
+    "cost_usd": 0.0077,
+    "models": {
+      "gpt-4o-mini": {
+        "prompt_tokens": 1234,
+        "completion_tokens": 456,
+        "total_tokens": 1690,
+        "estimated": false,
+        "cost_usd": 0.0077
+      }
+    },
+    "tools": {"count": 1, "duration_ms": 42.0, "result_chars": 1024}
+  },
+  "finish_reason": "stop",
+  "model": "gpt-4o-mini",
   "provider": "openai",
   "error": null,
   "exit_code": 0
@@ -79,18 +99,35 @@ One JSON object on stdout. All diagnostics go to stderr.
 | --- | --- |
 | `content` | Final assistant answer text |
 | `tool_calls` | Ordered list of tool calls made during the run |
-| `usage` | Token usage (`{"prompt_tokens": ..., "completion_tokens": ...}`). v0.19 reports zeros here because usage is not yet propagated from providers |
+| `usage` | Real token usage and cost for the run (see below) |
+| `finish_reason` | Last provider `finish_reason` (`"stop"`, `"length"`, `"tool_calls"`, `"depth_limit"`, or `null` when unknown) |
 | `model`, `provider` | Effective model/provider for this run |
 | `error` | Exactly `null` on success, otherwise `{"kind": "<error kind>", "message": "<detail>"}`. Possible kinds: `auth`, `rate_limit`, `context_length`, `network`, `timeout`, `bad_request`, `provider`, `tool`, `config`, `depth_limit`, `interrupted`, `unknown` |
 | `exit_code` | Exit code the process will return (see below) |
 
-In v0.19 `usage` is intentionally reported as zeros — token usage from providers is not yet
-propagated to the payload (token accounting lands in a later v0.19 change). One limitation:
-failures that happen *before* a result exists (for example an invalid provider configuration, a
-missing API key during client creation, or a usage error such as exit `2`) print a diagnostic to
-stderr and exit non-zero **without** emitting the JSON object; every run that reaches a result
-emits exactly one object. An interrupted one-shot run is reported both ways: exit `130` and, if
-JSON output was active, `error.kind = "interrupted"`.
+`usage` is no longer zeroed (v0.22 K17):
+
+| `usage` key | Meaning |
+| --- | --- |
+| `prompt_tokens`, `completion_tokens`, `total_tokens` | Provider-reported token counts. `prompt_tokens`/`completion_tokens` are kept at the top level for backwards compatibility. |
+| `cached_tokens` | Prompt-cache hits (provider-dependent; `0` when not reported) |
+| `reasoning_tokens` | Reasoning/thinking tokens included in `completion_tokens` (provider-dependent) |
+| `estimated` | `true` when the provider reported no usage and the numbers are a heuristic estimate (see [Context & Limits](context-limits.md)) |
+| `requests` | Number of provider requests made during the run (tool rounds included) |
+| `cost_usd` | Estimated cost in USD from the built-in price table, overridden by `MODEL_PRICING`. `null` when no price is known for the model. |
+| `models` | Per-model breakdown (`prompt_tokens`, `completion_tokens`, `total_tokens`, `estimated`, `cost_usd`) |
+| `tools` | Executed tool calls: `count`, `duration_ms` (wall clock) and `result_chars` (size of the results the model saw) |
+
+When the model stops because the output token limit was reached, `finish_reason` is `"length"`
+and one `Response stopped at MAX_TOKENS; ...` warning is printed to stderr in every output mode
+(stdout stays clean/parseable). Increase `MAX_TOKENS` (or shrink the prompt/tool output) to get a
+complete answer.
+
+One limitation: failures that happen *before* a result exists (for example an invalid provider
+configuration, a missing API key during client creation, or a usage error such as exit `2`) print a
+diagnostic to stderr and exit non-zero **without** emitting the JSON object; every run that reaches
+a result emits exactly one object. An interrupted one-shot run is reported both ways: exit `130`
+and, if JSON output was active, `error.kind = "interrupted"`.
 
 ### `--output-format stream-json`
 
@@ -103,7 +140,7 @@ progress UIs, cancellation and tool-trace collection.
 | `text_delta` | The model streams answer text | `type`, `delta` (new text since the previous chunk) |
 | `tool_call` | The model requests a tool | `type`, `name`, `arguments` (parsed JSON when possible) |
 | `tool_result` | A tool has finished | `type`, `name`, `result` (the tool result text as seen by the model, truncated as in context) |
-| `usage` | Token usage is reported | `type`, `prompt_tokens`, `completion_tokens` (zeros in v0.19) |
+| `usage` | The run finished collecting usage | `type`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `cached_tokens`, `reasoning_tokens`, `estimated`, `requests`, `cost_usd`, `models`, `tools`, and `finish_reason` when known (same values as the JSON `usage` object) |
 | `done` | The run finished | `type`, `exit_code`, `error` (`null` or `{kind, message}`) |
 
 Events are flushed per line. `text_delta` events stream during generation; `tool_call` /
@@ -116,7 +153,7 @@ ignored by consumers so that new event kinds can be added without breaking scrip
 {"type": "text_delta", "delta": "I will check the "}
 {"type": "tool_call", "name": "fs_read_file", "arguments": {"file_paths": ["README.md"]}}
 {"type": "tool_result", "name": "fs_read_file", "result": "# YAICLI ..."}
-{"type": "usage", "prompt_tokens": 0, "completion_tokens": 0}
+{"type": "usage", "prompt_tokens": 1234, "completion_tokens": 456, "total_tokens": 1690, "cached_tokens": 0, "reasoning_tokens": 0, "estimated": false, "requests": 1, "cost_usd": 0.0077, "models": {"gpt-4o-mini": {"prompt_tokens": 1234, "completion_tokens": 456, "total_tokens": 1690, "estimated": false, "cost_usd": 0.0077}}, "tools": {"count": 1, "duration_ms": 42.0, "result_chars": 1024}, "finish_reason": "stop"}
 {"type": "done", "exit_code": 0, "error": null}
 ```
 
@@ -229,6 +266,8 @@ jq -r '.content' result.json
   covers read-level tools.
 - **Exit code `130` in CI**: the job sent SIGINT (timeout/cancel) — check the CI timeout settings.
 - **Long tasks stop early**: raise `--max-turns`; the run reports a depth-limit message on stderr.
+- **Answers are cut off mid-sentence**: `finish_reason` is `"length"` and a `MAX_TOKENS` warning is
+  printed to stderr — raise `MAX_TOKENS` (or lower the amount of context/tool output sent).
 
 ## See Also
 

@@ -1,9 +1,11 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from yaicli.llms.providers.openai_compatible_provider import OpenAICompatibleProvider
 from yaicli.schemas import ChatMessage, LLMResponse
+from yaicli.usage import Usage
 
 
 def make_tool_call(tc_id=None, name=None, arguments=""):
@@ -169,3 +171,19 @@ class TestOpenAICompatibleProvider:
         responses = list(provider.completion([ChatMessage(role="user", content="hi")], stream=True))
 
         assert [r.content for r in responses] == ["a", "b"]
+
+    @patch("yaicli.tools.get_openai_schemas", return_value=[])
+    def test_streaming_usage_terminal_response(self, _schemas, mock_config):
+        """v0.22 K17: usage from the final choices-less chunk reaches LLMResponse"""
+        chunks = [
+            make_chunk(content="hi", finish_reason="stop", tool_calls=None),
+            make_chunk(choices_empty=True),
+        ]
+        chunks[-1].usage = SimpleNamespace(prompt_tokens=12, completion_tokens=3, total_tokens=15)
+        provider = self._make_provider(mock_config, chunks)
+        responses = list(provider.completion([ChatMessage(role="user", content="hi")], stream=True))
+
+        assert [response.content for response in responses] == ["hi", ""]
+        assert responses[-1].usage == Usage(12, 3, 15)
+        call_kwargs = provider.client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["stream_options"] == {"include_usage": True}

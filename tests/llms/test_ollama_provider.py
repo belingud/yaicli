@@ -6,6 +6,7 @@ import pytest
 from yaicli.errors import AgentError, ErrorKind
 from yaicli.llms.providers.ollama_provider import OllamaProvider
 from yaicli.schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
+from yaicli.usage import Usage
 
 
 def _http_error(status: int, message: str = "boom") -> httpx.HTTPStatusError:
@@ -349,3 +350,74 @@ class TestOllamaProvider:
         assert [r.content for r in collected] == ["partial"]
         assert excinfo.value.kind is ErrorKind.TIMEOUT
         assert excinfo.value.retryable is True
+
+
+class TestOllamaUsage:
+    """v0.22 K17: Ollama ``prompt_eval_count``/``eval_count`` reaches LLMResponse."""
+
+    @pytest.fixture
+    def mock_config(self):
+        return {
+            "BASE_URL": "http://localhost:11434",
+            "MODEL": "llama3",
+            "TEMPERATURE": 0.7,
+            "TOP_P": 1.0,
+            "MAX_TOKENS": 1024,
+            "TIMEOUT": 10,
+            "EXTRA_BODY": None,
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+            "THINK": "false",
+            "FREQUENCY_PENALTY": 0.0,
+        }
+
+    def _provider(self, config):
+        with patch("ollama.Client", return_value=MagicMock()):
+            return OllamaProvider(config=config)
+
+    @staticmethod
+    def _chunk(content="", thinking="", tool_calls=None, prompt_eval_count=None, eval_count=None):
+        chunk = MagicMock()
+        chunk.message.content = content
+        chunk.message.thinking = thinking
+        chunk.message.tool_calls = tool_calls
+        chunk.prompt_eval_count = prompt_eval_count
+        chunk.eval_count = eval_count
+        return chunk
+
+    def test_non_stream_usage_attached(self, mock_config):
+        provider = self._provider(mock_config)
+        response = MagicMock()
+        response.message.content = "hi"
+        response.message.thinking = ""
+        response.message.tool_calls = None
+        response.prompt_eval_count = 9
+        response.eval_count = 4
+
+        responses = list(provider._handle_normal_response(response, tool_calls_enabled=False))
+
+        assert len(responses) == 1
+        assert responses[0].usage == Usage(9, 4, 13)
+
+    def test_stream_usage_terminal_response(self, mock_config):
+        provider = self._provider(mock_config)
+        chunks = [
+            self._chunk(content="hi"),
+            self._chunk(prompt_eval_count=9, eval_count=4),
+        ]
+
+        responses = list(provider._handle_stream_response(chunks, tool_calls_enabled=False))
+
+        assert responses[0].content == "hi"
+        assert responses[-1].usage == Usage(9, 4, 13)
+
+    def test_stream_usage_attached_to_tool_call_response(self, mock_config):
+        provider = self._provider(mock_config)
+        tool_call = {"id": "tc_1", "function": {"name": "fs_read_file", "arguments": {"path": "a.txt"}}}
+        chunks = [self._chunk(tool_calls=[tool_call], prompt_eval_count=5, eval_count=6)]
+
+        responses = list(provider._handle_stream_response(chunks, tool_calls_enabled=True))
+
+        assert len(responses) == 1
+        assert responses[0].tool_call is not None
+        assert responses[0].usage == Usage(5, 6, 11)

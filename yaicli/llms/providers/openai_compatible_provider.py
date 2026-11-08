@@ -5,6 +5,7 @@ from openai._streaming import Stream
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from ...schemas import LLMResponse
+from ...usage import usage_from_openai
 from ..tool_calls import ToolCallAccumulator
 from .openai_provider import OpenAIProvider
 
@@ -32,14 +33,20 @@ class OpenAICompatibleProvider(OpenAIProvider):
            finish reason, so a call must not be held back forever.
 
         A call is only emitted once (tracked by id); calls already emitted are
-        not re-yielded when a later finish reason arrives.
+        not re-yielded when a later finish reason arrives. Usage from
+        ``stream_options={"include_usage": True}`` is captured from the (possibly
+        choices-less) final chunk and attached to a terminal response.
         """
         accumulator = ToolCallAccumulator()
         emitted_ids: set = set()
+        pending_usage = None
         started = False
 
         # Process each chunk in the response stream
         for chunk in response:
+            chunk_usage = usage_from_openai(chunk)
+            if chunk_usage is not None:
+                pending_usage = chunk_usage
             if not chunk.choices and not started:
                 # Some api could return error message in the first chunk, no choices to handle
                 _first_chunk_llm_resp = self._first_chunk_error(chunk)
@@ -103,3 +110,7 @@ class OpenAICompatibleProvider(OpenAIProvider):
                 content=content,
                 finish_reason=finish_reason,
             )
+
+        if pending_usage is not None:
+            # Terminal usage-only response: empty content, no tool call.
+            yield LLMResponse(usage=pending_usage)

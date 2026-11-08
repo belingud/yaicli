@@ -13,7 +13,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .chat import Chat, FileChatManager, chat_mgr, resolve_default_chat_dir
-from .cmd_handler import CMD_COMPACT, CMD_UNDO, CmdHandler
+from .cmd_handler import CMD_COMPACT, CMD_COST, CMD_UNDO, CmdHandler
 from .config import cfg
 from .console import get_console, get_error_console, safe_text, untrusted_text
 from .const import (
@@ -46,6 +46,7 @@ from .role import Role, RoleManager, role_mgr
 from .schemas import ChatMessage, ImageData, RefreshLive, ToolPolicy
 from .tokens import resolve_context_budget, trim_messages_to_budget, trim_oldest_group
 from .tools.approval import ToolApprovalManager
+from .usage import Usage, estimate_cost
 from .utils import detect_os, detect_shell, filter_command
 
 #: Lazily imported prompt_toolkit / LLM-client names (K08).
@@ -467,6 +468,121 @@ class CLI:
         kind = self.error_kind.value if isinstance(self.error_kind, ErrorKind) else str(self.error_kind)
         return {"kind": kind, "message": self.error_message}
 
+    # ------------------- v0.22 K17 usage / cost -------------------
+    @staticmethod
+    def _usage_dict_int(usage: Optional[Dict[str, Any]], key: str) -> int:
+        """Read a non-negative integer field from a usage snapshot (never raises)."""
+        if not isinstance(usage, dict):
+            return 0
+        value = usage.get(key, 0)
+        if isinstance(value, bool) or not isinstance(value, int):
+            return 0
+        return max(0, value)
+
+    def _client_usage_snapshot(self) -> Optional[Dict[str, Any]]:
+        """Return the live client's session usage snapshot, or ``None``.
+
+        The private client slot is used on purpose: emitting a result or a usage
+        line must never construct the LLM client as a side effect. Any missing
+        client/API degrades to ``None`` instead of breaking output.
+        """
+        client = getattr(self, "_client", None)
+        if client is None:
+            return None
+        snapshot = getattr(client, "usage_snapshot", None)
+        if not callable(snapshot):
+            return None
+        try:
+            data = snapshot()
+        except Exception:  # pragma: no cover - usage reporting must never break the CLI
+            return None
+        return data if isinstance(data, dict) else None
+
+    def _usage_payload(self) -> Dict[str, Any]:
+        """The JSON ``usage`` object: real session usage or a zeroed fallback."""
+        snapshot = self._client_usage_snapshot()
+        if snapshot is not None:
+            return snapshot
+        return {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "cached_tokens": 0,
+            "reasoning_tokens": 0,
+            "estimated": False,
+            "requests": 0,
+            "cost_usd": None,
+            "models": {},
+            "tools": {"count": 0, "duration_ms": 0.0, "result_chars": 0},
+        }
+
+    def _turn_finish_reason(self) -> Optional[str]:
+        """Last provider ``finish_reason`` (only when the client exposed a string)."""
+        client = getattr(self, "_client", None)
+        if client is None:
+            return None
+        try:
+            value = getattr(client, "last_finish_reason", None)
+        except Exception:  # pragma: no cover
+            return None
+        return value if isinstance(value, str) else None
+
+    def _turn_output_truncated(self) -> bool:
+        """True when the last turn stopped at MAX_TOKENS (``finish_reason=length``)."""
+        client = getattr(self, "_client", None)
+        if client is None:
+            return False
+        try:
+            if getattr(client, "output_truncated", False) is True:
+                return True
+        except Exception:  # pragma: no cover
+            pass
+        return self._turn_finish_reason() == "length"
+
+    @staticmethod
+    def _show_usage_enabled() -> bool:
+        """Whether the interactive per-turn usage line is enabled (``SHOW_USAGE``)."""
+        try:
+            return bool(cfg.get("SHOW_USAGE", True))
+        except Exception:  # pragma: no cover - config lookups must never break a turn
+            return True
+
+    def _format_usage_line(
+        self,
+        before: Optional[Dict[str, Any]],
+        after: Optional[Dict[str, Any]],
+        elapsed_seconds: float,
+        finish_reason: Optional[str],
+    ) -> Optional[str]:
+        """Build the dim per-turn line (``tokens … · $… · 1.2s · stop``).
+
+        ``before``/``after`` are session snapshots; the difference is this turn's
+        usage. Returns ``None`` when no usage data is available at all (graceful
+        degrade); unknown model pricing simply omits the cost segment.
+        """
+        if not isinstance(after, dict):
+            return None
+        prompt = max(0, self._usage_dict_int(after, "prompt_tokens") - self._usage_dict_int(before, "prompt_tokens"))
+        completion = max(
+            0, self._usage_dict_int(after, "completion_tokens") - self._usage_dict_int(before, "completion_tokens")
+        )
+        parts: List[str] = []
+        if prompt or completion:
+            parts.append(f"tokens {prompt:,} in / {completion:,} out")
+            try:
+                model = str(cfg.get("MODEL") or "")
+                cost = estimate_cost(model, Usage(prompt, completion, prompt + completion), cfg)
+            except Exception:  # pragma: no cover - cost display must never break a turn
+                cost = None
+            if cost is not None:
+                parts.append(f"${cost:.4f}")
+        else:
+            parts.append("tokens n/a")
+        parts.append(f"{max(0.0, elapsed_seconds):.1f}s")
+        if finish_reason:
+            parts.append(str(finish_reason))
+        return " · ".join(parts)
+
     def _build_result(self) -> Dict[str, Any]:
         """The single JSON object emitted by ``--output-format json``."""
         return {
@@ -475,7 +591,8 @@ class CLI:
                 {"name": call.get("name", ""), "arguments": call.get("arguments"), "result": call.get("result")}
                 for call in self.tool_calls
             ],
-            "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+            "usage": self._usage_payload(),
+            "finish_reason": self._turn_finish_reason(),
             "model": cfg.get("MODEL", ""),
             "provider": cfg.get("PROVIDER", ""),
             "error": self._error_payload(),
@@ -628,7 +745,11 @@ class CLI:
             sys.stdout.write(payload + "\n")
             sys.stdout.flush()
         elif self.output_format == "stream-json":
-            self._emit_event({"type": "usage", "prompt_tokens": 0, "completion_tokens": 0})
+            usage_event: Dict[str, Any] = {"type": "usage", **self._usage_payload()}
+            finish_reason = self._turn_finish_reason()
+            if finish_reason is not None:
+                usage_event["finish_reason"] = finish_reason
+            self._emit_event(usage_event)
             self._emit_event(
                 {
                     "type": "done",
@@ -1195,7 +1316,12 @@ class CLI:
 
         # Every user input opens a new turn; the Ctrl+O viewer groups tool outputs by it.
         begin_turn()
+        # K17: snapshot the session usage before the turn so the interactive line
+        # shows this turn's tokens, not the whole session's.
+        usage_before = self._client_usage_snapshot()
+        turn_started_at = time.perf_counter()
         content, updated_messages = self._handle_llm_response(user_input, images=images)
+        elapsed_seconds = time.perf_counter() - turn_started_at
         self._record_tool_calls(updated_messages)
 
         if content is None and not any(getattr(msg, "tool_calls", None) for msg in updated_messages):
@@ -1226,6 +1352,25 @@ class CLI:
             self.last_content = result_text
             if self.machine_output:
                 self._write_text_result(result_text)
+
+        # K17: one stderr warning when the provider truncated the answer at
+        # MAX_TOKENS (every mode; stderr keeps structured stdout parseable).
+        if self._turn_output_truncated():
+            get_error_console().print(
+                "Response stopped at MAX_TOKENS; increase MAX_TOKENS (or reduce the context/tool output) "
+                "to get a complete answer.",
+                style="yellow",
+            )
+        # K17: one dim per-turn usage line in interactive output (never machine output).
+        if not self.machine_output and self._show_usage_enabled():
+            usage_line = self._format_usage_line(
+                usage_before,
+                self._client_usage_snapshot(),
+                elapsed_seconds,
+                self._turn_finish_reason(),
+            )
+            if usage_line:
+                self.console.print(usage_line, style="dim")
         return True
 
     def _run_generated_command(self, command: str) -> None:
@@ -1411,6 +1556,7 @@ class CLI:
         self.console.print(
             f"{'/context, /ctx':<19}: Show context/token usage; manage context (list, add, remove, clear, budget)"
         )
+        self.console.print(f"{CMD_COST:<19}: Show session token usage and estimated cost")
         self.console.print(
             f"{CMD_COMPACT + ' [keep_rounds]':<19}: Compact history, keeping the last N turn groups (default 5)"
         )

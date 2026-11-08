@@ -9,6 +9,7 @@ from yaicli.llms.client import LLMClient
 from yaicli.llms.provider import Provider
 from yaicli.llms.providers.openai_provider import OpenAIProvider
 from yaicli.schemas import ChatMessage, LLMResponse, RefreshLive, ToolCall, ToolPolicy
+from yaicli.usage import Usage
 
 
 class MockProvider(Provider):
@@ -466,3 +467,132 @@ class TestLLMClient:
         tool_messages = [message for message in messages if message.role == "tool"]
         assert [message.tool_call_id for message in tool_messages] == ["call_a", "call_b"]
         assert any(getattr(response, "content", None) == "Both files read" for response in responses)
+
+
+class TestLLMClientUsage:
+    """v0.22 K17: the client accumulates usage/tool metrics exactly once per round."""
+
+    @pytest.fixture
+    def mock_config(self):
+        return {
+            "API_KEY": "fake_api_key",
+            "BASE_URL": "https://fake-api.openai.com/v1",
+            "MODEL": "gpt-4o-mini",
+            "TEMPERATURE": 0.7,
+            "TOP_P": 1.0,
+            "MAX_TOKENS": 1000,
+            "TIMEOUT": 60,
+            "PROVIDER": "openai",
+            "ENABLE_FUNCTIONS": True,
+            "ENABLE_MCP": False,
+            "MAX_TOOL_CALL_DEPTH": 5,
+            "TOOL_CONFIRM": False,
+        }
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_records_provider_usage_once(self, mock_factory, mock_config):
+        provider = MockProvider(
+            responses=[
+                LLMResponse(content="a", usage=Usage(10, 5, 15)),
+                LLMResponse(content="b"),
+            ]
+        )
+        mock_factory.return_value = provider
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
+
+        list(client.completion_with_tools([ChatMessage(role="user", content="hi")]))
+
+        assert client.session_usage == Usage(10, 5, 15)
+        assert client.last_usage == Usage(10, 5, 15)
+        assert client.usage_tracker.requests == 1
+        assert client.usage_tracker.by_model["gpt-4o-mini"] == Usage(10, 5, 15)
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_duplicate_usage_snapshots_are_not_double_counted(self, mock_factory, mock_config):
+        duplicate = Usage(10, 5, 15)
+        provider = MockProvider(
+            responses=[LLMResponse(content="a", usage=duplicate), LLMResponse(content="b", usage=duplicate)]
+        )
+        mock_factory.return_value = provider
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
+
+        list(client.completion_with_tools([ChatMessage(role="user", content="hi")]))
+
+        assert client.session_usage == duplicate
+        assert client.usage_tracker.requests == 1
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_estimates_usage_when_provider_reports_none(self, mock_factory, mock_config):
+        provider = MockProvider(responses=[LLMResponse(content="a fairly long answer")])
+        mock_factory.return_value = provider
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
+
+        list(client.completion_with_tools([ChatMessage(role="user", content="hi")]))
+
+        usage = client.session_usage
+        assert usage.estimated is True
+        assert usage.prompt_tokens > 0
+        assert usage.completion_tokens > 0
+        assert usage.total_tokens == usage.prompt_tokens + usage.completion_tokens
+        assert client.last_usage is not None
+        assert client.last_usage.estimated is True
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_finish_reason_length_sets_output_truncated(self, mock_factory, mock_config):
+        provider = MagicMock(spec=Provider)
+        mock_factory.return_value = provider
+        provider.detect_tool_role.return_value = "tool"
+        provider.resolve_tool_policy.return_value = ToolPolicy(enable_functions=True, enable_mcp=False)
+        provider.completion.side_effect = [
+            iter([LLMResponse(content="partial", finish_reason="length")]),
+            iter([LLMResponse(content="complete", finish_reason="stop")]),
+        ]
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
+        messages = [ChatMessage(role="user", content="hi")]
+
+        list(client.completion_with_tools(messages))
+        assert client.output_truncated is True
+        assert client.last_finish_reason == "length"
+
+        # A new turn resets the per-turn truncation flag.
+        list(client.completion_with_tools(messages))
+        assert client.output_truncated is False
+        assert client.last_finish_reason == "stop"
+
+    @patch("yaicli.llms.client.execute_tool_call")
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_multi_round_usage_and_tool_metrics(self, mock_factory, mock_execute_tool, mock_config):
+        mock_execute_tool.return_value = ('{"ok": true}', True)
+        tool_call = ToolCall(id="call_1", name="fs_list_directory", arguments="{}")
+        provider = MagicMock(spec=Provider)
+        mock_factory.return_value = provider
+        provider.detect_tool_role.return_value = "tool"
+        provider.resolve_tool_policy.return_value = ToolPolicy(enable_functions=True, enable_mcp=False)
+        provider.completion.side_effect = [
+            iter([LLMResponse(content="", finish_reason="tool_calls", tool_call=tool_call, usage=Usage(10, 5, 15))]),
+            iter([LLMResponse(content="done", finish_reason="stop", usage=Usage(20, 10, 30))]),
+        ]
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
+
+        list(client.completion_with_tools([ChatMessage(role="user", content="list")]))
+
+        assert client.session_usage == Usage(30, 15, 45)
+        assert client.usage_tracker.requests == 2
+        tool_metrics = client.usage_tracker.snapshot()["tools"]
+        assert tool_metrics["count"] == 1
+        assert tool_metrics["result_chars"] == len('{"ok": true}')
+        assert tool_metrics["duration_ms"] >= 0
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_usage_snapshot_includes_cost_and_models(self, mock_factory, mock_config):
+        mock_factory.return_value = MockProvider(responses=[LLMResponse(content="hi")])
+        client = LLMClient(provider_name="mock_provider", config=mock_config)
+        client.usage_tracker.record(Usage(1_000_000, 1_000_000, 2_000_000), "gpt-4o-mini")
+
+        snapshot = client.usage_snapshot()
+
+        assert snapshot["prompt_tokens"] == 1_000_000
+        assert snapshot["cost_usd"] == pytest.approx(0.75)
+        assert snapshot["estimated"] is False
+        assert snapshot["models"]["gpt-4o-mini"]["cost_usd"] == pytest.approx(0.75)
+        assert snapshot["tools"] == {"count": 0, "duration_ms": 0.0, "result_chars": 0}

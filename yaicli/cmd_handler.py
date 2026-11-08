@@ -41,6 +41,9 @@ CMD_SHOW_OUTPUT = "/show-output"
 #: Slash command to restore the last file mutation made by the agent (v0.21 K11).
 #: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
 CMD_UNDO = "/undo"
+#: Slash command to show session token usage and estimated cost (v0.22 K17).
+#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
+CMD_COST = "/cost"
 #: Turn groups kept by ``/compact`` when no argument is given.
 DEFAULT_COMPACT_KEEP_ROUNDS = 5
 #: ``/context`` subcommands that print the estimated usage breakdown.
@@ -77,6 +80,7 @@ class CmdHandler:
             CMD_PERMISSIONS: self.handle_permissions,
             CMD_SHOW_OUTPUT: self.handle_show_output,
             CMD_UNDO: self.handle_undo,
+            CMD_COST: self.handle_cost,
         }
 
     def handle_add_context(self, command_input: str = "") -> bool:
@@ -336,6 +340,117 @@ class CmdHandler:
                 "The undo was only partially applied; fix the reported errors and retry.",
                 style="yellow",
             )
+        return True
+
+    # ------------------- usage / cost commands (v0.22 K17) -------------------
+    @staticmethod
+    def _usage_int(snapshot, key: str) -> int:
+        """Read a non-negative integer field from a usage snapshot (never raises)."""
+        if not isinstance(snapshot, dict):
+            return 0
+        value = snapshot.get(key, 0)
+        if isinstance(value, bool) or not isinstance(value, int):
+            return 0
+        return max(0, value)
+
+    @staticmethod
+    def _usage_cost(value):
+        """Return a finite float cost or ``None`` (unknown pricing/invalid value)."""
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        return float(value)
+
+    def _cost_snapshot(self):
+        """Return the live client's usage snapshot, or ``None`` when unavailable.
+
+        Uses the private client slot: ``/cost`` must not construct the LLM client
+        as a side effect (and must never raise on a mock/legacy client).
+        """
+        client = getattr(self.cli, "_client", None)
+        if client is None:
+            return None
+        getter = getattr(client, "usage_snapshot", None)
+        if not callable(getter):
+            return None
+        try:
+            snapshot = getter()
+        except Exception:  # pragma: no cover - usage reporting must never break the REPL
+            return None
+        return snapshot if isinstance(snapshot, dict) else None
+
+    def handle_cost(self) -> bool:
+        """Handle ``/cost``: show session tokens, per-model usage and estimated cost.
+
+        Reports provider-reported plus estimated usage, the estimated USD cost
+        (``unknown model pricing`` when no price is known), tool call metrics and
+        the last provider finish reason.
+
+        Returns:
+            True to continue the REPL loop
+        """
+        console = self.cli.console
+        snapshot = self._cost_snapshot()
+        if snapshot is None:
+            console.print(
+                "No token usage is available in this session yet; make a request, then run /cost again.",
+                style="yellow",
+            )
+            return True
+
+        prompt = self._usage_int(snapshot, "prompt_tokens")
+        completion = self._usage_int(snapshot, "completion_tokens")
+        total = self._usage_int(snapshot, "total_tokens") or (prompt + completion)
+        requests = self._usage_int(snapshot, "requests")
+        cached = self._usage_int(snapshot, "cached_tokens")
+        reasoning = self._usage_int(snapshot, "reasoning_tokens")
+        estimated = bool(snapshot.get("estimated"))
+        models = snapshot.get("models")
+        has_models = isinstance(models, dict) and bool(models)
+        if requests == 0 and total == 0 and not has_models:
+            console.print(
+                "No usage recorded yet in this session. Make a request, then run /cost again.",
+                style="yellow",
+            )
+            return True
+
+        label = " (estimated)" if estimated else ""
+        console.print("Session usage:", style="bold")
+        console.print(f"  tokens    : {prompt:,} in / {completion:,} out ({total:,} total){label}")
+        if cached:
+            console.print(f"  cached    : {cached:,} tokens")
+        if reasoning:
+            console.print(f"  reasoning : {reasoning:,} tokens")
+        console.print(f"  requests  : {requests:,}")
+
+        cost = self._usage_cost(snapshot.get("cost_usd"))
+        if cost is None:
+            console.print("  cost      : unknown model pricing (set MODEL_PRICING for an estimate)")
+        else:
+            console.print(f"  cost      : ${cost:.4f} estimated USD")
+
+        tools = snapshot.get("tools")
+        if isinstance(tools, dict):
+            tool_count = self._usage_int(tools, "count")
+            duration = tools.get("duration_ms", 0)
+            duration_text = f"{float(duration):.0f} ms" if self._usage_cost(duration) is not None else "0 ms"
+            result_chars = self._usage_int(tools, "result_chars")
+            console.print(f"  tools     : {tool_count:,} call(s), {duration_text}, {result_chars:,} result chars")
+
+        client = getattr(self.cli, "_client", None)
+        finish = getattr(client, "last_finish_reason", None) if client is not None else None
+        if isinstance(finish, str) and finish:
+            console.print(f"  last stop : {safe_text(finish)}")
+
+        if has_models:
+            console.print("Per model:", style="bold")
+            for name, data in models.items():
+                if not isinstance(data, dict):
+                    continue
+                model_in = self._usage_int(data, "prompt_tokens")
+                model_out = self._usage_int(data, "completion_tokens")
+                model_cost = self._usage_cost(data.get("cost_usd"))
+                cost_text = f"${model_cost:.4f}" if model_cost is not None else "unknown pricing"
+                console.print(f"  {safe_text(str(name))}: {model_in:,} in / {model_out:,} out, {cost_text}")
         return True
 
     def handle_context(self, command_input: str = "") -> bool:

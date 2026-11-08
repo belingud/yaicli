@@ -7,7 +7,8 @@ Locks the frozen contract:
 - stdout carries only results/events (no "Assistant:", no boxes, no warnings),
   diagnostics go to stderr, text output ends with exactly one newline;
 - ``--output-format json`` emits one object
-  {content, tool_calls, usage, model, provider, error, exit_code};
+  {content, tool_calls, usage, finish_reason, model, provider, error, exit_code};
+  ``usage`` carries the real session counters (zeros when the client reports none);
 - ``--output-format stream-json`` emits NDJSON events
   (turn_start/text_delta/tool_call/tool_result/usage/done);
 - CLI state attributes (interactive, exit_code, had_error, interrupted,
@@ -84,6 +85,7 @@ class TestJsonOutput:
             "content",
             "tool_calls",
             "usage",
+            "finish_reason",
             "model",
             "provider",
             "error",
@@ -91,7 +93,14 @@ class TestJsonOutput:
         }
         assert payload["content"] == "hello world"
         assert payload["tool_calls"] == []
-        assert payload["usage"] == {"prompt_tokens": 0, "completion_tokens": 0}
+        # A mocked client has no usage tracker: the payload degrades to a zeroed
+        # object with every documented key instead of failing.
+        assert payload["usage"]["prompt_tokens"] == 0
+        assert payload["usage"]["completion_tokens"] == 0
+        assert payload["usage"]["total_tokens"] == 0
+        assert payload["usage"]["requests"] == 0
+        assert payload["usage"]["cost_usd"] is None
+        assert payload["finish_reason"] is None
         assert payload["error"] is None
         assert payload["exit_code"] == 0
 

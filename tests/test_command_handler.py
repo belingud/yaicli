@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from yaicli.cmd_handler import CmdHandler
+from yaicli.cmd_handler import CMD_COST, CmdHandler
 from yaicli.const import (
     CHAT_MODE,
     EXEC_MODE,
@@ -305,3 +305,113 @@ class TestHandleHistoryToolCalls:
         assert result is True
         printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
         assert any("Assistant:" in t for t in printed)
+
+
+def _printed_text(console):
+    """All console.print() first arguments joined into one string."""
+    return "\n".join(str(call.args[0]) for call in console.print.call_args_list if call.args)
+
+
+class TestHandleCost:
+    """v0.22 K17: /cost reports session tokens, cost, models and tool metrics."""
+
+    @staticmethod
+    def _snapshot(**overrides):
+        snapshot = {
+            "prompt_tokens": 1234,
+            "completion_tokens": 567,
+            "total_tokens": 1801,
+            "cached_tokens": 12,
+            "reasoning_tokens": 0,
+            "estimated": False,
+            "requests": 2,
+            "cost_usd": 0.0021,
+            "models": {
+                "gpt-4o-mini": {
+                    "prompt_tokens": 1234,
+                    "completion_tokens": 567,
+                    "total_tokens": 1801,
+                    "estimated": False,
+                    "cost_usd": 0.0021,
+                }
+            },
+            "tools": {"count": 2, "duration_ms": 25.0, "result_chars": 4096},
+        }
+        snapshot.update(overrides)
+        return snapshot
+
+    def _handler(self, snapshot):
+        cli = MagicMock()
+        cli.console = MagicMock()
+        cli._client = MagicMock()
+        cli._client.usage_snapshot = MagicMock(return_value=snapshot)
+        cli._client.last_finish_reason = "stop"
+        return CmdHandler(cli)
+
+    def test_cost_without_client_prints_friendly_line(self, mock_cli):
+        mock_cli._client = None
+        handler = CmdHandler(mock_cli)
+
+        assert handler.handle_command(CMD_COST) is True
+
+        assert "No token usage" in _printed_text(mock_cli.console)
+
+    def test_cost_shows_totals_cost_models_and_tools(self):
+        handler = self._handler(self._snapshot())
+
+        assert handler.handle_command(CMD_COST) is True
+
+        printed = _printed_text(handler.cli.console)
+        assert "Session usage:" in printed
+        assert "1,234 in / 567 out (1,801 total)" in printed
+        assert "requests  : 2" in printed
+        assert "$0.0021" in printed
+        assert "2 call(s)" in printed
+        assert "4,096 result chars" in printed
+        assert "last stop : stop" in printed
+        assert "gpt-4o-mini: 1,234 in / 567 out, $0.0021" in printed
+
+    def test_cost_marks_estimated_usage(self):
+        handler = self._handler(self._snapshot(estimated=True))
+
+        handler.handle_cost()
+
+        assert "(estimated)" in _printed_text(handler.cli.console)
+
+    def test_cost_unknown_pricing_fallback(self):
+        snapshot = self._snapshot(
+            cost_usd=None,
+            models={
+                "totally-unknown-model": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                    "estimated": False,
+                    "cost_usd": None,
+                }
+            },
+        )
+        handler = self._handler(snapshot)
+
+        handler.handle_cost()
+
+        printed = _printed_text(handler.cli.console)
+        assert "unknown model pricing" in printed
+        assert "totally-unknown-model: 10 in / 5 out, unknown pricing" in printed
+
+    def test_cost_no_usage_recorded_yet(self):
+        snapshot = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "estimated": False,
+            "requests": 0,
+            "cost_usd": None,
+            "models": {},
+            "tools": {"count": 0, "duration_ms": 0.0, "result_chars": 0},
+        }
+        handler = self._handler(snapshot)
+
+        assert handler.handle_cost() is True
+
+        assert "No usage recorded yet" in _printed_text(handler.cli.console)

@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -9,6 +10,7 @@ from yaicli.exceptions import ProviderError
 from yaicli.llms.providers.deepseek_provider import DeepSeekProvider
 from yaicli.llms.providers.openai_provider import OpenAIAzure, OpenAIProvider
 from yaicli.schemas import ChatMessage, ToolCall, ToolPolicy
+from yaicli.usage import Usage
 
 
 class TestOpenAIProvider:
@@ -949,3 +951,146 @@ class TestOpenAIAzure:
             assert len(responses) == 1
             assert responses[0].content == "Azure response"
             assert responses[0].finish_reason == "stop"
+
+
+class TestOpenAIUsage:
+    """v0.22 K17: provider-reported token usage reaches LLMResponse."""
+
+    @pytest.fixture
+    def mock_config(self):
+        return {
+            "API_KEY": "fake_api_key",
+            "BASE_URL": "https://fake-api.openai.com/v1",
+            "MODEL": "gpt-4o-mini",
+            "TEMPERATURE": 0.7,
+            "TOP_P": 1.0,
+            "MAX_TOKENS": 1000,
+            "TIMEOUT": 60,
+            "EXTRA_HEADERS": None,
+            "EXTRA_BODY": None,
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+        }
+
+    def _provider(self, config, client=None):
+        with patch.object(OpenAIProvider, "CLIENT_CLS", MagicMock()):
+            provider = OpenAIProvider(config=config)
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = client
+        provider.client = mock_client
+        return provider, mock_client
+
+    @staticmethod
+    def _response(content="hi", finish_reason="stop", usage=None, tool_calls=None):
+        response = MagicMock()
+        choice = MagicMock()
+        choice.message.content = content
+        choice.message.reasoning_content = None
+        choice.message.model_extra = None
+        choice.message.tool_calls = tool_calls
+        choice.finish_reason = finish_reason
+        response.choices = [choice]
+        response.usage = usage
+        return response
+
+    @staticmethod
+    def _chunk(content="", finish_reason=None, usage=None, no_choices=False):
+        chunk = MagicMock()
+        if no_choices:
+            chunk.choices = []
+        else:
+            choice = MagicMock()
+            delta = MagicMock()
+            delta.content = content
+            delta.model_extra = None
+            delta.tool_calls = None
+            choice.delta = delta
+            choice.finish_reason = finish_reason
+            chunk.choices = [choice]
+        chunk.usage = usage
+        return chunk
+
+    def test_non_stream_usage_attached(self, mock_config):
+        usage = SimpleNamespace(
+            prompt_tokens=11,
+            completion_tokens=4,
+            total_tokens=15,
+            prompt_tokens_details=SimpleNamespace(cached_tokens=3),
+            completion_tokens_details=SimpleNamespace(reasoning_tokens=2),
+        )
+        response = self._response(usage=usage)
+        provider, mock_client = self._provider(mock_config, [response])
+        mock_client.chat.completions.create.return_value = response
+
+        responses = list(provider.completion([ChatMessage(role="user", content="hi")]))
+
+        assert responses[0].usage == Usage(
+            prompt_tokens=11, completion_tokens=4, total_tokens=15, cached_tokens=3, reasoning_tokens=2
+        )
+        # Non-streaming requests must not send the streaming-only usage option.
+        assert "stream_options" not in mock_client.chat.completions.create.call_args.kwargs
+
+    def test_non_stream_parallel_tool_calls_attach_usage_to_first_only(self, mock_config):
+        tool_calls = [MagicMock() for _ in range(2)]
+        for index, tool in enumerate(tool_calls):
+            tool.id = f"call_{index}"
+            tool.function.name = "fs_read_file"
+            tool.function.arguments = '{"path": "a.txt"}'
+        usage = SimpleNamespace(prompt_tokens=20, completion_tokens=8, total_tokens=28)
+        response = self._response(finish_reason="tool_calls", usage=usage, tool_calls=tool_calls)
+        provider, mock_client = self._provider(mock_config, [response])
+        mock_client.chat.completions.create.return_value = response
+
+        responses = list(provider.completion([ChatMessage(role="user", content="hi")]))
+
+        assert len(responses) == 2
+        assert responses[0].usage == Usage(20, 8, 28)
+        # Usage must be attached exactly once per round (no double counting).
+        assert responses[1].usage is None
+
+    def test_stream_usage_from_final_chunk(self, mock_config):
+        usage = SimpleNamespace(prompt_tokens=12, completion_tokens=3, total_tokens=15)
+        chunks = [
+            self._chunk(content="He", finish_reason=None),
+            self._chunk(content="llo", finish_reason="stop"),
+            self._chunk(usage=usage, no_choices=True),
+        ]
+        provider, mock_client = self._provider(mock_config, chunks)
+
+        responses = list(provider.completion([ChatMessage(role="user", content="hi")], stream=True))
+
+        assert [response.content for response in responses] == ["He", "llo", ""]
+        assert responses[-1].usage == Usage(12, 3, 15)
+        assert mock_client.chat.completions.create.call_args.kwargs["stream_options"] == {"include_usage": True}
+
+    def test_stream_options_rejected_retries_once_without_it(self, mock_config):
+        usage_error = RuntimeError("Unrecognized request argument supplied: stream_options")
+        usage_error.status_code = 400  # type: ignore[attr-defined]
+        provider, mock_client = self._provider(mock_config, None)
+        mock_client.chat.completions.create.side_effect = [
+            usage_error,
+            [self._chunk(content="plain", finish_reason="stop")],
+        ]
+
+        responses = list(provider.completion([ChatMessage(role="user", content="hi")], stream=True))
+
+        assert [response.content for response in responses] == ["plain"]
+        assert responses[0].usage is None
+        assert mock_client.chat.completions.create.call_count == 2
+        first_kwargs = mock_client.chat.completions.create.call_args_list[0].kwargs
+        second_kwargs = mock_client.chat.completions.create.call_args_list[1].kwargs
+        assert first_kwargs["stream_options"] == {"include_usage": True}
+        assert "stream_options" not in second_kwargs
+
+    def test_stream_other_error_is_not_retried(self, mock_config):
+        from yaicli.errors import AgentError
+
+        provider, mock_client = self._provider(mock_config, None)
+        error = RuntimeError("server exploded")
+        error.status_code = 500  # type: ignore[attr-defined]
+        mock_client.chat.completions.create.side_effect = error
+
+        with pytest.raises(AgentError):
+            list(provider.completion([ChatMessage(role="user", content="hi")], stream=True))
+
+        assert mock_client.chat.completions.create.call_count == 1

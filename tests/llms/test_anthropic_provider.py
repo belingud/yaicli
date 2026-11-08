@@ -1,4 +1,5 @@
 import sys
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -12,6 +13,7 @@ from yaicli.llms.providers.anthropic_provider import (
     AnthropicVertexProvider,
 )
 from yaicli.schemas import ChatMessage, ImageData, ToolPolicy
+from yaicli.usage import Usage
 
 
 class TestAnthropicProvider:
@@ -245,9 +247,7 @@ class TestAnthropicProvider:
 
     @patch("yaicli.llms.providers.anthropic_provider.Anthropic")
     @patch("yaicli.tools.get_anthropic_schemas", return_value=[{"name": "test_function"}])
-    def test_disable_parallel_tool_use_accepts_string_false(
-        self, mock_get_schemas, mock_anthropic_cls, mock_config
-    ):
+    def test_disable_parallel_tool_use_accepts_string_false(self, mock_get_schemas, mock_anthropic_cls, mock_config):
         """A direct config dict with "false" must send a bool, not a truthy string.
 
         config.ini values used to reach the provider as raw strings; str2bool in
@@ -627,7 +627,7 @@ class TestCloudExtras:
     def test_helper_reports_missing_extra(self):
         from yaicli.llms.providers.anthropic_provider import _require_optional_dependency
 
-        with pytest.raises(ImportError, match=r'yaicli\[vertex\]'):
+        with pytest.raises(ImportError, match=r"yaicli\[vertex\]"):
             _require_optional_dependency("definitely_missing_module_xyz", "vertex")
 
     def test_bedrock_provider_checks_boto3(self):
@@ -751,3 +751,92 @@ class TestAnthropicVertexProvider:
             provider = AnthropicVertexProvider(config=vertex_config)
 
         assert provider.config["CLOUD_ML_REGION"] == "europe-west1"
+
+
+class TestAnthropicUsage:
+    """v0.22 K17: usage from the Message and from stream events."""
+
+    @pytest.fixture
+    def mock_config(self):
+        return {
+            "API_KEY": "fake_api_key",
+            "BASE_URL": "https://api.anthropic.com",
+            "MODEL": "claude-3-5-sonnet-20241022",
+            "TEMPERATURE": 0.7,
+            "TOP_P": 1.0,
+            "MAX_TOKENS": 1000,
+            "TIMEOUT": 60,
+            "EXTRA_HEADERS": None,
+            "EXTRA_BODY": None,
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+        }
+
+    def _provider(self, config):
+        with patch.object(AnthropicProvider, "CLIENT_CLS", MagicMock()):
+            return AnthropicProvider(config=config)
+
+    def test_non_stream_message_usage(self, mock_config):
+        provider = self._provider(mock_config)
+        block = MagicMock()
+        block.type = "text"
+        block.text = "hello"
+        response = MagicMock()
+        response.content = [block]
+        response.stop_reason = "end_turn"
+        response.usage = SimpleNamespace(input_tokens=100, output_tokens=20, cache_read_input_tokens=40)
+
+        responses = list(provider._handle_normal_response(response))
+
+        assert len(responses) == 1
+        assert responses[0].usage == Usage(prompt_tokens=100, completion_tokens=20, total_tokens=120, cached_tokens=40)
+
+    def test_stream_message_start_plus_delta_usage(self, mock_config):
+        provider = self._provider(mock_config)
+
+        message_start = MagicMock()
+        message_start.type = "message_start"
+        message_start.usage = None
+        message_start.message = MagicMock()
+        message_start.message.usage = SimpleNamespace(input_tokens=100, output_tokens=1, cache_read_input_tokens=0)
+
+        text_delta = MagicMock()
+        text_delta.type = "content_block_delta"
+        text_delta.delta = MagicMock(spec=["text"])
+        text_delta.delta.text = "hi"
+
+        message_delta = MagicMock()
+        message_delta.type = "message_delta"
+        message_delta.delta = MagicMock(spec=["stop_reason"])
+        message_delta.delta.stop_reason = "end_turn"
+        message_delta.usage = SimpleNamespace(output_tokens=50)
+
+        message_stop = MagicMock()
+        message_stop.type = "message_stop"
+
+        responses = list(provider._handle_stream_response([message_start, text_delta, message_delta, message_stop]))
+
+        usage_responses = [response for response in responses if response.usage is not None]
+        # Usage is attached to the closing response only (never to every stream chunk).
+        assert len(usage_responses) == 1
+        assert usage_responses[0] is responses[-1]
+        assert usage_responses[0].usage == Usage(prompt_tokens=100, completion_tokens=50, total_tokens=150)
+
+    def test_stream_without_message_stop_still_reports_usage(self, mock_config):
+        provider = self._provider(mock_config)
+
+        message_start = MagicMock()
+        message_start.type = "message_start"
+        message_start.usage = None
+        message_start.message = MagicMock()
+        message_start.message.usage = SimpleNamespace(input_tokens=7, output_tokens=1, cache_read_input_tokens=0)
+
+        message_delta = MagicMock()
+        message_delta.type = "message_delta"
+        message_delta.delta = MagicMock(spec=["stop_reason"])
+        message_delta.delta.stop_reason = "end_turn"
+        message_delta.usage = SimpleNamespace(output_tokens=3)
+
+        responses = list(provider._handle_stream_response([message_start, message_delta]))
+
+        assert responses[-1].usage == Usage(prompt_tokens=7, completion_tokens=3, total_tokens=10)

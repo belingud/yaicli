@@ -14,6 +14,7 @@ from ...errors import provider_response_error, wrap_provider_exception
 from ...exceptions import MCPToolsError, ProviderError
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_mcp_tools, get_openai_schemas
+from ...usage import usage_from_openai
 from ..provider import Provider
 
 
@@ -131,6 +132,43 @@ class OpenAIProvider(Provider):
         name = type(self).__name__
         return name[: -len("Provider")] if name.endswith("Provider") else name
 
+    @staticmethod
+    def _is_stream_options_rejection(exc: BaseException) -> bool:
+        """True when a 400 means this endpoint rejects ``stream_options``.
+
+        Many OpenAI-compatible proxies do not implement ``stream_options`` /
+        ``include_usage`` and answer with HTTP 400. Usage collection must never
+        break a request, so the caller retries once without the parameter.
+        """
+        status = getattr(exc, "status_code", None)
+        if status is None:
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+        if status != 400:
+            return False
+        message = str(exc).lower()
+        return "stream_options" in message or "include_usage" in message
+
+    def _create_completion(self, params: Dict[str, Any], stream: bool):
+        """Create a Chat Completions request, asking for usage when streaming.
+
+        Streaming usage is only reported when the request includes
+        ``stream_options={"include_usage": True}``. Endpoints that reject the
+        parameter get one retry without it (the client then estimates usage).
+        """
+        request = dict(params)
+        request["stream"] = stream
+        if not stream:
+            return self.client.chat.completions.create(**request)
+        request["stream_options"] = {"include_usage": True}
+        try:
+            return self.client.chat.completions.create(**request)
+        except Exception as exc:
+            if not self._is_stream_options_rejection(exc):
+                raise
+            # Not supported by this proxy: retry once with the plain request.
+            request.pop("stream_options", None)
+            return self.client.chat.completions.create(**request)
+
     def completion(
         self,
         messages: List[ChatMessage],
@@ -165,7 +203,7 @@ class OpenAIProvider(Provider):
                 self.console.print("Tools:")
                 self.console.print(params["tools"])
         try:
-            response = self.client.chat.completions.create(**params, stream=stream)
+            response = self._create_completion(params, stream)
             if stream:
                 yield from self._handle_stream_response(cast(Stream[ChatCompletionChunk], response))
             else:
@@ -199,7 +237,8 @@ class OpenAIProvider(Provider):
         A response may contain several parallel tool calls; each one needs its own
         ``LLMResponse`` so ``LLMClient`` can collect and execute all of them. The
         assistant text/reasoning is attached to the first response only so it is not
-        accumulated multiple times.
+        accumulated multiple times. Token usage is attached to that same first
+        response (never to every tool-call response) so the client records it once.
         """
         if not response.choices:
             # Some proxies return the provider error document with HTTP 200 and no
@@ -210,6 +249,7 @@ class OpenAIProvider(Provider):
         content = choice.message.content or ""
         reasoning = getattr(choice.message, "reasoning_content", "")
         finish_reason = choice.finish_reason
+        usage = usage_from_openai(response)
 
         # Check if the response contains reasoning content in model_extra
         if not reasoning and hasattr(choice.message, "model_extra") and choice.message.model_extra:
@@ -229,10 +269,11 @@ class OpenAIProvider(Provider):
                     content=content if tool_call_index == 0 else "",
                     finish_reason=finish_reason,
                     tool_call=tool_call,
+                    usage=usage if tool_call_index == 0 else None,
                 )
             return
 
-        yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason)
+        yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason, usage=usage)
 
     def _first_chunk_error(self, chunk) -> Optional[LLMResponse]:
         """
@@ -262,11 +303,21 @@ class OpenAIProvider(Provider):
         ``finish_reason == "tool_calls"`` every accumulated call is emitted as its own
         ``LLMResponse`` (in index order) so the client can collect and execute all of
         them. The chunk's text/reasoning is attached to the first emitted response.
+
+        With ``stream_options={"include_usage": True}`` the provider sends token usage
+        in a final choices-less chunk (some proxies attach it to a regular chunk). The
+        captured usage is surfaced as one terminal ``LLMResponse`` after the stream, so
+        it is attached to exactly one response per round and parallel tool calls are
+        never double-counted.
         """
         accumulated_tool_calls: Dict[Any, ToolCall] = {}
+        pending_usage = None
         started = False
         # Process each chunk in the response stream
         for chunk in response:
+            chunk_usage = usage_from_openai(chunk)
+            if chunk_usage is not None:
+                pending_usage = chunk_usage
             if not chunk.choices and not started:
                 # Some api could return error message in the first chunk, no choices to handle, return raw response to show the message
                 _first_chunk_llm_resp = self._first_chunk_error(chunk)
@@ -312,6 +363,10 @@ class OpenAIProvider(Provider):
                 tool_call=None,
                 finish_reason=finish_reason,
             )
+
+        if pending_usage is not None:
+            # Terminal usage-only response: empty content, no tool call.
+            yield LLMResponse(usage=pending_usage)
 
     def _accumulate_tool_call_chunks(self, tool_calls, accumulated: Dict[Any, ToolCall]) -> None:
         """Accumulate streamed tool-call chunks into ``accumulated`` keyed by index.

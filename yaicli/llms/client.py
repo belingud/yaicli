@@ -25,6 +25,7 @@ from ..tools.approval import (
 )
 from ..tools.mcp import MCP_TOOL_NAME_PREFIX
 from ..tools.risk import RiskLevel, ShellRisk, classify_shell_command, get_tool_risk
+from ..usage import Usage, UsageTracker, estimate_usage
 from .provider import ProviderFactory
 from .tool_calls import dedupe_tool_calls
 
@@ -73,6 +74,14 @@ class LLMClient:
         "last_tokens_estimate",
         #: One context-length self-heal per top-level request.
         "_context_retry_used",
+        # ---- v0.22 K17 usage/cost observability ----
+        #: Session token/cost/tool tracker (provider-reported + estimated usage).
+        "usage_tracker",
+        #: Usage of the most recent provider request round, or None before the first.
+        "last_usage",
+        #: True when the last top-level turn hit ``finish_reason == "length"``
+        #: (the answer was truncated by MAX_TOKENS). Reset at the start of each turn.
+        "output_truncated",
     )
 
     def __init__(
@@ -121,6 +130,21 @@ class LLMClient:
         self.last_context_budget: int = 0
         self.last_tokens_estimate: int = 0
         self._context_retry_used: bool = False
+
+        # ---- v0.22 K17 usage/cost state ----
+        self.usage_tracker: UsageTracker = UsageTracker()
+        self.last_usage: Optional[Usage] = None
+        self.output_truncated: bool = False
+
+    # ------------------- usage / cost (v0.22 K17) -------------------
+    @property
+    def session_usage(self) -> Usage:
+        """Accumulated session usage (provider-reported plus estimated)."""
+        return self.usage_tracker.total
+
+    def usage_snapshot(self) -> Dict[str, Any]:
+        """JSON-ready session usage/metrics payload (CLI JSON, stream-json, ``/cost``)."""
+        return self.usage_tracker.snapshot(self.config)
 
     # ------------------- diagnostics -------------------
     @staticmethod
@@ -319,8 +343,10 @@ class LLMClient:
             return
 
         if recursion_depth == 0:
-            # A new user request gets its own (single) context-length self-heal.
+            # A new user request gets its own (single) context-length self-heal
+            # and its own truncation flag (K17: one MAX_TOKENS warning per turn).
             self._context_retry_used = False
+            self.output_truncated = False
 
         effective_tool_policy = self.provider.resolve_tool_policy(tool_policy)
 
@@ -336,11 +362,23 @@ class LLMClient:
         collected_tool_calls: List[ToolCall] = []
 
         # Stream responses and collect data
+        # Usage is attached by providers to exactly one response per request round;
+        # record the first non-None snapshot only so re-yielded/duplicate snapshots
+        # (streaming providers may repeat calls) can never double-count tokens.
+        round_usage: Optional[Usage] = None
         for llm_response in self._stream_provider(messages, stream, effective_tool_policy):
             yield llm_response  # Forward response to caller
 
             if llm_response.finish_reason:
                 self.last_finish_reason = llm_response.finish_reason
+                if llm_response.finish_reason == "length":
+                    # MAX_TOKENS truncation: surfaced by the CLI as a warning and
+                    # in JSON output instead of silently ending the answer.
+                    self.output_truncated = True
+
+            response_usage = getattr(llm_response, "usage", None)
+            if response_usage is not None and round_usage is None:
+                round_usage = response_usage
 
             # Collect content and tool calls for potential tool execution
             if llm_response.content:
@@ -353,6 +391,21 @@ class LLMClient:
                 legacy_tool_call = getattr(llm_response, "tool_call", None)
                 response_tool_calls = [legacy_tool_call] if legacy_tool_call is not None else []
             collected_tool_calls.extend(response_tool_calls)
+
+        # Record this request's usage: exactly once per provider round.
+        if round_usage is not None:
+            self.last_usage = round_usage
+            self.usage_tracker.record(round_usage, self._model_name())
+        else:
+            # The provider reported nothing (e.g. an OpenAI-compatible proxy that
+            # rejects stream_options): estimate once for this request so token/cost
+            # visibility still works, flagged ``estimated``.
+            completion_text = assistant_response_content
+            if assistant_reasoning_content:
+                completion_text += assistant_reasoning_content
+            estimated_usage = estimate_usage(messages, completion_text)
+            self.last_usage = estimated_usage
+            self.usage_tracker.record(estimated_usage, self._model_name())
 
         # Dedupe by id (streaming providers may repeat a snapshot) and make sure
         # every call has an id so the assistant message and tool results match.
@@ -752,6 +805,9 @@ class LLMClient:
             started_at = time.perf_counter()
             function_result, ok = execute_tool_call(tool_call, announce=not prompted)
             duration_ms = (time.perf_counter() - started_at) * 1000.0
+            # K17 tool metrics: executed calls only (denied calls never ran), with
+            # the real wall-clock duration and the size of the result as the model sees it.
+            self.usage_tracker.record_tool(duration_ms, len(function_result) if isinstance(function_result, str) else 0)
 
             messages.append(
                 ChatMessage(
