@@ -1820,7 +1820,19 @@ class TestPromptTokens:
         cli._context_percent = 42.6
         with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
             joined = self._joined(cli.get_prompt_message())
-        assert joined == " gpt-4o · 43%\n 💬 > "
+        # Info line, one blank line, then the fixed input line.
+        assert joined == " gpt-4o · 43%\n\n 💬 > "
+
+    def test_model_name_uses_a_light_prompt_style(self):
+        """The model name on the info line is rendered in the terminal's light/dim color."""
+        from yaicli.cli import _prompt_style
+
+        style = _prompt_style()
+        model_attrs = style.get_attrs_for_style_str("class:prompt-model")
+        assert model_attrs.color == "ansibrightblack"
+        assert model_attrs.bold is False
+        # The input-line defaults are still provided by prompt_toolkit (merged at app level).
+        assert style.get_attrs_for_style_str("class:prompt").color == ""
 
     def test_prompt_does_not_show_role(self, cli_with_mocks):
         """A custom DEFAULT_ROLE (e.g. master) must not look like git/cwd state."""
@@ -1831,7 +1843,7 @@ class TestPromptTokens:
         with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
             joined = self._joined(cli.get_prompt_message())
         assert "master" not in joined
-        assert joined == " gpt-4o · 5%\n 💬 > "
+        assert joined == " gpt-4o · 5%\n\n 💬 > "
 
     def test_info_line_omits_unknown_context(self, cli_with_mocks):
         cli = cli_with_mocks
@@ -1839,7 +1851,7 @@ class TestPromptTokens:
         cli._context_percent = None
         with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
             joined = self._joined(cli.get_prompt_message())
-        assert joined == " gpt-4o\n 💬 > "
+        assert joined == " gpt-4o\n\n 💬 > "
 
     def test_prompt_message_is_single_line_without_info(self, cli_with_mocks):
         """No model and no context: no empty info line is emitted."""
@@ -2061,6 +2073,7 @@ class TestMultilineAndCompositeCompleter:
             event.current_buffer.insert_text.assert_called_once_with("\n")
 
     def test_prepare_chat_loop_uses_composite_completer(self, cli_with_mocks):
+        from yaicli.cli import _prompt_style
         from yaicli.completer import ReplCompleter
 
         cli = cli_with_mocks
@@ -2073,6 +2086,7 @@ class TestMultilineAndCompositeCompleter:
 
         completer = mock_session.call_args.kwargs.get("completer")
         assert isinstance(completer, ReplCompleter)
+        assert mock_session.call_args.kwargs.get("style") is _prompt_style()
 
     def test_print_help_lists_new_commands_and_multiline(self, cli_with_mocks):
         cli = cli_with_mocks

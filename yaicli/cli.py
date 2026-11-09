@@ -60,6 +60,7 @@ from .utils import detect_os, detect_shell, filter_command
 #: SDK import at startup.
 PromptSession = None  # type: ignore[assignment]
 prompt = None  # type: ignore[assignment]
+PromptStyle = None  # type: ignore[assignment]
 AtPathCompleter = None  # type: ignore[assignment]
 ReplCompleter = None  # type: ignore[assignment]
 LimitedFileHistory = None  # type: ignore[assignment]
@@ -74,6 +75,21 @@ def _prompt_session_class() -> Any:
 
         PromptSession = _PromptSession
     return PromptSession
+
+
+def _prompt_style() -> Any:
+    """Build the REPL prompt style on first REPL use (needs prompt_toolkit).
+
+    Only the info line above the input is styled: the model name uses the terminal's
+    light/dim palette so it recedes next to the crisp input line. Everything else
+    keeps prompt_toolkit's default styles (colored ``qmark`` icon, bold ``>``).
+    """
+    global PromptStyle
+    if PromptStyle is None:
+        from prompt_toolkit.styles import Style
+
+        PromptStyle = Style.from_dict({"prompt-model": "fg:ansibrightblack nobold"})
+    return PromptStyle
 
 
 def _prompt_function() -> Any:
@@ -860,17 +876,19 @@ class CLI:
         """Return the full prompt message: info line above, input line below.
 
         ``prompt_toolkit`` renders the fragments before the last newline on their own
-        line above the input and the fragments after it as the inline prompt. With no
-        info to show this degrades to the plain one-line prompt (no empty line), and
-        the context percentage is the cached ``_context_percent`` value (updated once
-        per completed turn and after history-mutating commands): this callback runs
-        on every keypress, so it must never estimate tokens here.
+        line above the input and the fragments after it as the inline prompt. The
+        double newline leaves one blank line between the info line and the input, so
+        the info reads as a header and the input line stays visually separate. With
+        no info to show this degrades to the plain one-line prompt (no empty line),
+        and the context percentage is the cached ``_context_percent`` value (updated
+        once per completed turn and after history-mutating commands): this callback
+        runs on every keypress, so it must never estimate tokens here.
         """
         prompt = self.get_prompt_tokens()
         info = self.get_prompt_info_tokens()
         if not info:
             return prompt
-        return [*info, ("class:prompt-info", "\n"), *prompt]
+        return [*info, ("class:prompt-info", "\n\n"), *prompt]
 
     def _update_context_percent(self) -> None:
         """Recompute the cached prompt context percentage.
@@ -1645,10 +1663,11 @@ class CLI:
                 completer=_repl_completer_class()(path_completer=_at_path_completer_class()()),
                 complete_while_typing=True,  # Enable auto-completion for @ trigger
                 complete_in_thread=True,  # Don't block on completion
+                style=_prompt_style(),  # light model name on the info line
             )
         except Exception as e:
             self.console.print(f"Error initializing prompt session history: {safe_text(e)}", style="red")
-            self.session = PromptSessionClass(key_bindings=self.bindings)
+            self.session = PromptSessionClass(key_bindings=self.bindings, style=_prompt_style())
 
     def _setup_key_bindings(self) -> None:
         """Setup keyboard shortcuts: Shift+Tab mode switch, Ctrl+O viewer and

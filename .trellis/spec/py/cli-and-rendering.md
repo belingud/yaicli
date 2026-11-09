@@ -183,8 +183,12 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   session state. `get_prompt_info_tokens()` returns the line above it (current model · cached
   context %; the role is deliberately omitted so a custom `DEFAULT_ROLE` like `master` cannot be
   mistaken for git state — the REPL never inspects the repository). `get_prompt_message()` joins
-  them with `"\n"`; prompt_toolkit renders fragments before the last newline above the input, and
-  with no info it collapses to the single input line. `session.prompt(self.get_prompt_message)`.
+  them with `"\n\n"` (one blank separator line); prompt_toolkit renders fragments before the last
+  newline above the input, and with no info it collapses to the single input line.
+  `_prompt_style()` (built lazily like the other prompt seams) is passed as
+  `PromptSession(style=...)` and renders `class:prompt-model` light (`fg:ansibrightblack nobold`)
+  while prompt_toolkit's default `qmark`/`prompt` styles stay merged in.
+  `session.prompt(self.get_prompt_message)`.
 - `_run_repl()` loop: separator → `session.prompt(self.get_prompt_message)` → strip → skip blank →
   `_handle_special_commands()` (tri-state `False`=exit, `True`=handled, `str`=prompt) →
   `_process_user_input()`. SIGINT semantics (v0.19, consistent with the headless contract): a single

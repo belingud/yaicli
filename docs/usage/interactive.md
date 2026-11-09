@@ -41,6 +41,7 @@ Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
   Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  gpt-4o · 12%
+
  💬 >
 ```
 
@@ -83,22 +84,25 @@ Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
   Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  gpt-4o · 12%
+
  💬 >
 ```
 
 ## Prompt
 
-The prompt is two lines: an info line above and the input line below. The input line is fixed, so
-the cursor always starts in the same column no matter how long the info line is.
+The prompt shows an info line above the input, separated from it by one blank line. The input
+line is fixed, so the cursor always starts in the same column no matter how long the info line is.
 
 ```text
  gpt-4o · 12%
+
  💬 >
 ```
 
 - The info line (`gpt-4o · 12%`) shows the current model short name — a provider prefix like
   `openai/` is dropped — followed by the last-known context usage (estimated % of the context
-  budget). It is rendered above the input, so a long model name never pushes the cursor right.
+  budget). The model name is rendered in the terminal's light (dim) color, and the blank line
+  below keeps the info as a header that never pushes the cursor right.
 - The working directory, git branch and assistant role are **not** shown. In particular, a custom
   `DEFAULT_ROLE` (for example `master`) is ordinary assistant configuration, not repository state:
   the prompt never inspects the repository, so a branch can never add text to it (or keep text in
@@ -197,6 +201,7 @@ $ ai --chat
 ...
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  gpt-4o · 12%
+
  💬 > Tell me about the solar system
 
 A:
@@ -227,6 +232,7 @@ Execute Mode allows you to generate shell commands from natural language descrip
 
 ```bash
  gpt-4o · 12%
+
  🚀 > Find all PDF files in my Downloads folder
 Assistant:
 find ~/Downloads -type f -name "*.pdf"
