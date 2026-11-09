@@ -23,6 +23,7 @@ These guides help you **ask the right questions before coding**.
 |-------|---------|-------------|
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
 | [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
+| [Feature Spec Writing Convention](../repo/feature-spec-writing.md) | Make a feature spec show the feature: concrete UI, presentation form, logic | Before writing a PRD / OpenSpec proposal / feature spec |
 
 ---
 
@@ -50,6 +51,16 @@ These guides help you **ask the right questions before coding**.
 - [ ] Multiple branches update the same derived state from `kind` / `action`
 
 → Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
+
+### When Writing a Feature Spec / PRD
+
+- [ ] The feature changes something the user can see: screen, prompt, output, message or exit code
+- [ ] You are about to write "supports X" / "improves Y" / "handles errors gracefully" with no rendered example
+- [ ] Another agent or session will implement from this spec
+- [ ] TTY vs non-TTY, interactive vs non-interactive, or machine output may differ
+- [ ] Precedence, state/persistence, or error messages are only implied, not written down
+
+→ Follow [Feature Spec Writing Convention](../repo/feature-spec-writing.md) — every user-visible feature spec needs concrete examples: UI, presentation form and logic.
 
 ### When Verifying AI Cross-Review Results
 

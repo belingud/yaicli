@@ -84,6 +84,14 @@ Environment variables (`YAI_*`) > Config file (`~/.config/yaicli/config.ini`) > 
 - Type hints used throughout
 - Lazy imports for heavy libraries (e.g., `fastmcp`) to reduce startup time
 
+## Feature Specs
+
+Every PRD, OpenSpec proposal/spec delta or plan that introduces user-visible behavior must include a
+`## Feature examples` section: the concrete UI (verbatim terminal/output block), the presentation
+form (stdout vs stderr, formatting, TTY vs non-TTY, machine modes) and the logic (triggers,
+precedence, state, edge cases, exact user-facing messages and exit codes). A prose-only requirement
+list is not a spec. Full convention: `.trellis/spec/repo/feature-spec-writing.md`.
+
 <!-- TRELLIS:START -->
 # Trellis Instructions
 

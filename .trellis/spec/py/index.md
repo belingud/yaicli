@@ -18,7 +18,9 @@ release) live in [../repo/index.md](../repo/index.md).
 
 2. Skim the shared thinking guides: [../guides/index.md](../guides/index.md).
 3. Decide whether the change is user-visible. If it is, plan the docs update in the same change
-   (`README.md` and the matching `docs/` page, plus `mkdocs.yml` nav for a new page).
+   (`README.md` and the matching `docs/` page, plus `mkdocs.yml` nav for a new page). A new
+   user-visible feature's PRD must follow [../repo/feature-spec-writing.md](../repo/feature-spec-writing.md):
+   concrete UI, presentation form and logic examples come before implementation.
 4. Run the quality gate at the end (below). Never claim "done" without the relevant tests and
    `ruff check yaicli tests`.
 

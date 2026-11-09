@@ -1,20 +1,27 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# Project context (shown to AI when creating artifacts).
+context: |
+  Project: YAICLI — a Python CLI for talking to LLMs (interactive REPL, one-shot, shell/exec,
+  function calling, MCP, 30+ providers). See CLAUDE.md and .trellis/spec/ for code conventions.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Spec conventions: a user-visible feature must be SHOWN, not only described. Every proposal,
+  design and spec delta includes a "Feature examples" section with:
+  - concrete UI/output: verbatim terminal rendering, prompt lines, JSON/NDJSON or layout examples;
+  - presentation form: stdout vs stderr, formatting, TTY vs non-TTY, interactive vs non-interactive,
+    quiet/machine modes;
+  - logic: triggers, precedence, state/persistence, exact error messages and exit codes.
+  Full convention: .trellis/spec/repo/feature-spec-writing.md
+
+# Per-artifact rules (additive to the schema's built-in guidance).
+rules:
+  proposal:
+    - "Every change that introduces user-visible behavior MUST have a 'Feature examples' section: verbatim terminal/UI rendering, the presentation form (channels, formatting, TTY vs non-TTY, machine modes) and the logic (triggers, precedence, state, error messages, exit codes). Abstract claims without an example are not acceptable."
+    - "State the exact entry point (command, flag, keybinding, config key or env var) and, for changed behavior, a before/after example."
+  specs:
+    - "Every requirement MUST be illustrated by at least one concrete example (exact command/input plus expected rendered output or JSON) in addition to its WHEN/THEN scenarios."
+    - "When interactive and non-interactive behavior differ, both examples are required."
+  design:
+    - "For user-visible behavior, include the concrete layout or output shape and before/after examples; prose alone is not a design."
+  tasks:
+    - "Include a task that reproduces the feature examples (command plus expected rendering) and verify the implementation against them before archiving the change."
