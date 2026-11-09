@@ -1,5 +1,27 @@
 
 ---
+## [0.22.1](https://github.com/belingud/yaicli/compare/v0.22.0..v0.22.1) - 2026-11-09
+
+### ⚠️ Behaviour changes
+
+- The interactive prompt is a single fixed ` 💬 > ` line again: the model / role / context chrome
+  is gone, so the cursor never moves with the model name and a custom `DEFAULT_ROLE` (e.g.
+  `master`) can no longer look like git state. The current model and context usage now appear in
+  the dim per-turn status line (`model · context N% · tokens … · $… · N.Ns · stop`) and in the
+  welcome banner (`Model: …`).
+
+### 🐛 Bug Fixes
+
+- fix(repl): keep the prompt minimal and move status into the per-turn line - ([d487b11](https://github.com/belingud/yaicli/commit/d487b113410b4749a7c0a2a978888910b78fd68e)) - Belingud
+- fix(repl): keep the input cursor fixed and move model/context above it - ([ec16427](https://github.com/belingud/yaicli/commit/ec1642791c82c18c09af00c0a0fabbc3439c1825)) - Belingud
+- fix(repl): lighten the prompt model name and add a blank line above the input - ([01f2bf4](https://github.com/belingud/yaicli/commit/01f2bf41fe1a50d245fdd5d84fe5e979cc68727f)) - Belingud
+
+### 📚 Documentation
+
+- docs(spec): require concrete feature examples in feature specs - ([0f6ab01](https://github.com/belingud/yaicli/commit/0f6ab01a4763329466b1fc6501c22d6329bc9ea7)) - Belingud
+
+
+---
 ## [0.22.0](https://github.com/belingud/yaicli/compare/v0.21.2..v0.22.0) - 2026-11-08
 
 ### ⚠️ Behaviour changes
