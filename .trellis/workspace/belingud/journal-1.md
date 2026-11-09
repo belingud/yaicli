@@ -460,3 +460,41 @@ Filled the missing test/lint CI gap and did the v0.22.0 post-release wrap-up (sp
 
 - First GitHub Actions run of test.yml on master: watch it green (bench.yml also re-runs); fix forward if the 3.10/3.13 matrix surfaces anything.
 - v0.23 candidate remains the openai-compatible lite transport (roadmap P1-c) with tightened bench gates.
+
+
+## Session 11: Fix CI-surfaced environment-dependent tests
+<!-- trellis-session: v=2 fp=7a1eee614d2451b7 -->
+
+**Date**: 2026-11-09
+**Task**: Fix CI-surfaced environment-dependent tests
+**Branch**: `master`
+
+### Summary
+
+The newly added CI matrix failed on its first run; fixed the five environment-dependent assertions it exposed (macOS passed locally, Linux CI failed).
+
+### Main Changes
+
+- Added a strip_ansi fixture in tests/conftest.py: Typer renders --help via Rich, and with TERM unset (CI runner default) Rich emits ANSI style codes that split 'Usage: main' / '--resume' / '--tools' so plain substring assertions failed; the fixture strips SGR sequences first.
+- tests/test_entry.py, tests/test_session_isolation.py, tests/test_tool_schema_filter.py now use the fixture for --help assertions.
+- tests/tools/test_fs_write_file.py: /etc resolves to /private/etc on macOS (open -> PermissionError) but stays /etc on Linux (system-dir blacklist -> 'Cannot write to system directory'); both system-directory tests now accept either blocked outcome.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `174744c` | test: make help-output and system-directory assertions platform-agnostic |
+
+### Testing
+
+- [OK] Full suite green under a CI-like environment (TERM/COLUMNS unset, CI=true): 2435 passed on Python 3.12; ruff check --no-fix clean; the 34 affected tests pass in the normal env too.
+- [OK] Added test.yml itself: lint+docs job (ruff --no-fix because [tool.ruff] fix=true would auto-repair, mkdocs build --strict) plus pytest matrix 3.10/3.12/3.13 on push/PR to master.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Watch the re-run of CI on master go green across all three Python versions; bench gate already passed.
+- v0.23 candidate remains the openai-compatible lite transport (roadmap P1-c).
