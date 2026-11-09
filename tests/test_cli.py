@@ -159,23 +159,16 @@ class TestCLIInitialization:
             verbose_console.print.assert_any_call("Loading Configuration:", style="bold cyan")
 
     def test_get_prompt_tokens(self, cli_with_mocks):
-        """Test prompt token generation for different modes."""
+        """The input line is the mode icon plus ``> `` — always the same width."""
         cli = cli_with_mocks
 
-        # Test TEMP_MODE
-        cli.current_mode = TEMP_MODE
-        tokens = cli.get_prompt_tokens()
-        assert tokens[0][1] == " 📝 "
-
-        # Test CHAT_MODE
-        cli.current_mode = CHAT_MODE
-        tokens = cli.get_prompt_tokens()
-        assert tokens[0][1] == " 💬 "
-
-        # Test EXEC_MODE
-        cli.current_mode = EXEC_MODE
-        tokens = cli.get_prompt_tokens()
-        assert tokens[0][1] == " 🚀 "
+        expectations = ((TEMP_MODE, " 📝 "), (CHAT_MODE, " 💬 "), (EXEC_MODE, " 🚀 "))
+        for mode, icon in expectations:
+            cli.current_mode = mode
+            tokens = cli.get_prompt_tokens()
+            assert tokens[0] == ("class:qmark", icon)
+            assert tokens[-1] == ("class:prompt", "> ")
+            assert "".join(text for _, text in tokens) == f"{icon}> "
 
 
 class TestSpecialCommands:
@@ -979,6 +972,8 @@ class TestKeyBindingsAndSetup:
 
         mock_session.prompt.assert_called_once()
         assert mock_session.prompt.call_args.kwargs.get("default") == "draft text"
+        prompt_callable = mock_session.prompt.call_args.args[0]
+        assert getattr(prompt_callable, "__func__", None) is CLI.get_prompt_message
         assert cli_with_mocks._pending_prompt_text == ""
 
     def test_print_help_mentions_show_output(self, cli_with_mocks):
@@ -1796,68 +1791,83 @@ class TestBackgroundCancellation:
 
 
 class TestPromptTokens:
-    """The REPL prompt shows model, active role and cached context %."""
+    """The REPL prompt is two lines: model/context above, a fixed `` 💬 > `` below."""
 
     @staticmethod
-    def _joined(cli):
-        return "".join(text for _, text in cli.get_prompt_tokens())
+    def _joined(tokens):
+        return "".join(text for _, text in tokens)
 
-    def test_prompt_shows_model_and_context_percent(self, cli_with_mocks):
+    def test_input_line_is_compact(self, cli_with_mocks):
+        """The cursor position depends only on the icon, never on the model name."""
         cli = cli_with_mocks
         cli.current_mode = CHAT_MODE
-        cli.role_name = DefaultRoleNames.DEFAULT
+        tokens = cli.get_prompt_tokens()
+        assert tokens[0][1] == " 💬 "
+        assert tokens[-1] == ("class:prompt", "> ")
+        assert self._joined(tokens) == " 💬 > "
+
+    def test_info_line_shows_model_and_context_percent(self, cli_with_mocks):
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
         cli._context_percent = 42.6
         with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            tokens = cli.get_prompt_tokens()
-            joined = self._joined(cli)
+            joined = self._joined(cli.get_prompt_info_tokens())
+        assert joined == " gpt-4o · 43%"
 
-        assert tokens[0][1] == " 💬 "  # mode icon stays first
-        assert joined == " 💬 gpt-4o · 43% > "
-
-    def test_prompt_shows_non_default_role(self, cli_with_mocks):
+    def test_prompt_message_puts_info_above_input(self, cli_with_mocks):
         cli = cli_with_mocks
         cli.current_mode = CHAT_MODE
-        cli.role_name = DefaultRoleNames.CODER
+        cli._context_percent = 42.6
+        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
+            joined = self._joined(cli.get_prompt_message())
+        assert joined == " gpt-4o · 43%\n 💬 > "
+
+    def test_prompt_does_not_show_role(self, cli_with_mocks):
+        """A custom DEFAULT_ROLE (e.g. master) must not look like git/cwd state."""
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
+        cli.role_name = "master"
         cli._context_percent = 5.0
         with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            joined = self._joined(cli)
-        assert joined == " 💬 gpt-4o · coder · 5% > "
+            joined = self._joined(cli.get_prompt_message())
+        assert "master" not in joined
+        assert joined == " gpt-4o · 5%\n 💬 > "
 
-    def test_prompt_shows_custom_role_name(self, cli_with_mocks):
+    def test_info_line_omits_unknown_context(self, cli_with_mocks):
         cli = cli_with_mocks
         cli.current_mode = CHAT_MODE
-        cli.role_name = "SQL Expert"
         cli._context_percent = None
         with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            joined = self._joined(cli)
-        assert joined == " 💬 gpt-4o · SQL Expert > "
+            joined = self._joined(cli.get_prompt_message())
+        assert joined == " gpt-4o\n 💬 > "
 
-    def test_prompt_omits_default_role_and_unknown_context(self, cli_with_mocks):
+    def test_prompt_message_is_single_line_without_info(self, cli_with_mocks):
+        """No model and no context: no empty info line is emitted."""
         cli = cli_with_mocks
         cli.current_mode = CHAT_MODE
-        cli.role_name = DefaultRoleNames.DEFAULT
         cli._context_percent = None
-        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            joined = self._joined(cli)
-        assert joined == " 💬 gpt-4o > "
+        with patch("yaicli.cli.cfg", {}):
+            info = cli.get_prompt_info_tokens()
+            joined = self._joined(cli.get_prompt_message())
+        assert info == []
+        assert joined == " 💬 > "
+        assert "\n" not in joined
 
     def test_prompt_shortens_provider_prefixed_model(self, cli_with_mocks):
         cli = cli_with_mocks
         cli.current_mode = CHAT_MODE
-        cli.role_name = DefaultRoleNames.DEFAULT
         cli._context_percent = None
         with patch("yaicli.cli.cfg", {"MODEL": "openai/gpt-4o"}):
-            joined = self._joined(cli)
+            joined = self._joined(cli.get_prompt_info_tokens())
         assert "gpt-4o" in joined
         assert "openai/" not in joined
 
     def test_prompt_truncates_very_long_model_names(self, cli_with_mocks):
         cli = cli_with_mocks
         cli.current_mode = TEMP_MODE
-        cli.role_name = DefaultRoleNames.DEFAULT
         cli._context_percent = None
         with patch("yaicli.cli.cfg", {"MODEL": "m" * 40}):
-            joined = self._joined(cli)
+            joined = self._joined(cli.get_prompt_info_tokens())
         assert ("m" * 31 + "…") in joined
 
     def test_prompt_degrades_for_bare_cli_objects(self):
@@ -1866,9 +1876,13 @@ class TestPromptTokens:
         bare.current_mode = CHAT_MODE
         with patch("yaicli.cli.cfg", {}):
             tokens = bare.get_prompt_tokens()
+            info = bare.get_prompt_info_tokens()
+            message = bare.get_prompt_message()
+        assert info == []
+        assert message == tokens
         assert tokens[0][1] == " 💬 "
         assert tokens[-1] == ("class:prompt", "> ")
-        assert "".join(text for _, text in tokens) == " 💬 > "
+        assert self._joined(tokens) == " 💬 > "
 
     def test_update_context_percent_caches_and_renders(self, cli_with_mocks):
         from yaicli.schemas import ChatMessage
@@ -1881,7 +1895,7 @@ class TestPromptTokens:
         assert isinstance(cli._context_percent, float)
         assert cli._context_percent > 0
         with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            assert "%" in self._joined(cli)
+            assert "%" in self._joined(cli.get_prompt_info_tokens())
 
     def test_update_context_percent_empty_history_clears(self, cli_with_mocks):
         cli = cli_with_mocks

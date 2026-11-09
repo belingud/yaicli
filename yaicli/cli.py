@@ -134,13 +134,6 @@ TOOL_DENIED_MARKERS = ("declined to execute", "tool_denied")
 #: the current input line / cancels the current turn). Matches common shell/REPL UX.
 DOUBLE_CTRL_C_WINDOW_SECONDS = 2.0
 
-#: Short labels for the non-default built-in roles shown in the REPL prompt.
-#: User-created roles are displayed by their own name (bounded in the prompt).
-PROMPT_ROLE_LABELS: Dict[str, str] = {
-    DefaultRoleNames.CODER.value: "coder",
-    DefaultRoleNames.SHELL.value: "shell",
-}
-
 
 class CLI:
     __slots__ = (
@@ -811,7 +804,7 @@ class CLI:
             return role
         return DefaultRoleNames.DEFAULT
 
-    # ------------------- prompt (model / role / context) -------------------
+    # ------------------- prompt (model / context) -------------------
     @staticmethod
     def _prompt_model_name() -> str:
         """Return the short model name for the prompt (``""`` when unknown)."""
@@ -825,44 +818,59 @@ class CLI:
         model = model.strip().rsplit("/", 1)[-1]
         return model if len(model) <= 32 else model[:31] + "…"
 
-    def _prompt_role_label(self) -> str:
-        """Return the active role label for the prompt; empty for the DEFAULT role."""
-        role_name = getattr(self, "role_name", "")
-        if not isinstance(role_name, str) or not role_name:
-            return ""
-        if role_name == DefaultRoleNames.DEFAULT:
-            return ""
-        label = PROMPT_ROLE_LABELS.get(role_name, role_name)
-        return label if len(label) <= 24 else label[:23] + "…"
-
     def get_prompt_tokens(self) -> list[tuple[str, str]]:
-        """Return the REPL prompt tokens: mode icon, model, role and context %.
+        """Return the input-line REPL prompt tokens: mode icon and ``> ``.
 
-        The context percentage is the cached ``_context_percent`` value (updated
-        once per completed turn and after history-mutating commands): this callback
-        runs on every keypress, so it must never estimate tokens here. Every
-        segment degrades to "omitted" for bare/legacy CLI objects built via
-        ``CLI.__new__`` or when the config/history is unavailable.
+        Only the mode icon and the terminator live on the input line, so the cursor
+        always sits at the same column regardless of the model name or the working
+        directory. The session info moved to :meth:`get_prompt_info_tokens` (rendered
+        on the line above by :meth:`get_prompt_message`).
         """
         mode = getattr(self, "current_mode", TEMP_MODE)
         mode_icon = "💬" if mode == CHAT_MODE else "🚀" if mode == EXEC_MODE else "📝"
-        tokens: list[tuple[str, str]] = [("class:qmark", f" {mode_icon} ")]
+        return [("class:qmark", f" {mode_icon} "), ("class:prompt", "> ")]
+
+    def get_prompt_info_tokens(self) -> list[tuple[str, str]]:
+        """Return the info fragments rendered on the line above the input.
+
+        Only the model and the cached context percentage are shown. The role is
+        deliberately omitted: a custom ``DEFAULT_ROLE`` (e.g. ``master``) is easy to
+        mistake for git state, and the REPL prompt never inspects the repository.
+        Everything degrades to "omitted" for bare/legacy CLI objects built via
+        ``CLI.__new__`` or when the config/history is unavailable.
+        """
         segments: list[tuple[str, str]] = []
         model = self._prompt_model_name()
         if model:
             segments.append(("class:prompt-model", model))
-        role = self._prompt_role_label()
-        if role:
-            segments.append(("class:prompt-role", role))
         percent = getattr(self, "_context_percent", None)
         if isinstance(percent, (int, float)) and not isinstance(percent, bool):
             segments.append(("class:prompt-context", f"{max(0.0, float(percent)):.0f}%"))
+        tokens: list[tuple[str, str]] = []
         for index, (class_name, text) in enumerate(segments):
             if index:
                 tokens.append(("class:prompt-sep", " · "))
             tokens.append((class_name, text))
-        tokens.append(("class:prompt", " > " if segments else "> "))
+        if tokens:
+            # The leading space aligns the info line with the icon/input line below.
+            tokens.insert(0, ("class:prompt-info", " "))
         return tokens
+
+    def get_prompt_message(self) -> list[tuple[str, str]]:
+        """Return the full prompt message: info line above, input line below.
+
+        ``prompt_toolkit`` renders the fragments before the last newline on their own
+        line above the input and the fragments after it as the inline prompt. With no
+        info to show this degrades to the plain one-line prompt (no empty line), and
+        the context percentage is the cached ``_context_percent`` value (updated once
+        per completed turn and after history-mutating commands): this callback runs
+        on every keypress, so it must never estimate tokens here.
+        """
+        prompt = self.get_prompt_tokens()
+        info = self.get_prompt_info_tokens()
+        if not info:
+            return prompt
+        return [*info, ("class:prompt-info", "\n"), *prompt]
 
     def _update_context_percent(self) -> None:
         """Recompute the cached prompt context percentage.
@@ -1768,7 +1776,7 @@ class CLI:
             if pending_text:
                 self._pending_prompt_text = ""
             try:
-                user_input = self.session.prompt(self.get_prompt_tokens, default=pending_text)
+                user_input = self.session.prompt(self.get_prompt_message, default=pending_text)
             except ToolOutputViewerRequested:
                 # Ctrl+O at the prompt: run the viewer, then return to the prompt.
                 self._open_tool_output_viewer()

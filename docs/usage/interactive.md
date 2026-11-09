@@ -40,7 +40,8 @@ Ctrl+C             : Clear input / cancel turn; press twice to exit
 Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
   Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 💬 gpt-4o · 12% >
+ gpt-4o · 12%
+ 💬 >
 ```
 
 Or use `ai --chat` to start a temporary session.
@@ -81,26 +82,34 @@ Ctrl+C             : Clear input / cancel turn; press twice to exit
 Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
   Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 💬 gpt-4o · 12% >
+ gpt-4o · 12%
+ 💬 >
 ```
 
 ## Prompt
 
-The prompt starts with the current mode icon and adds up to three context fields:
+The prompt is two lines: an info line above and the input line below. The input line is fixed, so
+the cursor always starts in the same column no matter how long the info line is.
 
 ```text
- 💬 gpt-4o · coder · 12% >
- │  │      │       └── last-known context usage (estimated % of the context budget)
- │  │      └────────── active role, shown only when it is not the DEFAULT role
- │  └───────────────── current model short name (a provider prefix like "openai/" is dropped)
- └──────────────────── mode icon: 💬 chat, 🚀 execute
+ gpt-4o · 12%
+ 💬 >
 ```
 
-- The model and role update immediately after `/model` / `/role` or a `Shift+Tab` mode switch.
+- The info line (`gpt-4o · 12%`) shows the current model short name — a provider prefix like
+  `openai/` is dropped — followed by the last-known context usage (estimated % of the context
+  budget). It is rendered above the input, so a long model name never pushes the cursor right.
+- The working directory, git branch and assistant role are **not** shown. In particular, a custom
+  `DEFAULT_ROLE` (for example `master`) is ordinary assistant configuration, not repository state:
+  the prompt never inspects the repository, so a branch can never add text to it (or keep text in
+  it outside a repository).
+- The model updates immediately after `/model`; a `Shift+Tab` mode switch changes the input-line
+  icon (💬 chat, 🚀 execute, 📝 temporary session).
 - The context percentage is cached and refreshed after every completed turn and after
   `/compact`, `/clear`, `/load` and `/model` — never on each keystroke. It is omitted
   until the conversation has at least one message, and for bare/legacy CLI objects
-  (e.g. integrations constructing `CLI.__new__`).
+  (e.g. integrations constructing `CLI.__new__`); with no info at all the prompt collapses back to
+  the single input line.
 - Headless/one-shot runs never render this prompt; their output is unaffected.
 
 ## Commands
@@ -187,7 +196,8 @@ In Chat Mode, you can have natural conversations with the AI while maintaining c
 $ ai --chat
 ...
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 💬 gpt-4o · 12% > Tell me about the solar system
+ gpt-4o · 12%
+ 💬 > Tell me about the solar system
 
 A:
 Solar System Overview
@@ -216,7 +226,8 @@ Execute Mode allows you to generate shell commands from natural language descrip
 - Safe execution with confirmation
 
 ```bash
-🚀 > Find all PDF files in my Downloads folder
+ gpt-4o · 12%
+ 🚀 > Find all PDF files in my Downloads folder
 Assistant:
 find ~/Downloads -type f -name "*.pdf"
 ╭─ Suggest Command ──────────────────────╮
