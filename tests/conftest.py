@@ -1,4 +1,5 @@
 import os
+import re
 
 # The config singleton is created at import time, so the test credentials must be
 # in the environment *before* any `yaicli` module is imported. Setting them in a
@@ -93,3 +94,23 @@ def cli():
 @pytest.fixture(scope="function")
 def mock_console():
     return MagicMock()
+
+
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+@pytest.fixture(scope="function")
+def strip_ansi():
+    """Strip ANSI SGR sequences from captured CLI output.
+
+    Typer renders help through Rich; when ``TERM`` is unset (common on CI runners)
+    Rich styles the output, which breaks substring assertions like ``"Usage: main"``
+    because style codes are inserted mid-line. Tests that assert on help text use
+    this helper so they behave the same in a styled and a plain terminal.
+    """
+
+    def _strip(text):
+        return _ANSI_ESCAPE.sub("", text)
+
+    return _strip
+

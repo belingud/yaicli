@@ -32,15 +32,16 @@ def mock_cli_class(mock_cli_instance):
 
 
 class TestTyperApp:
-    def test_help_option(self):
+    def test_help_option(self, strip_ansi):
         """Test the --help option."""
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "Usage: main" in result.stdout
-        assert "--chat" in result.stdout
-        assert "--shell" in result.stdout
-        assert "--verbose" in result.stdout
-        assert "--template" in result.stdout
+        output = strip_ansi(result.stdout)
+        assert "Usage: main" in output
+        assert "--chat" in output
+        assert "--shell" in output
+        assert "--verbose" in output
+        assert "--template" in output
 
     def test_template_option(self):
         """Test the --template option."""

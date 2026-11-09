@@ -298,10 +298,10 @@ class TestGateRejectsDisabledTools:
 
 
 class TestToolsFlag:
-    def test_help_lists_the_flag(self):
+    def test_help_lists_the_flag(self, strip_ansi):
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "--tools" in result.stdout
+        assert "--tools" in strip_ansi(result.stdout)
 
     def test_flag_sets_the_config_selection(self, monkeypatch):
         monkeypatch.setattr("yaicli.cli.CLI", MagicMock())

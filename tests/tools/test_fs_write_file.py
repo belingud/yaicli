@@ -136,7 +136,9 @@ class TestFSWriteFile:
         result_dict = json.loads(result)
 
         assert result_dict["success"] is False
-        assert "Permission denied" in result_dict["error"]
+        # Linux resolves /etc/test.txt and hits the system-directory blacklist; macOS
+        # resolves /etc to /private/etc, so the open() raises PermissionError instead.
+        assert result_dict["error"] in {"Permission denied", "Cannot write to system directory"}
 
     def test_execute_append_to_system_directory(self):
         """Test that appending to system directories is blocked."""
@@ -144,7 +146,7 @@ class TestFSWriteFile:
         result_dict = json.loads(result)
 
         assert result_dict["success"] is False
-        assert "Permission denied" in result_dict["error"]
+        assert result_dict["error"] in {"Permission denied", "Cannot write to system directory"}
 
     def test_execute_result_structure(self, tmp_path):
         """Test that result has correct structure."""

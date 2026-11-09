@@ -470,10 +470,10 @@ class TestEntryResumeFlag:
             result = runner.invoke(app, list(args))
         return result, mock_cls, mock_instance
 
-    def test_help_lists_resume(self):
+    def test_help_lists_resume(self, strip_ansi):
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "--resume" in result.stdout
+        assert "--resume" in strip_ansi(result.stdout)
 
     def test_resume_implies_chat_mode(self):
         # CliRunner's stdin is not a TTY; patch entry's sys reference so the CLI
