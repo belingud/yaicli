@@ -61,18 +61,21 @@ uv build           # sdist + wheel into dist/ (equivalent to `just build`)
 
 ## Versioning
 
-`.bumpversion.cfg` is the single source of the version bump:
+`.bumpversion.cfg` is the single source of the version bump; it updates **two** files:
 
 ```ini
 [bumpversion]
-current_version = 0.17.0
+current_version = 0.22.0
 commit = True
 tag = True
-[bumpversion:file:pyproject.toml]   # only pyproject.toml carries the version
+[bumpversion:file:pyproject.toml]     # project.version
+[bumpversion:file:yaicli/__init__.py] # __version__ static constant
 ```
 
-There is no version constant in the package (`yaicli/__init__.py` is empty); `--version` reads
-`importlib.metadata.version("yaicli")`. Because `commit = True` and `tag = True`, a plain
+`yaicli/__init__.py` carries a static `__version__` constant on purpose: `ai --version` is answered
+by `yaicli/_faststart.py` before the CLI stack is imported and reads that constant (falling back to
+`importlib.metadata.version("yaicli")` only when the constant is empty), which avoids the
+~100 ms+ distribution-metadata scan. Because `commit = True` and `tag = True`, a plain
 `bump2version patch|minor|major` also commits and tags `vX.Y.Z` — expect that before running it.
 
 ## Changelog (`cliff.toml` + `git cliff`)
@@ -89,6 +92,16 @@ There is no version constant in the package (`yaicli/__init__.py` is empty); `--
   (v0.18.0 release: synced after `git cliff -l --prepend CHANGELOG.md`.)
 
 ## CI (`.github/workflows/`)
+
+**`test.yml`** — runs on push/PR to `master` plus manual `workflow_dispatch`; two jobs:
+
+1. `lint` — Python 3.12: `uv sync --all-groups --all-extras`, `uv run ruff check --no-fix yaicli tests`
+   (`--no-fix` matters: `pyproject.toml` sets `[tool.ruff] fix = true`, so a bare `ruff check` would
+   auto-repair violations and still exit 0), then `uv run mkdocs build --strict`.
+2. `test` — matrix Python `3.10 / 3.12 / 3.13`: `uv sync --all-groups --all-extras`, `uv run pytest -q`.
+
+**`bench.yml`** — runs on push/PR to `master`; cold-start gate `uv run python scripts/bench.py --gate -n 3`
+(P50 limits live in `scripts/bench.py`: `GATE_LIMITS`).
 
 **`publish.yml`** — runs on tags matching `v*`:
 
@@ -126,7 +139,9 @@ env_list = py310, py311, py312, py313
 [testenv:lint]       deps = ruff ; commands = ruff check {posargs:yaicli tests}
 ```
 
-`tox` / `tox -e py312` / `tox -e lint` mirror CI locally but are optional for everyday work.
+CI (`test.yml`) runs the same suite on Python 3.10 / 3.12 / 3.13 with `uv`; `tox` additionally covers
+3.11 locally. Both are optional for everyday work (`uv run pytest`), but the CI matrix is the gate a
+release must pass.
 
 ## Release Checklist
 
@@ -135,7 +150,8 @@ env_list = py310, py311, py312, py313
 2. Update user docs for the release (README / docs pages / `mkdocs.yml` nav as needed).
 3. `uv run bump2version patch|minor|major` — commits `Bump version: X.Y.Z → A.B.C` and tags `vA.B.C`.
 4. `just changelog` and commit the regenerated `CHANGELOG.md` as `docs: update CHANGELOG for vA.B.C release`.
-5. Push `master` **and** the tag: `git push origin master --tags` — the tag push triggers `publish.yml`.
+5. Push `master` **and** the tag: `git push origin master --tags` — the tag push triggers `publish.yml`
+   and the `master` push triggers `test.yml` + `bench.yml`; all must end green before announcing.
 6. If docs changed, push the docs branch to trigger `deploy-docs.yml`: `git push origin master:docs`
    (or `git push --force-with-lease origin master:docs` when the remote `docs` branch has diverged).
 7. Sync the docs changelog page before pushing docs: `cp CHANGELOG.md docs/changelog.md`.
