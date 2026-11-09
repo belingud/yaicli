@@ -421,3 +421,42 @@ Shipped v0.22.0: MCP hardening, real usage/cost observability, secret redaction 
 
 - Installed ai tool still reports 0.21.0 (uv tool install; PyPI mirror lag) — upgrade later with the usual uv tool upgrade, no forced reinstall.
 - Optional cleanup: strip remaining milestone-ID labels (K16/K17/K19/K20) from code comments if the K18-style clean-up should apply repo-wide.
+
+
+## Session 10: Add CI test workflow and release wrap-up
+<!-- trellis-session: v=2 fp=58aab77e87b4682f -->
+
+**Date**: 2026-11-09
+**Task**: Add CI test workflow and release wrap-up
+**Branch**: `master`
+
+### Summary
+
+Filled the missing test/lint CI gap and did the v0.22.0 post-release wrap-up (spec drift, roadmap status, stale branches).
+
+### Main Changes
+
+- Added .github/workflows/test.yml: lint+docs job (ruff check --no-fix because [tool.ruff] fix=true would auto-repair and exit 0; mkdocs build --strict) and a pytest matrix on Python 3.10/3.12/3.13, on push/PR to master plus workflow_dispatch, with concurrency cancellation.
+- Corrected .trellis/spec/repo/build-and-release.md: version now lives in both pyproject.toml and yaicli/__init__.py __version__ (bump2version updates both; --version fast path reads the constant), and documented test.yml/bench.yml/publish.yml plus the CI gate in the release checklist.
+- Local-only roadmap (var/, gitignored) updated: v0.21.x and v0.22.0 marked released, stretch openai-compatible lite transport singled out as the v0.23 candidate.
+- Branch cleanup: deleted 18 merged local branches and 2 merged remote feature branches, pruned remote-tracking refs (kept master/docs/develop/gh-pages and the unmerged feat/cli-list-mcp-details-optional-filter).
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8d01291` | docs(spec): correct version mechanism and CI workflow description |
+
+### Testing
+
+- [OK] Full suite green on Python 3.12 (2435 passed) and on the previously untested 3.10 (2434 passed, 1 skipped) and 3.13 (2435 passed) using isolated /tmp venvs.
+- [OK] ruff check --no-fix yaicli tests clean; mkdocs build --strict passed; workflow YAML parsed correctly.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- First GitHub Actions run of test.yml on master: watch it green (bench.yml also re-runs); fix forward if the 3.10/3.13 matrix surfaces anything.
+- v0.23 candidate remains the openai-compatible lite transport (roadmap P1-c) with tightened bench gates.

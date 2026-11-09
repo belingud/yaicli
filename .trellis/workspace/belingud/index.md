@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 9
-- **Last Active**: 2026-11-08
+- **Total Sessions**: 10
+- **Last Active**: 2026-11-09
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~423 | Active |
+| `journal-1.md` | ~462 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 10 | 2026-11-09 | Add CI test workflow and release wrap-up | `8d01291` | `master` |
 | 9 | 2026-11-08 | v0.22.0 ecosystem & observability (K16–K20) | `cf823fb`, `f61da5d`, `1ff622d`, `cdb8158`, `101b097`, `631f305`, `64f2e40`, `75bc821`, `94cf58b` | `master` |
 | 8 | 2026-11-07 | v0.21.0 safety foundation release (K10-K14) | `09a41ad`, `d305e92`, `001258f`, `7def9ad`, `7d5fa88`, `cec4ae1`, `dc52fa1` | `master` |
 | 7 | 2026-11-07 | v0.20.0 startup, packaging and viewer release | `3d33651`, `d874b09`, `641d7cf`, `9be64e2`, `a9f347d`, `390e045`, `8aa1cb2`, `5e69202` | `master` |
