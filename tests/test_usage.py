@@ -406,11 +406,20 @@ class TestCliUsageLine:
 
         assert line is not None
         assert "tokens 1,234 in / 567 out" in line
-        assert line.startswith("tokens ")
+        assert line.startswith("gpt-4o-mini · tokens ")
         assert " · " in line
         assert "1.2s" in line
         assert line.endswith("stop")
         assert "$" in line
+
+    def test_format_usage_line_includes_model_and_context(self):
+        cli = CLI()
+        cli._context_percent = 12.6
+        with patch("yaicli.cli.cfg", {"MODEL": "openai/gpt-4o", "MODEL_PRICING": {}}):
+            line = cli._format_usage_line(None, {"prompt_tokens": 10, "completion_tokens": 5}, 0.5, "stop")
+
+        assert line is not None
+        assert line.startswith("gpt-4o · context 13% · tokens 10 in / 5 out")
 
     def test_format_usage_line_unknown_pricing_omits_cost(self):
         cli = CLI()

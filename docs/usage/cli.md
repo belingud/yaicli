@@ -90,9 +90,9 @@ To disable auto-suggestions, set `AUTO_SUGGEST=false` in your configuration.
 
 The prompt supports multiline editing: press `Alt+Enter` (or `Esc` then `Enter`) or `Ctrl+J` to
 insert a newline, and `Enter` alone to submit the whole buffer. This is handy for pasting logs or
-composing long instructions. The prompt shows the current model and the last-known
-context-usage percentage on the line above the input, so the cursor position never changes
-(see [Interactive Mode](interactive.md#prompt)).
+composing long instructions. The prompt itself is just the mode icon and `>`, so the cursor
+position never changes; the current model and last-known context usage appear on the dim status
+line after each answer (see [Interactive Mode](interactive.md#prompt)).
 
 For long or multi-line prompts in scripts, pass the text as a quoted argument or pipe it:
 

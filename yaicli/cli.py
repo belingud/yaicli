@@ -60,7 +60,6 @@ from .utils import detect_os, detect_shell, filter_command
 #: SDK import at startup.
 PromptSession = None  # type: ignore[assignment]
 prompt = None  # type: ignore[assignment]
-PromptStyle = None  # type: ignore[assignment]
 AtPathCompleter = None  # type: ignore[assignment]
 ReplCompleter = None  # type: ignore[assignment]
 LimitedFileHistory = None  # type: ignore[assignment]
@@ -75,21 +74,6 @@ def _prompt_session_class() -> Any:
 
         PromptSession = _PromptSession
     return PromptSession
-
-
-def _prompt_style() -> Any:
-    """Build the REPL prompt style on first REPL use (needs prompt_toolkit).
-
-    Only the info line above the input is styled: the model name uses the terminal's
-    light/dim palette so it recedes next to the crisp input line. Everything else
-    keeps prompt_toolkit's default styles (colored ``qmark`` icon, bold ``>``).
-    """
-    global PromptStyle
-    if PromptStyle is None:
-        from prompt_toolkit.styles import Style
-
-        PromptStyle = Style.from_dict({"prompt-model": "fg:ansibrightblack nobold"})
-    return PromptStyle
 
 
 def _prompt_function() -> Any:
@@ -204,8 +188,8 @@ class CLI:
         #: K12: project instruction files are discovered once, on the first request.
         "_project_context_loaded",
         "_project_context_text",
-        #: last-known context usage percentage for the prompt (updated once per
-        #: turn / history-mutating command; the prompt render must never estimate).
+        #: last-known context usage percentage for the REPL status/usage line (updated
+        #: once per turn / history-mutating command; display code must never estimate).
         "_context_percent",
         #: history + input + images of the last turn, used by ``/retry``.
         "_last_turn_snapshot",
@@ -303,8 +287,8 @@ class CLI:
         # lazily on the first request so CLI construction stays write/read-free.
         self._project_context_loaded = False
         self._project_context_text = ""
-        # prompt context percentage is cached (never computed during render) and
-        # the last turn is snapshotted once so ``/retry`` can replay it cleanly.
+        # the context percentage is cached once per turn (display code never estimates)
+        # and the last turn is snapshotted once so ``/retry`` can replay it cleanly.
         self._context_percent: Optional[float] = None
         self._last_turn_snapshot: Optional[Dict[str, Any]] = None
         # Typed-ahead text captured by the generation-time Ctrl+O watcher.
@@ -593,8 +577,10 @@ class CLI:
         elapsed_seconds: float,
         finish_reason: Optional[str],
     ) -> Optional[str]:
-        """Build the dim per-turn line (``tokens … · $… · 1.2s · stop``).
+        """Build the dim per-turn status line (``model · context 12% · tokens … · 1.2s``).
 
+        It carries the session status the REPL prompt used to show: current model,
+        cached context usage, then this turn's tokens/cost/time/finish reason.
         ``before``/``after`` are session snapshots; the difference is this turn's
         usage. Returns ``None`` when no usage data is available at all (graceful
         degrade); unknown model pricing simply omits the cost segment.
@@ -606,6 +592,12 @@ class CLI:
             0, self._usage_dict_int(after, "completion_tokens") - self._usage_dict_int(before, "completion_tokens")
         )
         parts: List[str] = []
+        model = self._prompt_model_name()
+        if model:
+            parts.append(model)
+        percent = getattr(self, "_context_percent", None)
+        if isinstance(percent, (int, float)) and not isinstance(percent, bool):
+            parts.append(f"context {max(0.0, float(percent)):.0f}%")
         if prompt or completion:
             parts.append(f"tokens {prompt:,} in / {completion:,} out")
             try:
@@ -823,7 +815,7 @@ class CLI:
     # ------------------- prompt (model / context) -------------------
     @staticmethod
     def _prompt_model_name() -> str:
-        """Return the short model name for the prompt (``""`` when unknown)."""
+        """Return the short model name for the REPL status line (``""`` when unknown)."""
         try:
             model = cfg.get("MODEL") if hasattr(cfg, "get") else ""
         except Exception:  # pragma: no cover - config lookups must never break the prompt
@@ -835,65 +827,23 @@ class CLI:
         return model if len(model) <= 32 else model[:31] + "…"
 
     def get_prompt_tokens(self) -> list[tuple[str, str]]:
-        """Return the input-line REPL prompt tokens: mode icon and ``> ``.
+        """Return the REPL prompt tokens: the mode icon and ``> ``.
 
-        Only the mode icon and the terminator live on the input line, so the cursor
-        always sits at the same column regardless of the model name or the working
-        directory. The session info moved to :meth:`get_prompt_info_tokens` (rendered
-        on the line above by :meth:`get_prompt_message`).
+        This is the whole input line (no model/role/context), so the cursor always
+        sits at the same column regardless of the model name or the working
+        directory. Session state is shown by the dim per-turn usage line (model /
+        context / tokens / cost / time) and by the welcome banner; the role is
+        deliberately not displayed (a custom ``DEFAULT_ROLE`` like ``master`` is not
+        git state, and the prompt never inspects the repository).
         """
         mode = getattr(self, "current_mode", TEMP_MODE)
         mode_icon = "💬" if mode == CHAT_MODE else "🚀" if mode == EXEC_MODE else "📝"
         return [("class:qmark", f" {mode_icon} "), ("class:prompt", "> ")]
 
-    def get_prompt_info_tokens(self) -> list[tuple[str, str]]:
-        """Return the info fragments rendered on the line above the input.
-
-        Only the model and the cached context percentage are shown. The role is
-        deliberately omitted: a custom ``DEFAULT_ROLE`` (e.g. ``master``) is easy to
-        mistake for git state, and the REPL prompt never inspects the repository.
-        Everything degrades to "omitted" for bare/legacy CLI objects built via
-        ``CLI.__new__`` or when the config/history is unavailable.
-        """
-        segments: list[tuple[str, str]] = []
-        model = self._prompt_model_name()
-        if model:
-            segments.append(("class:prompt-model", model))
-        percent = getattr(self, "_context_percent", None)
-        if isinstance(percent, (int, float)) and not isinstance(percent, bool):
-            segments.append(("class:prompt-context", f"{max(0.0, float(percent)):.0f}%"))
-        tokens: list[tuple[str, str]] = []
-        for index, (class_name, text) in enumerate(segments):
-            if index:
-                tokens.append(("class:prompt-sep", " · "))
-            tokens.append((class_name, text))
-        if tokens:
-            # The leading space aligns the info line with the icon/input line below.
-            tokens.insert(0, ("class:prompt-info", " "))
-        return tokens
-
-    def get_prompt_message(self) -> list[tuple[str, str]]:
-        """Return the full prompt message: info line above, input line below.
-
-        ``prompt_toolkit`` renders the fragments before the last newline on their own
-        line above the input and the fragments after it as the inline prompt. The
-        double newline leaves one blank line between the info line and the input, so
-        the info reads as a header and the input line stays visually separate. With
-        no info to show this degrades to the plain one-line prompt (no empty line),
-        and the context percentage is the cached ``_context_percent`` value (updated
-        once per completed turn and after history-mutating commands): this callback
-        runs on every keypress, so it must never estimate tokens here.
-        """
-        prompt = self.get_prompt_tokens()
-        info = self.get_prompt_info_tokens()
-        if not info:
-            return prompt
-        return [*info, ("class:prompt-info", "\n\n"), *prompt]
-
     def _update_context_percent(self) -> None:
-        """Recompute the cached prompt context percentage.
+        """Recompute the cached context usage percentage.
 
-        Never called from the prompt render path: the value is refreshed once per
+        Never called from the per-turn usage line: the value is refreshed once per
         completed turn and after history-mutating commands (``/compact``,
         ``/clear``, ``/load``, ``/model``). A missing history/role prompt or a
         failing estimator degrades to ``None`` (the segment is then omitted).
@@ -1663,11 +1613,10 @@ class CLI:
                 completer=_repl_completer_class()(path_completer=_at_path_completer_class()()),
                 complete_while_typing=True,  # Enable auto-completion for @ trigger
                 complete_in_thread=True,  # Don't block on completion
-                style=_prompt_style(),  # light model name on the info line
             )
         except Exception as e:
             self.console.print(f"Error initializing prompt session history: {safe_text(e)}", style="red")
-            self.session = PromptSessionClass(key_bindings=self.bindings, style=_prompt_style())
+            self.session = PromptSessionClass(key_bindings=self.bindings)
 
     def _setup_key_bindings(self) -> None:
         """Setup keyboard shortcuts: Shift+Tab mode switch, Ctrl+O viewer and
@@ -1729,6 +1678,13 @@ class CLI:
                 "Current: [bold green]Persistent Session[/bold green]"
                 f"{f': {safe_text(self.chat.title)}' if self.chat.title else ''}"
             )
+        model = self._prompt_model_name()
+        if model:
+            status = f"Model: [bold]{safe_text(model)}[/bold]"
+            percent = getattr(self, "_context_percent", None)
+            if isinstance(percent, (int, float)) and not isinstance(percent, bool):
+                status += f" · context {max(0.0, float(percent)):.0f}%"
+            self.console.print(status)
         self.print_help()
 
     def print_help(self):
@@ -1795,7 +1751,7 @@ class CLI:
             if pending_text:
                 self._pending_prompt_text = ""
             try:
-                user_input = self.session.prompt(self.get_prompt_message, default=pending_text)
+                user_input = self.session.prompt(self.get_prompt_tokens, default=pending_text)
             except ToolOutputViewerRequested:
                 # Ctrl+O at the prompt: run the viewer, then return to the prompt.
                 self._open_tool_output_viewer()

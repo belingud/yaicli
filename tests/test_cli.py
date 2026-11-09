@@ -973,7 +973,7 @@ class TestKeyBindingsAndSetup:
         mock_session.prompt.assert_called_once()
         assert mock_session.prompt.call_args.kwargs.get("default") == "draft text"
         prompt_callable = mock_session.prompt.call_args.args[0]
-        assert getattr(prompt_callable, "__func__", None) is CLI.get_prompt_message
+        assert getattr(prompt_callable, "__func__", None) is CLI.get_prompt_tokens
         assert cli_with_mocks._pending_prompt_text == ""
 
     def test_print_help_mentions_show_output(self, cli_with_mocks):
@@ -1317,6 +1317,15 @@ class TestCLICoverage:
         cli_with_mocks._print_welcome_message()
         printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
         assert any("Persistent Session" in t for t in printed)
+
+    def test_print_welcome_shows_model_status(self, cli_with_mocks):
+        cli_with_mocks.is_temp_session = True
+        cli_with_mocks._context_percent = 12.6
+        with patch("yaicli.cli.cfg", {"MODEL": "openai/gpt-4o"}):
+            cli_with_mocks._print_welcome_message()
+        printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
+        assert any("Model:" in text and "gpt-4o" in text for text in printed)
+        assert any("context 13%" in text for text in printed)
 
     def test_run_repl_empty_then_command_then_exit(self, cli_with_mocks):
         from unittest.mock import MagicMock, patch
@@ -1791,112 +1800,32 @@ class TestBackgroundCancellation:
 
 
 class TestPromptTokens:
-    """The REPL prompt is two lines: model/context above, a fixed `` 💬 > `` below."""
+    """The REPL prompt is a single fixed input line: mode icon + ``> ``."""
 
     @staticmethod
     def _joined(tokens):
         return "".join(text for _, text in tokens)
 
-    def test_input_line_is_compact(self, cli_with_mocks):
-        """The cursor position depends only on the icon, never on the model name."""
+    def test_prompt_is_the_mode_icon_plus_terminator(self, cli_with_mocks):
+        """The cursor position depends only on the icon, never on the model/role."""
         cli = cli_with_mocks
         cli.current_mode = CHAT_MODE
+        cli.role_name = "master"
         tokens = cli.get_prompt_tokens()
         assert tokens[0][1] == " 💬 "
         assert tokens[-1] == ("class:prompt", "> ")
         assert self._joined(tokens) == " 💬 > "
 
-    def test_info_line_shows_model_and_context_percent(self, cli_with_mocks):
-        cli = cli_with_mocks
-        cli.current_mode = CHAT_MODE
-        cli._context_percent = 42.6
-        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            joined = self._joined(cli.get_prompt_info_tokens())
-        assert joined == " gpt-4o · 43%"
-
-    def test_prompt_message_puts_info_above_input(self, cli_with_mocks):
-        cli = cli_with_mocks
-        cli.current_mode = CHAT_MODE
-        cli._context_percent = 42.6
-        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            joined = self._joined(cli.get_prompt_message())
-        # Info line, one blank line, then the fixed input line.
-        assert joined == " gpt-4o · 43%\n\n 💬 > "
-
-    def test_model_name_uses_a_light_prompt_style(self):
-        """The model name on the info line is rendered in the terminal's light/dim color."""
-        from yaicli.cli import _prompt_style
-
-        style = _prompt_style()
-        model_attrs = style.get_attrs_for_style_str("class:prompt-model")
-        assert model_attrs.color == "ansibrightblack"
-        assert model_attrs.bold is False
-        # The input-line defaults are still provided by prompt_toolkit (merged at app level).
-        assert style.get_attrs_for_style_str("class:prompt").color == ""
-
-    def test_prompt_does_not_show_role(self, cli_with_mocks):
-        """A custom DEFAULT_ROLE (e.g. master) must not look like git/cwd state."""
-        cli = cli_with_mocks
-        cli.current_mode = CHAT_MODE
-        cli.role_name = "master"
-        cli._context_percent = 5.0
-        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            joined = self._joined(cli.get_prompt_message())
-        assert "master" not in joined
-        assert joined == " gpt-4o · 5%\n\n 💬 > "
-
-    def test_info_line_omits_unknown_context(self, cli_with_mocks):
-        cli = cli_with_mocks
-        cli.current_mode = CHAT_MODE
-        cli._context_percent = None
-        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            joined = self._joined(cli.get_prompt_message())
-        assert joined == " gpt-4o\n\n 💬 > "
-
-    def test_prompt_message_is_single_line_without_info(self, cli_with_mocks):
-        """No model and no context: no empty info line is emitted."""
-        cli = cli_with_mocks
-        cli.current_mode = CHAT_MODE
-        cli._context_percent = None
-        with patch("yaicli.cli.cfg", {}):
-            info = cli.get_prompt_info_tokens()
-            joined = self._joined(cli.get_prompt_message())
-        assert info == []
-        assert joined == " 💬 > "
-        assert "\n" not in joined
-
-    def test_prompt_shortens_provider_prefixed_model(self, cli_with_mocks):
-        cli = cli_with_mocks
-        cli.current_mode = CHAT_MODE
-        cli._context_percent = None
-        with patch("yaicli.cli.cfg", {"MODEL": "openai/gpt-4o"}):
-            joined = self._joined(cli.get_prompt_info_tokens())
-        assert "gpt-4o" in joined
-        assert "openai/" not in joined
-
-    def test_prompt_truncates_very_long_model_names(self, cli_with_mocks):
-        cli = cli_with_mocks
-        cli.current_mode = TEMP_MODE
-        cli._context_percent = None
-        with patch("yaicli.cli.cfg", {"MODEL": "m" * 40}):
-            joined = self._joined(cli.get_prompt_info_tokens())
-        assert ("m" * 31 + "…") in joined
-
     def test_prompt_degrades_for_bare_cli_objects(self):
         """A CLI built via __new__ without state/config still renders a prompt."""
         bare = CLI.__new__(CLI)
         bare.current_mode = CHAT_MODE
-        with patch("yaicli.cli.cfg", {}):
-            tokens = bare.get_prompt_tokens()
-            info = bare.get_prompt_info_tokens()
-            message = bare.get_prompt_message()
-        assert info == []
-        assert message == tokens
+        tokens = bare.get_prompt_tokens()
         assert tokens[0][1] == " 💬 "
         assert tokens[-1] == ("class:prompt", "> ")
         assert self._joined(tokens) == " 💬 > "
 
-    def test_update_context_percent_caches_and_renders(self, cli_with_mocks):
+    def test_update_context_percent_caches(self, cli_with_mocks):
         from yaicli.schemas import ChatMessage
 
         cli = cli_with_mocks
@@ -1906,8 +1835,6 @@ class TestPromptTokens:
         cli._update_context_percent()
         assert isinstance(cli._context_percent, float)
         assert cli._context_percent > 0
-        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o"}):
-            assert "%" in self._joined(cli.get_prompt_info_tokens())
 
     def test_update_context_percent_empty_history_clears(self, cli_with_mocks):
         cli = cli_with_mocks
@@ -2073,7 +2000,6 @@ class TestMultilineAndCompositeCompleter:
             event.current_buffer.insert_text.assert_called_once_with("\n")
 
     def test_prepare_chat_loop_uses_composite_completer(self, cli_with_mocks):
-        from yaicli.cli import _prompt_style
         from yaicli.completer import ReplCompleter
 
         cli = cli_with_mocks
@@ -2086,7 +2012,6 @@ class TestMultilineAndCompositeCompleter:
 
         completer = mock_session.call_args.kwargs.get("completer")
         assert isinstance(completer, ReplCompleter)
-        assert mock_session.call_args.kwargs.get("style") is _prompt_style()
 
     def test_print_help_lists_new_commands_and_multiline(self, cli_with_mocks):
         cli = cli_with_mocks

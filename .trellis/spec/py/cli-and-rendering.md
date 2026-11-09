@@ -178,18 +178,15 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   the worker a copy of the message list and adopts it only on success, and keeps console routing
   installed for an abandoned worker (per-worker bridge registry drops its late output).
   Headless/machine runs never start the watcher or bridge.
-- REPL prompt (v0.22 follow-up): `get_prompt_tokens()` returns only the input line —
+- REPL prompt: `get_prompt_tokens()` returns the whole input line —
   `[("class:qmark", " 💬 "), ("class:prompt", "> ")]` — so the cursor column never depends on
-  session state. `get_prompt_info_tokens()` returns the line above it (current model · cached
-  context %; the role is deliberately omitted so a custom `DEFAULT_ROLE` like `master` cannot be
-  mistaken for git state — the REPL never inspects the repository). `get_prompt_message()` joins
-  them with `"\n\n"` (one blank separator line); prompt_toolkit renders fragments before the last
-  newline above the input, and with no info it collapses to the single input line.
-  `_prompt_style()` (built lazily like the other prompt seams) is passed as
-  `PromptSession(style=...)` and renders `class:prompt-model` light (`fg:ansibrightblack nobold`)
-  while prompt_toolkit's default `qmark`/`prompt` styles stay merged in.
-  `session.prompt(self.get_prompt_message)`.
-- `_run_repl()` loop: separator → `session.prompt(self.get_prompt_message)` → strip → skip blank →
+  session state and no model/role/context chrome sits around the input. The REPL never inspects the
+  repository, so a custom `DEFAULT_ROLE` like `master` can never look like git state.
+  The session status is carried by the dim per-turn `_format_usage_line()` — `model · context N% ·
+  tokens … · $… · N.Ns · finish_reason` — printed only in interactive output and gated by
+  `SHOW_USAGE`; `_context_percent` is cached once per turn for it. The welcome banner prints
+  `Model: …` (plus `context N%` for a resumed session). `session.prompt(self.get_prompt_tokens)`.
+- `_run_repl()` loop: separator → `session.prompt(self.get_prompt_tokens)` → strip → skip blank →
   `_handle_special_commands()` (tri-state `False`=exit, `True`=handled, `str`=prompt) →
   `_process_user_input()`. SIGINT semantics (v0.19, consistent with the headless contract): a single
   Ctrl-C at the prompt clears the current input and keeps the REPL alive; a second Ctrl-C within

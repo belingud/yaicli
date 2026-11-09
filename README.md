@@ -147,8 +147,9 @@ headless approval flags.
 ### 💻 Enhanced Terminal Experience
 
 - **Real-time Streaming**: See responses as they're generated with cursor animation
-- **Agent-aware prompt**: shows the current model and context usage on a line above the input
-  (stable cursor position), with `/` command completion and multi-line editing (Alt+Enter)
+- **Agent-aware status**: the current model and context usage appear in the dim per-turn status
+  line (and the welcome banner), while the prompt itself stays a clean fixed ` 💬 > ` with `/`
+  command completion and multi-line editing (Alt+Enter)
 - **Rich History Management**: Manage histories with 500 entries by default
 - **Syntax Highlighting**: Beautiful code formatting with customizable themes
 

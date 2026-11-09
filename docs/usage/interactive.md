@@ -15,6 +15,7 @@ ai --chat "What's the meaning of life"
 
 Welcome to YAICLI!
 Current: Persistent Session: What's the meaning of life
+Model: gpt-4o
 Press Shift+Tab to switch mode
 /help|?            : Show help message
 /clear             : Clear chat history
@@ -40,8 +41,6 @@ Ctrl+C             : Clear input / cancel turn; press twice to exit
 Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
   Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- gpt-4o · 12%
-
  💬 >
 ```
 
@@ -58,6 +57,7 @@ ai --chat
 
 Welcome to YAICLI!
 Current: Temporary Session (use /save to make persistent)
+Model: gpt-4o
 Press Shift+Tab to switch mode
 /help|?            : Show help message
 /clear             : Clear chat history
@@ -83,38 +83,30 @@ Ctrl+C             : Clear input / cancel turn; press twice to exit
 Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
   Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- gpt-4o · 12%
-
  💬 >
 ```
 
 ## Prompt
 
-The prompt shows an info line above the input, separated from it by one blank line. The input
-line is fixed, so the cursor always starts in the same column no matter how long the info line is.
+The prompt is a single fixed line: the mode icon plus `>`. Nothing else is inlined, so the
+cursor always starts in the same column regardless of the model, role or working directory.
 
 ```text
- gpt-4o · 12%
-
  💬 >
 ```
 
-- The info line (`gpt-4o · 12%`) shows the current model short name — a provider prefix like
-  `openai/` is dropped — followed by the last-known context usage (estimated % of the context
-  budget). The model name is rendered in the terminal's light (dim) color, and the blank line
-  below keeps the info as a header that never pushes the cursor right.
+- The model, the last-known context usage and the per-turn token/cost figures are shown on the
+  dim status line that closes each answer, for example
+  `gpt-4o · context 12% · tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop`. The current model is
+  also printed in the welcome banner (`Model: gpt-4o`) and `/model` changes it immediately.
 - The working directory, git branch and assistant role are **not** shown. In particular, a custom
-  `DEFAULT_ROLE` (for example `master`) is ordinary assistant configuration, not repository state:
-  the prompt never inspects the repository, so a branch can never add text to it (or keep text in
-  it outside a repository).
-- The model updates immediately after `/model`; a `Shift+Tab` mode switch changes the input-line
-  icon (💬 chat, 🚀 execute, 📝 temporary session).
-- The context percentage is cached and refreshed after every completed turn and after
-  `/compact`, `/clear`, `/load` and `/model` — never on each keystroke. It is omitted
-  until the conversation has at least one message, and for bare/legacy CLI objects
-  (e.g. integrations constructing `CLI.__new__`); with no info at all the prompt collapses back to
-  the single input line.
-- Headless/one-shot runs never render this prompt; their output is unaffected.
+  `DEFAULT_ROLE` (for example `master`) is ordinary assistant configuration, not repository
+  state: the prompt never inspects the repository.
+- A `Shift+Tab` mode switch changes the input-line icon (💬 chat, 🚀 execute, 📝 temporary
+  session).
+- The status line is interactive-only and obeys `SHOW_USAGE`; headless/one-shot runs never render
+  it, and the context percentage stays cached (refreshed after every completed turn and after
+  `/compact`, `/clear`, `/load` and `/model`).
 
 ## Commands
 
@@ -151,10 +143,11 @@ still works as before and shares the same prompt.
 
 ## Usage & cost
 
-Each turn closes with one dim line showing what it cost (v0.22 K17), for example:
+Each turn closes with one dim status line: the current model and context usage, then what the
+turn cost (v0.22 K17), for example:
 
 ```text
-tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop
+gpt-4o · context 12% · tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop
 ```
 
 The numbers come from the provider when it reports them; a provider that reports no usage gets a
@@ -200,8 +193,6 @@ In Chat Mode, you can have natural conversations with the AI while maintaining c
 $ ai --chat
 ...
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- gpt-4o · 12%
-
  💬 > Tell me about the solar system
 
 A:
@@ -219,6 +210,7 @@ Solar System Overview
  • Heliosphere: Solar wind boundary protecting Earth from cosmic radiation.
 
 Key Fact: Earth is the only confirmed habitable planet.
+ gpt-4o · context 12% · tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ```
 
@@ -231,8 +223,6 @@ Execute Mode allows you to generate shell commands from natural language descrip
 - Safe execution with confirmation
 
 ```bash
- gpt-4o · 12%
-
  🚀 > Find all PDF files in my Downloads folder
 Assistant:
 find ~/Downloads -type f -name "*.pdf"
