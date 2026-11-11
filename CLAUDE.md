@@ -84,6 +84,26 @@ Environment variables (`YAI_*`) > Config file (`~/.config/yaicli/config.ini`) > 
 - Type hints used throughout
 - Lazy imports for heavy libraries (e.g., `fastmcp`) to reduce startup time
 
+## Git Workflow (branch first)
+
+Never change code directly on `master`. Cut a branch from `master` first:
+
+```bash
+git switch master                # make sure it is the base you want
+git switch -c feat/<slug>        # prefixes used in this repo: feat/ fix/ docs/ chore/
+# ... implement, run the gates (uv run pytest, ruff check --no-fix yaicli tests,
+#     uv run mkdocs build --strict for docs), commit on the branch ...
+git switch master && git merge --ff-only feat/<slug>
+git push origin master
+```
+
+- Open a PR instead of the fast-forward merge only when the user asks for review.
+- Trellis tasks must record the branch: `python3 ./.trellis/scripts/task.py set-branch <task> feat/<slug>`
+  and `set-base-branch <task> master`; `task.py archive` rejects a task whose branch and base branch are
+  both `master`.
+- Releases (tag/bump/changelog) are cut from `master` after the feature branch is merged
+  (see `.trellis/spec/repo/build-and-release.md`).
+
 ## Feature Specs
 
 Every PRD, OpenSpec proposal/spec delta or plan that introduces user-visible behavior must include a
