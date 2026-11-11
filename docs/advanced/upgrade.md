@@ -43,6 +43,39 @@ If a user file has the same tool name as a built-in, the user file wins. If you 
 built-in version, delete the old copy (or run `--reinstall-functions`) and restart `ai`.
 YAICLI only warns about stale copies; it never silently overwrites your customisations.
 
+## What changed in v0.23
+
+- **Model context windows are resolved instead of guessed.** The window now comes from, highest
+  priority first: your `MODEL_CONTEXT_WINDOWS` config → a limit learned from a provider "too long"
+  error → provider metadata (OpenRouter `/models`, Gemini `models.get`, Ollama `/api/show`; lazy,
+  2-second timeout, silent fallback) → the bundled catalog → family heuristics → an explicit 128k
+  assumption with a one-time stderr warning. The old "first substring match" table is gone, so
+  `gpt-4-32k`, `o1-mini` and local Ollama models get the right window.
+- **The request budget no longer wastes 30% of the window.** It is now
+  `min(window, max_input) - MAX_TOKENS - CONTEXT_SAFETY_TOKENS`; `CONTEXT_BUDGET_TOKENS > 0` still
+  overrides it verbatim. Example: `gpt-4o` gets 125,952 input tokens instead of 89,600.
+- **`/context` shows where the window came from** (`source: user|learned|metadata|catalog|heuristic|default`),
+  plus the output/safety reserve, role prompt, project instructions, persistent `/add` context and the
+  fixed request-overhead bucket (shown so the rows add up to the reported total). Bare `/context` no
+  longer repeats the subcommand list.
+- **Context-length errors are learned.** When the provider reports the real limit
+  (`maximum context length is N tokens`, ...), YAICLI records it (memory + cache keyed by
+  provider/base URL/model), recomputes the budget and retries once — later requests use the learned value.
+- **Unknown models are no longer silent**: the first request prints one stderr notice with a
+  copy-pasteable override example; `heuristic`/`catalog` values do not count as unknown.
+
+No action is normally needed. If a model reports an unexpected window, set `MODEL_CONTEXT_WINDOWS`
+(see [Configuration](../usage/configuration.md#configuration-options-reference)).
+
+### New configuration keys (v0.23)
+
+| Key | Default | Purpose |
+| --- | --- | --- |
+| `MODEL_CONTEXT_WINDOWS` | *empty* (auto) | JSON map of `model` / `provider:model` / `provider/model` → window or `{"window": N, "max_output": M}`; highest-priority override |
+| `ENABLE_MODEL_METADATA` | `true` | Probe OpenRouter / Gemini / Ollama metadata for the window (lazy, silent fallback) |
+| `CONTEXT_SAFETY_TOKENS` | `1024` | Headroom kept below `window - MAX_TOKENS` when deriving the request budget |
+| `ENABLE_MODEL_LIMITS_CACHE` | `true` | Cache resolved windows under `<config-dir>/cache/model_limits.json` (metadata 7d, learned 30d) |
+
 ## What changed in v0.21
 
 - **Permission modes (`TOOL_POLICY`)** — a session-wide mode: `readonly`, `standard` or `trusted`
@@ -153,7 +186,7 @@ Add these to `config.ini` only if you want non-default values (see
 | `PROJECT_CONTEXT_MAX_CHARS` | `20000` | Max characters of project context added to the system prompt (`0` = no cap) |
 | `TOOL_OUTPUT_MAX_CHARS` | `32000` | Per-tool-result character cap (`0` = unlimited) |
 | `TOOL_OUTPUT_DIR` | `<tempdir>/yaicli/chats/tool-outputs` | Where full tool outputs are stored (independent of the per-project session store) |
-| `CONTEXT_BUDGET_TOKENS` | `0` (70% of model window) | Per-request token budget |
+| `CONTEXT_BUDGET_TOKENS` | `0` (derived from the model window) | Per-request input-token budget override |
 | `TOOL_TIMEOUT` | `120` | Shell command timeout in seconds |
 | `TOOL_ENV_INHERIT` | `false` | Pass the full parent environment to shell tools |
 | `WORKSPACE_ROOT` | *empty* (current dir) | Workspace root for the shell `cwd` and guarded filesystem writes |

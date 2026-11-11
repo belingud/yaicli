@@ -159,8 +159,19 @@ TOOL_DISPLAY_MAX_LINES=15
 TOOL_DISPLAY_MAX_CHARS=4000
 # Max characters of the "@Function call:" argument line (0 = raw arguments).
 TOOL_CALL_PREVIEW_MAX_CHARS=300
-# Token budget for one request; 0 derives 70% of the model context window.
+# Token budget for one request; 0 = derive from the model context window
+# (window - MAX_TOKENS - CONTEXT_SAFETY_TOKENS). Set explicitly to override.
 CONTEXT_BUDGET_TOKENS=0
+# Model context windows (JSON): "model" / "provider:model" / "provider/model"
+# keys; values are token counts or {"window": N, "max_output": M}.
+# Empty = resolve via learned/metadata/catalog/heuristic layers.
+MODEL_CONTEXT_WINDOWS={}
+# Probe provider metadata (OpenRouter / Gemini / Ollama) for the model window.
+ENABLE_MODEL_METADATA=true
+# Safety headroom kept below (window - MAX_TOKENS) when deriving the request budget.
+CONTEXT_SAFETY_TOKENS=1024
+# Cache resolved windows under <config-dir>/cache/model_limits.json.
+ENABLE_MODEL_LIMITS_CACHE=true
 
 # Project context settings (v0.21 K12)
 # Auto-load .yaicli.md / AGENTS.md / CLAUDE.md from the working directory up to the
@@ -245,7 +256,11 @@ TOOL_AUDIT=true
 | `TOOL_DISPLAY_MAX_LINES` | Terminal preview: max lines of one tool result shown (`0` = unlimited) | `15` | `YAI_TOOL_DISPLAY_MAX_LINES` |
 | `TOOL_DISPLAY_MAX_CHARS` | Terminal preview: max characters shown; the model cap is `TOOL_OUTPUT_MAX_CHARS` | `4000` | `YAI_TOOL_DISPLAY_MAX_CHARS` |
 | `TOOL_CALL_PREVIEW_MAX_CHARS` | Max characters of the `@Function call:` argument line (`0` = raw) | `300` | `YAI_TOOL_CALL_PREVIEW_MAX_CHARS` |
-| `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = 70% of the model window) | `0`         | `YAI_CONTEXT_BUDGET_TOKENS` |
+| `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = derive from the window − `MAX_TOKENS` − `CONTEXT_SAFETY_TOKENS`; `> 0` = verbatim override) | `0` | `YAI_CONTEXT_BUDGET_TOKENS` |
+| `MODEL_CONTEXT_WINDOWS` | JSON per-model context windows (empty = resolve via provider metadata/catalog/heuristic); keys may be `model`, `provider:model` or `provider/model`, values an int or `{"window": N, "max_input": M, "max_output": M}` | - | `YAI_MODEL_CONTEXT_WINDOWS` |
+| `ENABLE_MODEL_METADATA` | Probe provider metadata (OpenRouter `/models`, Gemini `models.get`, Ollama `/api/show`) for the model context window | `true` | `YAI_ENABLE_MODEL_METADATA` |
+| `CONTEXT_SAFETY_TOKENS` | Extra headroom kept below `window - MAX_TOKENS` when deriving the request budget | `1024` | `YAI_CONTEXT_SAFETY_TOKENS` |
+| `ENABLE_MODEL_LIMITS_CACHE` | Cache resolved windows in `<config-dir>/cache/model_limits.json` (provider metadata 7 days, learned limits 30 days) | `true` | `YAI_ENABLE_MODEL_LIMITS_CACHE` |
 | `ENABLE_PROJECT_CONTEXT` | Auto-load project instruction files into the system prompt (`false` = no project-file reads) | `true` | `YAI_ENABLE_PROJECT_CONTEXT` |
 | `PROJECT_CONTEXT_MAX_CHARS` | Max characters of project context added to the system prompt (`0` = no cap) | `20000` | `YAI_PROJECT_CONTEXT_MAX_CHARS` |
 | `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
@@ -268,9 +283,11 @@ Conversation context is bounded on three levels; see
 
 - **Per-tool truncation**: `TOOL_OUTPUT_MAX_CHARS` (default 32000 chars) keeps head/tail and
   spills the full output to `TOOL_OUTPUT_DIR`.
-- **Token budget**: `CONTEXT_BUDGET_TOKENS` (default `0` = 70% of the model window) is enforced
-  before each request; over-budget history is trimmed by turn group, keeping assistant
-  `tool_calls` and their tool results together.
+- **Token budget**: `CONTEXT_BUDGET_TOKENS` (default `0` = derive from the resolved model window as
+  `window - MAX_TOKENS - CONTEXT_SAFETY_TOKENS`; `> 0` = verbatim override) is enforced before each
+  request; over-budget history is trimmed by turn group, keeping assistant `tool_calls` and their
+  tool results together. The window itself comes from `MODEL_CONTEXT_WINDOWS`, provider metadata,
+  the bundled catalog or a family heuristic — see [Context & Limits](context-limits.md).
 - **REPL retention**: `INTERACTIVE_ROUND` (default `25`) is the number of chat turns kept in the
   REPL (×2 messages), not a token limit. `MAX_HISTORY` (default `500`) only sizes the prompt
   history file (see [Conversation & History](../advanced/history.md)).

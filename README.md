@@ -130,8 +130,9 @@ headless approval flags.
 
 - **Tool-output truncation** with full output spilled to disk (head+tail kept, model can page it
   back with `fs_read_file`)
-- **Token budget** (`CONTEXT_BUDGET_TOKENS`) and turn-group-aligned history trimming — a
-  `tool_calls` message is never separated from its tool results
+- **Token budget** resolved from the model's real context window (8k–1M+; `MODEL_CONTEXT_WINDOWS`
+  overrides) with turn-group-aligned history trimming — a `tool_calls` message is never separated
+  from its tool results
 - **Self-healing**: a provider `context_length` error is retried once after trimming instead of
   failing permanently
 - **`/context`** shows what occupies the window, **`/compact [keep_rounds]`** compresses it on demand
@@ -365,7 +366,11 @@ The default configuration file is `config.ini` inside the config directory above
 | `TOOL_CALL_PREVIEW_MAX_CHARS` | Max characters of the `@Function call:` argument line (`0` = raw) | `300` | `YAI_TOOL_CALL_PREVIEW_MAX_CHARS` |
 | `ENABLE_PROJECT_CONTEXT` | Auto-load project instruction files into the system prompt (`false` = no project-file reads) | `true` | `YAI_ENABLE_PROJECT_CONTEXT` |
 | `PROJECT_CONTEXT_MAX_CHARS` | Max characters of project context added to the system prompt (`0` = no cap) | `20000` | `YAI_PROJECT_CONTEXT_MAX_CHARS` |
-| `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = 70% of the model window) | `0`         | `YAI_CONTEXT_BUDGET_TOKENS` |
+| `CONTEXT_BUDGET_TOKENS` | Token budget per request (`0` = derive from the window − `MAX_TOKENS` − `CONTEXT_SAFETY_TOKENS`; `> 0` = verbatim override) | `0` | `YAI_CONTEXT_BUDGET_TOKENS` |
+| `MODEL_CONTEXT_WINDOWS` | JSON per-model context windows (empty = resolve via provider metadata/catalog/heuristic); keys may be `model`, `provider:model` or `provider/model`, values an int or `{"window": N, "max_input": M, "max_output": M}` | - | `YAI_MODEL_CONTEXT_WINDOWS` |
+| `ENABLE_MODEL_METADATA` | Probe provider metadata (OpenRouter `/models`, Gemini `models.get`, Ollama `/api/show`) for the model context window | `true` | `YAI_ENABLE_MODEL_METADATA` |
+| `CONTEXT_SAFETY_TOKENS` | Extra headroom kept below `window - MAX_TOKENS` when deriving the request budget | `1024` | `YAI_CONTEXT_SAFETY_TOKENS` |
+| `ENABLE_MODEL_LIMITS_CACHE` | Cache resolved windows in `<config-dir>/cache/model_limits.json` (provider metadata 7 days, learned limits 30 days) | `true` | `YAI_ENABLE_MODEL_LIMITS_CACHE` |
 | `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
 | `TOOL_ENV_INHERIT`     | Pass the full parent environment to shell tools (old behaviour) | `false` | `YAI_TOOL_ENV_INHERIT` |
 | `WORKSPACE_ROOT`       | Directory shell tools are confined to (empty = current dir) | -         | `YAI_WORKSPACE_ROOT`       |
