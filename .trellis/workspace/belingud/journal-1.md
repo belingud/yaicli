@@ -498,3 +498,27 @@ The newly added CI matrix failed on its first run; fixed the five environment-de
 
 - Watch the re-run of CI on master go green across all three Python versions; bench gate already passed.
 - v0.23 candidate remains the openai-compatible lite transport (roadmap P1-c).
+
+
+## Session 12: K22 context-window resolution + /context polish (v0.23.0)
+<!-- trellis-session: v=2 fp=941c0a00061f8f5f -->
+
+**Date**: 2026-11-11
+**Task**: K22 context-window resolution + /context polish (v0.23.0)
+**Branch**: `master`
+
+### Summary
+
+Implemented the six-layer model context-window resolver (model_limits.py): user > learned > provider metadata > catalog > heuristic > default; budget = window - MAX_TOKENS - safety (70% ratio removed); OpenRouter/Gemini/Ollama metadata hooks; 400-error limit learning; disk cache with TTLs; /context now shows window source, buckets, overhead and reserve, and no longer repeats the subcommand hint. Binding rules in .trellis/spec/py/context-window-limits.md, docs completed with normalization/heuristic/catalog rules. Full pytest (2542) + ruff + mkdocs --strict green. Released as v0.23.0.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `901c59a` | feat(context): resolve model context windows through six layers (K22) |
+| `32ff2da` | docs(context): document six-layer window resolution and /context output |
+| `864136e` | docs(spec): make context-window and budget rules binding (K22) |
+
+### Status
+
+[OK] **Completed**

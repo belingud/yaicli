@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 11
-- **Last Active**: 2026-11-09
+- **Total Sessions**: 12
+- **Last Active**: 2026-11-11
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~500 | Active |
+| `journal-1.md` | ~524 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 12 | 2026-11-11 | K22 context-window resolution + /context polish (v0.23.0) | `901c59a`, `32ff2da`, `864136e` | `master` |
 | 11 | 2026-11-09 | Fix CI-surfaced environment-dependent tests | `174744c` | `master` |
 | 10 | 2026-11-09 | Add CI test workflow and release wrap-up | `8d01291` | `master` |
 | 9 | 2026-11-08 | v0.22.0 ecosystem & observability (K16–K20) | `cf823fb`, `f61da5d`, `1ff622d`, `cdb8158`, `101b097`, `631f305`, `64f2e40`, `75bc821`, `94cf58b` | `master` |
