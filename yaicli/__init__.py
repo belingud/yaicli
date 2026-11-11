@@ -6,4 +6,4 @@ some environments). ``.bumpversion.cfg`` keeps this value in sync with
 ``pyproject.toml`` on a release bump.
 """
 
-__version__ = "0.22.1"
+__version__ = "0.23.0"
