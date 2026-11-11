@@ -2361,8 +2361,9 @@ directory (or use <code>--cwd</code>) so the per-project store matches the sessi
 <h2 id="multi-line-and-long-input">Multi-line and Long Input<a class="headerlink" href="#multi-line-and-long-input" title="Permanent link">&para;</a></h2>
 <p>The prompt supports multiline editing: press <code>Alt+Enter</code> (or <code>Esc</code> then <code>Enter</code>) or <code>Ctrl+J</code> to
 insert a newline, and <code>Enter</code> alone to submit the whole buffer. This is handy for pasting logs or
-composing long instructions. The prompt shows the current model and role, plus the last-known
-context-usage percentage (see <a href="../interactive/#prompt">Interactive Mode</a>).</p>
+composing long instructions. The prompt itself is just the mode icon and <code>&gt;</code>, so the cursor
+position never changes; the current model and last-known context usage appear on the dim status
+line after each answer (see <a href="../interactive/#prompt">Interactive Mode</a>).</p>
 <p>For long or multi-line prompts in scripts, pass the text as a quoted argument or pipe it:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Quote a multi-line string</span>
 ai<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>cat<span class="w"> </span>prompt.txt<span class="k">)</span><span class="s2">&quot;</span>

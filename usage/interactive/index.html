@@ -1958,6 +1958,7 @@
 
 Welcome<span class="w"> </span>to<span class="w"> </span>YAICLI!
 Current:<span class="w"> </span>Persistent<span class="w"> </span>Session:<span class="w"> </span>What<span class="s1">&#39;s the meaning of life</span>
+<span class="s1">Model: gpt-4o</span>
 <span class="s1">Press Shift+Tab to switch mode</span>
 <span class="s1">/help|?            : Show help message</span>
 <span class="s1">/clear             : Clear chat history</span>
@@ -1983,7 +1984,7 @@ Ctrl+C<span class="w">             </span>:<span class="w"> </span>Clear<span cl
 Alt+Enter/Ctrl+J<span class="w">   </span>:<span class="w"> </span>Insert<span class="w"> </span>a<span class="w"> </span>newline<span class="w"> </span><span class="o">(</span>Enter<span class="w"> </span>still<span class="w"> </span>submits<span class="o">)</span>
 <span class="w">  </span>Tip:<span class="w"> </span>Type<span class="w"> </span><span class="s1">&#39;@&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>file<span class="w"> </span>paths<span class="w"> </span>and<span class="w"> </span><span class="s1">&#39;/&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>slash<span class="w"> </span>commands<span class="p">;</span><span class="w"> </span>use<span class="w"> </span>Tab/arrows<span class="w"> </span>to<span class="w"> </span><span class="k">select</span>
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-<span class="w"> </span>💬<span class="w"> </span>gpt-4o<span class="w"> </span>·<span class="w"> </span><span class="m">12</span>%<span class="w"> </span>&gt;
+<span class="w"> </span>💬<span class="w"> </span>&gt;
 </code></pre></div>
 <p>Or use <code>ai --chat</code> to start a temporary session.</p>
 <div class="highlight"><pre><span></span><code>ai<span class="w"> </span>--chat
@@ -1996,6 +1997,7 @@ Alt+Enter/Ctrl+J<span class="w">   </span>:<span class="w"> </span>Insert<span c
 
 Welcome<span class="w"> </span>to<span class="w"> </span>YAICLI!
 Current:<span class="w"> </span>Temporary<span class="w"> </span>Session<span class="w"> </span><span class="o">(</span>use<span class="w"> </span>/save<span class="w"> </span>to<span class="w"> </span>make<span class="w"> </span>persistent<span class="o">)</span>
+Model:<span class="w"> </span>gpt-4o
 Press<span class="w"> </span>Shift+Tab<span class="w"> </span>to<span class="w"> </span>switch<span class="w"> </span>mode
 /help<span class="p">|</span>?<span class="w">            </span>:<span class="w"> </span>Show<span class="w"> </span><span class="nb">help</span><span class="w"> </span>message
 /clear<span class="w">             </span>:<span class="w"> </span>Clear<span class="w"> </span>chat<span class="w"> </span><span class="nb">history</span>
@@ -2021,23 +2023,26 @@ Press<span class="w"> </span>Shift+Tab<span class="w"> </span>to<span class="w">
 <span class="s1">Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)</span>
 <span class="s1">  Tip: Type &#39;</span>@<span class="s1">&#39; for file paths and &#39;</span>/<span class="err">&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>slash<span class="w"> </span>commands<span class="p">;</span><span class="w"> </span>use<span class="w"> </span>Tab/arrows<span class="w"> </span>to<span class="w"> </span><span class="k">select</span>
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-<span class="w"> </span>💬<span class="w"> </span>gpt-4o<span class="w"> </span>·<span class="w"> </span><span class="m">12</span>%<span class="w"> </span>&gt;
+<span class="w"> </span>💬<span class="w"> </span>&gt;
 </code></pre></div>
 <h2 id="prompt">Prompt<a class="headerlink" href="#prompt" title="Permanent link">&para;</a></h2>
-<p>The prompt starts with the current mode icon and adds up to three context fields:</p>
-<div class="highlight"><pre><span></span><code> 💬 gpt-4o · coder · 12% &gt;
- │  │      │       └── last-known context usage (estimated % of the context budget)
- │  │      └────────── active role, shown only when it is not the DEFAULT role
- │  └───────────────── current model short name (a provider prefix like &quot;openai/&quot; is dropped)
- └──────────────────── mode icon: 💬 chat, 🚀 execute
+<p>The prompt is a single fixed line: the mode icon plus <code>&gt;</code>. Nothing else is inlined, so the
+cursor always starts in the same column regardless of the model, role or working directory.</p>
+<div class="highlight"><pre><span></span><code> 💬 &gt;
 </code></pre></div>
 <ul>
-<li>The model and role update immediately after <code>/model</code> / <code>/role</code> or a <code>Shift+Tab</code> mode switch.</li>
-<li>The context percentage is cached and refreshed after every completed turn and after
-  <code>/compact</code>, <code>/clear</code>, <code>/load</code> and <code>/model</code> — never on each keystroke. It is omitted
-  until the conversation has at least one message, and for bare/legacy CLI objects
-  (e.g. integrations constructing <code>CLI.__new__</code>).</li>
-<li>Headless/one-shot runs never render this prompt; their output is unaffected.</li>
+<li>The model, the last-known context usage and the per-turn token/cost figures are shown on the
+  dim status line that closes each answer, for example
+  <code>gpt-4o · context 12% · tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop</code>. The current model is
+  also printed in the welcome banner (<code>Model: gpt-4o</code>) and <code>/model</code> changes it immediately.</li>
+<li>The working directory, git branch and assistant role are <strong>not</strong> shown. In particular, a custom
+  <code>DEFAULT_ROLE</code> (for example <code>master</code>) is ordinary assistant configuration, not repository
+  state: the prompt never inspects the repository.</li>
+<li>A <code>Shift+Tab</code> mode switch changes the input-line icon (💬 chat, 🚀 execute, 📝 temporary
+  session).</li>
+<li>The status line is interactive-only and obeys <code>SHOW_USAGE</code>; headless/one-shot runs never render
+  it, and the context percentage stays cached (refreshed after every completed turn and after
+  <code>/compact</code>, <code>/clear</code>, <code>/load</code> and <code>/model</code>).</li>
 </ul>
 <h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2072,8 +2077,9 @@ Press<span class="w"> </span>Shift+Tab<span class="w"> </span>to<span class="w">
 description, <code>/co</code> filters the list, and <code>Tab</code>/arrow keys select an entry. <code>@</code> path completion
 still works as before and shares the same prompt.</p>
 <h2 id="usage-cost">Usage &amp; cost<a class="headerlink" href="#usage-cost" title="Permanent link">&para;</a></h2>
-<p>Each turn closes with one dim line showing what it cost (v0.22 K17), for example:</p>
-<div class="highlight"><pre><span></span><code>tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop
+<p>Each turn closes with one dim status line: the current model and context usage, then what the
+turn cost (v0.22 K17), for example:</p>
+<div class="highlight"><pre><span></span><code>gpt-4o · context 12% · tokens 1,234 in / 567 out · $0.0021 · 1.2s · stop
 </code></pre></div>
 <p>The numbers come from the provider when it reports them; a provider that reports no usage gets a
 clearly estimated count instead. Unknown model pricing simply omits the <code>$</code> segment. The line is
@@ -2114,7 +2120,7 @@ to send the whole buffer as one turn.</p>
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>ai<span class="w"> </span>--chat
 ...
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-<span class="w"> </span>💬<span class="w"> </span>gpt-4o<span class="w"> </span>·<span class="w"> </span><span class="m">12</span>%<span class="w"> </span>&gt;<span class="w"> </span>Tell<span class="w"> </span>me<span class="w"> </span>about<span class="w"> </span>the<span class="w"> </span>solar<span class="w"> </span>system
+<span class="w"> </span>💬<span class="w"> </span>&gt;<span class="w"> </span>Tell<span class="w"> </span>me<span class="w"> </span>about<span class="w"> </span>the<span class="w"> </span>solar<span class="w"> </span>system
 
 A:
 Solar<span class="w"> </span>System<span class="w"> </span>Overview
@@ -2131,6 +2137,7 @@ Solar<span class="w"> </span>System<span class="w"> </span>Overview
 <span class="w"> </span>•<span class="w"> </span>Heliosphere:<span class="w"> </span>Solar<span class="w"> </span>wind<span class="w"> </span>boundary<span class="w"> </span>protecting<span class="w"> </span>Earth<span class="w"> </span>from<span class="w"> </span>cosmic<span class="w"> </span>radiation.
 
 Key<span class="w"> </span>Fact:<span class="w"> </span>Earth<span class="w"> </span>is<span class="w"> </span>the<span class="w"> </span>only<span class="w"> </span>confirmed<span class="w"> </span>habitable<span class="w"> </span>planet.
+<span class="w"> </span>gpt-4o<span class="w"> </span>·<span class="w"> </span>context<span class="w"> </span><span class="m">12</span>%<span class="w"> </span>·<span class="w"> </span>tokens<span class="w"> </span><span class="m">1</span>,234<span class="w"> </span><span class="k">in</span><span class="w"> </span>/<span class="w"> </span><span class="m">567</span><span class="w"> </span>out<span class="w"> </span>·<span class="w"> </span><span class="nv">$0</span>.0021<span class="w"> </span>·<span class="w"> </span><span class="m">1</span>.2s<span class="w"> </span>·<span class="w"> </span>stop
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 </code></pre></div>
 <h2 id="execute-mode">Execute Mode (🚀)<a class="headerlink" href="#execute-mode" title="Permanent link">&para;</a></h2>
@@ -2139,7 +2146,7 @@ Key<span class="w"> </span>Fact:<span class="w"> </span>Earth<span class="w"> </
 - Review commands before execution
 - Edit commands before running
 - Safe execution with confirmation</p>
-<div class="highlight"><pre><span></span><code>🚀<span class="w"> </span>&gt;<span class="w"> </span>Find<span class="w"> </span>all<span class="w"> </span>PDF<span class="w"> </span>files<span class="w"> </span><span class="k">in</span><span class="w"> </span>my<span class="w"> </span>Downloads<span class="w"> </span>folder
+<div class="highlight"><pre><span></span><code><span class="w"> </span>🚀<span class="w"> </span>&gt;<span class="w"> </span>Find<span class="w"> </span>all<span class="w"> </span>PDF<span class="w"> </span>files<span class="w"> </span><span class="k">in</span><span class="w"> </span>my<span class="w"> </span>Downloads<span class="w"> </span>folder
 Assistant:
 find<span class="w"> </span>~/Downloads<span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.pdf&quot;</span>
 ╭─<span class="w"> </span>Suggest<span class="w"> </span>Command<span class="w"> </span>──────────────────────╮

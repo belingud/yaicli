@@ -1561,6 +1561,30 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-changed-in-v023" class="md-nav__link">
+    <span class="md-ellipsis">
+      What changed in v0.23
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What changed in v0.23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-configuration-keys-v023" class="md-nav__link">
+    <span class="md-ellipsis">
+      New configuration keys (v0.23)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-changed-in-v021" class="md-nav__link">
     <span class="md-ellipsis">
       What changed in v0.21
@@ -1909,6 +1933,30 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-changed-in-v023" class="md-nav__link">
+    <span class="md-ellipsis">
+      What changed in v0.23
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What changed in v0.23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-configuration-keys-v023" class="md-nav__link">
+    <span class="md-ellipsis">
+      New configuration keys (v0.23)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-changed-in-v021" class="md-nav__link">
     <span class="md-ellipsis">
       What changed in v0.21
@@ -2030,6 +2078,61 @@ ai<span class="w"> </span>--list-functions<span class="w">         </span><span 
 <p>If a user file has the same tool name as a built-in, the user file wins. If you want the new
 built-in version, delete the old copy (or run <code>--reinstall-functions</code>) and restart <code>ai</code>.
 YAICLI only warns about stale copies; it never silently overwrites your customisations.</p>
+<h2 id="what-changed-in-v023">What changed in v0.23<a class="headerlink" href="#what-changed-in-v023" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Model context windows are resolved instead of guessed.</strong> The window now comes from, highest
+  priority first: your <code>MODEL_CONTEXT_WINDOWS</code> config → a limit learned from a provider "too long"
+  error → provider metadata (OpenRouter <code>/models</code>, Gemini <code>models.get</code>, Ollama <code>/api/show</code>; lazy,
+  2-second timeout, silent fallback) → the bundled catalog → family heuristics → an explicit 128k
+  assumption with a one-time stderr warning. The old "first substring match" table is gone, so
+  <code>gpt-4-32k</code>, <code>o1-mini</code> and local Ollama models get the right window.</li>
+<li><strong>The request budget no longer wastes 30% of the window.</strong> It is now
+  <code>min(window, max_input) - MAX_TOKENS - CONTEXT_SAFETY_TOKENS</code>; <code>CONTEXT_BUDGET_TOKENS &gt; 0</code> still
+  overrides it verbatim. Example: <code>gpt-4o</code> gets 125,952 input tokens instead of 89,600.</li>
+<li><strong><code>/context</code> shows where the window came from</strong> (<code>source: user|learned|metadata|catalog|heuristic|default</code>),
+  plus the output/safety reserve, role prompt, project instructions, persistent <code>/add</code> context and the
+  fixed request-overhead bucket (shown so the rows add up to the reported total). Bare <code>/context</code> no
+  longer repeats the subcommand list.</li>
+<li><strong>Context-length errors are learned.</strong> When the provider reports the real limit
+  (<code>maximum context length is N tokens</code>, ...), YAICLI records it (memory + cache keyed by
+  provider/base URL/model), recomputes the budget and retries once — later requests use the learned value.</li>
+<li><strong>Unknown models are no longer silent</strong>: the first request prints one stderr notice with a
+  copy-pasteable override example; <code>heuristic</code>/<code>catalog</code> values do not count as unknown.</li>
+</ul>
+<p>No action is normally needed. If a model reports an unexpected window, set <code>MODEL_CONTEXT_WINDOWS</code>
+(see <a href="../../usage/configuration/#configuration-options-reference">Configuration</a>).</p>
+<h3 id="new-configuration-keys-v023">New configuration keys (v0.23)<a class="headerlink" href="#new-configuration-keys-v023" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MODEL_CONTEXT_WINDOWS</code></td>
+<td><em>empty</em> (auto)</td>
+<td>JSON map of <code>model</code> / <code>provider:model</code> / <code>provider/model</code> → window or <code>{"window": N, "max_output": M}</code>; highest-priority override</td>
+</tr>
+<tr>
+<td><code>ENABLE_MODEL_METADATA</code></td>
+<td><code>true</code></td>
+<td>Probe OpenRouter / Gemini / Ollama metadata for the window (lazy, silent fallback)</td>
+</tr>
+<tr>
+<td><code>CONTEXT_SAFETY_TOKENS</code></td>
+<td><code>1024</code></td>
+<td>Headroom kept below <code>window - MAX_TOKENS</code> when deriving the request budget</td>
+</tr>
+<tr>
+<td><code>ENABLE_MODEL_LIMITS_CACHE</code></td>
+<td><code>true</code></td>
+<td>Cache resolved windows under <code>&lt;config-dir&gt;/cache/model_limits.json</code> (metadata 7d, learned 30d)</td>
+</tr>
+</tbody>
+</table>
 <h2 id="what-changed-in-v021">What changed in v0.21<a class="headerlink" href="#what-changed-in-v021" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Permission modes (<code>TOOL_POLICY</code>)</strong> — a session-wide mode: <code>readonly</code>, <code>standard</code> or <code>trusted</code>
@@ -2225,8 +2328,8 @@ pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </s
 </tr>
 <tr>
 <td><code>CONTEXT_BUDGET_TOKENS</code></td>
-<td><code>0</code> (70% of model window)</td>
-<td>Per-request token budget</td>
+<td><code>0</code> (derived from the model window)</td>
+<td>Per-request input-token budget override</td>
 </tr>
 <tr>
 <td><code>TOOL_TIMEOUT</code></td>

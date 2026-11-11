@@ -551,6 +551,99 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Token budget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-window-is-resolved" class="md-nav__link">
+    <span class="md-ellipsis">
+      How the window is resolved
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How the window is resolved">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#normalization-and-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Normalization and matching
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heuristic-family-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Heuristic family table
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overriding-the-window-model_context_windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overriding the window (MODEL_CONTEXT_WINDOWS)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provider-metadata-probes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Provider metadata probes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#learning-the-real-limit-from-a-context-length-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      Learning the real limit from a context-length error
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explicit-budget-override-and-safety-headroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      Explicit budget override and safety headroom
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown-model-warning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unknown-model warning
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1921,6 +2014,99 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Token budget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-window-is-resolved" class="md-nav__link">
+    <span class="md-ellipsis">
+      How the window is resolved
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How the window is resolved">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#normalization-and-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Normalization and matching
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heuristic-family-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Heuristic family table
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overriding-the-window-model_context_windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overriding the window (MODEL_CONTEXT_WINDOWS)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provider-metadata-probes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Provider metadata probes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#learning-the-real-limit-from-a-context-length-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      Learning the real limit from a context-length error
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explicit-budget-override-and-safety-headroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      Explicit budget override and safety headroom
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown-model-warning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unknown-model warning
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2129,9 +2315,223 @@ pass a <code>limit</code> comfortably below that (e.g. <code>limit: 12000</code>
   <code>TOOL_OUTPUT_DIR</code> up periodically.</li>
 </ul>
 <h2 id="2-token-budget">2. Token budget<a class="headerlink" href="#2-token-budget" title="Permanent link">&para;</a></h2>
+<p>Three numbers decide how much of the conversation is sent in one request:</p>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Window</strong></td>
+<td>The model's total context window (input + output) — e.g. <code>128,000</code> tokens for <code>gpt-4o</code>, <code>1,000,000</code> for Gemini 2.5 Pro.</td>
+</tr>
+<tr>
+<td><strong>Budget</strong></td>
+<td>How many <em>input</em> tokens one request may use: <code>min(window, max_input) - MAX_TOKENS - CONTEXT_SAFETY_TOKENS</code>.</td>
+</tr>
+<tr>
+<td><strong>Reserve</strong></td>
+<td>Output headroom kept out of the budget: <code>MAX_TOKENS + CONTEXT_SAFETY_TOKENS</code> (default <code>1024 + 1024 = 2048</code>).</td>
+</tr>
+</tbody>
+</table>
 <p>Before each provider request, YAICLI estimates the tokens in the conversation (a stdlib heuristic:
 ~3.5 characters per token with corrections for CJK text, plus a fixed per-message overhead) and
-compares it with the budget:</p>
+compares it with the budget. If the conversation is over budget, YAICLI first trims mechanically —
+no extra API call, no extra cost — then sends the request. Trimming by message count alone is not
+enough: a <code>tool_calls</code> message must never be separated from its <code>tool</code> results, or every provider
+rejects the payload. YAICLI therefore trims by <strong>turn group</strong>:</p>
+<ul>
+<li>a turn group is one user message plus the assistant/tool messages that follow it;</li>
+<li>whole groups are dropped, oldest first;</li>
+<li>an assistant message with <code>tool_calls</code> is always kept together with its tool results
+  (zero orphan <code>tool</code> messages);</li>
+<li>leading system/context messages are preserved;</li>
+<li>one line is printed to stderr when trimming happens, so you know why old context disappeared.</li>
+</ul>
+<h3 id="how-the-window-is-resolved">How the window is resolved<a class="headerlink" href="#how-the-window-is-resolved" title="Permanent link">&para;</a></h3>
+<p><code>yaicli/model_limits.py</code> resolves the window in six short-circuiting layers: the first hit wins, and
+every result carries a <code>source</code> saying where the number came from.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th><code>source</code></th>
+<th>Where the number comes from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>user</code></td>
+<td><code>MODEL_CONTEXT_WINDOWS</code> (<code>YAI_MODEL_CONTEXT_WINDOWS</code>): an explicit override, always highest priority.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>learned</code></td>
+<td>The real limit parsed from a provider context-length error in a previous request (cached 30 days).</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>metadata</code></td>
+<td>Provider-advertised metadata — OpenRouter <code>/models</code>, Gemini <code>models.get</code>, Ollama <code>/api/show</code> (cached 7 days).</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>catalog</code></td>
+<td>The bundled snapshot <code>yaicli/data/model_limits.json</code>.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>heuristic</code></td>
+<td>Provider-scoped family prefix, longest match wins (<code>gpt-4-32k</code> is not <code>gpt-4</code>); Ollama falls back to 8,192.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>default</code></td>
+<td><code>128,000</code> tokens for a model nothing else knows, plus a one-time warning.</td>
+</tr>
+</tbody>
+</table>
+<p><code>/context</code> shows the result on the <code>window</code> line: the value, the <code>source</code>, and a short <code>detail</code> when
+the layer provides one (<code>source: metadata · openrouter /models</code>). <code>source: user</code> means your config
+won; <code>source: default</code> means the model is unknown (see below).</p>
+<h4 id="normalization-and-matching">Normalization and matching<a class="headerlink" href="#normalization-and-matching" title="Permanent link">&para;</a></h4>
+<p>Model ids are normalized before the static layers see them: lower-cased; up to two vendor prefixes
+removed (<code>openrouter/</code>, <code>anthropic/</code>, <code>openai/</code>, <code>google/</code>, <code>mistralai/</code>, <code>meta-llama/</code>, <code>qwen/</code>,
+<code>deepseek/</code>, <code>moonshotai/</code>, <code>x-ai/</code>, <code>cohere/</code>, <code>nvidia/</code>); a <code>-YYYYMMDD</code> / <code>@YYYYMMDD</code> suffix
+removed; OpenRouter variant suffixes (<code>:free</code>, <code>:batch</code>, <code>:extended</code>, <code>:nitro</code>, <code>:online</code>) removed;
+and a <code>[1m]</code> marker stripped (the raw id with <code>[1m]</code> resolves to <code>1,000,000</code> as a heuristic hit).</p>
+<p>The catalog is matched <strong>exactly</strong> on the normalized id (it is a curated snapshot, not a fuzzy
+table); the heuristic layer matches <strong>provider-scoped prefixes, longest match first</strong>. This ordering
+is deliberate: an exact catalog entry for <code>grok-4</code> (256,000) does not silently apply to <code>grok-4.7</code> —
+that id falls through to the <code>grok</code> family heuristic (131,072) until a catalog entry, provider
+metadata or a <code>MODEL_CONTEXT_WINDOWS</code> override exists for it.</p>
+<p>Ollama is special-cased: generic cloud families (<code>qwen</code>, <code>mistral</code>, ...) are ignored there because a
+local server serves those names with its own runtime window, so an unknown local model resolves to
+<code>OLLAMA_DEFAULT_CONTEXT_WINDOW</code> (8,192). The provider's <code>NUM_CTX</code> option is <strong>not</strong> used as a window;
+only configured values, learned values, provider metadata and the catalog are authoritative.</p>
+<h4 id="heuristic-family-table">Heuristic family table<a class="headerlink" href="#heuristic-family-table" title="Permanent link">&para;</a></h4>
+<p>Longest prefix wins, so <code>gpt-4-32k</code> beats <code>gpt-4</code> and <code>o1-mini</code> beats <code>o1</code>. The table lives in
+<code>HEURISTIC_CONTEXT_WINDOWS</code> in <code>yaicli/model_limits.py</code>; anything that does not match any row falls to
+the default.</p>
+<table>
+<thead>
+<tr>
+<th>Window</th>
+<th>Family prefixes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1,048,576</td>
+<td><code>gemini</code></td>
+</tr>
+<tr>
+<td>1,047,576</td>
+<td><code>gpt-4.1</code></td>
+</tr>
+<tr>
+<td>400,000</td>
+<td><code>gpt-5</code></td>
+</tr>
+<tr>
+<td>245,760</td>
+<td><code>minimax</code></td>
+</tr>
+<tr>
+<td>200,000</td>
+<td><code>claude</code>, <code>o1</code>, <code>o3</code>, <code>o4</code></td>
+</tr>
+<tr>
+<td>131,072</td>
+<td><code>moonshot</code>, <code>kimi</code>, <code>qwen</code>, <code>grok</code></td>
+</tr>
+<tr>
+<td>128,000</td>
+<td><code>gpt-4o</code>, <code>gpt-4-turbo</code>, <code>o1-mini</code>, <code>deepseek</code>, <code>glm</code>, <code>chatglm</code>, <code>mistral</code>, <code>command</code>, <code>cohere</code></td>
+</tr>
+<tr>
+<td>32,768</td>
+<td><code>gpt-4-32k</code>, <code>mixtral</code></td>
+</tr>
+<tr>
+<td>16,385</td>
+<td><code>gpt-3.5</code></td>
+</tr>
+<tr>
+<td>8,192</td>
+<td><code>gpt-4</code> (plain <code>gpt-4</code>; the longer <code>gpt-4*</code> rows win), <code>llama</code> (Ollama only)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="overriding-the-window-model_context_windows">Overriding the window (<code>MODEL_CONTEXT_WINDOWS</code>)<a class="headerlink" href="#overriding-the-window-model_context_windows" title="Permanent link">&para;</a></h3>
+<p>Set <code>MODEL_CONTEXT_WINDOWS</code> (a JSON object; the <code>YAI_MODEL_CONTEXT_WINDOWS</code> env var works too) to pin
+a window yourself. Keys may name a bare model (applies to any provider), a <code>provider:model</code> pair, or
+a <code>provider/model</code> pair; values may be an integer or an object with <code>window</code> / <code>max_input</code> /
+<code>max_output</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[core]</span>
+<span class="c1"># JSON: keys may be &quot;model&quot;, &quot;provider:model&quot; or &quot;provider/model&quot;;</span>
+<span class="c1"># values may be an int or an object with window / max_input / max_output.</span>
+<span class="na">MODEL_CONTEXT_WINDOWS</span><span class="o">=</span><span class="s">{&quot;my-gateway-model&quot;: 200000, &quot;openrouter/anthropic/claude-sonnet-5.5&quot;: 1000000, &quot;ollama/qwen2.5:7b&quot;: {&quot;window&quot;: 32768, &quot;max_output&quot;: 4096}}</span>
+</code></pre></div>
+<p>An explicit entry always wins over everything below it, and <code>/context</code> then reports <code>source: user</code>.
+Remove the entry to fall back to the learned/metadata/catalog/heuristic layers.</p>
+<h3 id="provider-metadata-probes">Provider metadata probes<a class="headerlink" href="#provider-metadata-probes" title="Permanent link">&para;</a></h3>
+<p>When no user or learned value exists, YAICLI asks the provider for the real limit. The probe is lazy
+(only when the budget is first needed), single-attempt, bounded to 2 seconds, and completely silent
+on errors or timeouts — it simply falls through to the catalog:</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Probe</th>
+<th>Fields used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenRouter</td>
+<td><code>GET {BASE_URL}/models</code></td>
+<td><code>context_length</code>, <code>top_provider.max_completion_tokens</code></td>
+</tr>
+<tr>
+<td>Gemini</td>
+<td><code>models.get</code></td>
+<td><code>input_token_limit</code>, <code>output_token_limit</code></td>
+</tr>
+<tr>
+<td>Ollama</td>
+<td><code>/api/show</code></td>
+<td>the largest positive <code>model_info.*.context_length</code></td>
+</tr>
+</tbody>
+</table>
+<p>The result is cached per <code>(provider, base_url, model)</code>. Failed or empty probes are also remembered
+in-process for 5 minutes (<code>METADATA_MISS_TTL_SECONDS=300</code>), so an offline or metadata-less provider
+pays the ≤2 s timeout on the first request only instead of on every turn. Set
+<code>ENABLE_MODEL_METADATA=false</code> to skip probes entirely (no extra network calls at all).</p>
+<h3 id="learning-the-real-limit-from-a-context-length-error">Learning the real limit from a context-length error<a class="headerlink" href="#learning-the-real-limit-from-a-context-length-error" title="Permanent link">&para;</a></h3>
+<p>Even with estimation, a provider can reject a request as too long (the exact window differs per
+model). When the error text carries the real limit (for example <code>maximum context length is 200000
+tokens</code>), YAICLI parses it and records it as a <code>learned</code> value — in memory immediately and on disk
+for the next session (30 days). The request is re-trimmed to the new budget and retried <strong>once</strong>; the
+stderr notice names the learned number:</p>
+<div class="highlight"><pre><span></span><code>Provider rejected the request as too long; learned the real context limit (200,000 tokens), dropped 1 older message(s) and retrying once (210,000 -&gt; 197,952 est. tokens).
+</code></pre></div>
+<p>The next <code>/context</code> then reports <code>source: learned</code>, and subsequent requests use the corrected window.</p>
+<h3 id="cache">Cache<a class="headerlink" href="#cache" title="Permanent link">&para;</a></h3>
+<p>Resolved windows are cached in <code>&lt;config-dir&gt;/cache/model_limits.json</code> (next to <code>config.ini</code>):</p>
+<ul>
+<li>provider metadata: 7 days;</li>
+<li>learned limits: 30 days.</li>
+</ul>
+<p>Set <code>ENABLE_MODEL_LIMITS_CACHE=false</code> to keep the cache in memory only — nothing is read from or
+written to disk. Deleting the file is always safe: it is a pure cache and is rebuilt on demand.</p>
+<h3 id="explicit-budget-override-and-safety-headroom">Explicit budget override and safety headroom<a class="headerlink" href="#explicit-budget-override-and-safety-headroom" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -2142,36 +2542,40 @@ compares it with the budget:</p>
 <tbody>
 <tr>
 <td><code>CONTEXT_BUDGET_TOKENS</code></td>
-<td>Token budget for one request. Default <code>0</code> = derive 70% of the model context window (fallback 128k tokens when the model is unknown).</td>
+<td><code>0</code> (default) = derive from the window (<code>window - MAX_TOKENS - CONTEXT_SAFETY_TOKENS</code>). A value <code>&gt; 0</code> overrides the derived budget <strong>verbatim</strong> — the legacy behaviour, useful as a hard cap or a fallback.</td>
 </tr>
 <tr>
-<td><code>MAX_TOOL_CALL_DEPTH</code> / <code>--max-turns</code></td>
-<td>Bounds how many tool rounds one request may run (default <code>8</code>).</td>
+<td><code>CONTEXT_SAFETY_TOKENS</code></td>
+<td>Extra headroom kept below <code>window - MAX_TOKENS</code> for tokenizer/request drift (default <code>1024</code>). Raise it if you still hit "too long" errors; <code>0</code> disables the headroom.</td>
+</tr>
+<tr>
+<td><code>MAX_TOKENS</code></td>
+<td>The requested output limit. It is reserved from the window but never rewritten by YAICLI.</td>
 </tr>
 </tbody>
 </table>
-<p>If the conversation is over budget, YAICLI first trims mechanically — no extra API call, no extra
-cost — then sends the request. Trimming by message count alone is not enough: a <code>tool_calls</code>
-message must never be separated from its <code>tool</code> results, or every provider rejects the payload.
-YAICLI therefore trims by <strong>turn group</strong>:</p>
-<ul>
-<li>a turn group is one user message plus the assistant/tool messages that follow it;</li>
-<li>whole groups are dropped, oldest first;</li>
-<li>an assistant message with <code>tool_calls</code> is always kept together with its tool results
-  (zero orphan <code>tool</code> messages);</li>
-<li>leading system/context messages are preserved;</li>
-<li>one line is printed to stderr when trimming happens, so you know why old context disappeared.</li>
-</ul>
+<h3 id="unknown-model-warning">Unknown-model warning<a class="headerlink" href="#unknown-model-warning" title="Permanent link">&para;</a></h3>
+<p>When the resolved <code>source</code> is <code>default</code> and a model is configured, the first request of every session
+prints a two-line warning to <strong>stderr</strong>; the numbers are still shown and the message says how to fix
+them:</p>
+<div class="highlight"><pre><span></span><code>Context window for model &quot;my-gateway-model&quot; is unknown; assuming 128,000 tokens (source: default).
+Set MODEL_CONTEXT_WINDOWS={&quot;my-gateway-model&quot;: 200000} or CONTEXT_BUDGET_TOKENS to override.
+</code></pre></div>
 <h2 id="3-context-length-self-healing">3. Context-length self-healing<a class="headerlink" href="#3-context-length-self-healing" title="Permanent link">&para;</a></h2>
 <p>Even with estimation, a provider can reject a request with a <code>context_length</code> error (the exact
 window differs per model). When that happens, YAICLI:</p>
 <ol>
-<li>drops one more turn group (or trims further to the budget);</li>
+<li>parses the real limit from the error text when present (for example <code>maximum context length is
+   200000 tokens</code>) and records it as a <code>learned</code> value — in memory and in the on-disk cache — so the
+   next request, <code>/context</code> and <code>/compact</code> all use the corrected window;</li>
+<li>re-trims the payload to the new budget, dropping whole turn groups;</li>
 <li>retries the request <strong>once</strong>;</li>
 <li>if it still fails, prints an actionable error (provider, cause, suggestion) and exits with the
    usual error code — instead of the previous behaviour of failing every subsequent request.</li>
 </ol>
-<p>In the REPL you can also recover manually with <code>/clear</code> or <code>/compact</code>.</p>
+<p>A single turn that is already too large cannot be trimmed: YAICLI still records the learned limit,
+then prints the actionable error instead of retrying forever. In the REPL you can also recover
+manually with <code>/clear</code> or <code>/compact</code>.</p>
 <h2 id="4-inspecting-and-compacting-the-conversation">4. Inspecting and compacting the conversation<a class="headerlink" href="#4-inspecting-and-compacting-the-conversation" title="Permanent link">&para;</a></h2>
 <p>In the interactive REPL:</p>
 <table>
@@ -2184,7 +2588,7 @@ window differs per model). When that happens, YAICLI:</p>
 <tbody>
 <tr>
 <td><code>/context</code> or <code>/ctx</code></td>
-<td>Show the estimated context usage: system prompt, history, tool output, remaining budget, and the budget being used.</td>
+<td>Show the estimated context usage: resolved window and its source, role prompt, project context, <code>/add</code> context, history/tool output, total vs budget, remaining and reserve. Subcommands: <code>list</code>, <code>clear</code>, <code>add &lt;path&gt;</code>, <code>remove &lt;path&gt;</code>, <code>budget</code>.</td>
 </tr>
 <tr>
 <td><code>/compact [keep_rounds]</code></td>
@@ -2196,8 +2600,36 @@ window differs per model). When that happens, YAICLI:</p>
 </tr>
 </tbody>
 </table>
-<p>Use <code>/context</code> when a session starts behaving as if it forgot earlier steps; then <code>/compact</code> to
-reclaim budget deliberately, or raise <code>CONTEXT_BUDGET_TOKENS</code> if your model has a larger window.</p>
+<p>Bare <code>/context</code> prints the usage block and then the legacy <code>/add</code> file list; <code>/context budget</code>
+(aliases <code>stats</code> / <code>usage</code>) prints only the usage block. The subcommand list is printed only for an
+unknown subcommand (<code>Available: list, clear, add &lt;path&gt;, remove &lt;path&gt;, budget</code>):</p>
+<div class="highlight"><pre><span></span><code>Context usage (estimated):
+  window        : 1,000,000 tokens (source: metadata · openrouter /models)
+  role prompt   : 12 tokens
+  project ctx   : 1,234 tokens
+  /add context  : 0 tokens
+  history       : 2,175 tokens (tool output 1,148)
+  overhead      : 3 tokens
+  total         : 3,424 / 997,952 tokens (0.3%)
+  remaining     : 994,528 tokens
+  reserve       : 2,048 (MAX_TOKENS 1,024 + safety 1,024)
+  Use /compact [keep_rounds] to drop older turn groups.
+</code></pre></div>
+<ul>
+<li><code>window</code> is the resolved model window plus where it came from (<code>source: metadata · openrouter
+  /models</code> above). An unknown model renders <code>source: default · assumed for unknown model; set
+  MODEL_CONTEXT_WINDOWS to override</code>.</li>
+<li><code>role prompt</code>, <code>project ctx</code>, <code>/add context</code> and <code>history</code> are the token buckets the next request
+  carries (<code>tool output</code> is the part of history that came from tools).</li>
+<li><code>overhead</code> is the fixed request priming tokens (<code>REQUEST_OVERHEAD_TOKENS = 3</code>) that are not part of
+  any message; it is counted in <code>total</code> and shown so the rows add up to the total.</li>
+<li><code>total</code> is checked against the request budget; <code>remaining</code> is what is left of it.</li>
+<li><code>reserve</code> is the output headroom kept out of the window (<code>MAX_TOKENS</code> + <code>CONTEXT_SAFETY_TOKENS</code>).</li>
+</ul>
+<p>Use <code>/context</code> when a session starts behaving as if it forgot earlier steps (check the window source
+first — an unknown model may be budgeted far below its real window); then <code>/compact</code> to reclaim
+budget deliberately, pin a window with <code>MODEL_CONTEXT_WINDOWS</code>, or raise <code>CONTEXT_BUDGET_TOKENS</code> to
+a hard value.</p>
 <h2 id="5-tokens-cost">5. Tokens &amp; cost<a class="headerlink" href="#5-tokens-cost" title="Permanent link">&para;</a></h2>
 <p>YAICLI measures what a run actually costs (v0.22 K17). Token counts come from the provider
 response whenever the provider reports them, so they are exact for the request. When a provider
@@ -2267,8 +2699,13 @@ answers.</p>
 </ul>
 <h2 id="recommended-settings-for-long-tasks">Recommended settings for long tasks<a class="headerlink" href="#recommended-settings-for-long-tasks" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="k">[core]</span>
-<span class="c1"># Leave at 0 to auto-derive 70% of the model window; set explicitly for small windows</span>
+<span class="c1"># Budget: 0 = derive from the resolved window (window - MAX_TOKENS - safety);</span>
+<span class="c1"># a value &gt; 0 overrides it verbatim as a hard cap.</span>
 <span class="na">CONTEXT_BUDGET_TOKENS</span><span class="o">=</span><span class="s">0</span>
+<span class="c1"># Extra headroom below window - MAX_TOKENS; raise it if you still hit &quot;too long&quot; errors.</span>
+<span class="na">CONTEXT_SAFETY_TOKENS</span><span class="o">=</span><span class="s">1024</span>
+<span class="c1"># Pin a window when the provider/catalog does not report the model correctly.</span>
+<span class="c1"># MODEL_CONTEXT_WINDOWS={&quot;my-gateway-model&quot;: 200000}</span>
 <span class="c1"># Lower to reduce tokens per tool result if your model has a small window</span>
 <span class="na">TOOL_OUTPUT_MAX_CHARS</span><span class="o">=</span><span class="s">16000</span>
 <span class="c1"># More tool rounds before the depth limit stops the run</span>
@@ -2311,8 +2748,28 @@ answers.</p>
 </tr>
 <tr>
 <td><code>CONTEXT_BUDGET_TOKENS</code></td>
-<td><code>0</code> (70% of window)</td>
-<td>Per-request token budget</td>
+<td><code>0</code> (derive from window)</td>
+<td>Per-request token budget (<code>&gt; 0</code> = verbatim override)</td>
+</tr>
+<tr>
+<td><code>MODEL_CONTEXT_WINDOWS</code></td>
+<td>- (empty map)</td>
+<td>JSON per-model context-window overrides (<code>model</code> / <code>provider:model</code> / <code>provider/model</code> keys)</td>
+</tr>
+<tr>
+<td><code>ENABLE_MODEL_METADATA</code></td>
+<td><code>true</code></td>
+<td>Probe provider metadata (OpenRouter / Gemini / Ollama) for the model window</td>
+</tr>
+<tr>
+<td><code>CONTEXT_SAFETY_TOKENS</code></td>
+<td><code>1024</code></td>
+<td>Extra headroom below <code>window - MAX_TOKENS</code> when deriving the budget</td>
+</tr>
+<tr>
+<td><code>ENABLE_MODEL_LIMITS_CACHE</code></td>
+<td><code>true</code></td>
+<td>Cache resolved windows in <code>&lt;config-dir&gt;/cache/model_limits.json</code> (7-day metadata / 30-day learned TTLs)</td>
 </tr>
 <tr>
 <td><code>MAX_TOOL_CALL_DEPTH</code></td>

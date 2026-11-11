@@ -2229,8 +2229,19 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="na">TOOL_DISPLAY_MAX_CHARS</span><span class="o">=</span><span class="s">4000</span>
 <span class="c1"># Max characters of the &quot;@Function call:&quot; argument line (0 = raw arguments).</span>
 <span class="na">TOOL_CALL_PREVIEW_MAX_CHARS</span><span class="o">=</span><span class="s">300</span>
-<span class="c1"># Token budget for one request; 0 derives 70% of the model context window.</span>
+<span class="c1"># Token budget for one request; 0 = derive from the model context window</span>
+<span class="c1"># (window - MAX_TOKENS - CONTEXT_SAFETY_TOKENS). Set explicitly to override.</span>
 <span class="na">CONTEXT_BUDGET_TOKENS</span><span class="o">=</span><span class="s">0</span>
+<span class="c1"># Model context windows (JSON): &quot;model&quot; / &quot;provider:model&quot; / &quot;provider/model&quot;</span>
+<span class="c1"># keys; values are token counts or {&quot;window&quot;: N, &quot;max_output&quot;: M}.</span>
+<span class="c1"># Empty = resolve via learned/metadata/catalog/heuristic layers.</span>
+<span class="na">MODEL_CONTEXT_WINDOWS</span><span class="o">=</span><span class="s">{}</span>
+<span class="c1"># Probe provider metadata (OpenRouter / Gemini / Ollama) for the model window.</span>
+<span class="na">ENABLE_MODEL_METADATA</span><span class="o">=</span><span class="s">true</span>
+<span class="c1"># Safety headroom kept below (window - MAX_TOKENS) when deriving the request budget.</span>
+<span class="na">CONTEXT_SAFETY_TOKENS</span><span class="o">=</span><span class="s">1024</span>
+<span class="c1"># Cache resolved windows under &lt;config-dir&gt;/cache/model_limits.json.</span>
+<span class="na">ENABLE_MODEL_LIMITS_CACHE</span><span class="o">=</span><span class="s">true</span>
 
 <span class="c1"># Project context settings (v0.21 K12)</span>
 <span class="c1"># Auto-load .yaicli.md / AGENTS.md / CLAUDE.md from the working directory up to the</span>
@@ -2544,9 +2555,33 @@ provider name invalid).</p>
 </tr>
 <tr>
 <td><code>CONTEXT_BUDGET_TOKENS</code></td>
-<td>Token budget per request (<code>0</code> = 70% of the model window)</td>
+<td>Token budget per request (<code>0</code> = derive from the window − <code>MAX_TOKENS</code> − <code>CONTEXT_SAFETY_TOKENS</code>; <code>&gt; 0</code> = verbatim override)</td>
 <td><code>0</code></td>
 <td><code>YAI_CONTEXT_BUDGET_TOKENS</code></td>
+</tr>
+<tr>
+<td><code>MODEL_CONTEXT_WINDOWS</code></td>
+<td>JSON per-model context windows (empty = resolve via provider metadata/catalog/heuristic); keys may be <code>model</code>, <code>provider:model</code> or <code>provider/model</code>, values an int or <code>{"window": N, "max_input": M, "max_output": M}</code></td>
+<td>-</td>
+<td><code>YAI_MODEL_CONTEXT_WINDOWS</code></td>
+</tr>
+<tr>
+<td><code>ENABLE_MODEL_METADATA</code></td>
+<td>Probe provider metadata (OpenRouter <code>/models</code>, Gemini <code>models.get</code>, Ollama <code>/api/show</code>) for the model context window</td>
+<td><code>true</code></td>
+<td><code>YAI_ENABLE_MODEL_METADATA</code></td>
+</tr>
+<tr>
+<td><code>CONTEXT_SAFETY_TOKENS</code></td>
+<td>Extra headroom kept below <code>window - MAX_TOKENS</code> when deriving the request budget</td>
+<td><code>1024</code></td>
+<td><code>YAI_CONTEXT_SAFETY_TOKENS</code></td>
+</tr>
+<tr>
+<td><code>ENABLE_MODEL_LIMITS_CACHE</code></td>
+<td>Cache resolved windows in <code>&lt;config-dir&gt;/cache/model_limits.json</code> (provider metadata 7 days, learned limits 30 days)</td>
+<td><code>true</code></td>
+<td><code>YAI_ENABLE_MODEL_LIMITS_CACHE</code></td>
 </tr>
 <tr>
 <td><code>ENABLE_PROJECT_CONTEXT</code></td>
@@ -2634,9 +2669,11 @@ provider name invalid).</p>
 <ul>
 <li><strong>Per-tool truncation</strong>: <code>TOOL_OUTPUT_MAX_CHARS</code> (default 32000 chars) keeps head/tail and
   spills the full output to <code>TOOL_OUTPUT_DIR</code>.</li>
-<li><strong>Token budget</strong>: <code>CONTEXT_BUDGET_TOKENS</code> (default <code>0</code> = 70% of the model window) is enforced
-  before each request; over-budget history is trimmed by turn group, keeping assistant
-  <code>tool_calls</code> and their tool results together.</li>
+<li><strong>Token budget</strong>: <code>CONTEXT_BUDGET_TOKENS</code> (default <code>0</code> = derive from the resolved model window as
+  <code>window - MAX_TOKENS - CONTEXT_SAFETY_TOKENS</code>; <code>&gt; 0</code> = verbatim override) is enforced before each
+  request; over-budget history is trimmed by turn group, keeping assistant <code>tool_calls</code> and their
+  tool results together. The window itself comes from <code>MODEL_CONTEXT_WINDOWS</code>, provider metadata,
+  the bundled catalog or a family heuristic — see <a href="../context-limits/">Context &amp; Limits</a>.</li>
 <li><strong>REPL retention</strong>: <code>INTERACTIVE_ROUND</code> (default <code>25</code>) is the number of chat turns kept in the
   REPL (×2 messages), not a token limit. <code>MAX_HISTORY</code> (default <code>500</code>) only sizes the prompt
   history file (see <a href="../../advanced/history/">Conversation &amp; History</a>).</li>
