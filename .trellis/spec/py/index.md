@@ -14,6 +14,7 @@ release) live in [../repo/index.md](../repo/index.md).
    | Function calling, builtin functions, tool approval, MCP | [function-tool-guidelines.md](./function-tool-guidelines.md) |
    | CLI modes, REPL, slash commands, rendering, images | [cli-and-rendering.md](./cli-and-rendering.md) |
    | Config layering, roles, history, `@path` context | [config-and-context.md](./config-and-context.md) |
+   | 上下文窗口解析、请求预算、`/context` 展示、provider 窗口元数据 | [context-window-limits.md](./context-window-limits.md) |
    | Tests, lint, formatting, verification commands | [quality-guidelines.md](./quality-guidelines.md) |
 
 2. Skim the shared thinking guides: [../guides/index.md](../guides/index.md).
@@ -58,7 +59,8 @@ Module map:
 | `yaicli/console.py` | `get_console()` singleton `YaiConsole` (Rich, justified-print defaults), `get_error_console()` (stderr twin for diagnostics/headless), `safe_text`/`untrusted_text`/`strip_control_chars`, EPIPE-safe `on_broken_pipe` (exit 0). |
 | `yaicli/context.py` | `ContextManager` for `@path` references and `/add` persistent context (recursive dirs, size/binary guards). |
 | `yaicli/errors.py` | `ErrorKind`, `AgentError` (kind/status/retryable/hint/user_message), `classify_exception`, `is_retryable`, `retry_after_seconds`, `backoff_delay`, `wrap_provider_exception`/`provider_response_error`, exit-code constants. |
-| `yaicli/tokens.py` | Heuristic token estimator (chars/3.5 + CJK), model-window table, `resolve_context_budget()`, turn-group split/trim/repair (`trim_messages_to_budget`, `validate_tool_pairing`), `/context` usage estimate. |
+| `yaicli/model_limits.py` | 模型上下文窗口解析（user/learned/metadata/catalog/heuristic/default 六层，`source` + 缓存），预算公式 `context_input_budget()`，超窗学习记录；stdlib-only（v0.23 K22，规范见 [context-window-limits.md](./context-window-limits.md)）。 |
+| `yaicli/tokens.py` | Heuristic token estimator (chars/3.5 + CJK), 预算/窗口委托 `model_limits`, turn-group split/trim/repair (`trim_messages_to_budget`, `validate_tool_pairing`), `/context` usage estimate. |
 | `yaicli/history.py` | `LimitedFileHistory` (prompt_toolkit history trimming). |
 | `yaicli/role.py` | `Role`/`RoleManager`: built-in roles in memory, user JSON files under `ROLES_DIR`; import is write-free, writes only on create/delete (OSError-tolerant). |
 | `yaicli/schemas.py` | Shared dataclasses: `ChatMessage`, `LLMResponse`, `ToolCall`, `ToolPolicy`, `RefreshLive`, `ConfirmToolCall`, `ToolConfirmDecision`. |
@@ -117,7 +119,7 @@ some filesystems). `entry.version_callback` prints the same constant.
 | New headless flag / exit code | `entry.py` option + `CLI.configure_headless` contract -> `cli.py` output path -> `tests/test_headless_contract.py` -> docs `usage/headless.md` |
 | New error kind / retry rule | `errors.py` (`ErrorKind`, classifier) -> client retry/self-heal -> `tests/test_errors.py` |
 | New tool risk class / danger rule | `tools/risk.py` -> approval gate in `llms/client.py` -> `tests/test_shell_tool.py`/`tests/test_permissions.py` |
-| New context-budget behavior | `tokens.py` -> `llms/client.py` enforcement -> `tests/test_context_budget.py` |
+| New context-budget behavior | `model_limits.py`（窗口/公式） + `tokens.py` -> `llms/client.py` enforcement -> `tests/test_model_limits.py` / `tests/test_context_budget.py`; MUST 遵守 [context-window-limits.md](./context-window-limits.md) |
 
 ## Quality Gate
 

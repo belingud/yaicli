@@ -135,10 +135,12 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   its assistant/tool messages moves in and out together; leading system/context messages preserved;
   never an orphan `role=tool` or an unanswered `assistant(tool_calls)`), prints one stderr notice, and
   recovers from a context-length 400 by trimming one group and retrying once. `CLI._check_history_len()`
-  keeps `INTERACTIVE_ROUND * 2` only as a group-aligned max-message cap; real retention is
-  `CONTEXT_BUDGET_TOKENS` (0 = 70% of the model window). `/context` shows the estimate and
-  `/compact [keep_rounds]` trims whole turn groups. Do not reintroduce count-only slicing of
-  `chat.history`.
+  keeps `INTERACTIVE_ROUND * 2` only as a group-aligned max-message cap; real retention is the
+  token budget resolved by `yaicli/model_limits.py` (`min(window, max_input) - MAX_TOKENS -
+  CONTEXT_SAFETY_TOKENS`; `CONTEXT_BUDGET_TOKENS > 0` overrides verbatim — v0.23 K22, see
+  [context-window-limits.md](./context-window-limits.md)). `/context` shows the estimate with
+  window/source/reserve, and `/compact [keep_rounds]` trims whole turn groups. Do not reintroduce
+  count-only slicing of `chat.history`.
 - Headless output: stdout carries only the result (`content`), one JSON object, or NDJSON events;
   labels/banners/progress/errors go to `get_error_console()`. `Printer(machine=True)` renders plain
   text/events with no Live/Markdown, and auto-denies interactive confirmations. JSON keys are exactly
@@ -225,9 +227,11 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
   `handle_command()` returns `True` (continue), `False` (exit) or the original input; handlers return
   `bool` and print via `self.cli.console`.
 - `/add`, `/context` use `shlex.split` (quoted paths work) and strip one leading `@`; bad quoting prints
-  `Error parsing command`. Bare `/context` prints the estimated token usage block **and** the legacy
-  file-context list; subcommands `list|clear|add <path>|remove <path>` are unchanged, and
-  `budget|stats|usage` prints only the usage block.
+  `Error parsing command`. Bare `/context` prints the estimated token usage block (window source,
+  role/project/add buckets, history, `overhead`, total/budget, remaining, reserve) **and** the legacy
+  file-context list, with no repeated subcommand hint; subcommands `list|clear|add <path>|remove <path>`
+  are unchanged, `budget|stats|usage` prints only the usage block, and the subcommand list is shown
+  only on an unknown subcommand.
 - `/compact [keep_rounds]` (default 5) trims the conversation to whole turn groups and reports
   before→after estimated tokens; it must never split tool pairs. `/permissions [revoke <tool-or-index>]`
   lists session/persisted/rules and revokes persisted entries.
