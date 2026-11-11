@@ -1372,3 +1372,79 @@ class TestGeminiUsage:
         )
         # Usage is attached to one terminal response only.
         assert sum(1 for response in responses if response.usage is not None) == 1
+
+
+# ---------------------------------------------------------------------------
+# v0.23 K22: provider metadata hook
+# ---------------------------------------------------------------------------
+
+
+class TestGeminiModelLimits:
+    """``GeminiProvider.model_limits`` maps ``models.get`` limits to ModelLimits."""
+
+    @pytest.fixture
+    def provider(self):
+        with patch("yaicli.llms.providers.gemini_provider.genai.Client") as client_cls:
+            mock_client = MagicMock()
+            client_cls.return_value = mock_client
+            provider = GeminiProvider(
+                config={
+                    "API_KEY": "fake_api_key",
+                    "BASE_URL": None,
+                    "MODEL": "gemini-2.5-pro",
+                    "ENABLE_FUNCTIONS": False,
+                    "ENABLE_MCP": False,
+                }
+            )
+        return provider
+
+    @staticmethod
+    def _info(input_token_limit=1_048_576, output_token_limit=65_536):
+        return MagicMock(input_token_limit=input_token_limit, output_token_limit=output_token_limit)
+
+    def test_returns_metadata_limits(self, provider):
+        provider.client.models.get.return_value = self._info()
+
+        limits = provider.model_limits("gemini-2.5-pro")
+
+        assert limits is not None
+        assert limits.window == 1_048_576
+        assert limits.max_output == 65_536
+        assert limits.source == "metadata"
+        assert limits.detail == "gemini models.get"
+        provider.client.models.get.assert_called_once_with(model="models/gemini-2.5-pro")
+
+    def test_falls_back_to_bare_model_id_when_prefixed_lookup_fails(self, provider):
+        provider.client.models.get.side_effect = [RuntimeError("404 model not found"), self._info()]
+
+        limits = provider.model_limits("gemini-2.5-pro")
+
+        assert limits is not None and limits.window == 1_048_576
+        assert provider.client.models.get.call_args_list == [
+            call(model="models/gemini-2.5-pro"),
+            call(model="gemini-2.5-pro"),
+        ]
+
+    def test_both_lookups_failing_returns_none_silently(self, provider, capsys):
+        provider.client.models.get.side_effect = RuntimeError("quota exceeded")
+
+        assert provider.model_limits("gemini-2.5-pro") is None
+        assert capsys.readouterr().err == ""
+
+    def test_info_without_token_limits_returns_none(self, provider):
+        provider.client.models.get.return_value = self._info(input_token_limit=None, output_token_limit=None)
+
+        assert provider.model_limits("gemini-2.5-pro") is None
+
+    def test_empty_model_returns_none_without_probe(self, provider):
+        assert provider.model_limits("") is None
+        provider.client.models.get.assert_not_called()
+
+    def test_no_provider_side_caching(self, provider):
+        provider.client.models.get.return_value = self._info()
+
+        first = provider.model_limits("gemini-2.5-pro")
+        second = provider.model_limits("gemini-2.5-pro")
+
+        assert first == second
+        assert provider.client.models.get.call_count == 2

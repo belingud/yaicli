@@ -129,6 +129,8 @@ FUNCTIONS_MANIFEST_PATH = CONFIG_DIR / "functions_manifest.json"
 MCP_JSON_PATH = CONFIG_DIR / "mcp.json"
 TOOL_PERMISSIONS_PATH = CONFIG_DIR / "tool_permissions.json"
 TOOL_AUDIT_PATH = CONFIG_DIR / "tool_audit.jsonl"
+# v0.23 K22: resolved model context windows / learned limits (pure cache).
+MODEL_LIMITS_CACHE_PATH = CONFIG_DIR / "cache" / "model_limits.json"
 
 # Default configuration values
 DEFAULT_CODE_THEME = "monokai"
@@ -193,8 +195,12 @@ DEFAULT_TOOL_DISPLAY_MAX_LINES: int = 15
 DEFAULT_TOOL_DISPLAY_MAX_CHARS: int = 4000
 # Max characters of the tool arguments echoed on the ``@Function call:`` line.
 DEFAULT_TOOL_CALL_PREVIEW_MAX_CHARS: int = 300
-# 0 means "derive from the model context window (70%)" at request time.
+# 0 means "derive from the model context window" at request time (v0.23 K22).
 DEFAULT_CONTEXT_BUDGET_TOKENS: int = 0
+# v0.23 K22: model context-window resolution (see yaicli/model_limits.py).
+DEFAULT_ENABLE_MODEL_METADATA: BOOL_STR = "true"
+DEFAULT_CONTEXT_SAFETY_TOKENS: int = 1024
+DEFAULT_ENABLE_MODEL_LIMITS_CACHE: BOOL_STR = "true"
 # Project instructions auto-loaded into the system prompt (v0.21 K12)
 DEFAULT_ENABLE_PROJECT_CONTEXT: BOOL_STR = "true"
 DEFAULT_PROJECT_CONTEXT_MAX_CHARS: int = 20000
@@ -354,6 +360,28 @@ DEFAULT_CONFIG_MAP = {
         "env_key": "YAI_CONTEXT_BUDGET_TOKENS",
         "type": int,
     },
+    # v0.23 K22: context-window resolution. MODEL_CONTEXT_WINDOWS is a JSON dict
+    # (config layer converts it); keys accept model / provider:model / provider/model.
+    "MODEL_CONTEXT_WINDOWS": {
+        "value": {},
+        "env_key": "YAI_MODEL_CONTEXT_WINDOWS",
+        "type": dict,
+    },
+    "ENABLE_MODEL_METADATA": {
+        "value": DEFAULT_ENABLE_MODEL_METADATA,
+        "env_key": "YAI_ENABLE_MODEL_METADATA",
+        "type": bool,
+    },
+    "CONTEXT_SAFETY_TOKENS": {
+        "value": DEFAULT_CONTEXT_SAFETY_TOKENS,
+        "env_key": "YAI_CONTEXT_SAFETY_TOKENS",
+        "type": int,
+    },
+    "ENABLE_MODEL_LIMITS_CACHE": {
+        "value": DEFAULT_ENABLE_MODEL_LIMITS_CACHE,
+        "env_key": "YAI_ENABLE_MODEL_LIMITS_CACHE",
+        "type": bool,
+    },
     # Project instructions auto-loaded into the system prompt (v0.21 K12)
     "ENABLE_PROJECT_CONTEXT": {
         "value": DEFAULT_ENABLE_PROJECT_CONTEXT,
@@ -507,8 +535,19 @@ TOOL_DISPLAY_MAX_CHARS={DEFAULT_CONFIG_MAP["TOOL_DISPLAY_MAX_CHARS"]["value"]}
 # Max characters of the tool arguments echoed on the "@Function call:" line
 # (0 = print the raw arguments). Long values are summarized as <N chars>.
 TOOL_CALL_PREVIEW_MAX_CHARS={DEFAULT_CONFIG_MAP["TOOL_CALL_PREVIEW_MAX_CHARS"]["value"]}
-# Token budget for one request; 0 = derive 70% of the model context window
+# Token budget for one request; 0 = derive from the model context window
+# (window - MAX_TOKENS - CONTEXT_SAFETY_TOKENS). Set explicitly to override.
 CONTEXT_BUDGET_TOKENS={DEFAULT_CONFIG_MAP["CONTEXT_BUDGET_TOKENS"]["value"]}
+# Model context windows (JSON): "model" / "provider:model" / "provider/model"
+# keys; values are token counts or {{"window": N, "max_output": M}}.
+# Empty = resolve via learned/metadata/catalog/heuristic layers.
+MODEL_CONTEXT_WINDOWS={{}}
+# Probe provider metadata (OpenRouter / Gemini / Ollama) for the model window.
+ENABLE_MODEL_METADATA={DEFAULT_CONFIG_MAP["ENABLE_MODEL_METADATA"]["value"]}
+# Safety headroom kept below (window - MAX_TOKENS) when deriving the request budget.
+CONTEXT_SAFETY_TOKENS={DEFAULT_CONFIG_MAP["CONTEXT_SAFETY_TOKENS"]["value"]}
+# Cache resolved windows under <config-dir>/cache/model_limits.json.
+ENABLE_MODEL_LIMITS_CACHE={DEFAULT_CONFIG_MAP["ENABLE_MODEL_LIMITS_CACHE"]["value"]}
 
 # Project context settings (v0.21 K12)
 # Auto-load AGENTS.md / CLAUDE.md / .yaicli.md from the current directory up to the

@@ -58,7 +58,9 @@ def _env_name(cell: str) -> str:
 def _documented_default(key: str) -> str:
     """Normalize a map default to the way it is displayed in the tables."""
     value = DEFAULT_CONFIG_MAP[key]["value"]
-    if value is None or value == "" or value == "{}":
+    # Empty JSON maps (str "{}" for legacy keys, a real dict for newer ones) are
+    # documented as "-" (unset/empty), not as the literal payload.
+    if value is None or value == "" or value == "{}" or value == {}:
         return "-"
     return str(value)
 

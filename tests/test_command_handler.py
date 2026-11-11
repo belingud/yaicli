@@ -252,6 +252,9 @@ class TestHandleContext:
         result = cmd_handler.handle_context("/context")
         assert result is True
         cmd_handler.cli.context_manager.list_items.assert_called_once()
+        # The legacy subcommand hint is not repeated after the usage block.
+        printed = [str(c.args[0]) for c in cmd_handler.cli.console.print.call_args_list]
+        assert not any("Subcommands:" in str(text) for text in printed)
 
     def test_list(self, cmd_handler):
         result = cmd_handler.handle_context("/context list")
@@ -320,6 +323,167 @@ class TestHandleHistoryToolCalls:
 def _printed_text(console):
     """All console.print() first arguments joined into one string."""
     return "\n".join(str(call.args[0]) for call in console.print.call_args_list if call.args)
+
+
+class TestContextUsageOutput:
+    """v0.23 K22: /context shows the window source and the reserve breakdown."""
+
+    @staticmethod
+    def _usage(**overrides):
+        from yaicli.tokens import ContextUsage
+
+        values = {
+            "system_tokens": 12,
+            "project_tokens": 1234,
+            "extra_tokens": 0,
+            "history_tokens": 2175,
+            "tool_output_tokens": 1148,
+            "overhead_tokens": 3,
+            "total_tokens": 3424,
+            "budget_tokens": 997952,
+            "remaining_tokens": 994528,
+            "used_percent": 0.3,
+            "message_count": 4,
+            "window_tokens": 1000000,
+            "max_output_tokens": 128000,
+            "source": "metadata",
+            "detail": "openrouter /models",
+            "reserve_tokens": 2048,
+        }
+        values.update(overrides)
+        return ContextUsage(**values)
+
+    @staticmethod
+    def _handler(**cli_attrs):
+        cli = MagicMock()
+        cli.console = MagicMock()
+        cli.chat.history = []
+        for name, value in cli_attrs.items():
+            setattr(cli, name, value)
+        return cli, CmdHandler(cli)
+
+    def test_known_model_prints_window_source_and_reserve(self):
+        cli, handler = self._handler()
+
+        with (
+            patch(
+                "yaicli.cmd_handler.cfg",
+                {"PROVIDER": "openrouter", "MAX_TOKENS": 1024, "CONTEXT_SAFETY_TOKENS": 1024},
+            ),
+            patch("yaicli.cmd_handler.estimate_context_usage", return_value=self._usage()),
+        ):
+            handler._print_context_usage()
+
+        printed = _printed_text(cli.console)
+        assert "Context usage (estimated):" in printed
+        assert "  window        : 1,000,000 tokens (source: metadata · openrouter /models)" in printed
+        assert "  role prompt   : 12 tokens" in printed
+        assert "  project ctx   : 1,234 tokens" in printed
+        assert "  /add context  : 0 tokens" in printed
+        assert "  history       : 2,175 tokens (tool output 1,148)" in printed
+        # v0.23 polish: the request priming overhead is its own row so the buckets
+        # (12 + 1,234 + 0 + 2,175 + 3) add up to the rendered total.
+        assert "  overhead      : 3 tokens" in printed
+        assert "  total         : 3,424 / 997,952 tokens (0.3%)" in printed
+        assert "  remaining     : 994,528 tokens" in printed
+        assert "  reserve       : 2,048 (MAX_TOKENS 1,024 + safety 1,024)" in printed
+        assert "Use /compact [keep_rounds] to drop older turn groups." in printed
+        # The heading stays bold and the /compact hint stays dim (plain-text asserts above).
+        cli.console.print.assert_any_call("Context usage (estimated):", style="bold")
+        cli.console.print.assert_any_call(
+            "  Use /compact [keep_rounds] to drop older turn groups.", style="dim", markup=False
+        )
+
+    def test_unknown_model_default_source_is_explained(self):
+        cli, handler = self._handler()
+        usage = self._usage(
+            window_tokens=128000,
+            source="default",
+            detail="assumed for unknown model",
+            system_tokens=12,
+            project_tokens=0,
+            extra_tokens=0,
+            history_tokens=2175,
+            overhead_tokens=3,
+            total_tokens=2190,
+            budget_tokens=124928,
+            remaining_tokens=122738,
+            used_percent=1.8,
+        )
+
+        with (
+            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openai", "MAX_TOKENS": 1024}),
+            patch("yaicli.cmd_handler.estimate_context_usage", return_value=usage),
+        ):
+            handler._print_context_usage()
+
+        printed = _printed_text(cli.console)
+        assert (
+            "  window        : 128,000 tokens "
+            "(source: default · assumed for unknown model; set MODEL_CONTEXT_WINDOWS to override)" in printed
+        )
+        assert "  project ctx   : 0 tokens" in printed
+        assert "  overhead      : 3 tokens" in printed
+        assert "  total         : 2,190 / 124,928 tokens (1.8%)" in printed
+        assert "  remaining     : 122,738 tokens" in printed
+        # CONTEXT_SAFETY_TOKENS came from the documented default when cfg has no value.
+        assert "  reserve       : 2,048 (MAX_TOKENS 1,024 + safety 1,024)" in printed
+
+    def test_context_usage_wires_role_project_and_added_context(self):
+        cli, handler = self._handler()
+        cli.chat.history = ["history-message"]
+        cli.role.prompt = "ROLE PROMPT"
+        cli._get_project_context.return_value = "PROJECT INSTRUCTIONS"
+        cli.context_manager.get_context_messages.return_value = ["persistent-context"]
+        fake_usage = self._usage()
+
+        with (
+            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openrouter"}),
+            patch("yaicli.cmd_handler.estimate_context_usage", return_value=fake_usage) as estimator,
+        ):
+            assert handler._context_usage() is fake_usage
+
+        args, kwargs = estimator.call_args
+        assert args == (["history-message"],)
+        assert kwargs["config"] == {"PROVIDER": "openrouter"}
+        assert kwargs["system_text"] == "ROLE PROMPT"
+        assert kwargs["provider"] == "openrouter"
+        assert kwargs["extra_system_text"] == "PROJECT INSTRUCTIONS"
+        assert kwargs["extra_messages"] == ["persistent-context"]
+
+    def test_context_usage_tolerates_cli_without_context_hooks(self):
+        cli = MagicMock(spec=["console", "chat"])
+        cli.console = MagicMock()
+        cli.chat = MagicMock()
+        cli.chat.history = []
+        handler = CmdHandler(cli)
+        fake_usage = self._usage()
+
+        with (
+            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openai"}),
+            patch("yaicli.cmd_handler.estimate_context_usage", return_value=fake_usage) as estimator,
+        ):
+            assert handler._context_usage() is fake_usage
+
+        _, kwargs = estimator.call_args
+        assert kwargs["system_text"] == ""
+        assert kwargs["extra_system_text"] == ""
+        assert kwargs["extra_messages"] == []
+
+    def test_budget_subcommand_prints_only_the_usage_block(self):
+        cli, handler = self._handler()
+        cli.context_manager.list_items = MagicMock()
+
+        with (
+            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openai"}),
+            patch("yaicli.cmd_handler.estimate_context_usage", return_value=self._usage()),
+        ):
+            assert handler.handle_context("/context budget") is True
+
+        printed = _printed_text(cli.console)
+        assert "Context usage (estimated):" in printed
+        assert "  window        : 1,000,000 tokens (source: metadata · openrouter /models)" in printed
+        cli.context_manager.list_items.assert_not_called()
 
 
 class TestHandleCost:

@@ -3,6 +3,7 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generator, List, Optional
 
+from ..model_limits import ModelLimits
 from ..schemas import ChatMessage, LLMResponse, ToolPolicy
 from ..utils import option_callback
 
@@ -56,6 +57,26 @@ class Provider(ABC):
     def detect_tool_role(self) -> str:
         """Return the role that should be used for tool responses"""
         pass
+
+    @property
+    def base_url(self) -> str:
+        """Return the effective base URL (``BASE_URL`` config or provider default).
+
+        Used as the cache/scope discriminator when resolving model context limits:
+        the same model id can advertise different limits on different gateways.
+        """
+        return str(self.config.get("BASE_URL") or getattr(self, "DEFAULT_BASE_URL", "") or "")
+
+    def model_limits(self, model: str) -> Optional[ModelLimits]:
+        """Return provider-advertised context limits for ``model``, or ``None``.
+
+        Optional metadata hook (v0.23 K22): the base provider has no metadata
+        source, so the layered resolver falls through to the bundled catalog and
+        the static heuristics. Metadata-capable providers override this; the hook
+        is called lazily on the budget path, must be time-bounded, and must never
+        raise, print or cache (caching lives in :mod:`yaicli.model_limits`).
+        """
+        return None
 
     def get_default_tool_policy(self) -> ToolPolicy:
         """Return the provider's default tool policy derived from config/capabilities."""

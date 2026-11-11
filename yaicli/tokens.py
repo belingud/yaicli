@@ -1,8 +1,13 @@
-"""Token estimation, context windows and turn-group-aware message trimming.
+"""Token estimation, context budget and turn-group-aware message trimming.
 
-This module is the stdlib-only core of the v0.19 K02 "context economy" work. It is
+This module is the SDK-free core of the v0.19 K02 "context economy" work. It is
 imported on the request path (:mod:`yaicli.llms.client`) and by the slash-command
 handler (:mod:`yaicli.cmd_handler`), so it must stay cheap and dependency free.
+
+Since v0.23 K22 the *window* and the *budget formula* are not defined here: they
+are delegated to :mod:`yaicli.model_limits` (single source of truth). This module
+only estimates tokens (a conservative heuristic), trims whole turn groups and
+assembles the ``/context`` usage breakdown.
 
 The estimator is deliberately a heuristic, not a tokenizer: exact token counts
 differ per provider/model, and the goal is "never send a payload the model will
@@ -22,7 +27,16 @@ its ``tool`` results (the pairing invariant providers enforce).
 import math
 import re
 from dataclasses import dataclass, replace
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+
+from .model_limits import (
+    DEFAULT_CONTEXT_WINDOW,
+    DEFAULT_SAFETY_TOKENS,
+    OLLAMA_DEFAULT_CONTEXT_WINDOW,
+    ModelLimits,
+    context_input_budget,
+    get_context_limits,
+)
 
 #: Rough characters-per-token for latin/ASCII text.
 CHARS_PER_TOKEN = 3.5
@@ -34,51 +48,11 @@ MESSAGE_OVERHEAD_TOKENS = 4
 REQUEST_OVERHEAD_TOKENS = 3
 #: Token charge for one image input (high-detail image estimate).
 IMAGE_TOKENS = 850
-#: Fallback context window for models missing from the table.
-DEFAULT_CONTEXT_WINDOW = 128000
-#: Local Ollama servers default to a small window unless configured otherwise.
-OLLAMA_DEFAULT_CONTEXT_WINDOW = 8192
-#: Fraction of the model window usable for *input* (the rest is output headroom).
-CONTEXT_BUDGET_RATIO = 0.70
 
 #: CJK ranges (Han, Hiragana/Katakana, Hangul, CJK punctuation/fullwidth forms).
 _CJK_RE = re.compile(
     "[\u2e80-\u2eff\u2f00-\u2fdf\u3040-\u30ff\u3100-\u312f\u31a0-\u31bf"
     "\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff\u3000-\u303f\uff00-\uffef]"
-)
-
-#: Model-name substring -> context window in tokens. Order matters: the first
-#: substring found in the lowercased model name wins, so put specific names
-#: (``gpt-4.1``) before generic ones (``gpt-4``).
-MODEL_CONTEXT_WINDOWS: Tuple[Tuple[str, int], ...] = (
-    # OpenAI
-    ("gpt-4.1", 1047576),
-    ("gpt-4o", 128000),
-    ("gpt-4-turbo", 128000),
-    ("gpt-4", 8192),
-    ("gpt-5", 400000),
-    ("gpt-3.5", 16385),
-    ("o1", 200000),
-    ("o3", 200000),
-    ("o4", 200000),
-    # Anthropic
-    ("claude", 200000),
-    # Google
-    ("gemini", 1048576),
-    # DeepSeek / Moonshot / Qwen / GLM / Grok families
-    ("deepseek", 128000),
-    ("moonshot", 131072),
-    ("kimi", 131072),
-    ("qwen", 131072),
-    ("glm", 128000),
-    ("chatglm", 128000),
-    ("grok", 131072),
-    # Others
-    ("mistral", 128000),
-    ("mixtral", 32768),
-    ("command", 128000),
-    ("cohere", 128000),
-    ("minimax", 245760),
 )
 
 #: Kinds of messages that carry a tool result rather than a new user turn.
@@ -162,47 +136,95 @@ def estimate_messages_tokens(messages: Optional[Sequence[Any]]) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Context windows and budget
+# Context windows and budget (delegated to :mod:`yaicli.model_limits`)
 # ---------------------------------------------------------------------------
-def get_context_window(model: Optional[str] = None, provider: Optional[str] = None) -> int:
-    """Return the context window (tokens) for ``model``.
-
-    Falling back to 128k for an unknown model is intentionally optimistic: it is
-    far more common for a modern model to have a large window than an 8k one, and
-    the context-length self-heal covers the opposite case. Local Ollama servers
-    are the exception — they default to a small window unless configured.
-    """
-    normalized = (model or "").strip().lower()
-    for pattern, window in MODEL_CONTEXT_WINDOWS:
-        if pattern in normalized:
-            return window
-    if provider and str(provider).strip().lower().startswith("ollama"):
-        return OLLAMA_DEFAULT_CONTEXT_WINDOW
-    return DEFAULT_CONTEXT_WINDOW
+def _config_getter(config: Optional[Mapping[str, Any]]) -> Optional[Callable[..., Any]]:
+    """Return ``config.get`` when ``config`` is mapping-like, else ``None``."""
+    getter = getattr(config, "get", None)
+    return getter if callable(getter) else None
 
 
-def resolve_context_budget(config: Optional[Mapping[str, Any]] = None, model: Optional[str] = None) -> int:
-    """Resolve the per-request token budget.
+def _as_text(value: Any) -> str:
+    """Coerce a config value to a string (``None`` -> ``""``)."""
+    if value is None:
+        return ""
+    return value if isinstance(value, str) else str(value)
 
-    ``CONTEXT_BUDGET_TOKENS > 0`` wins verbatim; otherwise the budget is
-    :data:`CONTEXT_BUDGET_RATIO` (70%) of the model context window. ``model``
-    defaults to the configured ``MODEL``; ``PROVIDER`` is used for the local
-    Ollama window fallback.
-    """
-    configured = 0
-    provider = ""
-    if config is not None:
+
+def _as_int(value: Any) -> Optional[int]:
+    """Coerce a config value to ``int``; ``None`` when unset or not numeric."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
         try:
-            configured = int(config.get("CONTEXT_BUDGET_TOKENS") or 0)
+            return int(float(value))
         except (TypeError, ValueError):
-            configured = 0
-        if model is None:
-            model = str(config.get("MODEL") or "")
-        provider = str(config.get("PROVIDER") or "")
-    if configured > 0:
-        return configured
-    window = get_context_window(model, provider)
-    return max(1, int(window * CONTEXT_BUDGET_RATIO))
+            return None
+
+
+def _budget_inputs(config: Optional[Mapping[str, Any]]) -> Tuple[Optional[int], int, Optional[int]]:
+    """Return ``(max_tokens, safety_tokens, override)`` for the budget formula.
+
+    Missing keys fall back to ``MAX_TOKENS`` unset (no output reserve) and
+    :data:`yaicli.model_limits.DEFAULT_SAFETY_TOKENS`; a present-but-invalid
+    value is ignored rather than crashing a request.
+    """
+    getter = _config_getter(config)
+    if getter is None:
+        return None, DEFAULT_SAFETY_TOKENS, None
+    max_tokens = _as_int(getter("MAX_TOKENS"))
+    safety_tokens = _as_int(getter("CONTEXT_SAFETY_TOKENS", DEFAULT_SAFETY_TOKENS))
+    return max_tokens, 0 if safety_tokens is None else safety_tokens, _as_int(getter("CONTEXT_BUDGET_TOKENS"))
+
+
+def _resolve_limits(
+    config: Optional[Mapping[str, Any]],
+    model: Optional[str],
+    provider: Optional[str],
+) -> ModelLimits:
+    """Resolve model limits, defaulting model/provider from ``config``."""
+    getter = _config_getter(config)
+    if provider is None:
+        provider = _as_text(getter("PROVIDER")) if getter is not None else ""
+    if model is None:
+        model = _as_text(getter("MODEL")) if getter is not None else ""
+    return get_context_limits(_as_text(provider), _as_text(model), config)
+
+
+def get_context_window(model: Optional[str] = None, provider: Optional[str] = None) -> int:
+    """Return the resolved context window (tokens) for ``model``/``provider``.
+
+    Kept as a compatibility wrapper (old imports/tests): the authoritative
+    resolution (user -> learned -> metadata -> catalog -> heuristic -> default)
+    lives in :func:`yaicli.model_limits.get_context_limits`. A local Ollama
+    server without metadata/catalog data resolves to its small default window.
+    """
+    limits = get_context_limits(_as_text(provider), _as_text(model), None)
+    return int(limits.window or DEFAULT_CONTEXT_WINDOW)
+
+
+def resolve_context_budget(
+    config: Optional[Mapping[str, Any]] = None,
+    model: Optional[str] = None,
+    provider: Optional[str] = None,
+) -> int:
+    """Resolve the per-request input-token budget (v0.23 K22 formula).
+
+    ``budget = max(1, min(window, max_input) - MAX_TOKENS - CONTEXT_SAFETY_TOKENS)``
+    via :func:`yaicli.model_limits.context_input_budget`; ``CONTEXT_BUDGET_TOKENS > 0``
+    still overrides the result verbatim (backward-compatible escape hatch).
+    ``model``/``provider`` default to the configured ``MODEL``/``PROVIDER``.
+    """
+    limits = _resolve_limits(config, model, provider)
+    max_tokens, safety_tokens, override = _budget_inputs(config)
+    return context_input_budget(
+        limits,
+        max_tokens=max_tokens,
+        safety_tokens=safety_tokens,
+        override=override,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -499,16 +521,49 @@ def trim_oldest_group(messages: Sequence[Any]) -> TrimResult:
 # ---------------------------------------------------------------------------
 @dataclass
 class ContextUsage:
-    """Estimated context usage breakdown shown by ``/context``."""
+    """Estimated context usage breakdown shown by ``/context``.
+
+    The four request buckets are reported separately so the UI can render the
+    v0.23 K22 layout:
+
+    * ``system_tokens`` — the role prompt (``system_text``);
+    * ``project_tokens`` — the auto-loaded project instructions block
+      (``extra_system_text``);
+    * ``extra_tokens`` — persistent ``/add context`` messages (``extra_messages``);
+    * ``history_tokens`` — the conversation history (tool output summarized in
+      ``tool_output_tokens``);
+    * ``overhead_tokens`` — the fixed request priming tokens
+      (:data:`REQUEST_OVERHEAD_TOKENS`); shown as its own row so the rendered
+      buckets add up to ``total_tokens``.
+
+    ``window_tokens``/``max_output_tokens``/``source``/``detail`` come from the
+    resolved :class:`yaicli.model_limits.ModelLimits`; ``reserve_tokens`` is
+    ``MAX_TOKENS + CONTEXT_SAFETY_TOKENS``. ``source == "default"`` means the
+    window is unknown (the caller should tell the user how to override it).
+    """
 
     system_tokens: int = 0
+    project_tokens: int = 0
+    extra_tokens: int = 0
     history_tokens: int = 0
     tool_output_tokens: int = 0
+    overhead_tokens: int = 0
     total_tokens: int = 0
     budget_tokens: int = 0
     remaining_tokens: int = 0
     used_percent: float = 0.0
     message_count: int = 0
+    window_tokens: int = 0
+    max_output_tokens: int = 0
+    source: str = ""
+    detail: str = ""
+    reserve_tokens: int = 0
+
+
+def _text_block_tokens(text: Optional[str]) -> int:
+    """Estimate one system-prompt text block (framing overhead included)."""
+    tokens = estimate_tokens(text)
+    return tokens + MESSAGE_OVERHEAD_TOKENS if tokens else 0
 
 
 def estimate_context_usage(
@@ -516,38 +571,56 @@ def estimate_context_usage(
     config: Optional[Mapping[str, Any]] = None,
     system_text: Optional[str] = None,
     model: Optional[str] = None,
+    provider: Optional[str] = None,
+    extra_system_text: Optional[str] = None,
+    extra_messages: Optional[Sequence[Any]] = None,
 ) -> ContextUsage:
     """Estimate the usage breakdown for the interactive ``/context`` command.
 
-    ``messages`` is the conversation history (system messages excluded — the
-    role prompt is passed via ``system_text``); tool output is reported
-    separately inside ``history_tokens``.
+    ``messages`` is the conversation history (system messages excluded — the role
+    prompt is passed via ``system_text``). ``extra_system_text`` is the project
+    instruction block and ``extra_messages`` are persistent ``/add context``
+    messages; both are reported as their own buckets and counted in the total.
+    Tool output is reported inside ``history_tokens``.
     """
     history = list(messages or ())
-    system_tokens = estimate_tokens(system_text) if system_text else 0
-    if system_tokens:
-        system_tokens += MESSAGE_OVERHEAD_TOKENS
+    extra = list(extra_messages or ())
+    system_tokens = _text_block_tokens(system_text)
+    project_tokens = _text_block_tokens(extra_system_text)
     history_tokens = _sum_messages(history)
+    extra_tokens = _sum_messages(extra)
     tool_output_tokens = 0
     for message in history:
         if _is_tool_result(message) or _role(message) in _TOOL_RESULT_ROLES:
             tool_output_tokens += estimate_message_tokens(message)
-    if history:
-        total = system_tokens + history_tokens + REQUEST_OVERHEAD_TOKENS
-    else:
-        total = system_tokens
-    budget = resolve_context_budget(config, model)
+
+    total = system_tokens + project_tokens + extra_tokens + history_tokens
+    overhead_tokens = REQUEST_OVERHEAD_TOKENS if (history or project_tokens or extra_tokens) else 0
+    total += overhead_tokens
+
+    limits = _resolve_limits(config, model, provider)
+    budget = resolve_context_budget(config, model, provider)
+    max_tokens, safety_tokens, _override = _budget_inputs(config)
+    reserve_tokens = max(0, max_tokens or 0) + max(0, safety_tokens)
     remaining = max(0, budget - total)
     used_percent = (total / budget * 100.0) if budget > 0 else 0.0
     return ContextUsage(
         system_tokens=system_tokens,
+        project_tokens=project_tokens,
+        extra_tokens=extra_tokens,
         history_tokens=history_tokens,
         tool_output_tokens=tool_output_tokens,
+        overhead_tokens=overhead_tokens,
         total_tokens=total,
         budget_tokens=budget,
         remaining_tokens=remaining,
         used_percent=used_percent,
         message_count=len(history),
+        window_tokens=int(limits.window or limits.max_input or DEFAULT_CONTEXT_WINDOW),
+        max_output_tokens=int(limits.max_output or 0),
+        source=limits.source,
+        detail=limits.detail,
+        reserve_tokens=reserve_tokens,
     )
 
 
@@ -559,8 +632,6 @@ __all__ = [
     "IMAGE_TOKENS",
     "DEFAULT_CONTEXT_WINDOW",
     "OLLAMA_DEFAULT_CONTEXT_WINDOW",
-    "CONTEXT_BUDGET_RATIO",
-    "MODEL_CONTEXT_WINDOWS",
     "ContextUsage",
     "TrimResult",
     "estimate_tokens",

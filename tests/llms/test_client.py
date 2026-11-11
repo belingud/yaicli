@@ -5,9 +5,11 @@ import pytest
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
+from yaicli.errors import AgentError, ErrorKind
 from yaicli.llms.client import LLMClient
 from yaicli.llms.provider import Provider
 from yaicli.llms.providers.openai_provider import OpenAIProvider
+from yaicli.model_limits import ModelLimits, get_context_limits
 from yaicli.schemas import ChatMessage, LLMResponse, RefreshLive, ToolCall, ToolPolicy
 from yaicli.usage import Usage
 
@@ -596,3 +598,273 @@ class TestLLMClientUsage:
         assert snapshot["estimated"] is False
         assert snapshot["models"]["gpt-4o-mini"]["cost_usd"] == pytest.approx(0.75)
         assert snapshot["tools"] == {"count": 0, "duration_ms": 0.0, "result_chars": 0}
+
+
+# ---------------------------------------------------------------------------
+# v0.23 K22: context-limit resolution, unknown-window warning, limit learning
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_model_limit_cache(tmp_path):
+    """Keep resolved/learned limits out of the developer's real config dir.
+
+    Learned values are written through ``yaicli.model_limits``; without this
+    override a self-heal test would touch ``<config-dir>/cache/model_limits.json``
+    (R12: tests must not read/write the real ``~/.config/yaicli``).
+    """
+    from yaicli import model_limits as model_limits_module
+
+    model_limits_module.clear_limit_cache()
+    previous = model_limits_module.CACHE_PATH_OVERRIDE
+    model_limits_module.CACHE_PATH_OVERRIDE = tmp_path / "cache" / "model_limits.json"
+    try:
+        yield
+    finally:
+        model_limits_module.CACHE_PATH_OVERRIDE = previous
+        model_limits_module.clear_limit_cache()
+
+
+def _limits_config(**overrides):
+    """Complete config for LLMClient with K22 keys (metadata on, cache off in tmp)."""
+    config = {
+        "API_KEY": "fake_api_key",
+        "BASE_URL": "",
+        "MODEL": "gpt-4o",
+        "TEMPERATURE": 0.7,
+        "TOP_P": 1.0,
+        "MAX_TOKENS": 1024,
+        "CONTEXT_SAFETY_TOKENS": 1024,
+        "CONTEXT_BUDGET_TOKENS": 0,
+        "ENABLE_MODEL_METADATA": True,
+        "ENABLE_MODEL_LIMITS_CACHE": False,
+        "TIMEOUT": 60,
+        "PROVIDER": "openai",
+        "ENABLE_FUNCTIONS": False,
+        "ENABLE_MCP": False,
+        "MAX_TOOL_CALL_DEPTH": 4,
+        "TOOL_CONFIRM": False,
+        "RETRY_ENABLED": True,
+        "RETRY_MAX": 2,
+        "RETRY_BASE_DELAY": 0.0,
+        "RETRY_MAX_DELAY": 0.0,
+    }
+    config.update(overrides)
+    return config
+
+
+class ContextLengthError(Exception):
+    """Provider-style 400 context rejection carrying the real limit."""
+
+    status_code = 400
+
+    def __init__(self, limit: int = 200_000):
+        super().__init__(
+            f"This model's maximum context length is {limit} tokens. Please reduce the length of the messages."
+        )
+
+
+class ScriptedLimitsProvider(Provider):
+    """Provider that relays a scripted completion and optionally advertises limits."""
+
+    def __init__(self, script, *, limits=None):
+        self.script = list(script)
+        self.calls = 0
+        self.snapshots = []
+        self.enable_function = False
+        self.enable_mcp = False
+        self._limits = limits
+        self.config = {
+            "BASE_URL": "https://gateway.example/v1",
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+        }
+
+    def completion(self, messages, stream=False, tool_policy=None):
+        self.snapshots.append(list(messages))
+        effect = self.script[self.calls]
+        self.calls += 1
+        if isinstance(effect, BaseException):
+            raise effect
+        yield from effect
+
+    def detect_tool_role(self):
+        return "tool"
+
+    def model_limits(self, model):
+        return self._limits
+
+
+def _make_limits_client(provider, config):
+    with patch("yaicli.llms.provider.ProviderFactory.create_provider", return_value=provider):
+        client = LLMClient(provider_name="openai", config=config)
+    client.provider = provider
+    return client
+
+
+def _two_group_history():
+    return [
+        ChatMessage(role="user", content="first question"),
+        ChatMessage(role="assistant", content="first answer"),
+        ChatMessage(role="user", content="second question"),
+    ]
+
+
+class TestUnknownContextWindowWarning:
+    """PRD Feature example 3: unknown window warning once per client session."""
+
+    @patch("yaicli.llms.client.get_error_console")
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_unknown_model_warns_once_per_client_with_override_hint(self, mock_factory, mock_error_console):
+        provider = MockProvider(responses=[LLMResponse(content="ok")])
+        mock_factory.return_value = provider
+        error_console = MagicMock()
+        mock_error_console.return_value = error_console
+        client = LLMClient(provider_name="openai", config=_limits_config(MODEL="my-gateway-model"))
+
+        list(client.completion_with_tools([ChatMessage(role="user", content="hi")]))
+        list(client.completion_with_tools([ChatMessage(role="user", content="again")]))
+
+        assert error_console.print.call_count == 1
+        message = error_console.print.call_args.args[0]
+        assert message.splitlines() == [
+            'Context window for model "my-gateway-model" is unknown; assuming 128,000 tokens (source: default).',
+            'Set MODEL_CONTEXT_WINDOWS={"my-gateway-model": 200000} or CONTEXT_BUDGET_TOKENS to override.',
+        ]
+        assert error_console.print.call_args.kwargs["style"] == "dim yellow"
+
+    @patch("yaicli.llms.client.get_error_console")
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_known_model_does_not_warn(self, mock_factory, mock_error_console):
+        mock_factory.return_value = MockProvider(responses=[LLMResponse(content="ok")])
+        error_console = MagicMock()
+        mock_error_console.return_value = error_console
+        client = LLMClient(provider_name="openai", config=_limits_config(MODEL="gpt-4o"))
+
+        list(client.completion_with_tools([ChatMessage(role="user", content="hi")]))
+
+        assert client.last_context_limits is not None
+        assert client.last_context_limits.source in ("catalog", "heuristic")
+        error_console.print.assert_not_called()
+
+    @patch("yaicli.llms.client.get_error_console")
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_empty_model_does_not_warn(self, mock_factory, mock_error_console):
+        mock_factory.return_value = MockProvider(responses=[LLMResponse(content="ok")])
+        error_console = MagicMock()
+        mock_error_console.return_value = error_console
+        client = LLMClient(provider_name="openai", config=_limits_config(MODEL=""))
+
+        list(client.completion_with_tools([ChatMessage(role="user", content="hi")]))
+
+        assert client.last_context_budget > 0
+        error_console.print.assert_not_called()
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_provider_metadata_hook_supplies_limits_without_warning(self, mock_factory):
+        provider = ScriptedLimitsProvider(
+            [[LLMResponse(content="ok")]],
+            limits=ModelLimits(window=777_000, max_output=12_345, source="metadata", detail="test /models"),
+        )
+        mock_factory.return_value = provider
+        client = LLMClient(provider_name="openai", config=_limits_config(MODEL="my-gateway-model"))
+
+        list(client.completion_with_tools([ChatMessage(role="user", content="hi")]))
+
+        assert client.last_context_limits is not None
+        assert client.last_context_limits.source == "metadata"
+        assert client.last_context_limits.window == 777_000
+        assert client.last_context_budget == 777_000 - 1024 - 1024
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_provider_key_is_normalized(self, mock_factory):
+        mock_factory.return_value = MockProvider(responses=[LLMResponse(content="ok")])
+        client = LLMClient(provider_name="OpenAI", config=_limits_config())
+
+        assert client.provider_key == "openai"
+        assert client.last_context_limits is None
+        assert client._limits_warned is False
+        mock_factory.assert_called_once()
+        assert mock_factory.call_args.args[0] == "openai"
+
+
+class TestContextLengthSelfHealLearning:
+    """PRD Feature example 4: learn the real limit, recompute the budget, retry once."""
+
+    @patch("yaicli.llms.client.get_error_console")
+    def test_learns_real_limit_and_retries_once(self, mock_error_console):
+        error_console = MagicMock()
+        mock_error_console.return_value = error_console
+        provider = ScriptedLimitsProvider(
+            [ContextLengthError(200_000), [LLMResponse(content="recovered", finish_reason="stop")]]
+        )
+        client = _make_limits_client(provider, _limits_config(MODEL="gateway-learned-model"))
+
+        responses = list(client.completion_with_tools(_two_group_history()))
+
+        assert [response.content for response in responses if isinstance(response, LLMResponse)] == ["recovered"]
+        assert provider.calls == 2
+        # The oldest turn group was dropped before the retry.
+        assert [message.content for message in provider.snapshots[1]] == ["second question"]
+        # The learned limit was applied immediately: budget recomputed from 200k.
+        assert client.last_context_limits is not None
+        assert client.last_context_limits.source == "learned"
+        assert client.last_context_limits.window == 200_000
+        assert client.last_context_budget == 200_000 - 1024 - 1024
+        printed = "\n".join(str(call.args[0]) for call in error_console.print.call_args_list)
+        assert "Provider rejected the request as too long; learned the real context limit (200,000 tokens)" in printed
+        assert "retrying once" in printed
+
+        # A later request reuses the learned value instead of the 128k default.
+        provider.script.append([LLMResponse(content="next", finish_reason="stop")])
+        list(client.completion_with_tools([ChatMessage(role="user", content="third")]))
+        assert client.last_context_limits.source == "learned"
+        assert client.last_context_limits.window == 200_000
+
+    @patch("yaicli.llms.client.get_error_console")
+    def test_second_context_error_never_retries_again(self, mock_error_console):
+        mock_error_console.return_value = MagicMock()
+        provider = ScriptedLimitsProvider([ContextLengthError(8192), ContextLengthError(8192)])
+        client = _make_limits_client(provider, _limits_config(MODEL="gateway-learned-model-2"))
+
+        with pytest.raises(AgentError) as excinfo:
+            list(client.completion_with_tools(_two_group_history()))
+
+        assert excinfo.value.kind is ErrorKind.CONTEXT_LENGTH
+        assert provider.calls == 2
+
+    @patch("yaicli.llms.client.get_error_console")
+    def test_single_turn_context_error_learns_without_retry(self, mock_error_console):
+        mock_error_console.return_value = MagicMock()
+        provider = ScriptedLimitsProvider([ContextLengthError(4096)])
+        config = _limits_config(MODEL="gateway-single-turn")
+        client = _make_limits_client(provider, config)
+
+        with pytest.raises(AgentError) as excinfo:
+            list(client.completion_with_tools([ChatMessage(role="user", content="only turn")]))
+
+        assert excinfo.value.kind is ErrorKind.CONTEXT_LENGTH
+        assert provider.calls == 1  # no group to drop -> actionable error, no retry
+        # The learned value is recorded even though the retry could not happen.
+        learned = get_context_limits(
+            client.provider_key,
+            "gateway-single-turn",
+            config,
+            base_url=client.provider.base_url,
+        )
+        assert learned.source == "learned"
+        assert learned.window == 4096
+
+    @patch("yaicli.llms.client.get_error_console")
+    def test_context_budget_override_still_wins_after_learning(self, mock_error_console):
+        mock_error_console.return_value = MagicMock()
+        provider = ScriptedLimitsProvider(
+            [ContextLengthError(200_000), [LLMResponse(content="recovered", finish_reason="stop")]]
+        )
+        config = _limits_config(MODEL="gateway-override-model", CONTEXT_BUDGET_TOKENS=5000)
+        client = _make_limits_client(provider, config)
+
+        list(client.completion_with_tools(_two_group_history()))
+
+        assert client.last_context_limits.window == 200_000
+        assert client.last_context_budget == 5000

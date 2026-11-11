@@ -8,11 +8,24 @@ from typing import Any, Dict, Generator, List, Optional, Union
 from .. import const as _const
 from ..config import cfg
 from ..console import get_console, get_error_console
-from ..errors import AgentError, ErrorKind, backoff_delay, classify_exception, retry_after_seconds
+from ..errors import (
+    AgentError,
+    ErrorKind,
+    backoff_delay,
+    classify_exception,
+    parse_context_limit,
+    retry_after_seconds,
+)
+from ..model_limits import (
+    DEFAULT_CONTEXT_WINDOW,
+    ModelLimits,
+    context_input_budget,
+    get_context_limits,
+    record_learned_limit,
+)
 from ..schemas import ChatMessage, ConfirmToolCall, LLMResponse, RefreshLive, ToolCall, ToolConfirmDecision, ToolPolicy
 from ..tokens import (
     estimate_messages_tokens,
-    resolve_context_budget,
     trim_messages_to_budget,
     trim_oldest_group,
 )
@@ -74,6 +87,13 @@ class LLMClient:
         "last_tokens_estimate",
         #: One context-length self-heal per top-level request.
         "_context_retry_used",
+        # ---- v0.23 K22 context-window resolution ----
+        #: Normalized provider key; scopes the model-limits resolution/cache.
+        "provider_key",
+        #: Set after the one-time "unknown context window" stderr warning.
+        "_limits_warned",
+        #: Limits (window/source/detail) resolved for the last request budget.
+        "last_context_limits",
         # ---- v0.22 K17 usage/cost observability ----
         #: Session token/cost/tool tracker (provider-reported + estimated usage).
         "usage_tracker",
@@ -114,11 +134,15 @@ class LLMClient:
         self.tool_policy_mode: str = _const.DEFAULT_TOOL_POLICY
         self._tool_policy_warned: bool = False
 
-        # Use provided provider or create one
-        if provider_name not in ProviderFactory.providers_map:
-            self.console.print(f"Provider {provider_name} not found, using openai as default", style="yellow")
-            provider_name = "openai"
-        self.provider = ProviderFactory.create_provider(provider_name, config=config, verbose=verbose, **kwargs)
+        # Use provided provider or create one. The key is normalized once and kept
+        # (``provider_key``) so model-limit resolution/caching uses the same scope
+        # as the created provider, even if the config PROVIDER differs.
+        provider_key = str(provider_name or "").strip().lower()
+        if provider_key not in ProviderFactory.providers_map:
+            self.console.print(f"Provider {provider_key} not found, using openai as default", style="yellow")
+            provider_key = "openai"
+        self.provider_key: str = provider_key
+        self.provider = ProviderFactory.create_provider(provider_key, config=config, verbose=verbose, **kwargs)
 
         self.max_tool_call_depth = self.config["MAX_TOOL_CALL_DEPTH"]
 
@@ -130,6 +154,10 @@ class LLMClient:
         self.last_context_budget: int = 0
         self.last_tokens_estimate: int = 0
         self._context_retry_used: bool = False
+
+        # ---- v0.23 K22 context-limit state ----
+        self._limits_warned: bool = False
+        self.last_context_limits: Optional[ModelLimits] = None
 
         # ---- v0.22 K17 usage/cost state ----
         self.usage_tracker: UsageTracker = UsageTracker()
@@ -153,6 +181,56 @@ class LLMClient:
         return get_error_console()
 
     # ------------------- context budget (K02) -------------------
+    def _provider_base_url(self) -> str:
+        """Return the provider's effective base URL (``""`` for test doubles)."""
+        base_url = getattr(self.provider, "base_url", "")
+        return base_url if isinstance(base_url, str) else ""
+
+    def _resolve_limits_and_budget(self) -> tuple:
+        """Resolve the model limits and the per-request input budget (K22).
+
+        Uses the layered resolver (:mod:`yaicli.model_limits`) with this client's
+        provider metadata hook as the ``metadata`` layer. Side effects: stores
+        :attr:`last_context_limits` and prints the one-time unknown-window warning
+        (``source == "default"`` with a non-empty model) to stderr.
+        """
+        model = self._model_name()
+        model_limits_fn = getattr(self.provider, "model_limits", None)
+        fetcher = (lambda requested: model_limits_fn(requested)) if callable(model_limits_fn) else None
+        limits = get_context_limits(
+            self.provider_key,
+            model,
+            self.config,
+            base_url=self._provider_base_url(),
+            fetcher=fetcher,
+        )
+        budget = context_input_budget(
+            limits,
+            max_tokens=self.config.get("MAX_TOKENS"),
+            safety_tokens=self.config.get("CONTEXT_SAFETY_TOKENS", 1024),
+            override=self.config.get("CONTEXT_BUDGET_TOKENS"),
+        )
+        self.last_context_limits = limits
+        self._warn_unknown_model_limits(limits, model)
+        return limits, budget
+
+    def _warn_unknown_model_limits(self, limits: ModelLimits, model: str) -> None:
+        """Warn once per client when the window is the conservative default (K22).
+
+        Mirrors PRD Feature example 3: two plain stderr lines, ``dim yellow``, with
+        a copy-pasteable override example. An empty model (tests/unconfigured) is
+        never warned about; ``heuristic``/``catalog`` sources are known values.
+        """
+        if limits.source != "default" or not model or self._limits_warned:
+            return
+        self._limits_warned = True
+        window = limits.window or DEFAULT_CONTEXT_WINDOW
+        self._error_console().print(
+            f'Context window for model "{model}" is unknown; assuming {window:,} tokens (source: default).\n'
+            f'Set MODEL_CONTEXT_WINDOWS={{"{model}": 200000}} or CONTEXT_BUDGET_TOKENS to override.',
+            style="dim yellow",
+        )
+
     def _enforce_context_budget(self, messages: List[ChatMessage]) -> None:
         """Trim ``messages`` in place when it exceeds the per-request token budget.
 
@@ -161,7 +239,7 @@ class LLMClient:
         user knows why older context disappeared.
         """
         try:
-            budget = resolve_context_budget(self.config, self._model_name())
+            _limits, budget = self._resolve_limits_and_budget()
         except Exception:  # pragma: no cover - config lookups must never break a turn
             budget = 0
         tokens = estimate_messages_tokens(messages)
@@ -183,23 +261,40 @@ class LLMClient:
         )
 
     def _heal_context_length(self, messages: List[ChatMessage], exc: BaseException) -> bool:
-        """Drop one extra turn group (and trim to budget) for a context-length 400.
+        """Learn the real limit (when reported) and drop one turn group.
 
-        Returns True when the request may be retried once. The retry is allowed at
-        most once per top-level request, and never after content was already
-        streamed to the user (retrying then would duplicate output).
+        The provider-reported upper bound (``errors.parse_context_limit``) is
+        recorded *before* trimming so it survives even when there is no older turn
+        group to drop. The budget is then recomputed from the learned limit and the
+        request is retried **once** (never after content was already streamed).
+
+        Returns True when the request may be retried.
         """
         if self._context_retry_used:
             return False
         self._context_retry_used = True
 
+        learned_limit = parse_context_limit(exc)
+        if learned_limit:
+            try:
+                record_learned_limit(
+                    self.provider_key,
+                    self._model_name(),
+                    self._provider_base_url(),
+                    learned_limit,
+                    config=self.config,
+                )
+            except Exception:  # pragma: no cover - learning must never break a turn
+                learned_limit = None
+        learned_note = f"learned the real context limit ({learned_limit:,} tokens), " if learned_limit else ""
+
         result = trim_oldest_group(messages)
         if not result.removed_messages:
             return False
         messages[:] = result.messages
-        # If the heuristic still says "over budget", trim further before retrying.
+        # Recompute against the (now learned) limit; trim further when needed.
         try:
-            budget = resolve_context_budget(self.config, self._model_name())
+            _limits, budget = self._resolve_limits_and_budget()
         except Exception:  # pragma: no cover - config lookups must never break a turn
             budget = 0
         if budget > 0 and estimate_messages_tokens(messages) > budget:
@@ -210,9 +305,9 @@ class LLMClient:
         self.last_context_budget = budget
         self.last_tokens_estimate = estimate_messages_tokens(messages)
         self._error_console().print(
-            f"Provider rejected the request as too long; dropped {result.removed_count} older "
-            f"message(s) and retrying once ({result.tokens_before} -> "
-            f"{self.last_tokens_estimate} est. tokens).",
+            f"Provider rejected the request as too long; {learned_note}dropped "
+            f"{result.removed_count} older message(s) and retrying once "
+            f"({result.tokens_before:,} -> {self.last_tokens_estimate:,} est. tokens).",
             style="yellow",
         )
         return True

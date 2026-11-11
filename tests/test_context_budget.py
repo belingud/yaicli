@@ -1,12 +1,14 @@
-"""Tests for the v0.19 K02 context-economy layer.
+"""Tests for the context-economy layer (v0.19 K02 + v0.23 K22 budget rework).
 
 Covers:
 
-* the stdlib token estimator (monotonic, CJK-aware) and the model window/budget table;
+* the stdlib token estimator (monotonic, CJK-aware) and the model window/budget
+  resolution delegated to :mod:`yaicli.model_limits`;
 * turn-group-aware trimming (500 randomized tool-heavy sessions -> zero orphans);
 * tool-output truncation + spill-to-disk (8 MB result -> capped + payload < 64 KB);
-* the client token budget, context-length self-heal, retry policy and depth limit;
-* the ``/context`` usage summary and the new ``/compact`` REPL command.
+* the client token budget, context-length self-heal (learned limit), retry policy
+  and depth limit;
+* the ``/context`` usage summary (window/source/reserve buckets) and ``/compact``.
 """
 
 import json
@@ -20,8 +22,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import yaicli.tokens as tokens_module
 import yaicli.tools as tools_module
 import yaicli.tools.limits as limits_module
+from yaicli import model_limits as ml
 from yaicli.cmd_handler import CMD_COMPACT, CmdHandler
 from yaicli.errors import AgentError, ErrorKind
 from yaicli.llms.client import LLMClient
@@ -31,6 +35,7 @@ from yaicli.tokens import (
     DEFAULT_CONTEXT_WINDOW,
     OLLAMA_DEFAULT_CONTEXT_WINDOW,
     estimate_context_usage,
+    estimate_message_tokens,
     estimate_messages_tokens,
     estimate_tokens,
     get_context_window,
@@ -58,6 +63,12 @@ def make_config(**overrides):
         "TOOL_CONFIRM": False,
         "MODEL": "gpt-4o",
         "PROVIDER": "openai",
+        # v0.23 K22: budget = window - MAX_TOKENS - CONTEXT_SAFETY_TOKENS.
+        "MAX_TOKENS": 1024,
+        "CONTEXT_SAFETY_TOKENS": 1024,
+        "MODEL_CONTEXT_WINDOWS": {},
+        "ENABLE_MODEL_METADATA": False,
+        "ENABLE_MODEL_LIMITS_CACHE": False,
         "CONTEXT_BUDGET_TOKENS": 0,
         "RETRY_ENABLED": True,
         "RETRY_MAX": 2,
@@ -66,6 +77,24 @@ def make_config(**overrides):
     }
     config.update(overrides)
     return config
+
+
+@pytest.fixture(autouse=True)
+def isolated_model_limits(tmp_path):
+    """Reset the K22 resolver caches and keep the disk cache inside the test.
+
+    ``model_limits`` memoizes resolced windows (including limits learned from a
+    provider error) in-process; tests must neither inherit another test's learned
+    value nor write the developer's real ``<config-dir>/cache/model_limits.json``.
+    """
+    ml.clear_limit_cache()
+    previous = ml.CACHE_PATH_OVERRIDE
+    ml.CACHE_PATH_OVERRIDE = tmp_path / "model_limits_cache" / "model_limits.json"
+    try:
+        yield
+    finally:
+        ml.CACHE_PATH_OVERRIDE = previous
+        ml.clear_limit_cache()
 
 
 class DenyApproval:
@@ -91,6 +120,9 @@ class ScriptedProvider:
     iterator (used to model a stream that breaks after partial content).
     """
 
+    #: Part of the ``Provider`` contract used by the K22 budget resolver.
+    base_url = ""
+
     def __init__(self, script):
         self.script = list(script)
         self.calls = 0
@@ -101,6 +133,10 @@ class ScriptedProvider:
 
     def detect_tool_role(self):
         return "tool"
+
+    def model_limits(self, model):
+        """No provider-advertised metadata for the test double."""
+        return None
 
     def completion(self, messages, stream=False, tool_policy=None):
         self.snapshots.append(list(messages))
@@ -268,14 +304,43 @@ class TestModelWindowAndBudget:
         assert get_context_window("totally-unknown-model") == DEFAULT_CONTEXT_WINDOW
         assert get_context_window("llama3:8b", provider="ollama") == OLLAMA_DEFAULT_CONTEXT_WINDOW
 
+    def test_context_window_regressions_from_the_old_table(self):
+        """K22: resolution is longest-prefix/provider-scoped, never first substring."""
+        assert get_context_window("gpt-4-32k") == 32768  # was gpt-4 -> 8192
+        assert get_context_window("o1-mini") == 128000  # was o1 -> 200000
+        assert get_context_window("qwen2.5:7b", provider="ollama") == OLLAMA_DEFAULT_CONTEXT_WINDOW
+        # Normalization strips vendor prefixes and date suffixes.
+        assert get_context_window("anthropic/claude-sonnet-4-20250514") == 200000
+
+    def test_window_constants_are_reexported_from_model_limits(self):
+        assert DEFAULT_CONTEXT_WINDOW == ml.DEFAULT_CONTEXT_WINDOW
+        assert OLLAMA_DEFAULT_CONTEXT_WINDOW == ml.OLLAMA_DEFAULT_CONTEXT_WINDOW
+
+    def test_legacy_ratio_and_window_table_are_gone(self):
+        """The 70% ratio and the local window table were replaced by model_limits."""
+        assert not hasattr(tokens_module, "CONTEXT_BUDGET_RATIO")
+        assert not hasattr(tokens_module, "MODEL_CONTEXT_WINDOWS")
+
     def test_resolve_context_budget(self):
-        assert resolve_context_budget({"MODEL": "gpt-4o"}, "gpt-4o") == int(128000 * 0.70)
-        # Explicit configuration always wins.
-        assert resolve_context_budget({"MODEL": "gpt-4o", "CONTEXT_BUDGET_TOKENS": 5000}) == 5000
-        # Model defaults from config; provider enables the Ollama fallback.
-        assert resolve_context_budget({"MODEL": "llama3", "PROVIDER": "ollama"}) == int(
-            OLLAMA_DEFAULT_CONTEXT_WINDOW * 0.70
-        )
+        config = make_config()
+        # New formula: window - MAX_TOKENS - CONTEXT_SAFETY_TOKENS (no 70% ratio).
+        assert resolve_context_budget(config, "gpt-4o") == 128000 - 2048
+        assert resolve_context_budget(config, "gpt-4o") >= 120000
+        assert resolve_context_budget(config, "gpt-4o") != int(128000 * 0.70)
+        # Model/provider default to the configured values.
+        assert resolve_context_budget(config) == 128000 - 2048
+        assert resolve_context_budget(config, "gpt-4.1", "openai") == 1047576 - 2048
+        # Explicit configuration always wins, verbatim.
+        assert resolve_context_budget(make_config(CONTEXT_BUDGET_TOKENS=5000), "gpt-4o") == 5000
+        # Ollama resolves to the local 8k window: 8192 - 2048.
+        ollama = make_config(MODEL="llama3", PROVIDER="ollama")
+        assert resolve_context_budget(ollama) == OLLAMA_DEFAULT_CONTEXT_WINDOW - 2048
+        # Everything below the window is a reserve (configurable), not a ratio.
+        assert resolve_context_budget(make_config(MAX_TOKENS=0, CONTEXT_SAFETY_TOKENS=0), "gpt-4o") == 128000
+        assert resolve_context_budget(make_config(CONTEXT_SAFETY_TOKENS=4096), "gpt-4o") == 128000 - 1024 - 4096
+        # User config overrides the resolved window through the layered resolver.
+        overridden = make_config(MODEL_CONTEXT_WINDOWS={"gpt-4o": 32000})
+        assert resolve_context_budget(overridden, "gpt-4o") == 32000 - 2048
 
     def test_estimate_context_usage_breakdown(self):
         messages = [
@@ -285,15 +350,79 @@ class TestModelWindowAndBudget:
             ),
             ChatMessage(role="tool", content="t" * 700, name="fs_read_file", tool_call_id="c1"),
         ]
-        usage = estimate_context_usage(messages, config={"MODEL": "gpt-4o"}, system_text="system prompt")
+        config = make_config()
+        usage = estimate_context_usage(messages, config=config, system_text="system prompt")
         assert usage.message_count == 3
         assert usage.system_tokens > 0
         assert usage.history_tokens > 0
         assert usage.tool_output_tokens > 0
-        assert usage.total_tokens == usage.system_tokens + usage.history_tokens + 3
-        assert usage.budget_tokens == int(128000 * 0.70)
+        assert usage.project_tokens == 0
+        assert usage.extra_tokens == 0
+        assert usage.overhead_tokens == 3
+        assert usage.total_tokens == usage.system_tokens + usage.history_tokens + usage.overhead_tokens
+        assert usage.budget_tokens == 128000 - 2048
         assert usage.remaining_tokens == usage.budget_tokens - usage.total_tokens
-        assert 0 < usage.used_percent < 100
+        assert usage.used_percent == pytest.approx(usage.total_tokens / usage.budget_tokens * 100)
+        # v0.23 K22: window/source/detail/reserve come from the resolved ModelLimits.
+        assert usage.window_tokens == 128000
+        assert usage.max_output_tokens > 0
+        assert usage.source == "catalog"
+        assert "catalog" in usage.detail
+        assert usage.reserve_tokens == 2048
+
+    def test_estimate_context_usage_counts_project_and_added_context(self):
+        project_text = "Project instructions: prefer small diffs. " * 10
+        extra_messages = [ChatMessage(role="system", content="persistent context block " * 20)]
+        messages = [ChatMessage(role="user", content="question " * 50)]
+
+        usage = estimate_context_usage(
+            messages,
+            config=make_config(),
+            system_text="You are YAICLI.",
+            extra_system_text=project_text,
+            extra_messages=extra_messages,
+        )
+
+        assert usage.project_tokens == estimate_tokens(project_text) + 4
+        assert usage.extra_tokens == estimate_message_tokens(extra_messages[0])
+        assert usage.overhead_tokens == 3
+        assert usage.total_tokens == (
+            usage.system_tokens
+            + usage.project_tokens
+            + usage.extra_tokens
+            + usage.history_tokens
+            + usage.overhead_tokens
+        )
+        assert usage.message_count == 1
+
+    def test_estimate_context_usage_unknown_model_reports_default_source(self):
+        usage = estimate_context_usage(
+            [ChatMessage(role="user", content="hi")],
+            config=make_config(MODEL="my-gateway-model"),
+            system_text="sys",
+        )
+        assert usage.window_tokens == DEFAULT_CONTEXT_WINDOW
+        assert usage.source == "default"
+        assert "assumed for unknown model" in usage.detail
+        assert usage.budget_tokens == DEFAULT_CONTEXT_WINDOW - 2048
+
+    def test_estimate_context_usage_reserve_follows_config(self):
+        empty = estimate_context_usage(None, config=make_config())
+        assert empty.total_tokens == 0
+        assert empty.message_count == 0
+        assert empty.window_tokens == 128000
+        assert empty.reserve_tokens == 2048
+        assert empty.remaining_tokens == empty.budget_tokens
+
+        bigger = estimate_context_usage(None, config=make_config(MAX_TOKENS=4096, CONTEXT_SAFETY_TOKENS=512))
+        assert bigger.reserve_tokens == 4096 + 512
+        assert bigger.budget_tokens == 128000 - (4096 + 512)
+
+    def test_estimate_context_usage_empty_history_has_no_request_overhead(self):
+        usage = estimate_context_usage([], config=make_config(), system_text="only system")
+        assert usage.total_tokens == usage.system_tokens
+        assert usage.overhead_tokens == 0
+        assert usage.tool_output_tokens == 0
 
 
 # ---------------------------------------------------------------------------
@@ -632,6 +761,43 @@ class TestClientContextBudget:
         assert retried[1].content != "question 0"
         assert validate_tool_pairing(retried) == []
 
+    def test_context_length_error_learns_real_limit_and_announces_it(self, capsys):
+        """PRD Feature example 4: the self-heal stderr names the learned limit."""
+        history = [ChatMessage(role="system", content="system")]
+        for index in range(3):
+            history += assistant_tool_turn(index, tool_contents=["H" * 2000])
+        provider = ScriptedProvider([ContextLengthError(), [LLMResponse(content="recovered", finish_reason="stop")]])
+        client = make_client(provider, make_config(CONTEXT_BUDGET_TOKENS=100000))
+
+        responses = list(
+            client.completion_with_tools(history + [ChatMessage(role="user", content="continue")], stream=False)
+        )
+
+        assert any(getattr(response, "content", None) == "recovered" for response in responses)
+        assert provider.calls == 2  # initial + exactly one self-heal retry
+        captured = capsys.readouterr()
+        # Rich wraps the notice at the terminal width, so compare whitespace-normalized.
+        stderr = " ".join(captured.err.split())
+        # PRD Feature example 4 (comma formatting on every number).
+        assert "learned the real context limit (128,000 tokens)" in stderr
+        assert "retrying once" in stderr
+        assert "learned the real context limit" not in captured.out
+
+    def test_learned_limit_replaces_the_resolved_window_for_following_requests(self):
+        """A real limit parsed from the 400 error drives the next request's budget."""
+        provider = ScriptedProvider([ContextLengthError(), [LLMResponse(content="recovered", finish_reason="stop")]])
+        # Catalog says 200k for claude-sonnet-4; the provider error says 128k.
+        client = make_client(provider, make_config(MODEL="claude-sonnet-4"))
+        history = [ChatMessage(role="system", content="system")]
+        for index in range(2):
+            history += assistant_tool_turn(index)
+
+        list(client.completion_with_tools(history + [ChatMessage(role="user", content="continue")], stream=False))
+
+        assert provider.calls == 2
+        # The learned 128k window (not the 200k catalog value) sets the retry budget.
+        assert client.last_context_budget == 128000 - 2048
+
     def test_context_length_failure_after_retry_raises_actionable_agent_error(self):
         history = assistant_tool_turn(0)
         history += [ChatMessage(role="user", content="first")]
@@ -841,11 +1007,17 @@ class TestContextAndCompactCommands:
         assert handler.handle_context("/context") is True
 
         output = printed_text(cli.console)
+        # v0.23 K22 /context layout (PRD Feature example 1/2).
         assert "Context usage (estimated)" in output
-        assert "system prompt" in output
+        assert "window" in output
+        assert "source:" in output
+        assert "role prompt" in output
+        assert "project ctx" in output
+        assert "/add context" in output
         assert "history" in output
-        assert "budget" in output.lower()
+        assert "total" in output
         assert "remaining" in output
+        assert "reserve" in output
         cli.context_manager.list_items.assert_called_once()
 
     def test_context_budget_subcommand_prints_usage_only(self):

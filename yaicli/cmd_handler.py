@@ -26,7 +26,7 @@ from .const import (
     EXEC_MODE,
     DefaultRoleNames,
 )
-from .tokens import estimate_context_usage, trim_messages_to_budget
+from .tokens import ContextUsage, estimate_context_usage, trim_messages_to_budget
 from .tools import workspace
 from .tools.approval import PermissionRule
 
@@ -219,23 +219,97 @@ class CmdHandler:
         prompt = getattr(role, "prompt", "") if role is not None else ""
         return prompt if isinstance(prompt, str) else ""
 
-    def _context_usage(self):
-        """Estimate the current context usage for the ``/context`` command."""
+    def _project_context(self) -> str:
+        """Return the auto-loaded project instruction block (``""`` when unavailable)."""
+        getter = getattr(self.cli, "_get_project_context", None)
+        if not callable(getter):
+            return ""
+        try:
+            project = getter()
+        except Exception:  # defensive: /context must never fail on a project file
+            return ""
+        return project if isinstance(project, str) else ""
+
+    def _persistent_context(self) -> list:
+        """Return the persistent ``/add`` context messages (``[]`` when unavailable)."""
+        manager = getattr(self.cli, "context_manager", None)
+        getter = getattr(manager, "get_context_messages", None) if manager is not None else None
+        if not callable(getter):
+            return []
+        try:
+            messages = getter()
+        except Exception:  # defensive: /context must never fail on a context file
+            return []
+        return messages if isinstance(messages, list) else []
+
+    def _context_usage(self) -> "ContextUsage":
+        """Estimate the current context usage for the ``/context`` command.
+
+        Passes the parts the request assembler sends besides the role prompt
+        (project instructions block + persistent ``/add`` context) so the shown
+        total matches what the provider will actually receive.
+        """
         config = cfg if hasattr(cfg, "get") else None
-        return estimate_context_usage(self._history(), config=config, system_text=self._role_prompt())
+        provider = str(config.get("PROVIDER", "") or "") if config is not None else ""
+        return estimate_context_usage(
+            self._history(),
+            config=config,
+            system_text=self._role_prompt(),
+            provider=provider,
+            extra_system_text=self._project_context(),
+            extra_messages=self._persistent_context(),
+        )
+
+    @staticmethod
+    def _cfg_int(key: str, default: int = 0) -> int:
+        """Read an integer config value, tolerating mocks/legacy strings."""
+        config = cfg if hasattr(cfg, "get") else None
+        if config is None:
+            return default
+        try:
+            value = config.get(key)
+        except Exception:  # defensive: a broken config mapping must not break /context
+            return default
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
     def _print_context_usage(self) -> None:
-        """Print the estimated usage breakdown (system/history/tool/total/budget)."""
+        """Print the estimated usage breakdown with the window source and reserve."""
         usage = self._context_usage()
         console = self.cli.console
+        source = usage.source or "default"
+        if source == "default":
+            # An unknown model must say so and tell the user how to fix it.
+            detail = usage.detail or "assumed for unknown model"
+            source_text = f"{detail}; set MODEL_CONTEXT_WINDOWS to override"
+        else:
+            source_text = usage.detail or ""
+        window_line = f"  window        : {usage.window_tokens:,} tokens (source: {source}"
+        if source_text:
+            window_line += f" · {source_text}"
+        window_line += ")"
         console.print("Context usage (estimated):", style="bold")
-        console.print(f"  system prompt : {usage.system_tokens:,} tokens")
+        console.print(window_line)
+        console.print(f"  role prompt   : {usage.system_tokens:,} tokens")
+        console.print(f"  project ctx   : {usage.project_tokens:,} tokens")
+        console.print(f"  /add context  : {usage.extra_tokens:,} tokens")
         console.print(f"  history       : {usage.history_tokens:,} tokens (tool output {usage.tool_output_tokens:,})")
+        console.print(f"  overhead      : {usage.overhead_tokens:,} tokens")
         console.print(
             f"  total         : {usage.total_tokens:,} / {usage.budget_tokens:,} tokens ({usage.used_percent:.1f}%)"
         )
         console.print(f"  remaining     : {usage.remaining_tokens:,} tokens")
-        console.print("[dim]  Use /compact [keep_rounds] to drop older turn groups.[/dim]")
+        max_tokens = self._cfg_int("MAX_TOKENS", 1024)
+        safety_tokens = self._cfg_int("CONTEXT_SAFETY_TOKENS", 1024)
+        console.print(
+            f"  reserve       : {usage.reserve_tokens:,} (MAX_TOKENS {max_tokens:,} + safety {safety_tokens:,})"
+        )
+        # markup=False keeps the literal ``[keep_rounds]`` (Rich markup would eat it).
+        console.print("  Use /compact [keep_rounds] to drop older turn groups.", style="dim", markup=False)
 
     def handle_compact(self, command_input: str = "") -> bool:
         """Handle ``/compact [keep_rounds]``: drop old whole turn groups from history.
@@ -802,12 +876,10 @@ class CmdHandler:
             return True
 
         if len(parts) < 2:
+            # Bare ``/context`` = usage block + the legacy ``/add`` list. The
+            # subcommand hint is not repeated here: it is long, already rendered
+            # by ``/help``/the docstring, and belongs to the error path below.
             self._print_context_usage()
-            self.cli.console.print(
-                "Subcommands: list, clear, add <path>, remove <path>, budget",
-                style="dim",
-            )
-            # Default to list if no subcommand, preserving the pre-K02 behaviour.
             self.cli.context_manager.list_items()
             return True
 
@@ -834,7 +906,7 @@ class CmdHandler:
                 self.cli.context_manager.remove(parts[2])
         else:
             self.cli.console.print(f"Unknown sub-command: {safe_text(subcmd)}", style="yellow")
-            self.cli.console.print("Available: list, clear, add, remove, budget", style="dim")
+            self.cli.console.print("Available: list, clear, add <path>, remove <path>, budget", style="dim")
 
         return True
 

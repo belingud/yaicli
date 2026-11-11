@@ -38,6 +38,7 @@ from yaicli.errors import (
     error_kind_summary,
     is_context_length_error,
     is_retryable,
+    parse_context_limit,
     provider_response_error,
     retry_after_seconds,
     wrap_provider_exception,
@@ -771,3 +772,73 @@ def test_ollama_honors_config_timeout():
         module.OllamaProvider(config=copy.deepcopy(MATRIX_CONFIG))
 
     assert client_cls.call_args.kwargs["timeout"] == MATRIX_CONFIG["TIMEOUT"]
+
+
+# ---------------------------------------------------------------------------
+# v0.23 K22: learning the real context limit from provider error text
+# ---------------------------------------------------------------------------
+
+
+class TestParseContextLimit:
+    """``parse_context_limit`` extracts the hard limit used by the self-heal path."""
+
+    def test_openai_maximum_context_length_with_tokens(self):
+        exc = FakeHTTPError(
+            "This model's maximum context length is 128000 tokens. However, your messages resulted in 150000 tokens.",
+            status_code=400,
+        )
+        assert parse_context_limit(exc) == 128000
+
+    def test_maximum_context_length_without_tokens_word(self):
+        exc = FakeHTTPError("maximum context length is 32768", status_code=400)
+        assert parse_context_limit(exc) == 32768
+
+    def test_anthropic_prompt_too_long(self):
+        exc = FakeHTTPError("prompt is too long: 210000 tokens > 200000 maximum", status_code=400)
+        assert parse_context_limit(exc) == 200000
+
+    def test_sum_gt_limit_returns_the_last_number(self):
+        exc = FakeHTTPError("request validation failed: 210000 + 8192 > 200000", status_code=400)
+        assert parse_context_limit(exc) == 200000
+
+    def test_gemini_maximum_tokens_allowed(self):
+        exc = FakeHTTPError(
+            "The input token count (1234567) exceeds the maximum number of tokens allowed (1048576).",
+            status_code=400,
+        )
+        assert parse_context_limit(exc) == 1048576
+
+    def test_code_without_number_returns_none(self):
+        assert parse_context_limit(FakeHTTPError("context_length_exceeded", status_code=400)) is None
+
+    def test_ollama_numberless_message_returns_none(self):
+        exc = FakeHTTPError("input length exceeds the context length", status_code=400)
+        assert parse_context_limit(exc) is None
+
+    def test_unrelated_error_returns_none(self):
+        assert parse_context_limit(FakeHTTPError("rate limited", status_code=429)) is None
+        assert parse_context_limit(RuntimeError("")) is None
+        assert parse_context_limit(httpx.ConnectError("connection refused")) is None
+
+    def test_searches_the_http_response_body_too(self):
+        response = FakeResponse(
+            status_code=400,
+            text='{"error": {"message": "This model\'s maximum context length is 100000 tokens."}}',
+        )
+        exc = FakeHTTPError("400 Bad Request", status_code=400, response=response)
+        assert parse_context_limit(exc) == 100000
+
+    def test_response_body_limit_wins_when_message_has_none(self):
+        response = FakeResponse(
+            status_code=400,
+            text="prompt is too long: 9000 tokens > 8192 maximum",
+        )
+        exc = FakeHTTPError("bad request", status_code=400, response=response)
+        assert parse_context_limit(exc) == 8192
+
+    def test_classification_is_unchanged(self):
+        """Adding the parser must not change how errors are classified."""
+        exc = FakeHTTPError("This model's maximum context length is 128000 tokens.", status_code=400)
+        assert classify_exception(exc).kind is ErrorKind.CONTEXT_LENGTH
+        assert is_context_length_error(exc) is True
+        assert parse_context_limit(exc) == 128000

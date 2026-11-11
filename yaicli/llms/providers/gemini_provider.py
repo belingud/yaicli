@@ -11,6 +11,7 @@ from yaicli.tools.mcp import get_mcp_manager
 from ...config import cfg
 from ...console import get_console
 from ...errors import provider_response_error, wrap_provider_exception
+from ...model_limits import ModelLimits, limits_from_dict
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools.function import get_functions_gemini_format
 from ...usage import usage_from_gemini
@@ -40,6 +41,33 @@ class GeminiProvider(Provider):
         return {
             "api_key": self.config["API_KEY"],
         }
+
+    def model_limits(self, model: str) -> Optional[ModelLimits]:
+        """Fetch Gemini's advertised token limits for ``model``, or ``None``.
+
+        ``self.client.models.get`` is called once with the ``models/`` prefix the
+        SDK expects; a failing lookup (proxy/API-version differences) gets one
+        fallback call with the bare model id. ``input_token_limit`` is the input
+        cap (used as the window) and ``output_token_limit`` the per-call output
+        cap. Every failure returns ``None`` silently — no prints, no caching.
+        """
+        if not model:
+            return None
+        try:
+            try:
+                info = self.client.models.get(model=f"models/{model}")
+            except Exception:
+                info = self.client.models.get(model=model)
+            return limits_from_dict(
+                {
+                    "window": getattr(info, "input_token_limit", None),
+                    "max_output": getattr(info, "output_token_limit", None),
+                    "source": "metadata",
+                    "detail": "gemini models.get",
+                }
+            )
+        except Exception:
+            return None
 
     def get_chat_config(self, tool_policy: ToolPolicy | None = None):
         effective_tool_policy = self.resolve_tool_policy(tool_policy)

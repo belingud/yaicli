@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, Generator, List
+from typing import Any, Dict, Generator, List, Optional
 
 import ollama
 from ollama import ChatResponse
@@ -7,6 +7,7 @@ from ollama import ChatResponse
 from ...config import cfg
 from ...console import get_console
 from ...errors import wrap_provider_exception
+from ...model_limits import ModelLimits, limits_from_dict
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools import get_openai_schemas
 from ...usage import usage_from_ollama
@@ -48,6 +49,40 @@ class OllamaProvider(Provider):
         self.console = get_console()
 
         self.client = ollama.Client(host=self.host, timeout=self.config["TIMEOUT"])
+
+    def model_limits(self, model: str) -> Optional[ModelLimits]:
+        """Return the context length advertised by a local Ollama model.
+
+        ``client.show(model)`` reports the model architecture in ``model_info``;
+        the largest positive ``*.context_length`` entry is the model's real
+        window. ``NUM_CTX`` is deliberately ignored (user decision): only this
+        metadata or an explicit config override is authoritative. One probe, no
+        prints, no caching, and any failure returns ``None``.
+        """
+        if not model:
+            return None
+        try:
+            info = self.client.show(model)
+            model_info = getattr(info, "model_info", None) or {}
+            window: Optional[int] = None
+            for key, value in model_info.items():
+                if not str(key).endswith(".context_length"):
+                    continue
+                try:
+                    candidate = int(value)
+                except (TypeError, ValueError):
+                    continue
+                if candidate > 0 and (window is None or candidate > window):
+                    window = candidate
+            return limits_from_dict(
+                {
+                    "window": window,
+                    "source": "metadata",
+                    "detail": "ollama /api/show",
+                }
+            )
+        except Exception:
+            return None
 
     def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """Convert a list of ChatMessage objects to a list of Ollama message dicts."""

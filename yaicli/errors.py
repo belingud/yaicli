@@ -15,6 +15,7 @@ Exit codes (v0.19 headless contract):
 - 141 broken pipe (`ai --help | head`; may also exit 0 quietly)
 """
 
+import re
 from typing import Any, Optional
 
 try:  # Python >= 3.11
@@ -140,6 +141,22 @@ _CLASS_NAME_NETWORK_PATTERNS = (
     "ssl",
     "disconnect",
     "remoteprotocol",
+)
+
+#: Patterns that carry the *real* context limit in provider error text. Each entry
+#: is ``(compiled regex, group index of the limit)``; the first match wins. The
+#: client learns the extracted value and recomputes the request budget from it.
+_CONTEXT_LIMIT_PATTERNS: tuple[tuple[re.Pattern, int], ...] = (
+    # OpenAI: "This model's maximum context length is 128000 tokens."
+    (re.compile(r"maximum context length is (\d+)\s*tokens", re.IGNORECASE), 1),
+    # Same wording without the "tokens" word.
+    (re.compile(r"maximum context length is (\d+)", re.IGNORECASE), 1),
+    # Anthropic: "prompt is too long: 210000 tokens > 200000 maximum".
+    (re.compile(r"prompt is too long:\s*\d+\s*tokens\s*>\s*(\d+)", re.IGNORECASE), 1),
+    # "<input> + <reserved> > <limit>" style (the limit is the last number).
+    (re.compile(r"(\d+)\s*\+\s*(\d+)\s*>\s*(\d+)"), 3),
+    # Gemini: "exceeds the maximum number of tokens allowed (1048576)."
+    (re.compile(r"exceeds the maximum number of tokens allowed\s*\((\d+)\)", re.IGNORECASE), 1),
 )
 
 
@@ -404,6 +421,48 @@ def is_context_length_error(exc: BaseException) -> bool:
     return classify_exception(exc).kind is ErrorKind.CONTEXT_LENGTH
 
 
+def parse_context_limit(exc: BaseException) -> Optional[int]:
+    """Extract the real context-window limit from a provider context-length error.
+
+    The client learns this value (``model_limits.record_learned_limit``) and
+    recomputes its request budget from it before the single self-heal retry, so a
+    model missing from every static source stops being guessed forever. Supported
+    wordings (case-insensitive), in order:
+
+    * OpenAI: ``"maximum context length is 128000 tokens"`` (and the same phrase
+      without ``tokens``);
+    * Anthropic: ``"prompt is too long: 210000 tokens > 200000"``;
+    * ``"<input> + <max_tokens> > <limit>"`` (limit = last number);
+    * Gemini: ``"exceeds the maximum number of tokens allowed (1048576)"``.
+
+    Returns ``None`` when no positive numeric limit is present — e.g. bare
+    ``context_length_exceeded`` codes or Ollama's number-less ``"input length
+    exceeds the context length"``. The exception message *and* the attached HTTP
+    response body are searched; classification is not changed by this helper.
+    """
+    if exc is None:  # defensive: callers pass the caught exception
+        return None
+    try:
+        text = str(exc) or ""
+    except Exception:  # pragma: no cover - hostile __str__ must not break a turn
+        text = ""
+    try:
+        body = _response_text(exc)
+    except Exception:  # pragma: no cover - defensive: duck-typed response objects
+        body = ""
+    haystack = f"{text}\n{body}"
+    for pattern, group in _CONTEXT_LIMIT_PATTERNS:
+        match = pattern.search(haystack)
+        if match is None:
+            continue
+        try:
+            limit = int(match.group(group))
+        except (TypeError, ValueError):  # pragma: no cover - regex guarantees digits
+            continue
+        return limit if limit > 0 else None
+    return None
+
+
 def wrap_provider_exception(
     exc: BaseException,
     provider: Optional[str] = None,
@@ -488,6 +547,7 @@ __all__ = [
     "classify_exception",
     "is_retryable",
     "is_context_length_error",
+    "parse_context_limit",
     "retry_after_seconds",
     "backoff_delay",
     "ensure_agent_error",

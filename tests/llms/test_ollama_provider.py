@@ -421,3 +421,107 @@ class TestOllamaUsage:
         assert len(responses) == 1
         assert responses[0].tool_call is not None
         assert responses[0].usage == Usage(5, 6, 11)
+
+
+# ---------------------------------------------------------------------------
+# v0.23 K22: provider metadata hook
+# ---------------------------------------------------------------------------
+
+
+class TestOllamaModelLimits:
+    """``OllamaProvider.model_limits`` reads ``/api/show``'s ``model_info``."""
+
+    @pytest.fixture
+    def provider(self):
+        config = {
+            "BASE_URL": "http://localhost:11434",
+            "MODEL": "llama3",
+            "TEMPERATURE": 0.7,
+            "TOP_P": 1.0,
+            "MAX_TOKENS": 1024,
+            "TIMEOUT": 10,
+            "EXTRA_BODY": None,
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+            "THINK": "false",
+            "FREQUENCY_PENALTY": 0.0,
+            "NUM_CTX": 4096,
+        }
+        with patch("ollama.Client") as client_cls:
+            mock_client = MagicMock()
+            client_cls.return_value = mock_client
+            provider = OllamaProvider(config=config)
+        return provider
+
+    def test_returns_largest_context_length_from_model_info(self, provider):
+        info = MagicMock()
+        info.model_info = {
+            "general.architecture": "llama",
+            "llama.context_length": 32768,
+            "llama.rope.scaling.original_context_length": 8192,
+            "some.other.context_length": 16384,
+        }
+        provider.client.show.return_value = info
+
+        limits = provider.model_limits("qwen2.5:7b")
+
+        assert limits is not None
+        assert limits.window == 32768
+        assert limits.source == "metadata"
+        assert limits.detail == "ollama /api/show"
+        provider.client.show.assert_called_once_with("qwen2.5:7b")
+
+    def test_num_ctx_is_ignored(self, provider):
+        """User decision (K22): only model metadata is authoritative, not NUM_CTX."""
+        info = MagicMock()
+        info.model_info = {"llama.context_length": 8192}
+        provider.client.show.return_value = info
+
+        assert provider.model_limits("llama3").window == 8192  # not the config NUM_CTX 4096
+
+    def test_ignores_non_positive_and_non_numeric_values(self, provider):
+        info = MagicMock()
+        info.model_info = {
+            "zero.context_length": 0,
+            "negative.context_length": -1,
+            "text.context_length": "not-a-number",
+            "ok.context_length": "131072",
+        }
+        provider.client.show.return_value = info
+
+        assert provider.model_limits("llama3").window == 131072
+
+    def test_no_usable_context_length_returns_none(self, provider):
+        info = MagicMock()
+        info.model_info = {"general.architecture": "llama", "zero.context_length": 0}
+        provider.client.show.return_value = info
+
+        assert provider.model_limits("llama3") is None
+
+    def test_missing_model_info_returns_none(self, provider):
+        info = MagicMock()
+        info.model_info = None
+        provider.client.show.return_value = info
+
+        assert provider.model_limits("llama3") is None
+
+    def test_show_failure_returns_none_silently(self, provider, capsys):
+        provider.client.show.side_effect = RuntimeError("connection refused")
+
+        assert provider.model_limits("llama3") is None
+        assert capsys.readouterr().err == ""
+
+    def test_empty_model_returns_none_without_probe(self, provider):
+        assert provider.model_limits("") is None
+        provider.client.show.assert_not_called()
+
+    def test_no_provider_side_caching(self, provider):
+        info = MagicMock()
+        info.model_info = {"llama.context_length": 8192}
+        provider.client.show.return_value = info
+
+        first = provider.model_limits("llama3")
+        second = provider.model_limits("llama3")
+
+        assert first == second
+        assert provider.client.show.call_count == 2

@@ -64,6 +64,19 @@ def patched_history_file(tmp_path_factory):
             yield history_file
 
 
+# Session-scoped fixture to keep the v0.23 K22 model-limits cache inside the test
+# sandbox. ``yaicli.model_limits`` resolves the cache path lazily from ``const``,
+# so patching the constant there is enough (no real ~/.config reads/writes).
+@pytest.fixture(scope="session", autouse=True)
+def patched_model_limits_cache(tmp_path_factory):
+    """Point the resolved model-limits cache at a temp file for the whole session."""
+    import yaicli.const
+
+    cache_file = tmp_path_factory.mktemp("model_limits_cache") / "model_limits.json"
+    with patch.object(yaicli.const, "MODEL_LIMITS_CACHE_PATH", cache_file):
+        yield cache_file
+
+
 # Session-scoped fixture that owns the test credentials set above and restores the
 # developer's environment when the session ends.
 @pytest.fixture(scope="session", autouse=True)
@@ -113,4 +126,3 @@ def strip_ansi():
         return _ANSI_ESCAPE.sub("", text)
 
     return _strip
-
