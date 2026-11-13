@@ -37,13 +37,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 #: Generous CI thresholds (P50 ms). Local development can pass stricter ``--max-*`` flags.
+#: ``oneshot_local`` was tightened from 2200ms in v0.24.0: the lite transport no longer
+#: imports the openai SDK on the one-shot path, so the measured P50 dropped to
+#: ~580ms locally / ~620ms was the CI reference *before* the change.
 GATE_LIMITS = {
     "version": 250.0,
     "help": 900.0,
     "template": 900.0,
     "entry_import": 900.0,
     "repl_ready": 1800.0,
-    "oneshot_local": 2200.0,
+    "oneshot_local": 1000.0,
 }
 
 _COMPLETION_RESPONSE = {
