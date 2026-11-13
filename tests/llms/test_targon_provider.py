@@ -25,11 +25,12 @@ class TestTargonProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of TargonProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = TargonProvider(config=mock_config)
 
             assert provider.client_params["base_url"] == TargonProvider.DEFAULT_BASE_URL
@@ -39,13 +40,13 @@ class TestTargonProvider:
     def test_custom_base_url(self, mock_config):
         """Test Targon provider with a custom base URL"""
         mock_config["BASE_URL"] = "https://custom.targon.example.com"
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = TargonProvider(config=mock_config)
             assert provider.client_params["base_url"] == "https://custom.targon.example.com"
 
     def test_completion_params_mapping(self, mock_config):
         """Test that Targon maps frequency_penalty and uses max_tokens, not max_completion_tokens"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = TargonProvider(config=mock_config)
             params = provider.get_completion_params(tool_policy=ToolPolicy(True, False))
 

@@ -25,11 +25,12 @@ class TestAI21Provider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of AI21Provider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = AI21Provider(config=mock_config)
 
             # Check initialization parameters
@@ -45,7 +46,7 @@ class TestAI21Provider:
 
     def test_handle_stream_response(self, mock_config):
         """Test handling of streaming response"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = AI21Provider(config=mock_config)
 
             # Mock the _get_reasoning_content method
@@ -81,7 +82,7 @@ class TestAI21Provider:
 
     def test_handle_stream_response_with_tool_call(self, mock_config):
         """Test handling of streaming response with tool call"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = AI21Provider(config=mock_config)
 
             # Mock the _get_reasoning_content method
@@ -130,7 +131,7 @@ class TestAI21Provider:
 
     def test_process_tool_call_chunk_first_chunk(self, mock_config):
         """Test _process_tool_call_chunk when processing the first chunk"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = AI21Provider(config=mock_config)
 
             # Create mock tool call for first chunk
@@ -147,7 +148,7 @@ class TestAI21Provider:
 
     def test_process_tool_call_chunk_update_existing(self, mock_config):
         """Test _process_tool_call_chunk when updating an existing tool call"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = AI21Provider(config=mock_config)
 
             # Create existing tool call
@@ -167,7 +168,7 @@ class TestAI21Provider:
 
     def test_process_tool_call_chunk_empty_new_arguments(self, mock_config):
         """Test _process_tool_call_chunk when new arguments are empty"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = AI21Provider(config=mock_config)
 
             existing = ToolCall(id="call_xyz", name="fn", arguments='{"existing": "data"}')

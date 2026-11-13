@@ -24,11 +24,12 @@ class TestNvidiaProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of NvidiaProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = NvidiaProvider(config=mock_config)
 
             # Check that the default base URL is used
@@ -39,20 +40,20 @@ class TestNvidiaProvider:
         """Test initialization with a custom base URL"""
         custom_url = "https://custom.nvidia.com/v1"
         mock_config["BASE_URL"] = custom_url
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = NvidiaProvider(config=mock_config)
             assert provider.client_params["base_url"] == custom_url
 
     def test_get_completion_params_no_extra_body(self, mock_config):
         """Test get_completion_params when EXTRA_BODY is not set"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = NvidiaProvider(config=mock_config)
             params = provider.get_completion_params()
             assert "extra_body" not in params
 
     def test_get_completion_params_accepts_tool_policy(self, mock_config):
         """Test get_completion_params accepts request-scoped tool policy."""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = NvidiaProvider(config=mock_config)
             params = provider.get_completion_params(tool_policy=ToolPolicy(False, False))
             assert params["model"] == mock_config["MODEL"]
@@ -62,7 +63,7 @@ class TestNvidiaProvider:
         extra_body_content = {"some_key": "some_value"}
         mock_config["EXTRA_BODY"] = extra_body_content.copy()
 
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = NvidiaProvider(config=mock_config)
             params = provider.get_completion_params()
 
@@ -79,7 +80,7 @@ class TestNvidiaProvider:
             "other_key": "value2",
         }
 
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = NvidiaProvider(config=mock_config)
             params = provider.get_completion_params()
 

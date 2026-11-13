@@ -26,11 +26,12 @@ class TestSambanovaProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of SambanovaProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = SambanovaProvider(config=mock_config)
 
             assert provider.client_params["base_url"] == SambanovaProvider.DEFAULT_BASE_URL
@@ -41,8 +42,8 @@ class TestSambanovaProvider:
         """Temperature within [0, 1] should be left untouched and emit no warning"""
         mock_console = MagicMock()
         with (
-            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
-            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+            patch("openai.OpenAI"),
+            patch("yaicli.llms.openai_wire.get_console", return_value=mock_console),
         ):
             provider = SambanovaProvider(config=mock_config)
             params = provider.get_completion_params(tool_policy=ToolPolicy(True, False))
@@ -57,8 +58,8 @@ class TestSambanovaProvider:
         mock_config["TEMPERATURE"] = bad_temp
         mock_console = MagicMock()
         with (
-            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
-            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+            patch("openai.OpenAI"),
+            patch("yaicli.llms.openai_wire.get_console", return_value=mock_console),
         ):
             provider = SambanovaProvider(config=mock_config)
             params = provider.get_completion_params(tool_policy=ToolPolicy(True, False))
@@ -73,8 +74,8 @@ class TestSambanovaProvider:
         mock_config["MODEL"] = "some-unsupported-model"
         mock_console = MagicMock()
         with (
-            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
-            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+            patch("openai.OpenAI"),
+            patch("yaicli.llms.openai_wire.get_console", return_value=mock_console),
         ):
             provider = SambanovaProvider(config=mock_config)
             provider.get_completion_params(tool_policy=ToolPolicy(True, False))
@@ -87,8 +88,8 @@ class TestSambanovaProvider:
         mock_config["MODEL"] = "some-unsupported-model"
         mock_console = MagicMock()
         with (
-            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
-            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+            patch("openai.OpenAI"),
+            patch("yaicli.llms.openai_wire.get_console", return_value=mock_console),
         ):
             provider = SambanovaProvider(config=mock_config)
             provider.get_completion_params(tool_policy=ToolPolicy(False, False))
@@ -100,8 +101,8 @@ class TestSambanovaProvider:
         """A supported model with functions enabled should not emit the function-call warning"""
         mock_console = MagicMock()
         with (
-            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
-            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+            patch("openai.OpenAI"),
+            patch("yaicli.llms.openai_wire.get_console", return_value=mock_console),
         ):
             provider = SambanovaProvider(config=mock_config)
             provider.get_completion_params(tool_policy=ToolPolicy(True, False))

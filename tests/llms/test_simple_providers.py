@@ -33,11 +33,12 @@ class TestChutesProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of ChutesProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChutesProvider(config=mock_config)
 
             # Check initialization parameters
@@ -64,11 +65,12 @@ class TestDeepSeekProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of DeepSeekProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = DeepSeekProvider(config=mock_config)
 
             # Check initialization parameters
@@ -99,6 +101,7 @@ class TestGroqProvider:
             "EXTRA_BODY": {"N": 2},  # Add EXTRA_BODY with N parameter
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
@@ -107,8 +110,8 @@ class TestGroqProvider:
         mock_console = MagicMock()
 
         with (
-            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
-            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+            patch("openai.OpenAI"),
+            patch("yaicli.llms.openai_wire.get_console", return_value=mock_console),
         ):
             provider = GroqProvider(config=mock_config)
 
@@ -127,7 +130,7 @@ class TestGroqProvider:
         """Test get_completion_params accepts request-scoped tool policy."""
         mock_config["EXTRA_BODY"] = None
 
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = GroqProvider(config=mock_config)
             params = provider.get_completion_params(tool_policy=ToolPolicy(False, False))
 
@@ -141,8 +144,8 @@ class TestGroqProvider:
         mock_console = MagicMock()
 
         with (
-            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
-            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+            patch("openai.OpenAI"),
+            patch("yaicli.llms.openai_wire.get_console", return_value=mock_console),
         ):
             provider = GroqProvider(config=mock_config)
             params = provider.get_completion_params()
@@ -160,8 +163,8 @@ class TestGroqProvider:
         mock_console = MagicMock()
 
         with (
-            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
-            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+            patch("openai.OpenAI"),
+            patch("yaicli.llms.openai_wire.get_console", return_value=mock_console),
         ):
             provider = GroqProvider(config=mock_config)
             params = provider.get_completion_params()
@@ -176,7 +179,7 @@ class TestGroqProvider:
         mock_config["EXTRA_BODY"] = None
         mock_config["REASONING_EFFORT"] = "null"
 
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = GroqProvider(config=mock_config)
             params = provider.get_completion_params()
 
@@ -188,7 +191,7 @@ class TestGroqProvider:
         mock_config["REASONING_EFFORT"] = "null"
         mock_config["MODEL"] = "qwen3-70b"
 
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = GroqProvider(config=mock_config)
             params = provider.get_completion_params()
 
@@ -214,6 +217,7 @@ class TestInfiniAIProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
@@ -222,8 +226,8 @@ class TestInfiniAIProvider:
         mock_console = MagicMock()
 
         with (
-            patch("yaicli.llms.providers.openai_provider.openai.OpenAI"),
-            patch("yaicli.llms.providers.openai_provider.get_console", return_value=mock_console),
+            patch("openai.OpenAI"),
+            patch("yaicli.llms.openai_wire.get_console", return_value=mock_console),
         ):
             provider = InfiniAIProvider(config=mock_config)
 
@@ -260,11 +264,12 @@ class TestModelScopeProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of ModelScopeProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ModelScopeProvider(config=mock_config)
 
             # Check initialization parameters
@@ -290,11 +295,12 @@ class TestOpenRouterProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of OpenRouterProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = OpenRouterProvider(config=mock_config)
 
             # Check initialization parameters
@@ -320,11 +326,12 @@ class TestSiliconFlowProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of SiliconFlowProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = SiliconFlowProvider(config=mock_config)
 
             # Check initialization parameters
@@ -350,11 +357,12 @@ class TestXaiProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of XaiProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = XaiProvider(config=mock_config)
 
             # Check initialization parameters
@@ -381,11 +389,12 @@ class TestCustomBaseURL:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_custom_base_url(self, mock_config):
         """Test providers with custom base URL"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             # Test with Chutes provider
             provider = ChutesProvider(config=mock_config)
             assert provider.client_params["base_url"] == mock_config["BASE_URL"]
@@ -421,11 +430,12 @@ class TestTogetherProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of TogetherProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = TogetherProvider(config=mock_config)
 
             assert provider.client_params["base_url"] == TogetherProvider.DEFAULT_BASE_URL

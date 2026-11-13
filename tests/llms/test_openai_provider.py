@@ -31,6 +31,7 @@ class TestOpenAIProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     @pytest.fixture
@@ -462,7 +463,7 @@ class TestOpenAIProvider:
         assert len(set(ids)) == 2
         assert all(tool_id.startswith("call_") for tool_id in ids)
 
-    @patch("yaicli.llms.providers.openai_provider.get_openai_mcp_tools")
+    @patch("yaicli.llms.openai_wire.get_openai_mcp_tools")
     @patch("yaicli.tools.get_openai_schemas")
     def test_completion_request_tool_policy_disables_all_tools(
         self, mock_get_schemas, mock_get_mcp_tools, mock_config, mock_openai_client
@@ -970,6 +971,7 @@ class TestOpenAIUsage:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": False,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def _provider(self, config, client=None):

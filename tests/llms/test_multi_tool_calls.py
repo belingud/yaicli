@@ -37,6 +37,7 @@ BASE_CONFIG = {
     "EXTRA_BODY": None,
     "ENABLE_FUNCTIONS": False,
     "ENABLE_MCP": False,
+    "LITE_TRANSPORT": False,
     "FREQUENCY_PENALTY": 0.0,
     "STREAM": False,
     "TOOL_CONFIRM": False,

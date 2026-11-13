@@ -51,10 +51,11 @@ class TestOpenAICompatibleProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def _make_provider(self, mock_config, chunks):
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = OpenAICompatibleProvider(config=mock_config)
         mock_client = MagicMock()
         mock_client.chat.completions.create.return_value = chunks

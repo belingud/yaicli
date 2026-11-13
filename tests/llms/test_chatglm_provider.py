@@ -28,6 +28,7 @@ class TestChatglmProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     @pytest.fixture
@@ -40,7 +41,7 @@ class TestChatglmProvider:
 
     def test_init(self, mock_config):
         """Test initialization of ChatglmProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
             # Check initialization parameters
@@ -66,7 +67,7 @@ class TestChatglmProvider:
 
     def test_handle_normal_response_with_content(self, mock_config):
         """Test handling of normal response with content"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
             # Create a mock response with content
@@ -93,7 +94,7 @@ class TestChatglmProvider:
 
     def test_handle_normal_response_with_think_tag(self, mock_config):
         """Test handling of normal response with <think> tags"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
             # Create a mock response with <think> tags
@@ -120,7 +121,7 @@ class TestChatglmProvider:
 
     def test_handle_normal_response_with_model_extra(self, mock_config):
         """Test handling of normal response with model_extra reasoning content"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
             # Mock the _get_reasoning_content method
@@ -150,7 +151,7 @@ class TestChatglmProvider:
 
     def test_handle_normal_response_with_tool_call(self, mock_config):
         """Test handling of normal response with tool call"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
             # Create a mock tool call
@@ -187,7 +188,7 @@ class TestChatglmProvider:
 
     def test_handle_normal_response_with_tool_call_in_content(self, mock_config):
         """Test handling of normal response with tool call in content"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
             # Create content with tool call JSON
@@ -231,7 +232,7 @@ class TestChatglmProvider:
 
     def test_handle_stream_response(self, mock_config):
         """Test handling of streaming response"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
             # Mock the _get_reasoning_content method
@@ -278,7 +279,7 @@ class TestChatglmProvider:
 
     def test_handle_stream_response_with_tool_call(self, mock_config):
         """Test handling of streaming response with tool call"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
             # Mock the _get_reasoning_content method
@@ -346,7 +347,7 @@ class TestChatglmProvider:
 
     def test_parse_choice_from_content(self, mock_config):
         """Test parsing choice from content"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
             # Valid content
@@ -378,7 +379,7 @@ class TestChatglmProvider:
         Regression test for HuggingFace's ``ChatCompletionOutputMessage`` (and non-thinking
         ChatGLM responses), which do not expose a ``reasoning_content`` attribute at all.
         """
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
         response = ChatCompletion.model_validate(
@@ -408,7 +409,7 @@ class TestChatglmProvider:
 
     def test_handle_normal_response_keeps_reasoning_content(self, mock_config):
         """When reasoning_content is present it is still returned as reasoning."""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
         message = MagicMock()
@@ -431,7 +432,7 @@ class TestChatglmProvider:
 
     def test_handle_stream_response_without_reasoning_content_attribute(self, mock_config):
         """Streaming deltas without a reasoning_content attribute must not crash."""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = ChatglmProvider(config=mock_config)
 
         chunk = ChatCompletionChunk.model_validate(

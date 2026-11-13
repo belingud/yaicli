@@ -25,11 +25,12 @@ class TestSparkProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of SparkProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = SparkProvider(config=mock_config)
 
             expected_api_key = f"{mock_config['API_KEY']}:{mock_config['API_SECRET']}"
@@ -50,7 +51,7 @@ class TestSparkProvider:
         """Test initialization with a custom base URL"""
         custom_url = "https://custom.spark.com/v1"
         mock_config["BASE_URL"] = custom_url
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = SparkProvider(config=mock_config)
             assert provider.client_params["base_url"] == custom_url
 
@@ -69,7 +70,7 @@ class TestSparkProvider:
     def test_init_with_existing_extra_body(self, mock_config):
         """Test that APP_ID is added to an existing extra_body"""
         mock_config["EXTRA_BODY"] = {"existing_param": "value"}
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = SparkProvider(config=mock_config)
             assert "extra_body" in provider.completion_params
             assert provider.completion_params["extra_body"]["uid"] == mock_config["APP_ID"]

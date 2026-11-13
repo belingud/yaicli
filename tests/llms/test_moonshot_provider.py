@@ -417,7 +417,7 @@ class TestMoonshotProvider:
         mock_response.choices = [mock_choice]
         mock_openai_client.chat.completions.create.return_value = mock_response
 
-        with patch("yaicli.llms.providers.openai_provider.get_openai_mcp_tools") as mock_mcp_tools:
+        with patch("yaicli.llms.openai_wire.get_openai_mcp_tools") as mock_mcp_tools:
             mock_mcp_tools.return_value = []
 
             with patch("openai.OpenAI"):

@@ -26,11 +26,12 @@ class TestBailianProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of BailianProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = BailianProvider(config=mock_config)
 
             # Check initialization parameters
@@ -45,7 +46,7 @@ class TestBailianProvider:
         """Test initialization with a custom base URL"""
         custom_url = "https://custom.bailian.com/v1"
         mock_config["BASE_URL"] = custom_url
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = BailianProvider(config=mock_config)
             assert provider.client_params["base_url"] == custom_url
 
@@ -68,11 +69,12 @@ class TestBailianIntlProvider:
             "EXTRA_BODY": None,
             "ENABLE_FUNCTIONS": True,
             "ENABLE_MCP": False,
+            "LITE_TRANSPORT": False,
         }
 
     def test_init(self, mock_config):
         """Test initialization of BailianIntlProvider"""
-        with patch("yaicli.llms.providers.openai_provider.openai.OpenAI"):
+        with patch("openai.OpenAI"):
             provider = BailianIntlProvider(config=mock_config)
 
             # Check that the international base URL is used
