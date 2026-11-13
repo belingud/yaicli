@@ -65,6 +65,14 @@ MODEL=gpt-4
 - ✅ Azure integration
 - ✅ High context windows
 
+## Transport
+
+Since v0.24.0, `openai` requests use the built-in httpx transport by default instead of the `openai`
+Python SDK, which speeds up one-shot startup; responses, tool calls and error messages are
+unchanged. Set `LITE_TRANSPORT=false` (or `YAI_LITE_TRANSPORT=false`) to fall back to the SDK.
+`openai-azure` always uses the SDK. See
+[Transport Selection](../usage/configuration.md#transport-selection).
+
 ## Important Notes
 
 - API keys start with `sk-`

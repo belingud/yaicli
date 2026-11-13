@@ -168,6 +168,10 @@ API_KEY=your-api-key
 MODEL=model-name
 ```
 
+Both the `openai` and `openai-compatible` providers use the built-in httpx transport by default
+since v0.24.0; set `LITE_TRANSPORT=false` (or `YAI_LITE_TRANSPORT=false`) to use the OpenAI SDK
+instead — see [Transport Selection](../usage/configuration.md#transport-selection).
+
 ## Switching Providers via Environment Variables
 
 You can temporarily switch providers using environment variables:

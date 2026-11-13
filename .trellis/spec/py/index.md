@@ -70,6 +70,8 @@ Module map:
 | `yaicli/function_schema.py` | Lightweight `OpenAISchema` replacing `instructor.OpenAISchema`. |
 | `yaicli/functions/` | Builtin function templates (`buildin/`) + install/reinstall/list callbacks and `functions_manifest.json` (version+sha256, stale-copy warning). |
 | `yaicli/llms/` | `LLMClient` (tool loop, budget, retry, depth limit), `Provider` ABC/`ProviderFactory`, one module per provider in `providers/`. |
+| `yaicli/llms/openai_wire.py` | OpenAI Chat Completions wire logic shared by both transports (params/tools/messages/handlers/error wrapping); **no SDK import at module import time** (v0.24 P1-c). |
+| `yaicli/llms/lite_transport.py` | httpx implementation of `client.chat.completions.create` + SSE parsing + duck-typed response objects + `LiteAPIError`; used by `openai`/`openai-compatible` when `LITE_TRANSPORT=true` (v0.24 P1-c, MUST 遵守 [provider-guidelines.md](./provider-guidelines.md) 的 Transports 一节). |
 | `yaicli/tools/` | Function schema aggregation/caching, builtin function direct-loading + user overrides, MCP integration, approval store (rules v2 + audit), `risk.py`, `limits.py`, `workspace.py` (write guard/backups/undo), `execute_tool_call` (arg repair, truncation, workspace guard, stderr-aware console). |
 | `yaicli/utils.py` | Shell/OS detection, `str2bool`, result-option callbacks, event-loop helper. |
 

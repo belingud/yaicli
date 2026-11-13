@@ -39,6 +39,7 @@ Inherit the narrowest family and override only what its protocol changes.
 | OpenAI-compatible | `openai_provider.OpenAIProvider` | `xai`, `together`, `siliconflow`, `chutes`, `modelscope`, `moonshot`, `openrouter`, `targon`, `yi` | only `DEFAULT_BASE_URL`, sometimes `COMPLETION_PARAMS_KEYS` |
 | OpenAI wire, different SDK client | `OpenAIProvider` | `doubao` (`Ark`), `cerebras` (`Cerebras`), `fireworks` (`Fireworks`) | `CLIENT_CLS` + `get_client_params()`; `cerebras` also strips unsupported schema keys in `get_tools()` |
 | Generic OpenAI endpoint | `openai_compatible_provider.OpenAICompatibleProvider` | `openai-compatible` | only `_handle_stream_response()`, with complete-JSON tool-call detection |
+| OpenAI wire transport | `openai_wire.OpenAIWireProvider` | `openai_provider.OpenAIProvider` (SDK), `lite_transport.LiteChatClient` (httpx) | transport-agnostic logic: params/tools/messages/handlers/errors. Subclasses implement `create_client()` |
 | Anthropic-compatible | `anthropic_provider.AnthropicProvider` | `anthropic-bedrock`, `anthropic-vertex`, `longcat-anthropic` | `get_client_params()`: AWS env map, GCP project/region, or a `Bearer` `Authorization` header |
 | Gemini-compatible | `gemini_provider.GeminiProvider` | `vertexai` | `vertexai` only swaps `get_client_params()` (`vertexai=True`, `project`, `location`) |
 | Native SDK | `Provider` directly | `ollama`, `cohere` (+ `cohere-bedrock`/`cohere-sagemaker`), `mistral` | own `completion()`, message conversion, streaming, and request params |
@@ -61,6 +62,47 @@ assistant history with `reasoning_content`. `CerebrasProvider` shows the client 
 Registry keys and class names are independent: the class may be named `OpenAIAzure` and is still
 keyed `openai-azure`; `CohereBadrockProvider` (sic) is keyed `cohere-bedrock`. The key is the only
 user-facing name.
+
+## Transports: openai SDK vs lite (v0.24 P1-c)
+
+The OpenAI Chat Completions wire logic is shared by two transports. Which one a
+provider uses is decided **once at construction time**, never per request:
+
+| Backend | Class | Selected when |
+| --- | --- | --- |
+| httpx lite transport | `yaicli.llms.lite_transport.LiteChatClient` | config `LITE_TRANSPORT` is true **and** the exact provider class name is in `LITE_TRANSPORT_PROVIDER_CLASSES` (`OpenAIProvider`, `OpenAICompatibleProvider`) |
+| openai SDK | `openai.OpenAI` (or subclass `CLIENT_CLS`) | everything else: every other OpenAI-family provider, custom-`CLIENT_CLS` subclasses, `openai-azure`, user subclasses, and `LITE_TRANSPORT=false` |
+
+Rules for changing this area:
+
+- **Wire logic lives in `yaicli/llms/openai_wire.py`.** Do not fork params/tools/handlers/error
+  wrapping into a backend. A backend only implements `create_client()`, whose result must expose
+  `client.chat.completions.create(**params)` exactly like the SDK.
+- **No SDK import at module import time.** `openai_wire.py` and `lite_transport.py` are imported on
+  the one-shot path; importing `openai` there re-introduces the ~0.6s startup cost. `openai` is
+  imported only inside `create_client()`. Regression test: subprocess `python -c "import
+  yaicli.llms.lite_transport, sys; assert 'openai' not in sys.modules"` (both new modules).
+- **Duck-typed parity contract.** The handlers read SDK attributes; `lite_transport` reproduces
+  exactly those fields on `LiteCompletion`/`LiteMessage`/`LiteToolCall`/`LiteChunk`/`LiteDelta`
+  (`choices`, `message.content`, `reasoning_content`, `tool_calls[].function.name/arguments`,
+  `usage` as a Mapping, `model_extra` for extras/`{"error": ...}`). When a handler starts reading a
+  new field, add it to the lite objects in the same change and extend
+  `tests/llms/test_lite_parity.py` (SDK `model_validate` vs `MockTransport` lite, normalized
+  `LLMResponse` sequences must be identical).
+- **HTTP/error parity.** `LiteAPIError` carries the real `httpx.Response`, so
+  `errors.wrap_provider_exception`/`retry_after_seconds` classify HTTP failures identically;
+  network/timeout exceptions are pre-classified (`NETWORK`/`TIMEOUT`, retryable). Streaming
+  `stream_options` rejections keep the SDK's one retry without the parameter. A `200` response
+  whose first SSE chunk contains `{"error": ...}` must raise, never render as content.
+- **No hidden retries in the transport.** `LLMClient`'s `RETRY_*` layer owns retry semantics; the SDK
+  retries internally but the lite transport must not, or one failure would back off twice.
+- **Startup budget is a gate.** `scripts/bench.py --gate` enforces `oneshot_local` (1000ms P50).
+  Any change touching `openai_wire.py`, `lite_transport.py`, `openai_provider.py` or the provider
+  factory must keep that gate green; the reference result is `oneshot_local` P50 ≈580ms locally
+  (~622ms in CI before the lite transport existed).
+- **Scope changes are config-driven, not implicit.** Adding a provider class to
+  `LITE_TRANSPORT_PROVIDER_CLASSES` is a behavior change for its users: add parity coverage for it
+  and a docs note, and keep the SDK path working for `LITE_TRANSPORT=false`.
 
 ## Streaming and Tool Calls
 
@@ -188,9 +230,12 @@ LongCat strips `<longcat_tool_call>...</longcat_tool_call>` out of reasoning bef
 ## Testing Rules
 
 - Never call a real API. Construct providers with `patch.object(<Provider>, "CLIENT_CLS",
-  MagicMock())`, then assign `provider.client = mock_client` before calling `completion()`.
-  Patching `openai.OpenAI` does **not** intercept construction, because `CLIENT_CLS = openai.OpenAI`
-  is bound at import time (`tests/llms/test_deepseek_provider.py` gets this right).
+  MagicMock())` or `patch("openai.OpenAI")`, then assign `provider.client = mock_client` before
+  calling `completion()`. Since v0.24 the openai SDK is imported lazily inside
+  `OpenAIProvider.create_client()`, so `patch("openai.OpenAI")` **does** intercept SDK construction
+  (there is no `yaicli.llms.providers.openai_provider.openai` module attribute to patch any more).
+  SDK-path tests must also set `"LITE_TRANSPORT": False` in the mock config, otherwise the provider
+  builds a `LiteChatClient` and the SDK mock is never used.
 - Patch tool-schema loaders at the provider module, not at `yaicli.tools`:
   `@patch("yaicli.llms.providers.openai_provider.get_openai_schemas", return_value=[])`,
   `patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")`. OpenAI-family providers

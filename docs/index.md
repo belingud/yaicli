@@ -80,7 +80,7 @@ properly.
 | --- | --- |
 | `ai --version` startup (P50) | ≈474–504 ms baseline → **≈40–45 ms** (v0.19 fast path) |
 | `--help` startup (P50) | ≈519–568 ms baseline → **≈450–500 ms** after the v0.20 lazy-import work (the CLI stack is no longer imported for help) |
-| one-shot local overhead (`ai "hi"`, no network) | ≈1.5–1.6 s baseline → **≈1.6 s** in the same sandbox; prompt_toolkit is no longer imported, provider-SDK init (≈0.9 s) still dominates |
+| one-shot local overhead (`ai "hi"`, no network) | ≈1.5–1.6 s baseline → **≈1.6 s** in the same sandbox (v0.20; prompt_toolkit is no longer imported, provider-SDK init still dominated). Since v0.24 the default `openai`/`openai-compatible` path uses the built-in httpx transport and skips the SDK import: `scripts/bench.py` `oneshot_local` P50 **1623 ms (SDK) → 584 ms (lite)**, same sandbox, n=5 (≈1.0 s / 64% faster); other providers still initialise their SDK |
 | REPL ready (first prompt) | ≈1.55–1.75 s baseline → **≈0.55–0.65 s** (the LLM client/SDK is constructed on the first request) |
 | base install closure | **95 dists** (v0.19.1: 103): fetch/search/MCP stay in base, the boto3/botocore/google-auth cloud closure (~25–29 MB) is now opt-in via `[bedrock]`/`[vertex]` |
 | idle RSS | ≈30 MB for `--version`; ≈65 MB for a REPL with the OpenAI SDK loaded |

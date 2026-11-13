@@ -164,7 +164,7 @@ headless approval flags.
 
 - **Layered Configuration**: Environment variables > Config file > Sensible defaults
 - **Any endpoint**: Works with any OpenAI-compatible API endpoint
-- **Debugging Tools**: Verbose mode with detailed API tracing
+- **Debugging Tools**: Verbose mode with detailed API tracing, including the active transport (`Transport: lite (httpx)` / `Transport: openai SDK`)
 
 ![What is life](artwork/reasoning_example.png)
 
@@ -173,14 +173,14 @@ Full document: https://belingud.github.io/yaicli/
 ## 🪶 Lightweight & scope
 
 YAICLI stays small on purpose: one `pip install`, no daemon, no background process, no vector
-index. The numbers below were measured on the same macOS sandbox across the v0.19 fast path and the
-v0.20 startup/packaging work.
+index. The numbers below were measured on the same macOS sandbox across the v0.19 fast path, the
+v0.20 startup/packaging work and the v0.24 lite transport.
 
 | Metric (baseline = v0.18, macOS sandbox) | Value |
 | --- | --- |
 | `ai --version` startup (P50) | ≈474–504 ms baseline → **≈40–45 ms** (v0.19 fast path) |
 | `--help` startup (P50) | ≈519–568 ms baseline → **≈450–500 ms** after the v0.20 lazy-import work (the CLI stack is no longer imported for help) |
-| one-shot local overhead (`ai "hi"`, no network) | ≈1.5–1.6 s baseline → **≈1.6 s** in the same sandbox; prompt_toolkit is no longer imported, provider-SDK init (≈0.9 s) still dominates |
+| one-shot local overhead (`ai "hi"`, no network) | ≈1.5–1.6 s baseline → **≈1.6 s** in the same sandbox (v0.20; prompt_toolkit is no longer imported, provider-SDK init still dominated). Since v0.24 the default `openai`/`openai-compatible` path uses the built-in httpx transport and skips the SDK import: `scripts/bench.py` `oneshot_local` P50 **1623 ms (SDK) → 584 ms (lite)**, same sandbox, n=5 (≈1.0 s / 64% faster); other providers still initialise their SDK |
 | REPL ready (first prompt) | ≈1.55–1.75 s baseline → **≈0.55–0.65 s** (the LLM client/SDK is constructed on the first request) |
 | base install closure | **95 dists** (v0.19.1: 103): fetch/search/MCP stay in base, the boto3/botocore/google-auth cloud closure (~25–29 MB) is now opt-in via `[bedrock]`/`[vertex]` |
 | idle RSS | ≈30 MB for `--version`; ≈65 MB for a REPL with the OpenAI SDK loaded |
@@ -290,7 +290,8 @@ can point it at any of these providers (or any OpenAI-compatible endpoint) by ch
 - xAI
 
 Any other OpenAI-compatible endpoint can be used with the `openai` or `openai-compatible`
-provider plus a custom `BASE_URL`. See the [provider overview](docs/providers/overview.md) for
+provider plus a custom `BASE_URL`. Since v0.24 both use the built-in httpx transport by default
+(set `LITE_TRANSPORT=false` to use the OpenAI SDK). See the [provider overview](docs/providers/overview.md) for
 per-provider setup and the full configuration matrix.
 
 ## ⚙️ Configuration
@@ -329,6 +330,7 @@ The default configuration file is `config.ini` inside the config directory above
 | `OS_NAME`              | Operating system                            | `auto`                   | `YAI_OS_NAME`              |
 | `STREAM`               | Enable streaming                            | `true`                   | `YAI_STREAM`               |
 | `TIMEOUT`              | API timeout (seconds)                       | `60`                     | `YAI_TIMEOUT`              |
+| `LITE_TRANSPORT`       | `openai`/`openai-compatible`: use the built-in httpx transport instead of the `openai` SDK (`false` = SDK) | `true` | `YAI_LITE_TRANSPORT` |
 | `EXTRA_HEADERS`        | Extra headers                               | -                        | `YAI_EXTRA_HEADERS`        |
 | `EXTRA_BODY`           | Extra body                                  | -                        | `YAI_EXTRA_BODY`           |
 | `REASONING_EFFORT`     | Reasoning effort                            | -                        | `YAI_REASONING_EFFORT`     |

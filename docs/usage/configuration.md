@@ -69,6 +69,9 @@ FREQUENCY_PENALTY=0.0
 TOP_P=1.0
 MAX_TOKENS=1024
 TIMEOUT=60
+# true: use the built-in httpx transport for openai/openai-compatible requests
+# (faster one-shot startup); false: use the openai SDK.
+LITE_TRANSPORT=true
 # JSON strings
 EXTRA_HEADERS=
 EXTRA_BODY=
@@ -221,6 +224,7 @@ TOOL_AUDIT=true
 | `OS_NAME`              | Operating system                            | `auto`                   | `YAI_OS_NAME`              |
 | `STREAM`               | Enable streaming                            | `true`                   | `YAI_STREAM`               |
 | `TIMEOUT`              | API timeout (seconds)                       | `60`                     | `YAI_TIMEOUT`              |
+| `LITE_TRANSPORT`       | `openai`/`openai-compatible`: use the built-in httpx transport instead of the `openai` SDK (`false` = SDK; see [Transport Selection](#transport-selection)) | `true` | `YAI_LITE_TRANSPORT` |
 | `EXTRA_HEADERS`        | Extra headers                               | -                        | `YAI_EXTRA_HEADERS`        |
 | `EXTRA_BODY`           | Extra body                                  | -                        | `YAI_EXTRA_BODY`           |
 | `REASONING_EFFORT`     | Reasoning effort                            | -                        | `YAI_REASONING_EFFORT`     |
@@ -357,6 +361,37 @@ Or limit thinking tokens:
 ```ini
 EXTRA_BODY={"thinking_budget": 4096}
 ```
+
+## Transport Selection
+
+Since v0.24.0, the `openai` and `openai-compatible` providers send Chat Completions requests through
+a built-in HTTP transport (httpx) by default, instead of importing the `openai` Python SDK. This
+removes the SDK import from the first request and makes one-shot runs such as `ai "hi"` start about
+1 s faster in the benchmark sandbox. The request URL, headers, body, streaming events, tool calls,
+usage accounting and error classification are the same either way — only the HTTP client that
+performs the request changes. No configuration is needed.
+
+The switch is scoped to exactly these two providers. Every other provider — `deepseek`, `groq`,
+`openrouter`, `ollama`, `anthropic` and the rest — keeps using its own SDK, and `openai-azure` plus
+custom subclasses of the OpenAI provider always use the `openai` SDK even when the setting is on.
+The choice is made once when the provider is constructed, so restart `ai` after changing it.
+
+To fall back to the `openai` SDK, add one line to `config.ini`:
+
+```ini
+LITE_TRANSPORT=false
+```
+
+or export `YAI_LITE_TRANSPORT=false` for a single run. `ai --verbose "..."` prints the active client
+when the provider is constructed — `Transport: lite (httpx)` or `Transport: openai SDK`; in
+`-p`/`--json` mode this line goes to stderr so stdout stays machine-readable.
+
+Proxies and timeouts are handled by httpx: `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` are honoured
+the same way the SDK honoured them, and `TIMEOUT` still applies per request. Retries for 429/5xx/
+network failures are performed by YAICLI's `RETRY_*` layer (not inside the client), so they behave
+the same on both paths. If a proxy or gateway returns an unexpected streaming format, set
+`LITE_TRANSPORT=false` and retry to confirm whether the transport is involved, then include the
+`ai --verbose` output in a bug report.
 
 ## Environment Variables
 

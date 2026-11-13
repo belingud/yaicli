@@ -1,6 +1,6 @@
 # Upgrade Notes
 
-This page explains what changes when you upgrade to **v0.21** and what (if anything) you must do.
+This page explains what changes when you upgrade to **v0.24** and what (if anything) you must do.
 Old config files keep working: newly added keys simply fall back to their defaults.
 
 ## Upgrade the package
@@ -42,6 +42,44 @@ ai --list-functions         # shows builtin/user source and warns about stale co
 If a user file has the same tool name as a built-in, the user file wins. If you want the new
 built-in version, delete the old copy (or run `--reinstall-functions`) and restart `ai`.
 YAICLI only warns about stale copies; it never silently overwrites your customisations.
+
+## What changed in v0.24
+
+- **`openai` and `openai-compatible` use a built-in HTTP transport by default.** Chat Completions
+  requests for these two providers now go through a small httpx client instead of importing the
+  `openai` Python SDK. For one-shot runs this removes the SDK import (≈0.6 s in the benchmark
+  sandbox) from the startup path, so they start sooner.
+  The request URL/headers/body, streaming output, tool calls, usage and error classification are
+  unchanged — only the HTTP client that performs the request differs.
+- **Other providers are untouched.** Every other provider keeps using its own SDK, and
+  `openai-azure` plus custom provider subclasses always use the `openai` SDK even with the default
+  setting.
+- **`--verbose` names the active transport.** It prints `Transport: lite (httpx)` or
+  `Transport: openai SDK` when the provider is constructed (in `-p`/`--json` mode the line goes to
+  stderr, so stdout stays machine-readable).
+- **No data or format changes.** Sessions, config files, JSON/NDJSON output and exit codes are
+  unchanged; there is no migration step.
+
+### Rolling back the transport (one line)
+
+Output and tool behaviour are identical on both paths; only the initialisation is slower with the
+SDK (≈0.6 s in the benchmark sandbox). To restore it, add one line to `config.ini` and restart `ai`:
+
+```ini
+LITE_TRANSPORT=false
+```
+
+`YAI_LITE_TRANSPORT=false` does the same for a single shell/run. See
+[Transport Selection](../usage/configuration.md#transport-selection) for the exact scope and
+troubleshooting.
+
+No action is normally needed.
+
+### New configuration keys (v0.24)
+
+| Key | Default | Purpose |
+| --- | --- | --- |
+| `LITE_TRANSPORT` | `true` | `openai`/`openai-compatible`: use the built-in httpx transport (`false` = `openai` SDK); see [Transport Selection](../usage/configuration.md#transport-selection) |
 
 ## What changed in v0.23
 
