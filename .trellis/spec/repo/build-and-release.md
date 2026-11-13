@@ -143,35 +143,42 @@ CI (`test.yml`) runs the same suite on Python 3.10 / 3.12 / 3.13 with `uv`; `tox
 3.11 locally. Both are optional for everyday work (`uv run pytest`), but the CI matrix is the gate a
 release must pass.
 
-## Branch Workflow (branch first)
+## Branch Workflow (branch + PR)
 
-`master` is the release branch; feature/fix/docs work is never committed to it directly. Cut a branch
-from the current `master`, do the work there, then merge back.
+`master` is the release branch; feature/fix/docs work is never committed or pushed to it directly.
+Every change goes through a branch cut from `master` and a pull request.
 
 ```bash
-git switch master
-git switch -c feat/<slug>          # prefixes used in this repo: feat/ fix/ docs/ chore/
+git switch master && git pull --ff-only
+git switch -c feat/<slug>          # prefixes: feat/ fix/ chore/
 # ... implement + gates + commit on the branch ...
-git switch master && git merge --ff-only feat/<slug>
-git push origin master
+git push -u origin feat/<slug>
+gh pr create --base master --title "<conventional title>" --body "<what/why + test evidence>"
+gh pr checks <number>              # wait for CI to be green
+# ASK THE USER before merging; only after an explicit yes:
+gh pr merge <number> --merge --delete-branch
+git switch master && git pull --ff-only
 ```
 
-- Open a PR instead of the fast-forward merge only when the user asks for review.
-- **Trellis metadata**: record the branch on the task —
-  `python3 ./.trellis/scripts/task.py set-branch <task> feat/<slug>` and
-  `set-base-branch <task> master`. `task.py archive` refuses a task whose `branch` and `base_branch`
-  are the same (`master` == `master`); `--skip-branch-validation` is only for tasks that never had a
-  branch at all.
-- **Trellis bookkeeping commits** (task archive / session journal auto-commits) land on whatever
-  branch is checked out. Merge the feature branch first so those bookkeeping commits also end up on
-  `master`.
-- **Releases are cut from `master`** after the feature branch is merged: `bump2version`, changelog and
-  the tag are made on `master`, not on the feature branch.
+- **Merging always needs the user's explicit confirmation**, even though `gh` is installed and
+  authenticated. Report the PR number + check status, ask, and wait for the answer.
+- Use `gh pr merge --merge` (merge commit) to match the repository's existing PR history; `--squash`
+  only when the user asks for it.
+- The long-lived `docs` branch (docs-site deploy) occupies the `docs/` ref namespace — a `docs/<slug>`
+  branch cannot be created. Use `chore/docs-<slug>` for documentation-only changes.
+- **Trellis metadata**: `python3 ./.trellis/scripts/task.py set-branch <task> feat/<slug>` and
+  `set-base-branch <task> master`. `task.py create-pr` is not available in this checkout — create PRs
+  with `gh`. `task.py archive` refuses a task whose `branch` and `base_branch` are both `master`
+  (`--skip-branch-validation` is only for tasks that never had a branch at all).
+- **Trellis bookkeeping commits** (task archive / session journal auto-commits) are made after the PR
+  is merged; they are the only direct `master` commits and may be pushed as a follow-up.
+- **Releases are cut from `master`** after the PR is merged: `bump2version`, changelog and the tag are
+  made on `master`, not on the feature branch.
 
 ## Release Checklist
 
-0. Merge the finished feature branch into `master` (`git switch master && git merge --ff-only <branch>`)
-   and push it — releases are cut from `master`.
+0. Merge the release PR (after the user confirms) and sync master
+   (`git switch master && git pull --ff-only`) — releases are cut from `master`.
 1. `uv run pytest` and `uv run ruff check yaicli tests` are green (full suite; see
    [../py/quality-guidelines.md](../py/quality-guidelines.md)).
 2. Update user docs for the release (README / docs pages / `mkdocs.yml` nav as needed).
