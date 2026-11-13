@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/py/provider-guidelines.md", "reason": "LLM provider contract: completion()/streaming/tool-call/reasoning/error rules the lite transport must preserve"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "test/lint/verification commands and coverage expectations for this repo"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "verbose/diagnostic channels: stdout vs stderr, machine mode behavior"}
+{"file": ".trellis/spec/repo/build-and-release.md", "reason": "branch+PR flow and the no-release constraint for this task"}
+{"file": ".trellis/spec/repo/feature-spec-writing.md", "reason": "PRD Feature examples convention already applied in prd.md"}
