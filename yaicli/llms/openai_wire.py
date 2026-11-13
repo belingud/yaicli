@@ -1,0 +1,505 @@
+"""Shared OpenAI Chat Completions wire logic (SDK and lite transport).
+
+This module owns everything an OpenAI-wire provider does *around* the HTTP
+request: parameter/tools/schema assembly, message conversion, the completion
+loop, non-streaming/streaming response handling, tool-call accumulation,
+reasoning extraction and classified error wrapping.
+
+It deliberately does **not** import the ``openai`` SDK (v0.24 P1-c). Two
+backends plug into :meth:`OpenAIWireProvider.create_client`:
+
+* :class:`~yaicli.llms.providers.openai_provider.OpenAIProvider` — the original
+  SDK client, lazily imported and still the default for every provider except
+  the two listed below (and the fallback when ``LITE_TRANSPORT=false``);
+* :class:`~yaicli.llms.lite_transport.LiteChatClient` — a direct httpx client
+  that avoids the ~0.6s SDK import on the one-shot path.
+
+Both return objects with the same duck-typed shape (``choices``,
+``message.content``, ``delta.tool_calls``, ``usage``, ``model_extra``), so this
+module is shared verbatim: SDK and lite behavior can not drift. The binding
+parity contract lives in ``.trellis/spec/py/provider-guidelines.md``.
+"""
+
+from copy import deepcopy
+from typing import Any, Dict, Generator, Iterable, List, Optional
+from uuid import uuid4
+
+from ..config import cfg
+from ..console import get_console, print_untrusted
+from ..errors import provider_response_error, wrap_provider_exception
+from ..exceptions import MCPToolsError
+from ..schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
+from ..tools import get_openai_mcp_tools, get_openai_schemas
+from ..usage import usage_from_openai
+from .provider import Provider
+
+
+class OpenAIWireProvider(Provider):
+    """OpenAI Chat Completions provider logic independent of the transport.
+
+    Subclasses must implement :meth:`create_client`, which returns an object
+    exposing ``client.chat.completions.create(**params)`` (the openai SDK
+    client or :class:`~yaicli.llms.lite_transport.LiteChatClient`).
+    """
+
+    DEFAULT_BASE_URL = "https://api.openai.com/v1"
+    #: Resolved lazily by the SDK backend; ``None`` means "openai.OpenAI".
+    CLIENT_CLS = None
+    # Base mapping between config keys and API parameter names
+    COMPLETION_PARAMS_KEYS = {
+        "model": "MODEL",
+        "temperature": "TEMPERATURE",
+        "top_p": "TOP_P",
+        "max_completion_tokens": "MAX_TOKENS",
+        "timeout": "TIMEOUT",
+        "extra_body": "EXTRA_BODY",
+        "reasoning_effort": "REASONING_EFFORT",
+        "frequency_penalty": "FREQUENCY_PENALTY",
+    }
+
+    def __init__(self, config: dict = cfg, verbose: bool = False, **kwargs):
+        self.config = config
+        if not self.config.get("API_KEY"):
+            raise ValueError("API_KEY is required")
+        self.enable_function = self.config["ENABLE_FUNCTIONS"]
+        self.enable_mcp = self.config["ENABLE_MCP"]
+        self.verbose = verbose
+        self.console = get_console()
+
+        # Initialize client (SDK or lite transport; concrete backends decide).
+        self.client_params = self.get_client_params()
+        self.client = self.create_client()
+
+        # Store completion params
+        self._completion_params: Optional[Dict[str, Any]] = None
+
+    def create_client(self) -> Any:
+        """Build the transport client used by :meth:`completion`.
+
+        Implemented by the backends: the SDK backend imports ``openai`` lazily
+        and instantiates ``CLIENT_CLS``; the lite backend returns a
+        ``LiteChatClient``. Must expose ``client.chat.completions.create``.
+        """
+        raise NotImplementedError
+
+    @property
+    def completion_params(self) -> Dict[str, Any]:
+        if self._completion_params is None:
+            self._completion_params = self.get_completion_params()
+        return deepcopy(self._completion_params)
+
+    def get_client_params(self) -> Dict[str, Any]:
+        """Get the client parameters"""
+        # Initialize client params
+        client_params: Dict[str, Any] = {
+            "api_key": self.config["API_KEY"],
+            "base_url": self.config.get("BASE_URL") or self.DEFAULT_BASE_URL,
+            "default_headers": {"X-Title": self.APP_NAME, "HTTP_Referer": self.APP_REFERER},
+        }
+
+        # Add extra headers if set
+        extra_headers = self.config.get("EXTRA_HEADERS")
+        if extra_headers:
+            client_params["default_headers"] = {**extra_headers, **client_params["default_headers"]}
+        return client_params
+
+    def get_completion_params_keys(self) -> Dict[str, str]:
+        """
+        Get the mapping between completion parameter keys and config keys.
+        Subclasses can override this method to customize parameter mapping.
+
+        Returns:
+            Dict[str, str]: Mapping from API parameter names to config keys
+        """
+        return self.COMPLETION_PARAMS_KEYS.copy()
+
+    def get_completion_params(self, tool_policy: Optional[ToolPolicy] = None) -> Dict[str, Any]:
+        """
+        Get the completion parameters based on config and parameter mapping.
+
+        Returns:
+            Dict[str, Any]: Parameters for completion API call
+        """
+        completion_params = {}
+        params_keys = self.get_completion_params_keys()
+        for api_key, config_key in params_keys.items():
+            if self.config.get(config_key, None) is not None and self.config[config_key] != "":
+                completion_params[api_key] = self.config[config_key]
+
+        # Apply exclude params filtering
+        completion_params = Provider.filter_excluded_params(
+            completion_params,
+            self.config,
+            verbose=self.verbose,
+            console=self.console,
+        )
+
+        return completion_params
+
+    def get_tools(self, tool_policy: Optional[ToolPolicy] = None) -> List[dict]:
+        """
+        Get the tools for the completion request.
+
+        Returns:
+            List[dict]: List of tool objects to use in the completion request.
+        """
+        effective_tool_policy = self.resolve_tool_policy(tool_policy)
+        tools = []
+        if effective_tool_policy.enable_functions:
+            tools.extend(get_openai_schemas())
+
+        # Add MCP tools if enabled
+        if effective_tool_policy.enable_mcp:
+            try:
+                mcp_tools = get_openai_mcp_tools()
+            except (ValueError, FileNotFoundError, MCPToolsError) as e:
+                self.console.print(f"Failed to load MCP tools: {e}", style="red")
+                mcp_tools = []
+            tools.extend(mcp_tools)
+        return tools
+
+    def _error_label(self) -> str:
+        """Human-readable provider name used in classified error messages."""
+        name = type(self).__name__
+        return name[: -len("Provider")] if name.endswith("Provider") else name
+
+    @staticmethod
+    def _error_response_body(exc: BaseException) -> Any:
+        """Return the parsed HTTP error body for a status error, else ``None``.
+
+        Replaces the SDK-specific ``except openai.APIStatusError`` branch so the
+        same handling covers the lite transport's :class:`LiteAPIError`. Both
+        expose ``status_code`` and a ``response`` whose ``.json()``/``.text``
+        carry the provider error document.
+        """
+        response = getattr(exc, "response", None)
+        status = getattr(exc, "status_code", None)
+        if status is None:
+            status = getattr(response, "status_code", None)
+        if status is None or response is None:
+            return None
+        try:
+            return response.json()
+        except Exception:
+            return getattr(response, "text", None) or ""
+
+    @staticmethod
+    def _is_stream_options_rejection(exc: BaseException) -> bool:
+        """True when a 400 means this endpoint rejects ``stream_options``.
+
+        Many OpenAI-compatible proxies do not implement ``stream_options`` /
+        ``include_usage`` and answer with HTTP 400. Usage collection must never
+        break a request, so the caller retries once without the parameter.
+        """
+        status = getattr(exc, "status_code", None)
+        if status is None:
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+        if status != 400:
+            return False
+        message = str(exc).lower()
+        return "stream_options" in message or "include_usage" in message
+
+    def _create_completion(self, params: Dict[str, Any], stream: bool):
+        """Create a Chat Completions request, asking for usage when streaming.
+
+        Streaming usage is only reported when the request includes
+        ``stream_options={"include_usage": True}``. Endpoints that reject the
+        parameter get one retry without it (the client then estimates usage).
+        """
+        request = dict(params)
+        request["stream"] = stream
+        if not stream:
+            return self.client.chat.completions.create(**request)
+        request["stream_options"] = {"include_usage": True}
+        try:
+            return self.client.chat.completions.create(**request)
+        except Exception as exc:
+            if not self._is_stream_options_rejection(exc):
+                raise
+            # Not supported by this proxy: retry once with the plain request.
+            request.pop("stream_options", None)
+            return self.client.chat.completions.create(**request)
+
+    def completion(
+        self,
+        messages: List[ChatMessage],
+        stream: bool = False,
+        tool_policy: Optional[ToolPolicy] = None,
+    ) -> Generator[LLMResponse, None, None]:
+        """
+            Send completion request to OpenAI and return responses.
+
+        Args:
+            messages: List of chat messages to send
+            stream: Whether to stream the response
+
+        Yields:
+            LLMResponse: Response objects containing content, tool calls, etc.
+
+        Raises:
+            ValueError: If messages is empty or invalid
+            AgentError: classified provider/network failure (see ``yaicli.errors``)
+        """
+        openai_messages = self._convert_messages(messages)
+
+        params = self.get_completion_params(tool_policy=tool_policy)
+        params["messages"] = openai_messages
+        tools = self.get_tools(tool_policy=tool_policy)
+        if tools:
+            params["tools"] = tools
+        if self.verbose:
+            self.console.print("Messages:")
+            self.console.print(openai_messages)
+            if params.get("tools"):
+                self.console.print("Tools:")
+                self.console.print(params["tools"])
+        try:
+            response = self._create_completion(params, stream)
+            if stream:
+                yield from self._handle_stream_response(response)
+            else:
+                yield from self._handle_normal_response(response)
+        except Exception as e:
+            body = self._error_response_body(e)
+            if body is not None:
+                # Server error bodies are untrusted text: print literally, no
+                # markup, no terminal control sequences.
+                print_untrusted(self.console, f"Error Response: {body}")
+                # Do not swallow API errors: callers (and the process exit code)
+                # need to know the request failed. The error is classified so the
+                # client can retry transient failures and the CLI can print an
+                # actionable message.
+                raise wrap_provider_exception(e, self._error_label(), detail=str(body)) from e
+            # Covers request-time and mid-stream network/timeout failures. Letting
+            # the generator end quietly here would report a broken request as a
+            # successful (truncated) answer.
+            raise wrap_provider_exception(e, self._error_label()) from e
+
+    @staticmethod
+    def _generate_tool_call_id() -> str:
+        """Generate a unique id for a tool call that arrived without one."""
+        return f"call_{uuid4().hex[:24]}"
+
+    def _handle_normal_response(self, response: Any) -> Generator[LLMResponse, None, None]:
+        """Handle normal (non-streaming) response.
+
+        A response may contain several parallel tool calls; each one needs its own
+        ``LLMResponse`` so ``LLMClient`` can collect and execute all of them. The
+        assistant text/reasoning is attached to the first response only so it is not
+        accumulated multiple times. Token usage is attached to that same first
+        response (never to every tool-call response) so the client records it once.
+        """
+        if not response.choices:
+            # Some proxies return the provider error document with HTTP 200 and no
+            # choices. Never render it as assistant content: raise classified.
+            body = getattr(response, "base_resp", None) or response.to_dict()
+            raise provider_response_error(self._error_label(), body)
+        choice = response.choices[0]
+        content = choice.message.content or ""
+        reasoning = getattr(choice.message, "reasoning_content", "")
+        finish_reason = choice.finish_reason
+        usage = usage_from_openai(response)
+
+        # Check if the response contains reasoning content in model_extra
+        if not reasoning and hasattr(choice.message, "model_extra") and choice.message.model_extra:
+            model_extra = choice.message.model_extra
+            reasoning = self._get_reasoning_content(model_extra)
+
+        if finish_reason == "tool_calls" and hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
+            for tool_call_index, tool in enumerate(choice.message.tool_calls):
+                function = getattr(tool, "function", None)
+                tool_call = ToolCall(
+                    getattr(tool, "id", None) or self._generate_tool_call_id(),
+                    (getattr(function, "name", None) if function else None) or "",
+                    (getattr(function, "arguments", None) if function else None) or "",
+                )
+                yield LLMResponse(
+                    reasoning=reasoning if tool_call_index == 0 else None,
+                    content=content if tool_call_index == 0 else "",
+                    finish_reason=finish_reason,
+                    tool_call=tool_call,
+                    usage=usage if tool_call_index == 0 else None,
+                )
+            return
+
+        yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason, usage=usage)
+
+    def _first_chunk_error(self, chunk) -> Optional[LLMResponse]:
+        """
+        Handle a first stream chunk without choices.
+
+        Some API proxies return the provider error document as the first SSE
+        chunk instead of raising: ``{"error": {...}}``. Such an error must not be
+        silently skipped (that ends the stream as an empty success), so raise a
+        classified error. A no-choice chunk without an error payload is treated
+        as a keep-alive/usage chunk and skipped by the caller.
+        """
+        payload = chunk.get("error") if isinstance(chunk, dict) else None
+        if payload is None:
+            model_extra = getattr(chunk, "model_extra", None)
+            if isinstance(model_extra, dict):
+                payload = model_extra.get("error")
+        if payload is not None:
+            raise provider_response_error(self._error_label(), payload)
+        return None
+
+    def _handle_stream_response(self, response: Iterable[Any]) -> Generator[LLMResponse, None, None]:
+        """Handle streaming response from OpenAI API.
+
+        Tool calls are accumulated per ``delta.tool_calls[i].index`` (id/position
+        fallback) because the id and function name are only sent in the first chunk of
+        each call while arguments arrive in later, possibly interleaved, chunks. When
+        ``finish_reason == "tool_calls"`` every accumulated call is emitted as its own
+        ``LLMResponse`` (in index order) so the client can collect and execute all of
+        them. The chunk's text/reasoning is attached to the first emitted response.
+
+        With ``stream_options={"include_usage": True}`` the provider sends token usage
+        in a final choices-less chunk (some proxies attach it to a regular chunk). The
+        captured usage is surfaced as one terminal ``LLMResponse`` after the stream, so
+        it is attached to exactly one response per round and parallel tool calls are
+        never double-counted.
+        """
+        accumulated_tool_calls: Dict[Any, ToolCall] = {}
+        pending_usage = None
+        started = False
+        # Process each chunk in the response stream
+        for chunk in response:
+            chunk_usage = usage_from_openai(chunk)
+            if chunk_usage is not None:
+                pending_usage = chunk_usage
+            if not chunk.choices and not started:
+                # Some api could return error message in the first chunk, no choices to handle, return raw response to show the message
+                _first_chunk_llm_resp = self._first_chunk_error(chunk)
+                if _first_chunk_llm_resp is not None:
+                    yield _first_chunk_llm_resp
+                started = True
+                continue
+
+            if not chunk.choices:
+                continue
+            started = True
+            delta = chunk.choices[0].delta
+            finish_reason = chunk.choices[0].finish_reason
+
+            # Extract content from current chunk
+            content = delta.content or ""
+
+            # Extract reasoning content if available
+            reasoning = self._get_reasoning_content(getattr(delta, "model_extra", None) or delta)
+
+            # Accumulate tool call information scattered across chunks, keyed by index
+            if hasattr(delta, "tool_calls") and delta.tool_calls:
+                self._accumulate_tool_call_chunks(delta.tool_calls, accumulated_tool_calls)
+
+            if finish_reason == "tool_calls":
+                tool_calls = self._finalize_tool_calls(accumulated_tool_calls)
+                accumulated_tool_calls = {}
+                if not tool_calls:
+                    yield LLMResponse(reasoning=reasoning, content=content, finish_reason=finish_reason, tool_call=None)
+                    continue
+                for tool_call_index, tool_call in enumerate(tool_calls):
+                    yield LLMResponse(
+                        reasoning=reasoning if tool_call_index == 0 else None,
+                        content=content if tool_call_index == 0 else "",
+                        tool_call=tool_call,
+                        finish_reason=finish_reason,
+                    )
+                continue
+
+            yield LLMResponse(
+                reasoning=reasoning,
+                content=content,
+                tool_call=None,
+                finish_reason=finish_reason,
+            )
+
+        if pending_usage is not None:
+            # Terminal usage-only response: empty content, no tool call.
+            yield LLMResponse(usage=pending_usage)
+
+    def _accumulate_tool_call_chunks(self, tool_calls, accumulated: Dict[Any, ToolCall]) -> None:
+        """Accumulate streamed tool-call chunks into ``accumulated`` keyed by index.
+
+        The OpenAI streaming format only includes ``id``/``function.name`` in the first
+        chunk of a tool call and sends argument fragments afterwards; several calls can
+        be interleaved in a single chunk, hence the per-``index`` bookkeeping. When
+        ``index`` is absent (some OpenAI-compatible servers) the id or the chunk
+        position is used as the key.
+        """
+        for position, tool in enumerate(tool_calls):
+            index = getattr(tool, "index", None)
+            if index is None:
+                index = getattr(tool, "id", None) or position
+            tool_call = accumulated.get(index)
+            if tool_call is None:
+                tool_call = ToolCall(id="", name="", arguments="")
+                accumulated[index] = tool_call
+
+            tool_id = getattr(tool, "id", None)
+            if tool_id:
+                tool_call.id = tool_id
+
+            function = getattr(tool, "function", None)
+            if function is None:
+                continue
+            name = getattr(function, "name", None)
+            if name:
+                tool_call.name = name
+            arguments = getattr(function, "arguments", None)
+            if arguments:
+                tool_call.arguments += arguments
+
+    def _finalize_tool_calls(self, accumulated: Dict[Any, ToolCall]) -> List[ToolCall]:
+        """Return the accumulated tool calls in index order with unique ids."""
+
+        def sort_key(item):
+            index = item[0]
+            if isinstance(index, int):
+                return (0, index)
+            return (1, 0)
+
+        tool_calls = [tool_call for _, tool_call in sorted(accumulated.items(), key=sort_key)]
+        for tool_call in tool_calls:
+            if not tool_call.id:
+                tool_call.id = self._generate_tool_call_id()
+        return tool_calls
+
+    def _process_tool_call_chunk(self, tool_calls, existing_tool_call=None):
+        """Accumulate a single tool call from a response chunk (legacy helper).
+
+        Kept for provider subclasses that override the streaming handler and still
+        assume one tool call per response (chatglm/minimax/openai-compatible).
+        ``_handle_stream_response`` uses ``_accumulate_tool_call_chunks`` instead and
+        supports parallel calls.
+        """
+        # Initialize tool call object if this is the first chunk with tool call data
+        if existing_tool_call is None and tool_calls:
+            existing_tool_call = ToolCall(tool_calls[0].id or "", tool_calls[0].function.name or "", "")
+
+        # Accumulate arguments from multiple chunks
+        if existing_tool_call:
+            for tool in tool_calls:
+                if not tool.function:
+                    continue
+                existing_tool_call.arguments += tool.function.arguments or ""
+
+        return existing_tool_call
+
+    def _get_reasoning_content(self, delta: Any) -> Optional[str]:
+        """Extract reasoning content from delta if available based on specific keys."""
+        if not delta:
+            return None
+        if not isinstance(delta, dict):
+            delta = dict(delta)
+        # Reasoning content keys from API:
+        # reasoning_content: deepseek/infi-ai/nvida
+        # reasoning: openrouter
+        # <think> block implementation not in here
+        for key in ("reasoning_content", "reasoning"):
+            if key in delta:
+                return delta[key]
+        return None
+
+    def detect_tool_role(self) -> str:
+        """Return the role that should be used for tool responses"""
+        return "tool"

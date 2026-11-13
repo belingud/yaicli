@@ -149,6 +149,9 @@ DEFAULT_MAX_HISTORY: int = 500
 DEFAULT_AUTO_SUGGEST: BOOL_STR = "true"
 DEFAULT_SHOW_REASONING: BOOL_STR = "true"
 DEFAULT_TIMEOUT: int = 60
+# v0.24 P1-c: use the httpx lite transport (no ``import openai``) for the
+# ``openai`` / ``openai-compatible`` providers. "false" restores the SDK path.
+DEFAULT_LITE_TRANSPORT: BOOL_STR = "true"
 DEFAULT_EXTRA_HEADERS: str = "{}"
 DEFAULT_EXTRA_BODY: str = "{}"
 DEFAULT_INTERACTIVE_ROUND: int = 25
@@ -291,6 +294,9 @@ DEFAULT_CONFIG_MAP = {
     "TOP_P": {"value": DEFAULT_TOP_P, "env_key": "YAI_TOP_P", "type": float},
     "MAX_TOKENS": {"value": DEFAULT_MAX_TOKENS, "env_key": "YAI_MAX_TOKENS", "type": int},
     "TIMEOUT": {"value": DEFAULT_TIMEOUT, "env_key": "YAI_TIMEOUT", "type": int},
+    # v0.24 P1-c: httpx lite transport for openai/openai-compatible requests
+    # (avoids the ~0.6s openai SDK import on the one-shot path). false = SDK.
+    "LITE_TRANSPORT": {"value": DEFAULT_LITE_TRANSPORT, "env_key": "YAI_LITE_TRANSPORT", "type": bool},
     "EXTRA_HEADERS": {"value": DEFAULT_EXTRA_HEADERS, "env_key": "YAI_EXTRA_HEADERS", "type": dict},
     "EXTRA_BODY": {"value": DEFAULT_EXTRA_BODY, "env_key": "YAI_EXTRA_BODY", "type": dict},
     "REASONING_EFFORT": {"value": DEFAULT_REASONING_EFFORT, "env_key": "YAI_REASONING_EFFORT", "type": str},
@@ -438,6 +444,9 @@ FREQUENCY_PENALTY={DEFAULT_CONFIG_MAP["FREQUENCY_PENALTY"]["value"]}
 TOP_P={DEFAULT_CONFIG_MAP["TOP_P"]["value"]}
 MAX_TOKENS={DEFAULT_CONFIG_MAP["MAX_TOKENS"]["value"]}
 TIMEOUT={DEFAULT_CONFIG_MAP["TIMEOUT"]["value"]}
+# true: use the built-in httpx transport for openai/openai-compatible requests
+# (faster one-shot startup); false: use the openai SDK.
+LITE_TRANSPORT={DEFAULT_CONFIG_MAP["LITE_TRANSPORT"]["value"]}
 # json string
 EXTRA_HEADERS=
 # json string

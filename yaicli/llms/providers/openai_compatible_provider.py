@@ -1,13 +1,16 @@
-import json
-from typing import Generator
+from __future__ import annotations
 
-from openai._streaming import Stream
-from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
+import json
+from typing import TYPE_CHECKING, Generator
 
 from ...schemas import LLMResponse
 from ...usage import usage_from_openai
 from ..tool_calls import ToolCallAccumulator
 from .openai_provider import OpenAIProvider
+
+if TYPE_CHECKING:  # pragma: no cover - typing only; the lite transport avoids the SDK
+    from openai._streaming import Stream
+    from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 
 class OpenAICompatibleProvider(OpenAIProvider):
