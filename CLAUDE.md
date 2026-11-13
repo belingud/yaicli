@@ -84,24 +84,47 @@ Environment variables (`YAI_*`) > Config file (`~/.config/yaicli/config.ini`) > 
 - Type hints used throughout
 - Lazy imports for heavy libraries (e.g., `fastmcp`) to reduce startup time
 
-## Git Workflow (branch first)
+## Git Workflow (branch + PR)
 
-Never change code directly on `master`. Cut a branch from `master` first:
+Never change code directly on `master` and never push to `master` yourself — every change goes through
+a branch and a pull request:
 
 ```bash
-git switch master                # make sure it is the base you want
-git switch -c feat/<slug>        # prefixes used in this repo: feat/ fix/ docs/ chore/
-# ... implement, run the gates (uv run pytest, ruff check --no-fix yaicli tests,
-#     uv run mkdocs build --strict for docs), commit on the branch ...
-git switch master && git merge --ff-only feat/<slug>
-git push origin master
+# 1. branch from the latest master
+git switch master && git pull --ff-only
+git switch -c feat/<slug>        # prefixes: feat/ fix/ chore/ (see the docs note below)
+
+# 2. implement, run the gates, commit on the branch
+uv run pytest
+ruff check --no-fix yaicli tests
+uv run mkdocs build --strict     # when docs changed
+
+# 3. push the branch and open a PR against master
+git push -u origin feat/<slug>
+gh pr create --base master --title "<conventional title>" --body "<what/why + test evidence>"
+
+# 4. wait for CI, then ASK THE USER whether to merge — never merge on your own
+gh pr checks <number>            # must be green before asking
+# only after an explicit "yes" from the user:
+gh pr merge <number> --merge --delete-branch
+
+# 5. sync local master after the merge
+git switch master && git pull --ff-only
 ```
 
-- Open a PR instead of the fast-forward merge only when the user asks for review.
-- Trellis tasks must record the branch: `python3 ./.trellis/scripts/task.py set-branch <task> feat/<slug>`
-  and `set-base-branch <task> master`; `task.py archive` rejects a task whose branch and base branch are
-  both `master`.
-- Releases (tag/bump/changelog) are cut from `master` after the feature branch is merged
+- The long-lived `docs` branch (docs-site deploy) occupies the `docs/` ref namespace, so a
+  `docs/<slug>` branch cannot be created — use `chore/docs-<slug>` for documentation-only changes.
+- `gh` is installed and authenticated (`pr create/view/checks/merge` all work). **Merging always needs
+  the user's explicit confirmation** — report the PR number and check status, ask, then wait. Never
+  merge or auto-merge on your own.
+- Prefer `gh pr merge --merge` (merge commit) to match the repository's PR history; use `--squash` only
+  when the user asks for it.
+- Trellis tasks must record the branch and PR target: `task.py set-branch <task> feat/<slug>` and
+  `set-base-branch <task> master` (`task.py create-pr` is not available in this checkout — use `gh`).
+  `task.py archive` rejects a task whose branch and base branch are both `master`.
+- Trellis bookkeeping commits (task archive / session journal) are the only direct `master` changes:
+  they land after the PR merge and may be pushed as a follow-up.
+- Releases (tag/bump/changelog) are cut from `master` after the PR is merged
   (see `.trellis/spec/repo/build-and-release.md`).
 
 ## Feature Specs
