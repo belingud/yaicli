@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from rich.table import Table
 
@@ -148,6 +148,10 @@ class Chat:
     created_at: str = ""
     #: ISO timestamp of the last save.
     updated_at: str = ""
+    #: v0.24 K23: active plan pointer + todo state (JSON payload built by
+    #: ``plan_mode.PlanSession.to_session_dict()``). Empty for sessions without a
+    #: plan; legacy files simply lack the key.
+    plan: Dict[str, Any] = field(default_factory=dict)
 
     def add_message(self, role: str, content: str) -> None:
         """Add message to the session"""
@@ -186,7 +190,7 @@ class Chat:
         see). It is never written to disk directly: :meth:`to_dict` adds the
         on-disk redaction (v0.22 K20).
         """
-        return {
+        data: Dict = {
             "title": self.title,
             "date": self.date,
             "model": self.model,
@@ -197,6 +201,11 @@ class Chat:
             "updated_at": self.updated_at,
             "history": [_message_to_dict(msg) for msg in self.history],
         }
+        # v0.24 K23: only sessions that actually carry a plan store the key, so
+        # plan-less sessions stay byte-compatible with the previous format.
+        if self.plan:
+            data["plan"] = self.plan
+        return data
 
     def to_dict(self) -> Dict:
         """Build the persisted (on-disk) representation of this session.
@@ -217,6 +226,8 @@ class Chat:
     @classmethod
     def from_dict(cls, data: Dict) -> "Chat":
         """Create Chat instance from dictionary (legacy files without metadata work)"""
+        raw_plan = data.get("plan")
+        plan: Dict[str, Any] = dict(raw_plan) if isinstance(raw_plan, dict) else {}
         chat = cls(
             idx=data.get("idx", None),
             title=data.get("title", "Untitled Chat"),
@@ -228,6 +239,7 @@ class Chat:
             cwd=str(data.get("cwd") or ""),
             created_at=str(data.get("created_at") or ""),
             updated_at=str(data.get("updated_at") or ""),
+            plan=plan,
         )
 
         for msg_data in data.get("history", []):
@@ -255,6 +267,8 @@ class Chat:
                 self.cwd = str(data.get("cwd") or "")
                 self.created_at = str(data.get("created_at") or "")
                 self.updated_at = str(data.get("updated_at") or "")
+                raw_plan = data.get("plan")
+                self.plan = dict(raw_plan) if isinstance(raw_plan, dict) else {}
                 self.history = [_message_from_dict(msg) for msg in data.get("history", [])]
             return True
         except (json.JSONDecodeError, OSError) as e:

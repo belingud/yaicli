@@ -35,6 +35,7 @@ nav:
   - Installation: install.md
   - Usage:
       - Command Reference: usage/commands.md
+      - Plan Mode (Read-Only Planning): usage/plan-mode.md
       - Headless & Scripting: usage/headless.md
       - Permissions & Safety: usage/permissions.md
       - Workspace Safety: usage/workspace-safety.md

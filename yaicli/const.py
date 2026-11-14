@@ -38,6 +38,8 @@ CMD_DELETE_CHAT = "/del"
 CMD_CONTEXT = ("/context", "/ctx")
 CMD_ADD = "/add"
 CMD_HELP = ("/help", "?")
+CMD_PLAN = "/plan"
+CMD_TODO = "/todo"
 
 EXEC_MODE = "exec"
 CHAT_MODE = "chat"
@@ -183,6 +185,15 @@ DEFAULT_TOOL_CONFIRM: BOOL_STR = "true"
 #   trusted  -> auto-allow every non-dangerous tool (danger-classified shell still asks)
 DEFAULT_TOOL_POLICY = "standard"
 TOOL_POLICY_MODES = ("readonly", "standard", "trusted")
+# Persistent plan mode (v0.24 K23): Shift+Tab / /plan toggles a read-only
+# planning mode; submit_plan produces a reviewable plan file under
+# <config-dir>/plans/<project-key>/, approved steps become todos executed
+# through todo_write.
+DEFAULT_PLAN_ENABLED: BOOL_STR = "true"
+DEFAULT_PLAN_MAX_STEPS: int = 20
+DEFAULT_PLAN_KEEP: int = 80
+DEFAULT_PLAN_ALLOW_READONLY_SHELL: BOOL_STR = "true"
+DEFAULT_PLAN_DIR: str = ""  # empty = <config-dir>/plans
 DEFAULT_EXCLUDE_PARAMS: str = ""  # Empty by default
 
 # Agent context / tool-output economy (v0.19 K02)
@@ -393,6 +404,16 @@ DEFAULT_CONFIG_MAP = {
         "env_key": "YAI_PROJECT_CONTEXT_MAX_CHARS",
         "type": int,
     },
+    # Persistent plan mode (v0.24 K23)
+    "PLAN_ENABLED": {"value": DEFAULT_PLAN_ENABLED, "env_key": "YAI_PLAN_ENABLED", "type": bool},
+    "PLAN_MAX_STEPS": {"value": DEFAULT_PLAN_MAX_STEPS, "env_key": "YAI_PLAN_MAX_STEPS", "type": int},
+    "PLAN_KEEP": {"value": DEFAULT_PLAN_KEEP, "env_key": "YAI_PLAN_KEEP", "type": int},
+    "PLAN_ALLOW_READONLY_SHELL": {
+        "value": DEFAULT_PLAN_ALLOW_READONLY_SHELL,
+        "env_key": "YAI_PLAN_ALLOW_READONLY_SHELL",
+        "type": bool,
+    },
+    "PLAN_DIR": {"value": DEFAULT_PLAN_DIR, "env_key": "YAI_PLAN_DIR", "type": str},
     # Shell tool guardrails
     "TOOL_TIMEOUT": {"value": DEFAULT_TOOL_TIMEOUT, "env_key": "YAI_TOOL_TIMEOUT", "type": int},
     "TOOL_ENV_INHERIT": {"value": DEFAULT_TOOL_ENV_INHERIT, "env_key": "YAI_TOOL_ENV_INHERIT", "type": bool},
@@ -548,6 +569,18 @@ ENABLE_MODEL_METADATA={DEFAULT_CONFIG_MAP["ENABLE_MODEL_METADATA"]["value"]}
 CONTEXT_SAFETY_TOKENS={DEFAULT_CONFIG_MAP["CONTEXT_SAFETY_TOKENS"]["value"]}
 # Cache resolved windows under <config-dir>/cache/model_limits.json.
 ENABLE_MODEL_LIMITS_CACHE={DEFAULT_CONFIG_MAP["ENABLE_MODEL_LIMITS_CACHE"]["value"]}
+
+# Plan mode (v0.24 K23)
+# Persistent read-only planning mode: Shift+Tab / /plan, submit_plan -> approve -> todo execution.
+PLAN_ENABLED={DEFAULT_CONFIG_MAP["PLAN_ENABLED"]["value"]}
+# Maximum number of steps accepted in one plan.
+PLAN_MAX_STEPS={DEFAULT_CONFIG_MAP["PLAN_MAX_STEPS"]["value"]}
+# Finished (done/aborted) plan files kept per project; older ones are pruned.
+PLAN_KEEP={DEFAULT_CONFIG_MAP["PLAN_KEEP"]["value"]}
+# Allow a fixed read-only shell allowlist while planning (true/false).
+PLAN_ALLOW_READONLY_SHELL={DEFAULT_CONFIG_MAP["PLAN_ALLOW_READONLY_SHELL"]["value"]}
+# Plans root directory (empty = <config-dir>/plans).
+PLAN_DIR={DEFAULT_CONFIG_MAP["PLAN_DIR"]["value"]}
 
 # Project context settings (v0.21 K12)
 # Auto-load AGENTS.md / CLAUDE.md / .yaicli.md from the current directory up to the

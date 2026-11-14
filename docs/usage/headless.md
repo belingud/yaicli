@@ -26,6 +26,9 @@ ai -p "Summarize this repository" --json | jq -r .content
 # Streaming events (one JSON object per line)
 ai -p "Find and fix the failing test" --output-format stream-json | jq -c 'select(.type=="tool_call")'
 
+# One-shot planning: save a plan and exit without executing it
+ai -p "Add a --dry-run flag to fs_write_file" --plan --output-format json | jq '{plan_path, revision}'
+
 # Pipe input into the agent
 cat error.log | ai -p "Explain these errors and suggest a fix"
 
@@ -101,9 +104,15 @@ One JSON object on stdout. All diagnostics go to stderr.
 | `tool_calls` | Ordered list of tool calls made during the run |
 | `usage` | Real token usage and cost for the run (see below) |
 | `finish_reason` | Last provider `finish_reason` (`"stop"`, `"length"`, `"tool_calls"`, `"depth_limit"`, or `null` when unknown) |
+| `plan`, `plan_path`, `revision` | **Only added by `--plan` runs**: the submitted plan object, the path of the saved plan file and its revision (see [One-shot planning](#one-shot-planning-plan)) |
 | `model`, `provider` | Effective model/provider for this run |
-| `error` | Exactly `null` on success, otherwise `{"kind": "<error kind>", "message": "<detail>"}`. Possible kinds: `auth`, `rate_limit`, `context_length`, `network`, `timeout`, `bad_request`, `provider`, `tool`, `config`, `depth_limit`, `interrupted`, `unknown` |
+| `error` | Exactly `null` on success, otherwise `{"kind": "<error kind>", "message": "<detail>"}`. Possible kinds: `auth`, `rate_limit`, `context_length`, `network`, `timeout`, `bad_request`, `empty_response`, `provider`, `tool`, `config`, `depth_limit`, `interrupted`, `plan_not_submitted`, `unknown` |
 | `exit_code` | Exit code the process will return (see below) |
+
+`empty_response` means the endpoint answered HTTP 200 but returned no model output at all (no
+text, reasoning or tool calls). This usually means `BASE_URL` points at a web page instead of the
+API — an OpenAI-compatible base URL normally ends with `/v1`. The CLI reports it as an error now
+instead of silently exiting 0 with empty content.
 
 `usage` is no longer zeroed (v0.22 K17):
 
@@ -140,6 +149,8 @@ progress UIs, cancellation and tool-trace collection.
 | `text_delta` | The model streams answer text | `type`, `delta` (new text since the previous chunk) |
 | `tool_call` | The model requests a tool | `type`, `name`, `arguments` (parsed JSON when possible) |
 | `tool_result` | A tool has finished | `type`, `name`, `result` (the tool result text as seen by the model, truncated as in context) |
+| `plan_start` | A `--plan` run starts | `type` |
+| `plan_ready` | The model submitted a plan in a `--plan` run (emitted before the final `usage`/`done` events) | `type`, `steps` (step count), `path`, `revision` |
 | `usage` | The run finished collecting usage | `type`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `cached_tokens`, `reasoning_tokens`, `estimated`, `requests`, `cost_usd`, `models`, `tools`, and `finish_reason` when known (same values as the JSON `usage` object) |
 | `done` | The run finished | `type`, `exit_code`, `error` (`null` or `{kind, message}`) |
 
@@ -176,8 +187,8 @@ Use `--no-stream` if you want a single final block instead of streamed chunks.
 | Code | Meaning |
 | --- | --- |
 | `0` | Success: an answer was produced (also informational commands such as `--version` / `--list-*`) |
-| `1` | Handled failure: invalid config/provider, auth/API error, network failure, no input, unexpected error |
-| `2` | Usage error: invalid option or argument (including an unknown `--output-format` value or an invalid `--cwd`) |
+| `1` | Handled failure: invalid config/provider, auth/API error, network failure, no input, unexpected error — with `--plan`, also when the model did not submit a plan (`error.kind = "plan_not_submitted"`) |
+| `2` | Usage error: invalid option or argument (including an unknown `--output-format` value, an invalid `--cwd`, or `--plan` combined with `--shell`/`--code`) |
 | `3` | A tool was denied and `--fail-on-tool-denied` was set |
 | `130` | Interrupted by SIGINT (Ctrl+C) during a one-shot run or generation |
 | `141` | Broken pipe (EPIPE): the producer side of a pipeline such as `ai --help \| head -1`. If the write wins the race, the same command may exit `0`; it never exits `1` for a closed pipe. |
@@ -237,6 +248,72 @@ executing). When stdin/stdout is not a TTY, `ai --shell "..."` prints the genera
 stdout and **does not execute it**, exiting `0`. Add `-y`/`--yes` to execute it in a trusted
 context; if the command itself then exits non-zero, the run exits `1`.
 
+## One-shot planning (`--plan`)
+
+`--plan` runs a single **read-only planning turn** and exits: the model works in plan mode (the
+read/network tools plus the fixed read-only shell allowlist, see [Plan Mode](plan-mode.md)), must
+finish by calling `submit_plan`, and YAICLI saves the submitted plan as a `draft` under
+`<config-dir>/plans/<project-key>/`. The plan is **not executed**: there is no approval panel and
+no todo execution in headless mode.
+
+```bash
+ai -p "Add a --dry-run flag to fs_write_file" --plan --output-format json
+```
+
+Rules:
+
+- `--plan` forces one-shot output. `--chat` / `--resume` are ignored with a warning; a prompt or
+  piped stdin is still required.
+- `--plan` cannot be combined with `--shell` or `--code`: the run fails with
+  `Error: --plan cannot be combined with --shell/--code.` on stderr and exits `2`.
+- When `PLAN_ENABLED=false`, `--plan` fails with `Error: --plan requires PLAN_ENABLED=true.` and
+  exits `2`.
+- The plan file is left in `draft` status; open it later from an interactive session with
+  `/plan review` (see [Plan Mode](plan-mode.md#approval-panel)).
+
+### `--plan` output
+
+- **text** (default): the submitted plan Markdown (goal, assumptions, steps, risks, ...) is written
+  to stdout; progress, warnings and errors stay on stderr.
+- **json**: the normal result object gains three top-level keys:
+
+| Field | Meaning |
+| --- | --- |
+| `plan` | The full plan object: `id`, `goal`, `assumptions`, `steps`, `risks`, `not_doing`, `status`, `revision`, `session_id`, `created`, `updated`, `cwd`, `project_key`, `model`, `base_rev`, `approved_at`, `change_summary`, `path` |
+| `plan_path` | Absolute path of the saved plan file |
+| `revision` | Plan revision (`1` for a first plan) |
+
+The remaining JSON keys are unchanged from a normal run. Example (Feature example F6):
+
+```bash
+$ ai -p "Add a --dry-run flag to fs_write_file" --plan --output-format json | jq '{plan_path, revision, steps: [.plan.steps[].title]}'
+{
+  "plan_path": "/Users/vic/.config/yaicli/plans/3f9a1c2d…/20261114-004512-fs-dry-run.md",
+  "revision": 1,
+  "steps": ["Locate the fs_write_file schema and execution path", "Add dry_run and short-circuit in the execution layer", "Add tests"]
+}
+$ echo $?   # 0
+```
+
+- **stream-json**: two additional events describe the planning run before the usual `usage` /
+  `done` events:
+
+```json
+{"type": "plan_start"}
+{"type": "plan_ready", "steps": 3, "path": "/Users/vic/.config/yaicli/plans/3f9a1c2d…/20261114-004512-fs-dry-run.md", "revision": 1}
+```
+
+### `--plan` exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | A plan was submitted and saved; `plan`/`plan_path`/`revision` are in the result |
+| `1` | The model did not submit a plan: `error.kind = "plan_not_submitted"`, message `plan mode ended: model did not submit a plan` |
+| `2` | Usage error: `--plan` combined with `--shell`/`--code`, or `PLAN_ENABLED=false` |
+
+Without a prompt or piped stdin a `--plan` run falls back to the usual no-input behaviour (the help
+screen for `text` output, exit `2` for machine output formats).
+
 ## CI recipe
 
 ```bash
@@ -271,6 +348,7 @@ jq -r '.content' result.json
 
 ## See Also
 
+- [Plan Mode](plan-mode.md) — the interactive plan → approve → todo execution workflow
 - [Permissions & Safety](permissions.md)
 - [Context & Limits](context-limits.md)
 - [Command Reference](commands.md)

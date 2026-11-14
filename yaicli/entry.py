@@ -350,6 +350,13 @@ class HeadlessOptions:
         rich_help_panel="Headless Options",
     )
 
+    plan = typer.Option(
+        False,
+        "--plan",
+        help="One-shot planning run: explore read-only, save the plan and exit without executing it.",
+        rich_help_panel="Headless Options",
+    )
+
     max_turns = typer.Option(
         None,
         "--max-turns",
@@ -625,6 +632,7 @@ def main(
     output_format: OutputFormat = HeadlessOptions.output_format,
     quiet: bool = HeadlessOptions.quiet,
     json_output: bool = HeadlessOptions.json_output,
+    plan: bool = HeadlessOptions.plan,
     max_turns: Optional[int] = HeadlessOptions.max_turns,
     yes: bool = HeadlessOptions.yes,
     allowed_tools: str = HeadlessOptions.allowed_tools,
@@ -669,6 +677,7 @@ def main(
         ai -p "Summarize this file" > summary.md
         ai -p "List the TODO comments in src" --output-format json | jq -r .content
         ai -p "Summarize this repo" --json | jq -r .content
+        ai -p "Add a --dry-run flag to fs_write_file" --plan --json  # Plan only; never executes
         echo "error log" | ai -p "Explain these errors"
         ai -p "Run the tests and summarize failures" -y --fail-on-tool-denied
         ai --code "Write a fibonacci generator in Python"
@@ -687,6 +696,23 @@ def main(
             _print_error(f"Error: --json conflicts with --output-format {output_format.value}.")
             raise typer.Exit(code=2)
         output_format = OutputFormat.JSON
+
+    # --plan (v0.24 K23) is an explicit one-shot planning run: it explores read-only,
+    # saves the plan and exits without executing it. It cannot generate a shell/code
+    # command and needs plan mode enabled in the configuration.
+    if plan and (shell or code):
+        _print_error("Error: --plan cannot be combined with --shell/--code.")
+        raise typer.Exit(code=2)
+    if plan and not cfg.get("PLAN_ENABLED", True):
+        _print_error("Error: --plan requires PLAN_ENABLED=true.")
+        raise typer.Exit(code=2)
+    if plan and (chat or resume):
+        if resume:
+            _warn("--resume is ignored with --plan; running one-shot.")
+        if chat:
+            _warn("--chat is ignored with --plan; running one-shot.")
+        chat = False
+        resume = False
 
     # --cwd must be applied before relative prompt/image paths are resolved.
     resolved_cwd = _apply_cwd(cwd) if cwd else None
@@ -797,6 +823,7 @@ def main(
             max_turns=max_turns,
             cwd=resolved_cwd,
             resume=resume,
+            plan=plan,
         )
         # v0.19 K06: expose --yes/--allowed-tools to the tool gate (per-run grants).
         _apply_run_tool_policy(cli, yes=yes, allowed_tools=allowed_tool_patterns)

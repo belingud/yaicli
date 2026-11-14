@@ -63,6 +63,10 @@ Metadata describes **how the conversation was recorded**: resuming does not swit
 configuration back to that model/provider — the current config supplies the model for new turns, and
 the notice just lets you see the mismatch.
 
+A session also records its active plan (id, path, status, revision, session id and todos) when one
+exists, so the resume hint above can point at the plan file; the plan-mode state itself is never
+persisted or restored.
+
 When `--resume` finds a session, it prints one line to the terminal before the REPL starts:
 
 ```
@@ -84,6 +88,13 @@ ai --resume
 - **Interactive only.** It is ignored (with a warning) when combined with `-p/--print`, with
   `--output-format` other than `text`, or when stdin is redirected. Those runs continue as normal
   one-shot runs; no session is resumed.
+- **Plan mode is never restored.** A resumed session always starts in the normal mode, even if it
+  was closed while planning or executing a plan. If the session has an unfinished plan, one hint is
+  printed after the resume notice — `⚠ unfinished plan found: <id> (draft, revision N)` with
+  `Use /plan review to continue it, or /plan list to see all plans.`, or the `(in-progress, ...)`
+  variant pointing at `/plan resume`. A plan whose file is missing, corrupt or bound to another
+  session is ignored with `saved plan not found/inconsistent; starting in normal mode` on stderr;
+  see [Plan Mode](plan-mode.md#resuming-a-session).
 
 ## The `--chat` title behaviour
 
@@ -209,4 +220,5 @@ history file with mode `0644` is repaired to `0600` the next time it is appended
 - [Conversation & History](../advanced/history.md) — session JSON format, atomic saves, history limits
 - [Command Reference](commands.md) — `/save`, `/load`, `/list`, `/del`
 - [Project Context](project-context.md) — the other per-project behaviour added in v0.21
+- [Plan Mode](plan-mode.md) — plan files and the `--resume` plan hint
 - [Upgrade Notes](../advanced/upgrade.md) — migration stance and what changed in v0.21

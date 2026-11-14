@@ -1300,16 +1300,38 @@ class TestCLICoverage:
         printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list]
         assert any("Error initializing prompt session" in t for t in printed)
 
-    def test_setup_key_bindings_toggles_mode(self, cli_with_mocks):
+    def test_setup_key_bindings_toggles_mode(self, cli_with_mocks, tmp_path, monkeypatch):
+        """Shift+Tab now toggles plan mode (K23); /mode still owns chat/exec."""
         from unittest.mock import MagicMock
 
-        cli_with_mocks.current_mode = CHAT_MODE
-        cli_with_mocks._setup_key_bindings()
-        binding = next(
-            b for b in cli_with_mocks.bindings.bindings if getattr(b.keys[0], "value", None) == "s-tab"
-        )
+        from yaicli import plan_mode, tools
+        from yaicli.config import cfg
+
+        monkeypatch.setitem(cfg, "PLAN_DIR", str(tmp_path / "plans"))
+        plan_mode.reset_plan_session()
+        tools.set_plan_tool_mode(None)
+
+        cli = cli_with_mocks
+        cli.current_mode = CHAT_MODE
+        cli.interactive = True
+        cli._setup_key_bindings()
+        binding = next(b for b in cli.bindings.bindings if getattr(b.keys[0], "value", None) == "s-tab")
+
         binding.handler(MagicMock())
-        assert cli_with_mocks.current_mode == EXEC_MODE
+
+        session = cli.plan_session
+        assert session is not None
+        assert session.mode == "researching"
+        assert tools.get_plan_tool_mode() == "plan"
+        assert cli.get_prompt_tokens() == [("class:qmark", " [plan] 💬 "), ("class:prompt", "> ")]
+
+        binding.handler(MagicMock())
+        assert session.mode == "normal"
+        assert tools.get_plan_tool_mode() is None
+        assert cli.get_prompt_tokens()[0] == ("class:qmark", " 💬 ")
+
+        plan_mode.reset_plan_session()
+        tools.set_plan_tool_mode(None)
 
     def test_print_welcome_persistent_session(self, cli_with_mocks):
         cli_with_mocks.is_temp_session = False

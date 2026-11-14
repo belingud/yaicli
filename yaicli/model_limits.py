@@ -208,6 +208,13 @@ def parse_user_windows(value: Any) -> Dict[str, ModelLimits]:
             resolved[f"{provider}:{normalized}"] = limits
         else:
             resolved[normalized] = limits
+        # OpenRouter-style model ids contain a slash (``z-ai/glm-5.3-flash``) and
+        # collide with the ``provider/model`` key syntax: the first segment is a
+        # vendor, not a YAICLI provider. Register the literal key as well so the
+        # configured model id always finds its entry, whatever PROVIDER is set to.
+        literal = key.strip()
+        if literal and literal != normalized:
+            resolved.setdefault(literal, limits)
     return resolved
 
 
@@ -221,7 +228,12 @@ def _from_user(config: Optional[Mapping[str, Any]], provider: str, model: str) -
     if not mapping:
         return None
     normalized = normalize_model_name(model)
-    for candidate in (f"{provider}:{normalized}", normalized):
+    raw_model = str(model or "").strip().lower()
+    candidates = [f"{provider}:{normalized}", normalized]
+    if raw_model and raw_model not in candidates:
+        # Vendor-prefixed ids (``z-ai/glm-5.3-flash``) are matched literally too.
+        candidates.append(raw_model)
+    for candidate in candidates:
         limits = mapping.get(candidate)
         if limits is not None:
             return limits
@@ -622,6 +634,14 @@ def record_learned_limit(
     return limits
 
 
+#: At least ``1 / MIN_INPUT_BUDGET_DIVISOR`` of the context window always stays
+#: available for the input. The output reservation (MAX_TOKENS + safety) is capped
+#: below this, so a MAX_TOKENS set close to or above the window can never collapse
+#: the conversation context (regression: MAX_TOKENS=128000 on a 128k window left a
+#: budget of 1 token and trimmed the whole history on every request).
+MIN_INPUT_BUDGET_DIVISOR = 2
+
+
 def context_input_budget(
     limits: ModelLimits,
     *,
@@ -632,13 +652,19 @@ def context_input_budget(
     """Return the number of input tokens a request may use.
 
     ``override > 0`` (``CONTEXT_BUDGET_TOKENS``) wins verbatim for compatibility.
-    Otherwise the budget is ``min(window, max_input) - requested_output - safety``.
+    Otherwise the budget is ``min(window, max_input) - requested_output - safety``
+    with the output reservation capped so at least half of the cap stays available
+    for the input (an oversized ``MAX_TOKENS`` is clamped by the client instead).
     """
     forced = _positive_int(override)
     if forced is not None:
         return forced
     cap = limits.window_for_budget()
-    reserve = max(0, _positive_int(max_tokens) or 0) + max(0, _positive_int(safety_tokens) or 0)
+    requested = max(0, _positive_int(max_tokens) or 0)
+    safety = max(0, _positive_int(safety_tokens) or 0)
+    min_input = max(1, cap // MIN_INPUT_BUDGET_DIVISOR)
+    max_reserve = max(0, cap - min_input)
+    reserve = min(requested + safety, max_reserve)
     return max(1, cap - reserve)
 
 

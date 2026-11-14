@@ -78,7 +78,7 @@ Three numbers decide how much of the conversation is sent in one request:
 | Term | Meaning |
 | --- | --- |
 | **Window** | The model's total context window (input + output) — e.g. `128,000` tokens for `gpt-4o`, `1,000,000` for Gemini 2.5 Pro. |
-| **Budget** | How many *input* tokens one request may use: `min(window, max_input) - MAX_TOKENS - CONTEXT_SAFETY_TOKENS`. |
+| **Budget** | How many *input* tokens one request may use: `min(window, max_input) - MAX_TOKENS - CONTEXT_SAFETY_TOKENS`, with at least half of the window always kept for the input (see the MAX_TOKENS guard below). |
 | **Reserve** | Output headroom kept out of the budget: `MAX_TOKENS + CONTEXT_SAFETY_TOKENS` (default `1024 + 1024 = 2048`). |
 
 Before each provider request, YAICLI estimates the tokens in the conversation (a stdlib heuristic:
@@ -165,6 +165,13 @@ a `provider/model` pair; values may be an integer or an object with `window` / `
 MODEL_CONTEXT_WINDOWS={"my-gateway-model": 200000, "openrouter/anthropic/claude-sonnet-5.5": 1000000, "ollama/qwen2.5:7b": {"window": 32768, "max_output": 4096}}
 ```
 
+Model ids that themselves contain a slash (OpenRouter style, e.g. `z-ai/glm-5.3-flash`) are matched
+**literally as well**, so this works with any `PROVIDER`:
+
+```ini
+MODEL_CONTEXT_WINDOWS={"z-ai/glm-5.3-flash": 1000000}
+```
+
 An explicit entry always wins over everything below it, and `/context` then reports `source: user`.
 Remove the entry to fall back to the learned/metadata/catalog/heuristic layers.
 
@@ -215,7 +222,7 @@ written to disk. Deleting the file is always safe: it is a pure cache and is reb
 | --- | --- |
 | `CONTEXT_BUDGET_TOKENS` | `0` (default) = derive from the window (`window - MAX_TOKENS - CONTEXT_SAFETY_TOKENS`). A value `> 0` overrides the derived budget **verbatim** — the legacy behaviour, useful as a hard cap or a fallback. |
 | `CONTEXT_SAFETY_TOKENS` | Extra headroom kept below `window - MAX_TOKENS` for tokenizer/request drift (default `1024`). Raise it if you still hit "too long" errors; `0` disables the headroom. |
-| `MAX_TOKENS` | The requested output limit. It is reserved from the window but never rewritten by YAICLI. |
+| `MAX_TOKENS` | The requested output limit. It is reserved from the window. If it would leave no room for the input (for example `MAX_TOKENS=128000` with the default 128k window), YAICLI keeps half of the window for input, clamps `MAX_TOKENS` for the session, writes the clamped value back to the in-process config and prints one stderr warning: `MAX_TOKENS=… leaves no room for input in the …-token context window; using MAX_TOKENS=… for this session. Lower MAX_TOKENS in config.ini (or set MODEL_CONTEXT_WINDOWS to the model's real window) to silence this.` An explicit `CONTEXT_BUDGET_TOKENS > 0` disables the clamp and is respected verbatim. |
 
 ### Unknown-model warning
 
@@ -227,6 +234,17 @@ them:
 Context window for model "my-gateway-model" is unknown; assuming 128,000 tokens (source: default).
 Set MODEL_CONTEXT_WINDOWS={"my-gateway-model": 200000} or CONTEXT_BUDGET_TOKENS to override.
 ```
+
+### A MAX_TOKENS larger than the window is clamped, not silently honoured
+
+`MAX_TOKENS` is an **output** reservation taken out of the same context window as the input. Setting it
+close to (or above) the window leaves no room for the conversation: before this guard the budget
+collapsed to `1` token and every request trimmed the entire history, so a `/load`-ed session looked
+like a fresh conversation to the model even though `/his` showed it. YAICLI now always keeps at least
+half of the resolved window for the input, clamps the ineffective `MAX_TOKENS` for the session (so the
+provider request still fits the window) and prints one warning naming both values and the fix. Prefer
+a realistic output cap (for example `MAX_TOKENS=8192`) and set `MODEL_CONTEXT_WINDOWS` to the model's
+real window when it is larger than the conservative 128k default.
 
 ## 3. Context-length self-healing
 

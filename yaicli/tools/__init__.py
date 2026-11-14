@@ -1,7 +1,8 @@
 import fnmatch
+import json
 import os
 import sys
-from typing import Any, Dict, List, Sequence, Tuple, cast
+from typing import Any, Dict, List, Optional, Sequence, Tuple, cast
 
 from json_repair import repair_json
 from rich.panel import Panel
@@ -55,6 +56,51 @@ def _stdout_is_tty() -> bool:
 # they belong on stderr so machine-readable stdout (``--output-format json``) stays
 # clean. The CLI re-points this to its own console once the output mode is known.
 console = get_console() if _stdout_is_tty() else get_error_console()
+
+# ---------------------------------------------------------------------------
+# Plan-mode tool visibility (v0.24 K23)
+# ---------------------------------------------------------------------------
+#: Current plan tool mode: ``None`` (normal tool set), ``"plan"`` (read-only
+#: planning: builtin allowlist + submit_plan), or ``"execution"`` (normal tool
+#: set + todo_write). The CLI sets it whenever the plan session changes mode; the
+#: schema builders below read it lazily. ``plan_mode``/``session_tools`` are
+#: imported inside functions only, so the normal startup path stays unchanged.
+_plan_mode: Optional[str] = None
+
+_PLAN_TOOL_MODES = ("plan", "execution")
+
+
+def set_plan_tool_mode(mode: Optional[str]) -> None:
+    """Select the plan tool mode and invalidate the mode-dependent schema caches.
+
+    Args:
+        mode: ``None`` for the normal tool set, ``"plan"`` while planning
+            (read-only allowlist + ``submit_plan``) or ``"execution"`` while
+            executing an approved plan (normal tool set + ``todo_write``).
+    """
+    global _plan_mode
+    _plan_mode = mode if mode in _PLAN_TOOL_MODES else None
+    _filtered_schemas_cache.clear()
+    try:
+        from .function import reset_gemini_schema_cache
+
+        reset_gemini_schema_cache()
+    except Exception:  # pragma: no cover - cache invalidation must never raise
+        pass
+
+
+def get_plan_tool_mode() -> Optional[str]:
+    """Return the current plan tool mode (``None`` outside the plan workflow)."""
+    return _plan_mode
+
+
+def _plan_allow_readonly_shell() -> bool:
+    """Read ``PLAN_ALLOW_READONLY_SHELL`` defensively (default: enabled)."""
+    try:
+        return bool(cfg.get("PLAN_ALLOW_READONLY_SHELL", True))
+    except (AttributeError, TypeError):  # pragma: no cover - exotic config mappings
+        return True
+
 
 #: Config keys that standalone tool modules read from the environment. They are
 #: propagated from ``cfg`` right before a shell call or a filesystem mutation so
@@ -155,7 +201,9 @@ def _sync_shell_guardrail_env() -> None:
 #: filtered variants are cached per pattern tuple so the default path is unchanged.
 _openai_schemas_cache: List[Dict[str, Any]] | None = None
 _anthropic_schemas_cache: List[Dict[str, Any]] | None = None
-_filtered_schemas_cache: Dict[Tuple[str, Tuple[str, ...]], List[Dict[str, Any]]] = {}
+#: Filtered/narrowed variants, cached per ``(format, mode, allow_readonly_shell,
+#: pattern tuple)``. The unfiltered normal-mode path keeps its v0.19 cache identity.
+_filtered_schemas_cache: Dict[Tuple[Any, ...], List[Dict[str, Any]]] = {}
 #: Pattern sets already warned about (one warning per process and pattern set).
 _warned_tool_patterns: set = set()
 
@@ -281,36 +329,66 @@ def _build_anthropic_schemas() -> List[Dict[str, Any]]:
     return [function.func_cls.anthropic_schema for function in list_functions()]
 
 
+def _mode_schema_list(
+    schemas: Sequence[Dict[str, Any]], mode: Optional[str], *, anthropic: bool
+) -> List[Dict[str, Any]]:
+    """Apply the plan tool mode to a full builtin schema list.
+
+    * ``plan``: keep only the read-only allowlist and append ``submit_plan``;
+    * ``execution``: keep every builtin and append ``todo_write``;
+    * ``None``: unchanged (the caller never reaches this for the default path).
+    """
+    if not mode:
+        return list(schemas)
+    from . import session_tools
+
+    base = list(schemas)
+    if mode == "plan":
+        from ..plan_mode import plan_tool_allowlist
+
+        allowed = plan_tool_allowlist(_plan_allow_readonly_shell())
+        name_getter = _anthropic_schema_name if anthropic else _openai_schema_name
+        base = [schema for schema in base if name_getter(schema) in allowed]
+        extra = session_tools.anthropic_schemas("plan") if anthropic else session_tools.openai_schemas("plan")
+    else:
+        extra = session_tools.anthropic_schemas("execution") if anthropic else session_tools.openai_schemas("execution")
+    return base + list(extra)
+
+
 def get_openai_schemas() -> List[Dict[str, Any]]:
     """Get OpenAI-compatible function schemas (optionally narrowed).
 
-    The unfiltered list keeps the v0.19 cache identity; filtered variants are
-    cached per pattern set. Returns only tools matched by ``ENABLED_TOOLS`` (or a
-    ``--tools`` value applied to the config), so the model is never offered a tool
-    the run does not want to use.
+    The unfiltered list keeps the v0.19 cache identity; filtered/mode variants are
+    cached per ``(mode, plan shell switch, pattern set)``. The plan tool mode
+    (``set_plan_tool_mode``) filters the builtin list to the read-only allowlist
+    and appends ``submit_plan`` / ``todo_write``; ``ENABLED_TOOLS`` is applied
+    last, exactly like the normal path.
 
     Returns:
         List of function schemas in OpenAI format
     """
     global _openai_schemas_cache
     patterns = enabled_tool_patterns()
-    if not patterns:
+    mode = _plan_mode
+    if mode is None and not patterns:
         if _openai_schemas_cache is not None:
             return _openai_schemas_cache
         _openai_schemas_cache = _build_openai_schemas()
         return _openai_schemas_cache
 
-    cache_key = ("openai", patterns)
-    if cache_key in _filtered_schemas_cache:
-        return _filtered_schemas_cache[cache_key]
+    cache_key: Tuple[Any, ...] = ("openai", mode, _plan_allow_readonly_shell() if mode == "plan" else None, patterns)
+    cached = _filtered_schemas_cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     full = _openai_schemas_cache
     if full is None:
         full = _build_openai_schemas()
         _openai_schemas_cache = full
-    known_names = [_openai_schema_name(schema) for schema in full]
+    schemas = _mode_schema_list(full, mode, anthropic=False)
+    known_names = [_openai_schema_name(schema) for schema in schemas]
     _warn_unknown_tool_patterns(patterns, known_names)
-    filtered = filter_schemas(full, patterns, name_getter=_openai_schema_name)
+    filtered = filter_schemas(schemas, patterns, name_getter=_openai_schema_name)
     _filtered_schemas_cache[cache_key] = filtered
     return filtered
 
@@ -318,28 +396,39 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
 def get_anthropic_schemas() -> List[Dict[str, Any]]:
     """Get Anthropic-compatible function schemas (optionally narrowed).
 
+    Mirrors :func:`get_openai_schemas`, including the plan-mode filtering and the
+    ``submit_plan`` / ``todo_write`` append.
+
     Returns:
         List of function schemas in Anthropic format
     """
     global _anthropic_schemas_cache
     patterns = enabled_tool_patterns()
-    if not patterns:
+    mode = _plan_mode
+    if mode is None and not patterns:
         if _anthropic_schemas_cache is not None:
             return _anthropic_schemas_cache
         _anthropic_schemas_cache = _build_anthropic_schemas()
         return _anthropic_schemas_cache
 
-    cache_key = ("anthropic", patterns)
-    if cache_key in _filtered_schemas_cache:
-        return _filtered_schemas_cache[cache_key]
+    cache_key: Tuple[Any, ...] = (
+        "anthropic",
+        mode,
+        _plan_allow_readonly_shell() if mode == "plan" else None,
+        patterns,
+    )
+    cached = _filtered_schemas_cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     full = _anthropic_schemas_cache
     if full is None:
         full = _build_anthropic_schemas()
         _anthropic_schemas_cache = full
-    known_names = [_anthropic_schema_name(schema) for schema in full]
+    schemas = _mode_schema_list(full, mode, anthropic=True)
+    known_names = [_anthropic_schema_name(schema) for schema in schemas]
     _warn_unknown_tool_patterns(patterns, known_names)
-    filtered = filter_schemas(full, patterns, name_getter=_anthropic_schema_name)
+    filtered = filter_schemas(schemas, patterns, name_getter=_anthropic_schema_name)
     _filtered_schemas_cache[cache_key] = filtered
     return filtered
 
@@ -359,6 +448,10 @@ def get_openai_mcp_tools() -> list[dict[str, Any]]:
         ValueError: If error getting MCP tools
         FileNotFoundError: If MCP config file not found
     """
+    if _plan_mode == "plan":
+        # Plan mode offers no MCP tools (v1): never connect to an MCP server while
+        # planning just to build a schema list.
+        return []
     try:
         tools = get_mcp_manager().to_openai_tools()
     except Exception as e:
@@ -376,6 +469,8 @@ def get_anthropic_mcp_tools() -> list[dict[str, Any]]:
         ValueError: If error getting MCP tools
         FileNotFoundError: If MCP config file not found
     """
+    if _plan_mode == "plan":
+        return []
     try:
         tools = get_mcp_manager().to_anthropic_tools()
     except Exception as e:
@@ -449,6 +544,112 @@ def _emit_tool_result(
     return result
 
 
+def _execute_plan_mode_call(
+    tool_call: ToolCall,
+    arguments: Dict[str, Any],
+    *,
+    kind: str,
+    preview_arguments: str,
+    caption: str,
+    show_output: bool,
+) -> Optional[Tuple[str, bool]]:
+    """Run one plan-mode-only tool call, or return ``None`` for the normal path.
+
+    Handles (v0.24 K23, only active while ``set_plan_tool_mode`` selected a mode):
+
+    * session tools (``submit_plan`` / ``todo_write``): they mutate the plan/todo
+      state only — never the workspace and never the approval/audit gate. The
+      result is recorded but the output panel is suppressed (the CLI renders the
+      approval panel / todo progress instead).
+    * the controlled read-only shell while planning: the command is validated by
+      :mod:`yaicli.plan_shell` first; a denial becomes the model-facing
+      ``plan_shell_denied`` JSON plus one red REPL line and one audit event, an
+      allowed command runs with the plan-shell guardrails (argv only, no shell).
+    """
+    from .. import plan_mode
+
+    name = tool_call.name
+    if name in plan_mode.SESSION_TOOL_NAMES:
+        from . import session_tools
+
+        text = session_tools.execute_session_tool(name, arguments)
+        result = _emit_tool_result(
+            text,
+            kind=kind,
+            name=name,
+            preview_arguments=preview_arguments,
+            caption=caption,
+            # The tool result is the session state JSON; the plan/todo panel is the
+            # user-facing view, so don't print a duplicate output panel.
+            show_output=False,
+        )
+        return result, True
+
+    if name != plan_mode.PLAN_SHELL_TOOL:
+        return None
+    session = plan_mode.get_plan_session()
+    if not session.is_plan_mode:
+        return None
+    if not _plan_allow_readonly_shell():
+        # Defence in depth for the direct dispatch path (the client gate already
+        # refuses the tool because it is not advertised); never run the command.
+        denied = json.dumps(
+            {
+                "success": False,
+                "error": "tool_not_available_in_mode",
+                "reason": "execute_shell_command is not available in plan mode (PLAN_ALLOW_READONLY_SHELL=false).",
+                "hint": "Use fs_read_file / fs_search_files, or enable PLAN_ALLOW_READONLY_SHELL.",
+            },
+            ensure_ascii=False,
+        )
+        result = _emit_tool_result(
+            denied,
+            kind=kind,
+            name=name,
+            preview_arguments=preview_arguments,
+            caption=caption,
+            show_output=False,
+        )
+        return result, True
+
+    from .. import plan_shell
+
+    command = arguments.get("command")
+    verdict = plan_shell.validate_plan_shell_command(command)
+    if not verdict.allowed:
+        reason = str(verdict.reason)
+        hint = str(verdict.hint or "")
+        denied = json.dumps({"error": "plan_shell_denied", "reason": reason, "hint": hint}, ensure_ascii=False)
+        # REPL-visible denial line (console is TTY-aware: machine mode goes to stderr).
+        console.print(f"✗ plan_shell_denied: {safe_text(reason)}", style="red")
+        plan_mode.plan_audit("shell_denied", command=command, reason=reason)
+        result = _emit_tool_result(
+            denied,
+            kind=kind,
+            name=name,
+            preview_arguments=preview_arguments,
+            caption=caption,
+            show_output=False,
+        )
+        return result, True
+
+    result_text = plan_shell.run_plan_shell(
+        verdict.argv,
+        cwd=arguments.get("cwd"),
+        timeout=arguments.get("timeout"),
+    )
+    plan_mode.plan_audit("shell", command=command, decision="allowed")
+    result = _emit_tool_result(
+        result_text,
+        kind=kind,
+        name=name,
+        preview_arguments=preview_arguments,
+        caption=caption,
+        show_output=show_output,
+    )
+    return result, True
+
+
 def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, bool]:
     """Execute a tool call and return the result
 
@@ -481,6 +682,37 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
             f"@{_type.title()} call: {safe_text(tool_call.name)}({safe_text(preview_arguments)})",
             style="blue",
         )
+
+    # v0.24 K23: in plan/execution mode the session tools (submit_plan/todo_write)
+    # and the read-only shell gate are dispatched BEFORE the builtin lookup: session
+    # tools are not entries of the function map, so the normal "get the tool" step
+    # would reject them. The normal path (no plan tool mode) keeps its ordering.
+    arguments: Dict[str, Any] | None = None
+    caption = ""
+    if is_function_call and _plan_mode is not None:
+        try:
+            parsed_arguments = repair_json(tool_call.arguments, return_objects=True)
+            if not isinstance(parsed_arguments, dict):
+                error_msg = f"Invalid arguments type: {parsed_arguments!r}, should be JSON object"
+                console.print(safe_text(error_msg), style="red")
+                return error_msg, False
+            arguments = cast(dict, parsed_arguments)
+        except Exception as e:
+            error_msg = f"Invalid arguments from llm: {e}\nRaw arguments: {tool_call.arguments!r}"
+            console.print(safe_text(error_msg), style="red")
+            return error_msg, False
+        caption = _tool_call_caption(arguments)
+        plan_result = _execute_plan_mode_call(
+            tool_call,
+            arguments,
+            kind=_type,
+            preview_arguments=preview_arguments,
+            caption=caption,
+            show_output=show_output,
+        )
+        if plan_result is not None:
+            return plan_result
+
     # 1. Get the tool
     try:
         tool = get_tool_func(tool_call.name)
@@ -489,20 +721,20 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
         console.print(safe_text(error_msg), style="red")
         return error_msg, False
 
-    # 2. Parse tool arguments
-    try:
-        arguments = repair_json(tool_call.arguments, return_objects=True)
-        if not isinstance(arguments, dict):
-            error_msg = f"Invalid arguments type: {arguments!r}, should be JSON object"
+    # 2. Parse tool arguments (already parsed for the plan-mode branch above)
+    if arguments is None:
+        try:
+            parsed_arguments = repair_json(tool_call.arguments, return_objects=True)
+            if not isinstance(parsed_arguments, dict):
+                error_msg = f"Invalid arguments type: {parsed_arguments!r}, should be JSON object"
+                console.print(safe_text(error_msg), style="red")
+                return error_msg, False
+            arguments = cast(dict, parsed_arguments)
+        except Exception as e:
+            error_msg = f"Invalid arguments from llm: {e}\nRaw arguments: {tool_call.arguments!r}"
             console.print(safe_text(error_msg), style="red")
             return error_msg, False
-        arguments = cast(dict, arguments)
-    except Exception as e:
-        error_msg = f"Invalid arguments from llm: {e}\nRaw arguments: {tool_call.arguments!r}"
-        console.print(safe_text(error_msg), style="red")
-        return error_msg, False
-
-    caption = _tool_call_caption(arguments)
+        caption = _tool_call_caption(arguments)
 
     # 3. Execute the tool
     try:
