@@ -356,7 +356,7 @@ In addition to persistent context, you can temporarily reference files using the
 | `Ctrl+C` | Clear the current input line; during generation it cancels the turn; press twice quickly to exit |
 | `Ctrl+D` | Exit (exit code 0) |
 | `Ctrl+R` | Search history |
-| `Ctrl+O` | Open the full-screen tool-output viewer for this turn (`q`/`Esc` to close); works during generation too (generation continues in the background; closing redraws the accumulated answer) |
+| `Ctrl+O` | Open the full-screen tool-output viewer for this turn; the right pane shows the complete tool-call arguments (pretty-printed JSON) and the selected result (`q`/`Esc` to close). Works during generation too (generation continues in the background; closing redraws the accumulated answer) |
 | `↑/↓` | Navigate through history |
 | `Alt+Enter` (or `Esc`, `Enter`) | Insert a newline instead of submitting |
 | `Ctrl+J` | Insert a newline (same as `Alt+Enter`); `Enter` still submits |

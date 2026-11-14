@@ -55,17 +55,22 @@ Notes:
   flood your screen. This never changes what the model receives — the model still gets up to
   `TOOL_OUTPUT_MAX_CHARS` characters; set both display limits to `0` to show everything.
 - `Ctrl+O` (or `/show-output`) opens a **full-screen viewer** with every tool output of the current
-  turn: left pane lists the entries (tool name, size and a command/path caption), right pane shows
-  the selected result. `↑/↓` select, `Tab`
-  switches pane, `PgUp/PgDn` scroll, `f` toggles between the model-visible text and the spilled full
-  file (capped at 1 MB), and `q`/`Esc`/`Ctrl+O` closes it, restoring the REPL. Non-interactive runs
-  fall back to the inline last-output panel.
+  turn: the left pane lists the entries (tool name, size and a compact command/path caption), and the
+  right pane shows the selected entry's **complete tool-call arguments** — pretty-printed JSON
+  (indent 2) under an `arguments:` label, after the `@ Function call:` header — followed by the
+  selected result. Long arguments wrap to the pane width and scroll with `PgUp/PgDn`. `↑/↓` select,
+  `Tab` switches pane, `f` toggles between the model-visible text and the spilled full file (capped
+  at 1 MB), and `q`/`Esc`/`Ctrl+O` closes it, restoring the REPL. Non-interactive runs fall back to
+  the inline last-output panel.
 - The same shortcut works **while the assistant is generating** an answer: the viewer opens without
   waiting for the turn to finish and the generation keeps running in a background worker thread
   while it is open; closing it redraws the accumulated answer and streaming continues. Typed-ahead
   text is kept and pre-filled into the next prompt.
-- Long tool-call arguments on the `@Function call:` line are summarized
-  (`TOOL_CALL_PREVIEW_MAX_CHARS=300`); a large `content`/`command` value appears as `<N chars>`.
+- Only the inline `@Function call:` line is summarized
+  (`TOOL_CALL_PREVIEW_MAX_CHARS=300`); a large `content`/`command` value appears there as
+  `<N chars>`, e.g. `@Function call: execute_shell_command({"command": "… <302 chars>"})`. That cap
+  is display-only and does not apply to the viewer: its detail pane always shows the complete
+  arguments, as executed. Use `Ctrl+O` when the inline summary hides the value you need.
 - If the spill file cannot be written (read-only disk, permission error), YAICLI degrades to plain
   truncation without the path — the request still succeeds.
 - Spilled files are created with mode `0600` on POSIX (file output may contain secrets); clean the
@@ -387,7 +392,7 @@ MAX_TOOL_CALL_DEPTH=12
 | `TOOL_OUTPUT_DIR` | `<tempdir>/yaicli/chats/tool-outputs` | Where full tool outputs are spilled (independent of the per-project session store) |
 | `TOOL_DISPLAY_MAX_LINES` | `15` | Terminal preview lines (`0` = unlimited; model unaffected) |
 | `TOOL_DISPLAY_MAX_CHARS` | `4000` | Terminal preview characters (`0` = unlimited; model unaffected) |
-| `TOOL_CALL_PREVIEW_MAX_CHARS` | `300` | Max characters of the `@Function call:` argument line (`0` = raw) |
+| `TOOL_CALL_PREVIEW_MAX_CHARS` | `300` | Max characters of the inline `@Function call:` argument line (`0` = raw); the viewer shows full arguments |
 | `CONTEXT_BUDGET_TOKENS` | `0` (derive from window) | Per-request token budget (`> 0` = verbatim override) |
 | `MODEL_CONTEXT_WINDOWS` | - (empty map) | JSON per-model context-window overrides (`model` / `provider:model` / `provider/model` keys) |
 | `ENABLE_MODEL_METADATA` | `true` | Probe provider metadata (OpenRouter / Gemini / Ollama) for the model window |

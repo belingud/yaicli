@@ -14,7 +14,7 @@ These shortcuts work in all interactive modes:
 | `Ctrl+D`             | Exit the application              |
 | `Shift+Tab`          | Toggle plan mode (normal ↔ plan, read-only); in execute mode it returns to chat and enters plan mode. While a plan is waiting for review, it cancels the review. Use `/mode chat\|exec` to switch between chat and execute modes |
 | `Ctrl+R`             | Search command history            |
-| `Ctrl+O`             | Open the full-screen tool-output viewer for this turn (`↑/↓` select, `Tab` switch pane, `f` full text, `q`/`Esc` close). Also works while the assistant is generating: generation continues in the background and closing the viewer redraws the accumulated answer |
+| `Ctrl+O`             | Open the full-screen tool-output viewer for this turn: left pane lists the entries, right pane shows the complete tool-call arguments (pretty-printed JSON) and the selected result (`↑/↓` select, `Tab` switch pane, `f` full text, `q`/`Esc` close). Also works while the assistant is generating: generation continues in the background and closing the viewer redraws the accumulated answer |
 | `↑/↓`                | Navigate through command history  |
 | `Alt+Enter` (`Esc`, `Enter`) | Insert a newline instead of submitting the prompt |
 | `Ctrl+J`             | Insert a newline (same as `Alt+Enter`); `Enter` still submits the whole input |

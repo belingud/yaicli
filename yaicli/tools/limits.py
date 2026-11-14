@@ -21,6 +21,11 @@ are rendered head-only (first ``TOOL_DISPLAY_MAX_LINES`` lines / chars) with a
 ``TOOL_OUTPUT_MAX_CHARS``. :func:`make_display_preview` and
 :func:`summarize_arguments` implement that display-only layer.
 
+The Ctrl+O detail pane is the one exception that must stay complete:
+:func:`format_arguments_text` renders the untruncated arguments (pretty-printed
+JSON) that :func:`yaicli.tools.output_history.record_output` stores, so the user
+can inspect a long command/file content that the console call line summarizes.
+
 Standard library only: this module runs inside the tool-call path.
 """
 
@@ -34,6 +39,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from ..config import cfg
+from ..console import strip_control_chars
 from ..const import (
     DEFAULT_TOOL_CALL_PREVIEW_MAX_CHARS,
     DEFAULT_TOOL_DISPLAY_MAX_CHARS,
@@ -414,6 +420,43 @@ def get_output_cap(tool_name: str) -> int:
     return resolve_output_cap(tool_name)
 
 
+def _pretty_json(value: Any) -> str:
+    """Serialize one argument value as readable JSON; fall back to ``str``."""
+    try:
+        return json.dumps(value, ensure_ascii=False, indent=2, sort_keys=False)
+    except (TypeError, ValueError):  # pragma: no cover - exotic argument objects
+        return str(value)
+
+
+def format_arguments_text(arguments: Any) -> str:
+    """Return the complete tool-call arguments as display text for the viewer.
+
+    Unlike :func:`summarize_arguments`, which keeps the console/list preview
+    compact (300 chars by default, long values replaced by ``<N chars>``), this
+    function keeps every character so the Ctrl+O detail pane can show exactly
+    what the tool received. ``dict``/``list`` values and JSON strings are
+    rendered as ``indent=2`` JSON; a non-JSON string is kept verbatim; ``None``
+    becomes ``""``. C0/C1 control characters are stripped (newlines and tabs are
+    preserved) so the text cannot emit terminal escape sequences.
+
+    Args:
+        arguments: Raw arguments from the model, an already-parsed JSON value,
+            or any scalar the caller wants to display.
+
+    Returns:
+        The untruncated, sanitized argument text (``""`` when there is nothing).
+    """
+    if arguments is None:
+        return ""
+    if isinstance(arguments, str):
+        try:
+            parsed: Any = json.loads(arguments)
+        except (TypeError, ValueError):
+            return strip_control_chars(arguments)
+        return strip_control_chars(_pretty_json(parsed))
+    return strip_control_chars(_pretty_json(arguments))
+
+
 __all__ = [
     "DEFAULT_CALL_PREVIEW_MAX_CHARS",
     "DEFAULT_DISPLAY_MAX_CHARS",
@@ -425,9 +468,10 @@ __all__ = [
     "TOOL_OUTPUT_CAPS",
     "TruncatedOutput",
     "build_preview_marker",
+    "format_arguments_text",
+    "get_output_cap",
     "make_display_preview",
     "resolve_output_cap",
-    "get_output_cap",
     "spill_tool_output",
     "summarize_arguments",
     "truncate_tool_output",

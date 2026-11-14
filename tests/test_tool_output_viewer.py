@@ -1,5 +1,6 @@
 """Tests for the full-screen Ctrl+O tool-output viewer."""
 
+import json
 import threading
 import time
 from unittest.mock import MagicMock, patch
@@ -39,6 +40,7 @@ def entry(index=1, turn=1, name="execute_shell_command", text="result text", **k
         spill_path=kwargs.pop("spill_path", None),
         truncated=kwargs.pop("truncated", False),
         caption=kwargs.pop("caption", ""),
+        full_arguments=kwargs.pop("full_arguments", ""),
     )
 
 
@@ -56,11 +58,35 @@ class TestHelpers:
         assert "MCP" in header
 
     def test_body_text_contains_call_arguments_result_and_spill(self):
-        body = _body_text(entry(text="hello", spill_path="/tmp/spill.txt"))
-        assert "@ Function call: execute_shell_command" in body
-        assert 'arguments: {"command": "pytest -q"}' in body
+        full = '{\n  "command": "pytest -q"\n}'
+        body = _body_text(entry(text="hello", full_arguments=full, spill_path="/tmp/spill.txt"))
+        assert body.startswith(f"@ Function call: execute_shell_command\narguments:\n{full}\n\n")
         assert "hello" in body
         assert "/tmp/spill.txt" in body
+
+    def test_body_text_shows_complete_long_arguments_without_summary(self):
+        long_command = "echo " + "a" * 297  # 302 chars: over the 300-char preview cap
+        full = json.dumps({"command": long_command}, ensure_ascii=False, indent=2)
+        body = _body_text(entry(full_arguments=full))
+
+        # The whole command is present and the arguments block is parseable JSON.
+        assert long_command in body
+        arguments_block = body.split("arguments:\n", 1)[1].split("\n\n", 1)[0]
+        assert json.loads(arguments_block) == {"command": long_command}
+        # No compact-summary markers from summarize_arguments leaked into the pane.
+        assert "…" not in body
+        assert "<302 chars>" not in body
+
+    def test_body_text_falls_back_to_compact_arguments_for_legacy_entries(self):
+        body = _body_text(entry(arguments='{"command": "pytest -q"}', full_arguments=""))
+        assert body.startswith('@ Function call: execute_shell_command\narguments:\n{"command": "pytest -q"}\n\n')
+        assert "result text" in body
+
+    def test_body_text_prefers_full_arguments_over_compact_summary(self):
+        body = _body_text(entry(arguments='{"command": "echo … <302 chars>"}', full_arguments='{\n  "a": 1\n}'))
+        assert '{\n  "a": 1\n}' in body
+        assert "…" not in body
+        assert "<302 chars>" not in body
 
     def test_body_text_full_mode(self):
         body = _body_text(entry(text="model text"), full_text="FULL SPILLED TEXT")

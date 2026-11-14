@@ -17,7 +17,12 @@ MAX_ENTRIES = 100
 
 @dataclass(frozen=True)
 class ToolOutputEntry:
-    """One recorded tool result (the model-visible, already truncated text)."""
+    """One recorded tool result (the model-visible, already truncated text).
+
+    Alongside the truncated result it keeps what the viewer needs to describe
+    the call: a compact ``arguments`` summary for lists and the complete
+    ``full_arguments`` text for the detail pane.
+    """
 
     #: Monotonic sequence number across the session (1-based); also the viewer id.
     index: int
@@ -27,7 +32,8 @@ class ToolOutputEntry:
     kind: str
     #: Tool name as reported by the LLM.
     name: str
-    #: Compact argument summary (same text shown on the call line).
+    #: Compact argument summary (same text shown on the call line and, as a
+    #: fallback, in the viewer list).
     arguments: str
     #: Result text that was sent to the model (``TOOL_OUTPUT_MAX_CHARS`` cap).
     text: str
@@ -40,6 +46,10 @@ class ToolOutputEntry:
     #: Short human caption for lists (e.g. the shell command or file path); "" when
     #: the tool has no obviously identifying argument.
     caption: str = ""
+    #: Complete arguments as executed: pretty-printed JSON text for the viewer
+    #: detail pane. "" means "not recorded" (legacy entries / direct
+    #: :func:`record_output` calls); the viewer then falls back to ``arguments``.
+    full_arguments: str = ""
 
 
 _entries: Deque[ToolOutputEntry] = deque(maxlen=MAX_ENTRIES)
@@ -69,8 +79,13 @@ def record_output(
     total_chars: int,
     spill_path: Optional[str] = None,
     truncated: bool = False,
+    full_arguments: str = "",
 ) -> ToolOutputEntry:
-    """Append one tool result to the in-memory history."""
+    """Append one tool result to the in-memory history.
+
+    ``arguments`` is the compact one-line summary; ``full_arguments`` is the
+    complete, pretty-printed argument text the Ctrl+O detail pane renders.
+    """
     global _sequence
     _sequence += 1
     entry = ToolOutputEntry(
@@ -84,6 +99,7 @@ def record_output(
         total_chars=total_chars,
         spill_path=spill_path,
         truncated=truncated,
+        full_arguments=full_arguments,
     )
     _entries.append(entry)
     return entry

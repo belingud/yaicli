@@ -164,6 +164,16 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   handler; that hangs the prompt event loop), and `_run_repl()` catches the signal, runs
   `CLI._open_tool_output_viewer()` (a synchronous alt-screen `prompt_toolkit.Application`) and
   continues. `/show-output` (`CmdHandler.handle_show_output`) opens the same viewer.
+  Binding rule: the viewer's right detail pane renders the **complete tool-call arguments as
+  executed** — `format_arguments_text()`: dict/list/JSON-string values as pretty-printed JSON
+  (`indent=2`, `ensure_ascii=False`), a non-JSON string verbatim, control characters stripped —
+  under an `arguments:` label after the `@ Function call:` header (MCP entries use
+  `@ Mcp call:`), before the result — while the left list pane and the inline `@Function call:`
+  console line keep their compact summaries (`summarize_arguments()` / `_tool_call_caption()`).
+  The full text is recorded at execution time
+  (`ToolOutputEntry.full_arguments`); there is no viewer-time argument cap, so never downgrade the
+  detail pane to the summary. Entries without recorded full arguments (legacy/manual) fall back to
+  `entry.arguments`.
   The viewer list and header show the raw `ToolOutputEntry.name` (`f"{index}. {entry.name} (Nc)"`);
   compact display aliases are forbidden — see
   [function-tool-guidelines.md](./function-tool-guidelines.md#viewer-chrome-must-show-the-raw-tool-name).
