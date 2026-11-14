@@ -9,11 +9,54 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .config import Config, get_config
-from .console import YaiConsole, get_console, strip_control_chars, untrusted_text
+from .console import YaiConsole, get_console, safe_text, strip_control_chars, untrusted_text
 from .render import Markdown, plain_formatter
 from .schemas import ConfirmToolCall, LLMResponse, RefreshLive, ToolConfirmDecision
 from .tools.approval import canonical_arguments, parse_tool_arguments
 from .tools.risk import classify_shell_command, get_tool_risk
+
+#: Lazily imported prompt_toolkit ``prompt`` (K23 approval panel).
+#:
+#: Kept as a module attribute so tests can replace ``yaicli.printer._prompt_function``
+#: and so one-shot/headless runs never import prompt_toolkit just to look at a panel.
+_pt_prompt = None  # type: ignore[assignment]
+
+
+def _prompt_function() -> Any:
+    """Import prompt_toolkit's one-line ``prompt`` on first approval-panel use."""
+    global _pt_prompt
+    if _pt_prompt is None:
+        from prompt_toolkit import prompt as _prompt
+
+        _pt_prompt = _prompt
+    return _pt_prompt
+
+
+def _plan_decision_bindings() -> Any:
+    """Key bindings for the plan approval panel (``a``/``e``/``r``/``s``/Esc/Shift+Tab).
+
+    Shift+Tab cancels the submission exactly like Esc (revising: drop the revision
+    and return to execution), because the modal panel consumes the REPL's own
+    Shift+Tab binding while it is open.
+    """
+    from prompt_toolkit.key_binding import KeyBindings
+
+    bindings = KeyBindings()
+    for key, decision in (
+        ("a", "approve"),
+        ("e", "edit"),
+        ("r", "redo"),
+        ("s", "save"),
+        ("escape", "cancel"),
+        ("s-tab", "cancel"),
+    ):
+
+        def _handler(event: Any, decision: str = decision) -> None:
+            event.app.exit(result=decision)
+
+        bindings.add(key)(_handler)
+    return bindings
+
 
 #: Bounds for the faithful confirmation preview (K06): the prompt must stay readable
 #: even for a 1 MB file write or a multi-edit call.
@@ -600,6 +643,127 @@ class Printer:
             self.console.print("\nTool call denied.", style="yellow")
             return ToolConfirmDecision.DENY
         return choice_map[choice]
+
+    # ------------------- plan mode panels (v0.24 K23) -------------------
+    @staticmethod
+    def _shorten_plan_path(path: Any) -> str:
+        """Render a plan file path with the home directory abbreviated."""
+        try:
+            from . import plan_store
+
+            return plan_store.shorten_path(Path(path))
+        except Exception:  # pragma: no cover - defensive: display must never break
+            try:
+                return str(path)
+            except Exception:
+                return ""
+
+    @staticmethod
+    def _plan_diff_lines(diff: Any) -> List[str]:
+        """Render a revision diff (``RevisionDiff`` or its dict form) as panel lines."""
+        if diff is None:
+            return []
+        lines: List[str] = []
+        summary = detail = impact = None
+        if isinstance(diff, dict):
+            summary = diff.get("summary")
+            detail = diff.get("detail_lines") or diff.get("lines")
+            impact = diff.get("todo_impact_text") or diff.get("todo_impact")
+        else:
+            summary_fn = getattr(diff, "summary", None)
+            if callable(summary_fn):
+                try:
+                    summary = summary_fn()
+                except Exception:  # pragma: no cover - display must never break
+                    summary = None
+            detail_fn = getattr(diff, "detail_lines", None)
+            if callable(detail_fn):
+                try:
+                    detail = detail_fn()
+                except Exception:  # pragma: no cover
+                    detail = None
+            # plan_mode may attach the precomputed todo-impact text (the printer
+            # does not own the todo state); render it verbatim when present.
+            impact = getattr(diff, "todo_impact_text", None)
+        if isinstance(summary, str) and summary:
+            lines.append(safe_text(summary))
+        if isinstance(detail, (list, tuple)):
+            for line in detail:
+                lines.append(f" {safe_text(line)}")
+        if isinstance(impact, str) and impact:
+            # plan_mode's todo_impact() already returns the full ``Todo impact: …``
+            # sentence; only prefix it when the producer returned the bare text.
+            line = impact if impact.lstrip().lower().startswith("todo impact:") else f"Todo impact: {impact}"
+            lines.append(safe_text(line))
+        return lines
+
+    def show_plan_panel(self, plan: Any, *, revision: bool = False, diff: Any = None) -> None:
+        """Render the Rich approval panel for a submitted plan.
+
+        First plans list the goal, the numbered step titles and the plan file path;
+        revisions show the step diff (``Changes: +N ~N -N``, per-step lines and the
+        todo impact when plan_mode provided it). All model text is escaped with
+        ``safe_text`` and paths are sanitized, so a plan can never inject markup.
+        """
+        plan_id = safe_text(getattr(plan, "id", "") or "")
+        plan_revision = getattr(plan, "revision", "")
+        title = f"Plan revision {plan_revision}: {plan_id}" if revision else f"Plan ready: {plan_id}"
+        lines: List[str] = []
+        if revision:
+            lines.extend(self._plan_diff_lines(diff))
+        goal = getattr(plan, "goal", "") or ""
+        lines.append(f"Goal: {safe_text(goal)}")
+        lines.append("Steps:")
+        for index, step in enumerate(getattr(plan, "steps", None) or [], start=1):
+            lines.append(f" {index}. {safe_text(getattr(step, 'title', '') or '')}")
+        path = getattr(plan, "path", None)
+        if path:
+            lines.append(f"File: {safe_text(self._shorten_plan_path(path))}")
+        self.console.print(
+            Panel(
+                "\n".join(lines),
+                title=title,
+                title_align="left",
+                border_style="magenta",
+                expand=False,
+            )
+        )
+
+    def ask_plan_decision(self, *, revision: bool = False) -> str:
+        """Ask the user what to do with a submitted plan.
+
+        Returns one of ``approve``/``edit``/``redo``/``save``/``cancel``. The panel
+        offers ``a``/``e``/``r``/``s``/Esc (no ``s`` for revisions). Non-interactive
+        runs fall back to ``save`` so a plan is never silently executed.
+        """
+        if self.machine:
+            return "save"
+        try:
+            is_terminal = bool(getattr(self.console, "is_terminal", False))
+        except Exception:  # pragma: no cover - exotic console objects
+            is_terminal = False
+        if not is_terminal:
+            return "save"
+        message = (
+            "[a]pply & continue  [e]dit  [r]edo  [Esc]cancel revision: "
+            if revision
+            else "[a]pprove & execute  [e]dit  [r]edo  [s]ave only  [Esc]cancel: "
+        )
+        try:
+            decision = _prompt_function()(message, key_bindings=_plan_decision_bindings())
+        except (KeyboardInterrupt, EOFError):
+            return "cancel"
+        except Exception:  # pragma: no cover - never let the panel kill the REPL
+            return "save"
+        value = str(decision or "").strip().lower()
+        mapping = {
+            "a": "approve",
+            "e": "edit",
+            "r": "redo",
+            "s": "save",
+            "": "cancel",
+        }
+        return mapping.get(value, "cancel")
 
     def _emit_reasoning(
         self, full_reasoning: str, printed_len: int, header_shown: bool, *, flush: bool

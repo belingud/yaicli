@@ -51,6 +51,8 @@ class ErrorKind(StrEnum):  # type: ignore
     CONFIG = "config"
     DEPTH_LIMIT = "depth_limit"
     INTERRUPTED = "interrupted"
+    #: ``--plan`` headless run ended without the model submitting a plan (K23).
+    PLAN_NOT_SUBMITTED = "plan_not_submitted"
     UNKNOWN = "unknown"
 
 

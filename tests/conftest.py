@@ -126,3 +126,19 @@ def strip_ansi():
         return _ANSI_ESCAPE.sub("", text)
 
     return _strip
+
+
+@pytest.fixture(autouse=True)
+def reset_plan_state():
+    """Reset the process-global K23 plan session/tool mode around every test."""
+    try:
+        from yaicli import plan_mode
+        from yaicli.tools import set_plan_tool_mode
+    except Exception:  # pragma: no cover - modules always importable
+        yield
+        return
+    plan_mode.reset_plan_session()
+    set_plan_tool_mode(None)
+    yield
+    plan_mode.reset_plan_session()
+    set_plan_tool_mode(None)
