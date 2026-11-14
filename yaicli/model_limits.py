@@ -208,6 +208,13 @@ def parse_user_windows(value: Any) -> Dict[str, ModelLimits]:
             resolved[f"{provider}:{normalized}"] = limits
         else:
             resolved[normalized] = limits
+        # OpenRouter-style model ids contain a slash (``z-ai/glm-5.3-flash``) and
+        # collide with the ``provider/model`` key syntax: the first segment is a
+        # vendor, not a YAICLI provider. Register the literal key as well so the
+        # configured model id always finds its entry, whatever PROVIDER is set to.
+        literal = key.strip()
+        if literal and literal != normalized:
+            resolved.setdefault(literal, limits)
     return resolved
 
 
@@ -221,7 +228,12 @@ def _from_user(config: Optional[Mapping[str, Any]], provider: str, model: str) -
     if not mapping:
         return None
     normalized = normalize_model_name(model)
-    for candidate in (f"{provider}:{normalized}", normalized):
+    raw_model = str(model or "").strip().lower()
+    candidates = [f"{provider}:{normalized}", normalized]
+    if raw_model and raw_model not in candidates:
+        # Vendor-prefixed ids (``z-ai/glm-5.3-flash``) are matched literally too.
+        candidates.append(raw_model)
+    for candidate in candidates:
         limits = mapping.get(candidate)
         if limits is not None:
             return limits

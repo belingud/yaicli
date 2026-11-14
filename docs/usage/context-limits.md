@@ -165,6 +165,13 @@ a `provider/model` pair; values may be an integer or an object with `window` / `
 MODEL_CONTEXT_WINDOWS={"my-gateway-model": 200000, "openrouter/anthropic/claude-sonnet-5.5": 1000000, "ollama/qwen2.5:7b": {"window": 32768, "max_output": 4096}}
 ```
 
+Model ids that themselves contain a slash (OpenRouter style, e.g. `z-ai/glm-5.3-flash`) are matched
+**literally as well**, so this works with any `PROVIDER`:
+
+```ini
+MODEL_CONTEXT_WINDOWS={"z-ai/glm-5.3-flash": 1000000}
+```
+
 An explicit entry always wins over everything below it, and `/context` then reports `source: user`.
 Remove the entry to fall back to the learned/metadata/catalog/heuristic layers.
 

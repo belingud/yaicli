@@ -123,6 +123,22 @@ class TestUserWindows:
         assert get_context_limits("openai", "custom-model", config).window == 4096
         assert get_context_limits("deepseek", "custom-model", config).window == 4096
 
+    def test_openrouter_style_model_key_is_matched_literally(self):
+        """``z-ai/glm-5.3-flash`` is a model id, not ``provider/model``.
+
+        Regression: the slash was parsed as a provider name ("z-ai"), so the user
+        override never matched the configured provider and the model kept the
+        conservative 128k default.
+        """
+        config = _config(MODEL_CONTEXT_WINDOWS={"z-ai/glm-5.3-flash": 1_000_000})
+        for provider in ("openai", "openrouter", "custom-gateway"):
+            limits = get_context_limits(provider, "z-ai/glm-5.3-flash", config)
+            assert limits.window == 1_000_000, provider
+            assert limits.source == "user", provider
+        # The same literal key still works when the provider prefixes the model id.
+        prefixed = get_context_limits("openrouter", "openrouter/z-ai/glm-5.3-flash", config)
+        assert prefixed.window == 1_000_000 and prefixed.source == "user"
+
 
 # ---------------------------------------------------------------------------
 # Heuristic layer
