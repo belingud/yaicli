@@ -576,3 +576,44 @@ Shipped K23 persistent plan mode end to end (plan mode state machine, submit_pla
 
 - v0.24 release prep from master (tag/bump/changelog) when the user asks
 - Offered but not implemented: per-provider forced tool_choice for submit_plan; natural-language shortcut for saved plans; normal-mode reminder that a saved plan exists
+
+
+## Session 14: Release v0.24.0 (K23 plan mode)
+<!-- trellis-session: v=2 fp=de718c2694a437e9 -->
+
+**Date**: 2026-11-14
+**Task**: Release v0.24.0 (K23 plan mode)
+**Branch**: `master`
+
+### Summary
+
+Cut v0.24.0 from master after PR #56: bumped 0.23.0 -> 0.24.0, regenerated CHANGELOG from Conventional Commits with a hand-written Behaviour changes section, synced docs/changelog.md + uv.lock, pushed master and tag v0.24.0 (wheel + sdist published to PyPI by publish.yml), and redeployed the MkDocs site from the docs branch. CI, Startup benchmark, Publish to PyPI and Deploy MkDocs all green. v0.24.0 ships K23 persistent plan mode.
+
+### Main Changes
+
+- bump2version minor -> commit ae284fb, tag v0.24.0 (tag points at the bump commit, as the release spec requires)
+- git cliff regenerated CHANGELOG.md with the v0.24.0 entry; added a Behaviour changes section (plan mode surface, plan persistence/resume, half-window input budget floor + MAX_TOKENS clamp, EMPTY_RESPONSE errors with BASE_URL hint, literal vendor-prefixed MODEL_CONTEXT_WINDOWS keys); uv.lock project version refreshed; docs/changelog.md synced
+- pushed master + tag: publish.yml published yaicli-0.24.0 wheel and sdist to PyPI, test.yml matrix and bench.yml cold-start gate passed
+- pushed master:docs and redeployed the docs site; /usage/plan-mode/ and /changelog/ pages now serve the v0.24.0 content
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ae284fb` | Bump version: 0.23.0 → 0.24.0 |
+| `0433937` | docs(changelog): update changelog for v0.24.0 release |
+
+### Testing
+
+- [OK] [OK] Pre-release: uv run pytest 2970 passed, ruff check --no-fix clean, mkdocs build --strict clean
+- [OK] [OK] Post-push: CI (py3.10/3.12/3.13) success, Startup benchmark success, Publish to PyPI success, Deploy MkDocs success, Pages build success
+- [OK] [OK] PyPI JSON reports latest 0.24.0 with yaicli-0.24.0-py3-none-any.whl and yaicli-0.24.0.tar.gz
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Remaining v0.24 roadmap theme: K24 checks/definition-of-done and K25 checkpoint/rewind (not started).
+- v0.25 (K26 hooks, K27 skills, K28 subagents, K29 model routing) starts from the new master.
