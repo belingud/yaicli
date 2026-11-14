@@ -1448,29 +1448,30 @@ def resume_plan(session: PlanSession) -> bool:
 # Context blocks / summaries
 # ---------------------------------------------------------------------------
 _PLAN_INSTRUCTIONS = (
-    "PLAN MODE IS ACTIVE (read-only). You are researching before acting, NOT implementing. You MUST NOT "
-    "modify files, install anything, run builds/tests or change the workspace, and you MUST NOT write the "
-    "implementation, code or the final answer in this mode. Use the available read-only tools (read files, "
-    "search, web pages, read-only shell) to understand the task, then finish by calling submit_plan with a "
-    "concrete, ordered step list; every step needs a title and acceptance criteria. The submit_plan tool "
-    "call is the ONLY way to end planning and ask the user to approve the plan: do not answer the build "
-    "request directly with code or prose, and never claim work is done while planning. If the task is "
-    "small, submit a short plan (1-3 steps) instead of answering directly. If you need information from "
-    "the user, ask one short question in text and wait."
+    "YOU ARE NOW IN PLAN MODE. Plan mode is a read-only phase whose ONLY deliverable is an "
+    "implementation plan the user can review and approve — not the implementation itself. In this "
+    "mode you must follow these rules: (1) do NOT modify files, install anything, run builds/tests or "
+    "change the workspace; (2) do NOT write the implementation, code, HTML or the final answer the "
+    "user asked for — replying with the deliverable here is a failure; (3) research the task with the "
+    "read-only tools first (read files, search, web pages, read-only shell); (4) end the turn by "
+    "calling submit_plan with a concrete, ordered step list where every step has a title and "
+    "acceptance criteria. submit_plan is the ONLY way to leave plan mode: it shows the plan to the "
+    "user for approval. If the task is small, submit a short 1-3 step plan instead of answering. If "
+    "you need a clarification, ask one short question in text and wait. Never claim any work is done."
 )
 _REVISION_INSTRUCTIONS = (
-    "PLAN MODE IS ACTIVE (revising): the user is adjusting an already approved plan and you are still "
-    "read-only. You MUST NOT write the implementation or the final answer. Research the changed "
-    "requirements with the read-only tools, then call submit_plan with the complete updated step list, "
-    "revision={next_revision} and a short change_summary. Keep existing step ids unchanged; new steps take "
-    "ids S{n} and continue from there. submit_plan is the ONLY way to end planning here; it shows the diff "
-    "for approval and then execution resumes."
+    "YOU ARE NOW IN PLAN MODE (revising). Plan mode is read-only: the user is adjusting an already "
+    "approved plan, and you must NOT write the implementation or the final answer. Research the "
+    "changed requirements with the read-only tools, then call submit_plan with the complete updated "
+    "step list, revision={next_revision} and a short change_summary. Keep existing step ids unchanged; "
+    "new steps take ids S{n} and continue from there. submit_plan is the ONLY way to end planning "
+    "here; it shows the diff for approval and then execution resumes."
 )
 _EXECUTION_INSTRUCTIONS = (
-    "EXECUTING THE APPROVED PLAN: work through the todo list one step at a time and update it with "
-    "todo_write. Keep exactly one step in_progress, mark it completed when done and move the next step to "
-    "in_progress. Do not add or remove steps; re-enter plan mode (Shift+Tab) to revise the plan. Keep chat "
-    "replies brief; the todo list is the source of truth for progress."
+    "YOU ARE NOW EXECUTING AN APPROVED PLAN. Work through the todo list one step at a time and update "
+    "it with todo_write. Keep exactly one step in_progress, mark it completed when done and move the "
+    "next step to in_progress. Do not add or remove steps; re-enter plan mode (Shift+Tab) to revise "
+    "the plan. Keep chat replies brief; the todo list is the source of truth for progress."
 )
 
 

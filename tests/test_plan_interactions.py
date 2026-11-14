@@ -108,7 +108,7 @@ class TestCompactInteraction:
         assert plan_cli.chat.plan == plan_pointer_before
 
         blocks = _system_text(plan_cli._build_messages("continue"))
-        assert "EXECUTING THE APPROVED PLAN" in blocks
+        assert "EXECUTING AN APPROVED PLAN" in blocks
         assert plan.goal in blocks
         assert "Todo 1/2 completed" not in blocks  # fresh approved plan: S1 in progress only
 
@@ -126,7 +126,7 @@ class TestCompactInteraction:
         ]
         assert plan_cli.cmd_handler.handle_command("/compact 1") is True
         blocks = _system_text(plan_cli._build_messages("more research"))
-        assert "PLAN MODE IS ACTIVE (read-only)" in blocks
+        assert "YOU ARE NOW IN PLAN MODE" in blocks
         assert "Research plan" in blocks
 
 
@@ -224,9 +224,9 @@ class TestPlanPromptDelivery:
         system_messages = [message for message in messages if message.role == "system"]
         assert len(system_messages) == 1
         content = system_messages[0].content
-        assert "PLAN MODE IS ACTIVE (read-only)" in content
+        assert "YOU ARE NOW IN PLAN MODE" in content
         assert "submit_plan" in content
-        assert "MUST NOT write the implementation" in content
+        assert "do NOT write the implementation" in content
 
     def test_revising_rules_are_in_the_first_system_message(self, plan_cli):
         _submit(plan_cli, goal="Revise me")
@@ -235,7 +235,7 @@ class TestPlanPromptDelivery:
         messages = plan_cli._build_messages("adjust the plan")
         system_messages = [message for message in messages if message.role == "system"]
         assert len(system_messages) == 1
-        assert "PLAN MODE IS ACTIVE (revising)" in system_messages[0].content
+        assert "YOU ARE NOW IN PLAN MODE (revising)" in system_messages[0].content
         assert "revision=2" in system_messages[0].content
 
     def test_execution_rules_are_in_the_first_system_message(self, plan_cli):
@@ -243,7 +243,7 @@ class TestPlanPromptDelivery:
         system_messages = [message for message in messages if message.role == "system"]
         assert len(system_messages) == 1
         content = system_messages[0].content
-        assert "EXECUTING THE APPROVED PLAN" in content
+        assert "EXECUTING AN APPROVED PLAN" in content
         assert "Delivery plan" in content
 
     def test_normal_mode_adds_no_plan_prompt(self, plan_cli):
@@ -251,4 +251,4 @@ class TestPlanPromptDelivery:
         system_messages = [message for message in messages if message.role == "system"]
         assert len(system_messages) == 1
         assert "PLAN MODE" not in (system_messages[0].content or "")
-        assert "EXECUTING THE APPROVED PLAN" not in (system_messages[0].content or "")
+        assert "EXECUTING AN APPROVED PLAN" not in (system_messages[0].content or "")
