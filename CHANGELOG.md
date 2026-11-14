@@ -1,5 +1,294 @@
 
 ---
+## [0.24.0](https://github.com/belingud/yaicli/compare/v0.23.0..v0.24.0) - 2026-11-14
+
+### ⚠️ Behaviour changes
+
+- **Plan mode is a new session mode.** `Shift+Tab` (or bare `/plan`) toggles a read-only
+  research phase whose only deliverable is a plan: workspace writes, mutating shell commands
+  and other side-effecting tools are refused, and the mode ends with `submit_plan`, the
+  approval panel, or by turning it off. Normal chat is unchanged; `/mode` still switches
+  chat/execute, and `-p --plan` runs a one-shot plan headlessly.
+- **Plans are persisted as Markdown** under `<config-dir>/plans/<project-key>/` with
+  frontmatter (status, revision, todos), 0700 directories / 0600 files and `PLAN_KEEP=80`
+  terminal plans per project. Approved plans execute through `todo_write` and can be resumed
+  later with `/plan resume`; `--resume` always starts in normal mode and only prints the
+  unfinished-plan hint.
+- **The request budget reserves at least half the context window for input.** An oversized
+  `MAX_TOKENS` is clamped once per session with a warning instead of starving history
+  (`CONTEXT_BUDGET_TOKENS > 0` still overrides the budget verbatim). This also fixes
+  `/load`ed sessions losing their messages when the model window is unknown.
+- **A 200 response with no text, reasoning or tool call is now an error.** The new
+  `ErrorKind.EMPTY_RESPONSE` (headless exit 1, `error.kind=empty_response`) replaces the
+  silent empty answer, and both it and `bad_request` hint that an OpenAI-compatible
+  `BASE_URL` usually ends with `/v1`.
+- **`MODEL_CONTEXT_WINDOWS` matches vendor-prefixed model ids literally.** Keys such as
+  `{"z-ai/glm-5.3-flash": 1000000}` now resolve for slash-carrying model ids regardless of
+  `PROVIDER`; `{"provider:model": ...}` entries stay provider-scoped.
+- **`/plan` and `/todo` are new commands**, and the REPL prompt shows the plan-mode state
+  (`💬` while planning, `🚀` while executing) with the todo counter.
+
+### ⛰️  Features
+
+- feat(plan): add approval panel, /plan commands and headless --plan (K23)
+
+CLI surface for the persistent plan mode:
+
+- Shift+Tab (and bare /plan) now toggles normal <-> plan mode; the prompt
+  becomes [plan] 💬 > and plan mode prints "plan mode · read-only". /mode
+  keeps switching chat/execute. Execute mode returns to chat first.
+- Approval panel: [a]pprove & execute / [e]dit / [r]edo / [s]ave only /
+  Esc (and Shift+Tab) cancel, with the revision diff panel (+N ~N -N,
+  todo impact) for re-planning; TOOL_POLICY=readonly asks before execution.
+- Bounded execution loop driven by todo_write (kickoff/continue turns,
+  progress detection, Ctrl-C pause, done summary), plan context injected
+  into _build_messages, Chat.plan pointer persisted after every change.
+- --resume always restores normal mode and only prints the two-line
+  unfinished-plan hint; /plan review and /plan resume reopen plans.
+- /plan (task | list [--all] | show | edit | review | resume | clear | abort)
+  and /todo commands with help/completion metadata.
+- -p/--plan one-shot planning: saves a draft, never executes, JSON adds
+  plan/plan_path/revision (normal JSON key set unchanged), exit 1 with
+  error.kind=plan_not_submitted when no plan was submitted, exit 2 with
+  --shell/--code or PLAN_ENABLED=false.
+- Tests: commands/help/banner, resume, approval+execution/re-plan,
+  headless JSON/stream-json/exit codes, /compact interaction, plus the
+  repo-wide autouse plan-state reset fixture. - ([3b0f2db](https://github.com/belingud/yaicli/commit/3b0f2dbc7a4d11095a01f2d7b2b99a38dbd2b941)) - Belingud
+- feat(plan): add plan mode state machine, submit_plan and todo_write (K23)
+
+- yaicli/plan_mode.py: plan session state machine (normal/researching/
+  revising/reviewing/executing), submit_plan validation (first plan and
+  in-place revision: goal/steps/acceptance/size limits, S1..Sn ids, revision
+  and change_summary rules), review-diff computation, todo validation
+  (1:1 with the current revision, single in_progress, blocked reason),
+  checkout write-back, approve/apply/finish/abort/pause/resume helpers,
+  bounded plan/todo context blocks and plan.* audit events.
+- yaicli/tools/session_tools.py: submit_plan / todo_write schemas for
+  OpenAI, Anthropic and Gemini plus the in-band executor and the
+  [todo i/N] progress line.
+- tools/__init__.py + function.py: per-mode tool visibility (read-only
+  allowlist + submit_plan while planning, normal set + todo_write while
+  executing), MCP tools hidden in plan mode, and the plan-mode dispatch for
+  session tools and the controlled read-only shell (structured
+  plan_shell_denied + REPL line + audit).
+- tools/workspace.py: agent filesystem writes under the plans root are
+  refused in-band (plan files are CLI-managed).
+- llms/client.py: plan gate before danger/TOOL_POLICY/approval: read-only
+  plan tools never prompt, hidden tools are refused with
+  tool_not_available_in_mode + audit source=plan_mode, session tools are
+  audited as read risk.
+- Tests: state machine, todo invariants, revision diff/in-place update,
+  tool gate/schema filtering, plans-root write guard. - ([f1c6831](https://github.com/belingud/yaicli/commit/f1c6831ac13c2649fb37a032af17538563982a0b)) - Belingud
+- feat(plan): add persistent plan store and read-only shell validation (K23)
+
+Foundation for the v0.24 persistent plan mode:
+
+- yaicli/plan_store.py (stdlib-only): plans root resolution (PLAN_DIR or
+  <config-dir>/plans/<sha256(cwd)[:16]>), 0700 dirs / 0600 atomic files,
+  Markdown + single-line frontmatter round-trip (Plan/PlanStep), statuses,
+  revision, list/find/latest-unfinished, terminal-only PLAN_KEEP pruning and
+  clear helpers.
+- yaicli/plan_shell.py (stdlib-only): fixed v1 read-only command allowlist
+  (basic commands + git read-only subcommands), shell-metacharacter/pipe/
+  redirect rejection, dangerous-flag and git global-option rejection,
+  argv-direct execution (never shell=True) with the shell tool's guardrails
+  (filtered env, workspace cwd, process-group timeout, output cap).
+- const.py: CMD_PLAN/CMD_TODO, five PLAN_* config keys in the map + template.
+- chat.py: optional Chat.plan dict persisted in session JSON (legacy files
+  unchanged).
+- Tests: store round-trip/permissions/pruning, shell allow/deny matrix and
+  execution guardrails, PLAN_* config wiring. - ([4d9c82d](https://github.com/belingud/yaicli/commit/4d9c82dd8eed58d00abacaaf4ceed3464cf2a88c)) - Belingud
+
+### 🐛 Bug Fixes
+
+- fix(context): match literal vendor-prefixed model ids in MODEL_CONTEXT_WINDOWS
+
+Setting MODEL_CONTEXT_WINDOWS={"z-ai/glm-5.3-flash": 1000000} had no effect:
+parse_user_windows() treated the part before "/" as a provider name ("z-ai"),
+stored the entry as "z-ai:glm-5.3-flash" and _from_user() only looked up the
+configured provider (e.g. "openai:glm-5.3-flash" or "glm-5.3-flash"). The user
+override therefore never matched, the window stayed at the conservative 128k
+default and the MAX_TOKENS clamp warning kept firing.
+
+- parse_user_windows() now also registers the literal lower-cased key (and
+  _from_user() tries the raw model id), so OpenRouter-style ids containing a
+  slash resolve regardless of PROVIDER. Explicit "provider:model" /
+  "provider/model" entries keep their provider scoped behaviour.
+- Docs: MODEL_CONTEXT_WINDOWS section shows the vendor-prefixed example.
+- Tests: literal key resolves for openai/openrouter/custom-gateway providers,
+  prefixed model ids also match, scoped keys still do not leak. Verified with a
+  real config file: window=1,000,000 source=user, budget 878,976 (no clamp).
+  Full suite 2970 passed; ruff and mkdocs strict clean. - ([a11c443](https://github.com/belingud/yaicli/commit/a11c443c9b5d2f887606f30456fb15edd1972480)) - Belingud
+- fix(context): never starve the input budget with an oversized MAX_TOKENS
+
+With MAX_TOKENS=128000 and the default (unknown) 128,000-token window plus
+CONTEXT_SAFETY_TOKENS=1024, the derived budget was max(1, 128000-128000-1024)
+= 1 token. Every request was then "trimmed" down to the preserved system
+prefix: a /load-ed session looked like a fresh conversation to the model even
+though /his showed the history.
+
+- model_limits.context_input_budget() now caps the output reservation so at
+  least half of the resolved window always stays available for the input; the
+  budget can no longer collapse to 1 token. Normal MAX_TOKENS values are
+  unaffected (128000 - 2048 still holds for MAX_TOKENS=8192).
+- LLMClient detects the misconfiguration, clamps the effective MAX_TOKENS for
+  this process once (the provider request then still fits the window) and
+  prints one stderr warning naming both values and the fix
+  ("Lower MAX_TOKENS in config.ini (or set MODEL_CONTEXT_WINDOWS to the
+  model's real window)"). The clamped value is written back to the in-process
+  config so /context and later requests stay coherent. An explicit
+  CONTEXT_BUDGET_TOKENS override is still respected verbatim and disables it.
+- Docs: context-limits budget/MAX_TOKENS rows + a guard section explaining the
+  behaviour; configuration/README MAX_TOKENS descriptions.
+- Tests: budget-floor formula (incl. the old window=100 -> 1 case now 50),
+  clamps/warns once, loaded history survives (40 turn pairs, context_trimmed
+  False), override still verbatim, and resolve_context_budget for an unknown
+  128k-window model with MAX_TOKENS=128000 returns 64000. Full suite 2969
+  passed; ruff and mkdocs strict clean. - ([2488bcf](https://github.com/belingud/yaicli/commit/2488bcf3da44db330b8d14ed315961168ee423db)) - Belingud
+- fix(plan): map approval-panel binding results to decisions (K23)
+
+Pressing `a` in the real approval panel approved nothing: the prompt_toolkit
+key bindings exit the modal prompt with decision words ("approve", "edit",
+"redo", "save", "cancel"), but ask_plan_decision() only mapped single letters
+(a/e/r/s), so every binding result fell through to "cancel". Approving a plan
+therefore printed "plan cancelled; draft saved at ...", exited plan mode and
+never executed — with no way to tell why.
+
+- ask_plan_decision() now maps both the binding words and the legacy letters.
+- After a decision the CLI is explicit: approval prints
+  "[plan] executing approved plan (N steps)… todo progress below; Ctrl-C
+  pauses." before the execution loop starts; save/cancel print
+  "Use /plan resume to review and execute this plan later."
+- Docs: approval-panel table (+ save/cancel hint) and a note that a saved
+  draft is picked up with /plan resume (approval panel) or /plan review.
+- Tests: parametrized mapping regression (word and letter results) plus an
+  integration test that drives the real decision prompt to "approve" and
+  asserts execution starts; a saved-draft /plan resume integration test
+  (fresh session → panel → approve → execute). Full suite 2965 passed. - ([847620a](https://github.com/belingud/yaicli/commit/847620aa3f11b595e718c70890195cd8e2446b00)) - Belingud
+- fix(provider): error on empty 200 responses and hint BASE_URL (/v1)
+
+A wrong BASE_URL (e.g. https://host/ without the /v1 API path) can answer
+HTTP 200 with a web page. The OpenAI SDK's SSE parser then silently yields no
+chunks: before this fix the CLI printed nothing, emitted
+{"content": "", "error": null} and exited 0 — the user could not tell the
+request was broken.
+
+- LLMClient now raises the new ErrorKind.EMPTY_RESPONSE when a provider round
+  carries no text, no reasoning and no tool calls (message includes the
+  finish_reason when one was reported and points at BASE_URL / the API path).
+- bad_request user hints and EMPTY_RESPONSE hints mention that an
+  OpenAI-compatible BASE_URL usually ends with /v1.
+- Docs: headless error-kind list + empty_response explanation, BASE_URL rows
+  in the docs/README configuration tables, README note with the /v1 example.
+- Tests: client classification (empty round, finish_reason propagation,
+  non-empty unchanged), end-to-end -p text/json against a local 200-HTML
+  endpoint (exit 1 + error.kind=empty_response), and the REPL prints the
+  classified error instead of looping silently. Full suite 2953 passed. - ([88d28c0](https://github.com/belingud/yaicli/commit/88d28c0fb57e84bc031e062da9e795fb0f977e1e)) - Belingud
+- fix(plan): make plan-mode prompt provider-portable and guard text-only answers (K23)
+
+The plan-mode rules were appended as a SECOND system message, so providers
+that transmit only one system prompt silently lost them:
+
+- Anthropic `_extract_system_prompt` keeps only the first system message and
+  the leftover system role is invalid for the Messages API;
+- Gemini skips system messages in `_convert_messages` and takes
+  `messages[0].content` as `system_instruction`, so the plan block never
+  reached the model (which then answered the build request directly, e.g.
+  printing HTML instead of planning);
+- some OpenAI-compatible gateways only honour the first system message.
+
+Append the plan/todo block to the first system message instead (role prompt +
+project context + plan block) so every provider receives it, and make the
+instructions explicit about not implementing/answering while planning.
+
+Also surface the failure mode: when a plan-mode turn produces text with no
+tool calls (no submit_plan), the REPL prints one
+"[plan] no plan submitted ..." warning (skipped in machine output) and audits
+plan.no_plan_submitted, instead of silently pretending a plan exists.
+
+Tests: single-system-message delivery for researching/revising/executing
+(regression for the reported HTML-instead-of-plan behavior), hint/no-hint
+cases, full suite 2941 passed, ruff + mkdocs strict clean. - ([31d1528](https://github.com/belingud/yaicli/commit/31d1528872b69e593eff7eaa599bf5c92382637e)) - Belingud
+
+### 🚜 Refactor
+
+- refactor(plan): make the plan-mode system prompt direct and imperative (K23)
+
+The plan-mode block read like a description ("PLAN MODE IS ACTIVE ... you are
+researching") instead of an order. Rewrite it as a direct instruction the model
+cannot mistake for a normal chat turn:
+
+  "YOU ARE NOW IN PLAN MODE. Plan mode is a read-only phase whose ONLY
+   deliverable is an implementation plan ... replying with the deliverable here
+   is a failure ... submit_plan is the ONLY way to leave plan mode ..."
+
+Numbered rules cover: no workspace changes, no implementation/code/final answer,
+research with read-only tools, end the turn with submit_plan, short plan for
+small tasks, clarifying question allowed, never claim work is done. The
+revision/execution variants get the same direct phrasing.
+
+Add tests/test_plan_prompt_delivery.py: provider-level regressions proving the
+plan rules stay in Anthropic's single system prompt (and no system role leaks
+into messages), Gemini's system_instruction, and the OpenAI-style first system
+message. Full suite 2946 passed; ruff and mkdocs strict clean. - ([791eb5e](https://github.com/belingud/yaicli/commit/791eb5e4d1fe322d5ae62dac1537a1c18728c5b6)) - Belingud
+
+### 📚 Documentation
+
+- docs(plan): document plan mode and headless planning (K23)
+
+- New docs/usage/plan-mode.md: read-only planning scope, controlled
+  read-only shell allowlist and denials, submit_plan limits, approval
+  panel, todo execution, in-place revisions, plan-file lifecycle
+  (PLAN_KEEP=80 per project), /plan + /todo, --plan, --resume hints,
+  configuration and known boundaries.
+- README: plan-mode feature section, --plan flag, PLAN_* config rows,
+  Shift+Tab/banner and command-list updates.
+- commands/headless/cli/configuration/sessions docs updated (--plan JSON
+  contract and exit codes, hotkeys, config table/snippet, session plan
+  field); modes/interactive pages updated for the Shift+Tab change.
+- openspec/specs/plan-mode/spec.md: behavior requirements + scenarios.
+- mkdocs nav entry for the new page. - ([dba875a](https://github.com/belingud/yaicli/commit/dba875adf26d746490d3e8ee49d6b6989bfbc89c)) - Belingud
+- docs(workflow): require pull requests and ask before merging
+
+Switch the recorded workflow from "branch then fast-forward to master" to
+"branch + PR":
+
+- CLAUDE.md: PR-first loop (branch -> gates -> push -> gh pr create -> wait
+  for CI -> ask the user -> gh pr merge -> pull master), with the explicit
+  rule that merging always needs the user's confirmation even though gh can
+  do it
+- document the docs/ ref-namespace quirk (the long-lived docs branch blocks
+  docs/<slug>, use chore/docs-<slug>) and that task.py create-pr does not
+  exist in this checkout
+- .trellis/spec/repo/build-and-release.md: same PR workflow for the spec,
+  Trellis branch/base-branch metadata, bookkeeping commits as the only
+  direct master changes, and release checklist step 0 now merges the PR
+  after user confirmation - ([a32436f](https://github.com/belingud/yaicli/commit/a32436fd32d798bb7db35417b282fdf80a32fff3)) - Belingud
+- docs(workflow): require a feature branch cut from master
+
+Record the branch-first workflow so future sessions (and Trellis tasks) stop
+committing code directly on master:
+
+- CLAUDE.md: new "Git Workflow (branch first)" section with the branch ->
+  gates -> ff-merge -> push loop and the branch prefixes used here
+  (feat/ fix/ docs/ chore/)
+- .trellis/spec/repo/build-and-release.md: branch workflow rules, Trellis
+  branch/base-branch metadata (archive rejects master==master), bookkeeping
+  commits, and note that releases are cut from master after the merge
+- release checklist gains step 0: merge the feature branch into master first - ([1120436](https://github.com/belingud/yaicli/commit/1120436a39e4d2d2251d3a36759b507f96ad0ed0)) - Belingud
+- docs(changelog): update changelog for v0.23.0 release - ([11f7d15](https://github.com/belingud/yaicli/commit/11f7d15e55f4212a0f03bcda5ca0a4fd8ce8d750)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore(trellis): archive K23 task and record session 13 - ([bf9c48b](https://github.com/belingud/yaicli/commit/bf9c48bec3435e4cfe7c84779d921f653337577f)) - Belingud
+- chore(task): record K23 plan-mode task artifacts
+
+PRD, technical design and the frozen implementation contract (module
+signatures, file ownership, exact user-visible strings) plus the curated
+implement/check context manifests for the K23 persistent plan mode task. - ([79c7e71](https://github.com/belingud/yaicli/commit/79c7e71f925f64c6ac4f9ee786b7a59ee2ed60bb)) - Belingud
+
+
+---
 ## [0.23.0](https://github.com/belingud/yaicli/compare/v0.22.1..v0.23.0) - 2026-11-11
 
 ### ⚠️ Behaviour changes
