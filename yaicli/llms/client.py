@@ -327,6 +327,26 @@ class LLMClient:
         )
         return True
 
+    @staticmethod
+    def _raise_empty_response(finish_reason: Optional[str]) -> None:
+        """Fail for a provider response with no text, reasoning or tool calls.
+
+        Some failures are HTTP 200: pointing ``BASE_URL`` at a web page or a wrong
+        API path makes the OpenAI SDK parse an empty stream and return no chunks at
+        all. Without this check the CLI printed nothing and exited 0. The error is
+        classified as :attr:`ErrorKind.EMPTY_RESPONSE` so the REPL/headless paths
+        surface it (and JSON consumers get ``error.kind = "empty_response"``).
+        """
+        detail = "Provider returned an empty response (no text, no reasoning, no tool calls)"
+        if finish_reason:
+            detail += f" (finish_reason={finish_reason})"
+        raise AgentError(
+            f"{detail}. The endpoint answered but returned no model output; check BASE_URL "
+            "(an OpenAI-compatible base URL usually ends with /v1), the API path and the model.",
+            kind=ErrorKind.EMPTY_RESPONSE,
+            retryable=False,
+        )
+
     def _model_name(self) -> str:
         try:
             return str(self.config.get("MODEL") or "")
@@ -476,10 +496,12 @@ class LLMClient:
         # record the first non-None snapshot only so re-yielded/duplicate snapshots
         # (streaming providers may repeat calls) can never double-count tokens.
         round_usage: Optional[Usage] = None
+        round_finish_reason: Optional[str] = None
         for llm_response in self._stream_provider(messages, stream, effective_tool_policy):
             yield llm_response  # Forward response to caller
 
             if llm_response.finish_reason:
+                round_finish_reason = llm_response.finish_reason
                 self.last_finish_reason = llm_response.finish_reason
                 if llm_response.finish_reason == "length":
                     # MAX_TOKENS truncation: surfaced by the CLI as a warning and
@@ -516,6 +538,13 @@ class LLMClient:
             estimated_usage = estimate_usage(messages, completion_text)
             self.last_usage = estimated_usage
             self.usage_tracker.record(estimated_usage, self._model_name())
+
+        # A provider can answer with HTTP 200 while sending no usable payload at all
+        # (a web page served by a wrong BASE_URL, a proxy error page parsed as an
+        # empty SSE stream, ...). Before the tool-loop bookkeeping, fail loudly: a
+        # silent empty answer used to look like success and hid broken endpoints.
+        if not assistant_response_content and not assistant_reasoning_content and not collected_tool_calls:
+            self._raise_empty_response(round_finish_reason)
 
         # Dedupe by id (streaming providers may repeat a snapshot) and make sure
         # every call has an id so the assistant message and tool results match.

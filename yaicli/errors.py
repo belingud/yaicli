@@ -46,6 +46,9 @@ class ErrorKind(StrEnum):  # type: ignore
     NETWORK = "network"
     TIMEOUT = "timeout"
     BAD_REQUEST = "bad_request"
+    #: Provider answered successfully but returned no text, reasoning or tool calls
+    #: (e.g. BASE_URL points at a web page / wrong API path instead of an API).
+    EMPTY_RESPONSE = "empty_response"
     PROVIDER = "provider"
     TOOL = "tool"
     CONFIG = "config"
@@ -169,7 +172,14 @@ _KIND_HINTS = {
     ErrorKind.CONTEXT_LENGTH: "The conversation exceeds the model context window; use /clear or /compact.",
     ErrorKind.NETWORK: "Network error: check connectivity, proxy and BASE_URL.",
     ErrorKind.TIMEOUT: "The request timed out; increase TIMEOUT or retry.",
-    ErrorKind.BAD_REQUEST: "The provider rejected the request; check MODEL/provider parameters.",
+    ErrorKind.BAD_REQUEST: (
+        "The provider rejected the request; check BASE_URL (an OpenAI-compatible base URL usually ends "
+        "with /v1), MODEL and provider parameters."
+    ),
+    ErrorKind.EMPTY_RESPONSE: (
+        "The endpoint answered successfully but returned no model output; check BASE_URL (an "
+        "OpenAI-compatible base URL usually ends with /v1), the API path and the model."
+    ),
     ErrorKind.PROVIDER: "The provider returned an error; retry or check provider status.",
     ErrorKind.DEPTH_LIMIT: "The tool-call depth limit was reached; raise --max-turns to continue.",
     ErrorKind.INTERRUPTED: "Interrupted.",

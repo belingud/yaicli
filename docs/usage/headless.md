@@ -106,8 +106,13 @@ One JSON object on stdout. All diagnostics go to stderr.
 | `finish_reason` | Last provider `finish_reason` (`"stop"`, `"length"`, `"tool_calls"`, `"depth_limit"`, or `null` when unknown) |
 | `plan`, `plan_path`, `revision` | **Only added by `--plan` runs**: the submitted plan object, the path of the saved plan file and its revision (see [One-shot planning](#one-shot-planning-plan)) |
 | `model`, `provider` | Effective model/provider for this run |
-| `error` | Exactly `null` on success, otherwise `{"kind": "<error kind>", "message": "<detail>"}`. Possible kinds: `auth`, `rate_limit`, `context_length`, `network`, `timeout`, `bad_request`, `provider`, `tool`, `config`, `depth_limit`, `interrupted`, `plan_not_submitted`, `unknown` |
+| `error` | Exactly `null` on success, otherwise `{"kind": "<error kind>", "message": "<detail>"}`. Possible kinds: `auth`, `rate_limit`, `context_length`, `network`, `timeout`, `bad_request`, `empty_response`, `provider`, `tool`, `config`, `depth_limit`, `interrupted`, `plan_not_submitted`, `unknown` |
 | `exit_code` | Exit code the process will return (see below) |
+
+`empty_response` means the endpoint answered HTTP 200 but returned no model output at all (no
+text, reasoning or tool calls). This usually means `BASE_URL` points at a web page instead of the
+API — an OpenAI-compatible base URL normally ends with `/v1`. The CLI reports it as an error now
+instead of silently exiting 0 with empty content.
 
 `usage` is no longer zeroed (v0.22 K17):
 

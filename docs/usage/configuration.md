@@ -225,7 +225,7 @@ TOOL_AUDIT=true
 | Option                 | Description                                 | Default                  | Environment Variable       |
 | ---------------------- | ------------------------------------------- | ------------------------ | -------------------------- |
 | `PROVIDER`             | LLM provider (openai, anthropic, cohere, etc.) | `openai`              | `YAI_PROVIDER`             |
-| `BASE_URL`             | API endpoint URL                            | -                        | `YAI_BASE_URL`             |
+| `BASE_URL`             | Provider API base URL (OpenAI-compatible ones usually end with `/v1`) | - | `YAI_BASE_URL` |
 | `API_KEY`              | Your API key                                | -                        | `YAI_API_KEY`              |
 | `MODEL`                | LLM model to use                            | `gpt-5.2`                | `YAI_MODEL`                |
 | `DEFAULT_ROLE`         | Default role                                | `DEFAULT`                | `YAI_DEFAULT_ROLE`         |

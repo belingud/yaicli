@@ -369,7 +369,7 @@ The default configuration file is `config.ini` inside the config directory above
 | Option                 | Description                                 | Default                  | Env Variable               |
 | ---------------------- | ------------------------------------------- | ------------------------ | -------------------------- |
 | `PROVIDER`             | LLM provider (openai, anthropic, cohere, etc.) | `openai`              | `YAI_PROVIDER`             |
-| `BASE_URL`             | API endpoint URL                            | -                        | `YAI_BASE_URL`             |
+| `BASE_URL`             | Provider API base URL (OpenAI-compatible ones usually end with `/v1`) | - | `YAI_BASE_URL` |
 | `API_KEY`              | Your API key                                | -                        | `YAI_API_KEY`              |
 | `MODEL`                | LLM model to use                            | `gpt-5.2`                | `YAI_MODEL`                |
 | `DEFAULT_ROLE`         | Default role                                | `DEFAULT`                | `YAI_DEFAULT_ROLE`         |
@@ -449,7 +449,10 @@ The default configuration file is `config.ini` inside the config directory above
 YAICLI works with major LLM providers. The default configuration is set up for OpenAI, but you can easily switch to
 other providers.
 
-Note: blank `BASE_URL` (or no `BASE_URL`) means use provider default url.
+Note: blank `BASE_URL` (or no `BASE_URL`) means use provider default url. For OpenAI-compatible
+providers enter the full API base URL including the API path — usually `https://host/v1`. A URL
+without it (or a web page) fails with `bad_request (HTTP 404)` or `empty_response`; both are
+reported as errors with a `BASE_URL` hint.
 
 #### Pre-configured Provider Settings
 
