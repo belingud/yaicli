@@ -522,3 +522,57 @@ Implemented the six-layer model context-window resolver (model_limits.py): user 
 ### Status
 
 [OK] **Completed**
+
+
+## Session 13: K23 persistent plan mode (v0.24): implementation, PR #56 and review hardening
+<!-- trellis-session: v=2 fp=62f9556d2cb428a6 -->
+
+**Date**: 2026-11-14
+**Task**: K23 persistent plan mode (v0.24): implementation, PR #56 and review hardening
+**Branch**: `master`
+
+### Summary
+
+Shipped K23 persistent plan mode end to end (plan mode state machine, submit_plan, todo_write, plan store, approval panel, headless --plan) via PR #56, then hardened it in a user-feedback review pass: provider-portable plan prompt (merged into the first system message), direct imperative prompt wording, approval-panel key mapping, visible EMPTY_RESPONSE errors with BASE_URL hints, an input-budget floor so an oversized MAX_TOKENS cannot starve history, and literal MODEL_CONTEXT_WINDOWS matching for vendor-prefixed model ids. PR #56 merged to master as 759d72e; task archived.
+
+### Main Changes
+
+- plan_mode.py + tools/session_tools.py: normal/researching/revising/reviewing/executing state machine, per-mode tool schemas, submit_plan validation, 1:1 todo_write with the current plan revision
+- plan_store.py + plan_shell.py: plan files as Markdown with frontmatter under <config-dir>/plans/<sha256(cwd)[:16]>/ (0700/0600), PLAN_KEEP=80 retention, in-place revision, controlled read-only shell allowlist
+- cli.py/printer.py/cmd_handler.py: Shift+Tab toggle, /plan and /todo commands, approval panel (approve/edit/cancel), approved-plan execution loop with Ctrl-C pause and /plan resume, headless --plan, --resume always normal + unfinished-plan hint
+- Provider-portable plan prompt: plan rules are merged into the FIRST system message because Anthropic only reads the first system message and Gemini uses messages[0]; direct imperative wording; a text-only reply without submit_plan now warns instead of silently exiting plan mode
+- errors.py + llms/client.py: new ErrorKind.EMPTY_RESPONSE for a 200 response with no text/reasoning/tool call, with BASE_URL /v1 hints in bad_request/empty_response messages
+- model_limits.py + client budget: budget floor reserves at least half the window for input, oversized MAX_TOKENS is clamped once per session with a warning (CONTEXT_BUDGET_TOKENS override disables it), and MODEL_CONTEXT_WINDOWS matches literal vendor-prefixed ids such as z-ai/glm-5.3-flash
+- docs: new docs/usage/plan-mode.md and openspec/specs/plan-mode/spec.md, plus README and commands/headless/cli/configuration/context-limits/sessions/modes/interactive updates; tests cover the 22 acceptance criteria and the plan-mode interactions
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4d9c82d` | feat(plan): add persistent plan store and read-only shell validation (K23) |
+| `f1c6831` | feat(plan): add plan mode state machine, submit_plan and todo_write (K23) |
+| `3b0f2db` | feat(plan): add approval panel, /plan commands and headless --plan (K23) |
+| `dba875a` | docs(plan): document plan mode and headless planning (K23) |
+| `79c7e71` | chore(task): record K23 plan-mode task artifacts |
+| `31d1528` | fix(plan): make plan-mode prompt provider-portable and guard text-only answers (K23) |
+| `791eb5e` | refactor(plan): make the plan-mode system prompt direct and imperative (K23) |
+| `847620a` | fix(plan): map approval-panel binding results to decisions (K23) |
+| `88d28c0` | fix(provider): error on empty 200 responses and hint BASE_URL (/v1) |
+| `2488bcf` | fix(context): never starve the input budget with an oversized MAX_TOKENS |
+| `a11c443` | fix(context): match literal vendor-prefixed model ids in MODEL_CONTEXT_WINDOWS |
+| `759d72e` | Merge pull request #56 from belingud/feat/k23-plan-mode |
+
+### Testing
+
+- [OK] uv run pytest: 2970 passed (Python 3.12); PR #56 CI matrix py3.10/py3.12/py3.13 all green
+- [OK] ruff check --no-fix clean; mkdocs build --strict clean
+- [OK] Manual REPL verification: approval 'a' executes the plan, saved plans can be resumed, /load history stays visible after the budget fix, and MODEL_CONTEXT_WINDOWS={"z-ai/glm-5.3-flash":1000000} resolves window=1,000,000 (source: user) with budget=878,976 and no warnings
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- v0.24 release prep from master (tag/bump/changelog) when the user asks
+- Offered but not implemented: per-provider forced tool_choice for submit_plan; natural-language shortcut for saved plans; normal-mode reminder that a saved plan exists
