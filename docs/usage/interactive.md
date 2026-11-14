@@ -16,7 +16,7 @@ ai --chat "What's the meaning of life"
 Welcome to YAICLI!
 Current: Persistent Session: What's the meaning of life
 Model: gpt-4o
-Press Shift+Tab to switch mode
+Press Shift+Tab to toggle plan mode (normal ↔ plan, read-only)
 /help|?            : Show help message
 /clear             : Clear chat history
 /his               : Show chat history
@@ -40,6 +40,7 @@ Press Shift+Tab to switch mode
 Ctrl+C             : Clear input / cancel turn; press twice to exit
 Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
   Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
+Plan mode: Shift+Tab / /plan · plan files under ~/.config/yaicli/plans
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 >
 ```
@@ -58,7 +59,7 @@ ai --chat
 Welcome to YAICLI!
 Current: Temporary Session (use /save to make persistent)
 Model: gpt-4o
-Press Shift+Tab to switch mode
+Press Shift+Tab to toggle plan mode (normal ↔ plan, read-only)
 /help|?            : Show help message
 /clear             : Clear chat history
 /his               : Show chat history
@@ -82,6 +83,7 @@ Press Shift+Tab to switch mode
 Ctrl+C             : Clear input / cancel turn; press twice to exit
 Alt+Enter/Ctrl+J   : Insert a newline (Enter still submits)
   Tip: Type '@' for file paths and '/' for slash commands; use Tab/arrows to select
+Plan mode: Shift+Tab / /plan · plan files under ~/.config/yaicli/plans
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 >
 ```
@@ -102,8 +104,9 @@ cursor always starts in the same column regardless of the model, role or working
 - The working directory, git branch and assistant role are **not** shown. In particular, a custom
   `DEFAULT_ROLE` (for example `master`) is ordinary assistant configuration, not repository
   state: the prompt never inspects the repository.
-- A `Shift+Tab` mode switch changes the input-line icon (💬 chat, 🚀 execute, 📝 temporary
-  session).
+- `Shift+Tab` toggles the read-only plan mode, and the input line becomes `[plan] 💬 >`.
+  Chat and execute mode switching is done with `/mode chat|exec`; their icons are 💬 chat,
+  🚀 execute (and 📝 temporary session).
 - The status line is interactive-only and obeys `SHOW_USAGE`; headless/one-shot runs never render
   it, and the context percentage stays cached (refreshed after every completed turn and after
   `/compact`, `/clear`, `/load` and `/model`).
@@ -135,7 +138,9 @@ cursor always starts in the same column regardless of the model, role or working
 - `/undo` - Restore the last file change made by a tool in this session
 - `!<command>` - Execute a shell command directly
 - `/exit` - Exit the application
-- `/mode chat|exec` - Switch modes
+- `/mode chat|exec` - Switch between chat and execute modes
+- `/plan [subcommand]` - Toggle read-only plan mode or manage saved plans (see [Plan Mode](plan-mode.md))
+- `/todo` - Show the current plan todos
 
 Typing `/` opens the slash-command completion menu: every command is listed with a one-line
 description, `/co` filters the list, and `Tab`/arrow keys select an entry. `@` path completion
@@ -166,7 +171,7 @@ JSON runs report usage through their structured output instead.
 
 ## Keyboard Shortcuts
 
-- `Shift+Tab` - Toggle between Chat/Execute modes
+- `Shift+Tab` - Toggle plan mode (normal ↔ plan, read-only); `/mode chat|exec` switches chat/execute
 - `Ctrl+C` - Clear the current input line; during generation it cancels the turn. Press `Ctrl+C`
   twice quickly to exit (single press keeps the session alive)
 - `Ctrl+D` - Exit (exit code 0)

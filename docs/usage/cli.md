@@ -12,7 +12,7 @@ These shortcuts work in all interactive modes:
 | -------------------- | --------------------------------- |
 | `Ctrl+C`             | Clear the current input line (during generation: cancel the turn); press twice quickly to exit |
 | `Ctrl+D`             | Exit the application              |
-| `Shift+Tab`          | Toggle between Chat/Execute modes |
+| `Shift+Tab`          | Toggle plan mode (normal ↔ plan, read-only); in execute mode it returns to chat and enters plan mode. While a plan is waiting for review, it cancels the review. Use `/mode chat\|exec` to switch between chat and execute modes |
 | `Ctrl+R`             | Search command history            |
 | `Ctrl+O`             | Open the full-screen tool-output viewer for this turn (`↑/↓` select, `Tab` switch pane, `f` full text, `q`/`Esc` close). Also works while the assistant is generating: generation continues in the background and closing the viewer redraws the accumulated answer |
 | `↑/↓`                | Navigate through command history  |
@@ -35,6 +35,27 @@ When searching history with `Ctrl+R`:
 | `Enter`  | Select current history item          |
 | `Esc`    | Cancel history search                |
 
+## Plan Mode
+
+`Shift+Tab` (or `/plan`) toggles the persistent, read-only **plan mode**; there the model only
+researches and submits a plan, which you approve before anything is executed. In plan mode the
+prompt becomes `[plan] 💬 >` and the status line `plan mode · read-only` is printed. See
+[Plan Mode](plan-mode.md) for the full workflow.
+
+While the plan approval panel is open:
+
+| Key | Action |
+| --- | --- |
+| `a` | Approve and execute (`[a]pprove & execute`) |
+| `e` | Edit the plan in `$EDITOR` |
+| `r` | Redo — keep planning |
+| `s` | Save only, keeping the plan as a draft |
+| `Esc` | Cancel the submission (the draft plan file is kept) |
+
+A revision submitted while a plan is executing uses `[a]pply & continue` / `[e]dit` / `[r]edo`, and
+`Esc` cancels the revision and returns to execution. In the first-plan panel `Esc` cancels the
+submission (the plan file is kept as a draft).
+
 ## Interactive Commands
 
 YAICLI provides special commands that begin with a slash (`/`) or an exclamation mark (`!`):
@@ -49,7 +70,9 @@ YAICLI provides special commands that begin with a slash (`/`) or an exclamation
 | `/load <index>`    | Load a saved chat session                  |
 | `/del <index>`     | Delete a saved chat session                |
 | `/exit`            | Exit the application                       |
-| `/mode chat\|exec` | Switch between chat and execute modes      |
+| `/mode chat\|exec` | Switch between chat and execute modes (plan mode is toggled with `Shift+Tab` or `/plan`) |
+| `/plan [task\|list [--all]\|show [id]\|edit\|review [id]\|resume [id]\|clear [--done\|--all]\|abort]` | Plan mode: toggle, or plan a task; list/show/edit/review/resume/clear/abort plans (see [Plan Mode](plan-mode.md)) |
+| `/todo` | Show the current plan todos |
 | `/cost`            | Show session token usage and estimated cost |
 | `/compact [keep_rounds]` | Compact the conversation, keeping the last N turn groups |
 | `/model [name]`    | Show or switch the model for this session  |
@@ -91,8 +114,9 @@ To disable auto-suggestions, set `AUTO_SUGGEST=false` in your configuration.
 The prompt supports multiline editing: press `Alt+Enter` (or `Esc` then `Enter`) or `Ctrl+J` to
 insert a newline, and `Enter` alone to submit the whole buffer. This is handy for pasting logs or
 composing long instructions. The prompt itself is just the mode icon and `>`, so the cursor
-position never changes; the current model and last-known context usage appear on the dim status
-line after each answer (see [Interactive Mode](interactive.md#prompt)).
+position never changes; in plan mode the prompt is `[plan] 💬 >`. The current model and last-known
+context usage appear on the dim status line after each answer (see
+[Interactive Mode](interactive.md#prompt)).
 
 For long or multi-line prompts in scripts, pass the text as a quoted argument or pipe it:
 
@@ -137,6 +161,7 @@ YAICLI uses visual indicators to help you understand the current state:
 | ------------------- | ----------------------- |
 | `💬 >`              | Chat mode prompt        |
 | `🚀 >`              | Execute mode prompt     |
+| `[plan] 💬 >`       | Plan mode prompt (read-only) |
 | Cursor animation    | Processing your request |
 | Syntax highlighting | Code in responses       |
 
@@ -189,7 +214,7 @@ tell success from failure:
 | Exit code | Meaning |
 | --------- | ------- |
 | `0` | Success (answer produced; informational commands such as `--version`, `--list-*`). |
-| `1` | A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, retry exhaustion, no input/aborted action, or an unexpected error printed as `Unknown error: ...`. |
+| `1` | A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, retry exhaustion, no input/aborted action, or an unexpected error printed as `Unknown error: ...`. With `--plan`, also when the model did not submit a plan (`plan_not_submitted`). |
 | `2` | Usage error: an invalid option or argument. |
 | `3` | A tool call was denied and `--fail-on-tool-denied` was set. |
 | `130` | Interrupted by SIGINT (Ctrl+C) during a one-shot run or generation. |
@@ -211,6 +236,7 @@ contract (JSON output, signals, non-interactive approvals) is in
 
 ## Next Steps
 
+- Learn about [plan mode](plan-mode.md)
 - Learn about different [interaction modes](modes.md)
 - Explore [configuration options](configuration.md)
 - Check out [command references](commands.md)

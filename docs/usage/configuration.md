@@ -181,6 +181,18 @@ ENABLE_PROJECT_CONTEXT=true
 # (0 = no cap; a truncated block prints one warning naming the files involved).
 PROJECT_CONTEXT_MAX_CHARS=20000
 
+# Plan mode (v0.24 K23)
+# Persistent read-only planning mode: Shift+Tab / /plan, submit_plan -> approve -> todo execution.
+PLAN_ENABLED=true
+# Maximum number of steps accepted in one plan.
+PLAN_MAX_STEPS=20
+# Finished (done/aborted) plan files kept per project; older ones are pruned.
+PLAN_KEEP=80
+# Allow a fixed read-only shell allowlist while planning (true/false).
+PLAN_ALLOW_READONLY_SHELL=true
+# Plans root directory (empty = <config-dir>/plans).
+PLAN_DIR=
+
 # Shell tool settings (v0.19)
 # Max seconds a shell command may run (killed with its process group on timeout).
 TOOL_TIMEOUT=120
@@ -263,6 +275,11 @@ TOOL_AUDIT=true
 | `ENABLE_MODEL_LIMITS_CACHE` | Cache resolved windows in `<config-dir>/cache/model_limits.json` (provider metadata 7 days, learned limits 30 days) | `true` | `YAI_ENABLE_MODEL_LIMITS_CACHE` |
 | `ENABLE_PROJECT_CONTEXT` | Auto-load project instruction files into the system prompt (`false` = no project-file reads) | `true` | `YAI_ENABLE_PROJECT_CONTEXT` |
 | `PROJECT_CONTEXT_MAX_CHARS` | Max characters of project context added to the system prompt (`0` = no cap) | `20000` | `YAI_PROJECT_CONTEXT_MAX_CHARS` |
+| `PLAN_ENABLED`         | Enable persistent plan mode (`Shift+Tab` / `/plan`; `false` hides it and `--plan` exits `2`) | `true` | `YAI_PLAN_ENABLED` |
+| `PLAN_MAX_STEPS`       | Maximum number of steps accepted in one submitted plan | `20` | `YAI_PLAN_MAX_STEPS` |
+| `PLAN_KEEP`            | Finished (done/aborted) plan files kept per project; older ones are pruned (draft/in-progress plans are never auto-deleted) | `80` | `YAI_PLAN_KEEP` |
+| `PLAN_ALLOW_READONLY_SHELL` | Expose the fixed read-only shell allowlist while planning | `true` | `YAI_PLAN_ALLOW_READONLY_SHELL` |
+| `PLAN_DIR`             | Plans root directory (empty = `<config-dir>/plans`; plans are isolated per project) | - | `YAI_PLAN_DIR` |
 | `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
 | `TOOL_ENV_INHERIT`     | Pass the full parent environment to shell tools (old behaviour) | `false` | `YAI_TOOL_ENV_INHERIT` |
 | `WORKSPACE_ROOT`       | Workspace root: shell `cwd` and guarded file writes must stay inside it (empty = current dir; see [Workspace Safety](workspace-safety.md)) | - | `YAI_WORKSPACE_ROOT` |
@@ -311,6 +328,13 @@ JSON, so a resumed session describes how it was produced. Sessions saved by olde
 normally and are backfilled on their next save. Use `--resume` to continue the newest session of the
 current project — see [Chat Sessions & Resume](sessions.md).
 
+## Plan Mode
+
+Plan mode is a read-only planning phase in the REPL, toggled with `Shift+Tab` / `/plan`. Its five
+keys are `PLAN_ENABLED`, `PLAN_MAX_STEPS`, `PLAN_KEEP`, `PLAN_ALLOW_READONLY_SHELL` and `PLAN_DIR`.
+Plan files are stored per project under `<config-dir>/plans/<project-key>/` and only the CLI writes
+them. See [Plan Mode](plan-mode.md) for the full workflow.
+
 ## State Files
 
 | Path | Purpose |
@@ -324,6 +348,7 @@ current project — see [Chat Sessions & Resume](sessions.md).
 | `<config-dir>/tool_audit.jsonl` | Tool decision audit log |
 | `<tempdir>/yaicli/chats/tool-outputs/` | Spilled full tool outputs (legacy scratch dir; `TOOL_OUTPUT_DIR` overrides) |
 | `~/.yaicli/sessions/<hash>/` | Saved chat sessions per project, mode `0700` dirs / `0600` files (or an explicit `CHAT_HISTORY_DIR`) |
+| `<config-dir>/plans/<project-key>/` | Plan-mode plan files (`draft`/`in-progress`/`done`/`aborted`), mode `0700` dirs / `0600` files (or a `PLAN_DIR` override) |
 | `$XDG_STATE_HOME/yaicli/history` or `~/.yaicli_history` | REPL prompt history (mode `0600`) |
 
 

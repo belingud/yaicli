@@ -4,7 +4,7 @@ YAICLI offers multiple interaction modes to suit different needs. This page expl
 
 ## Available Modes
 
-YAICLI has three primary interaction modes:
+YAICLI has three primary interaction modes, plus a read-only plan mode you can toggle inside the REPL:
 
 ### 1. Chat Mode (💬)
 
@@ -53,6 +53,22 @@ The default non-interactive mode gives you quick answers without entering a pers
 - Image analysis with vision models
 - Script integration
 
+### 4. Plan Mode (`[plan] 💬`)
+
+Plan mode is a persistent, **read-only** phase toggled in the interactive REPL with `Shift+Tab`
+(or `/plan`): the model inspects the project with read/network tools and a fixed read-only shell
+allowlist, submits a structured plan with `submit_plan`, and waits for your approval before it gets
+the normal tool set back and executes the plan step by step. See [Plan Mode](plan-mode.md).
+
+**Features:**
+- No writes while planning; write/exec tools are not offered and forced calls are refused
+- Approval panel (`[a]`pprove & execute, `[e]`dit, `[r]`edo, `[s]`ave only, `Esc` cancel)
+- Todo-driven execution; plans persist per project and can be revised in place
+
+**Best for:**
+- Multi-file changes you want to review before anything is written
+- Tasks where the approach matters as much as the result
+
 ## Switching Between Modes
 
 ### Command Line Switches
@@ -75,19 +91,22 @@ ai --image photo.jpg "What is in this image?"
 
 ### Interactive Mode Switching
 
-When in interactive mode (chat or execute), you can switch modes in several ways:
+When in interactive mode (chat, execute or plan), you can switch modes in several ways:
 
 #### Using Shift+Tab Key
 
-Press the `Shift+Tab` key to toggle between Chat and Execute modes.
+Press `Shift+Tab` to toggle the read-only **plan mode** on and off (normal ↔ plan). In execute
+mode it first returns to chat mode and then enters plan mode. The plan approval panel accepts
+`a`/`e`/`r`/`s` and `Esc` to cancel a submission. See [Plan Mode](plan-mode.md).
 
 #### Using Commands
 
-Type `/mode` followed by the mode name:
+Chat and execute modes are switched with `/mode`, and plan mode with `/plan` (or `Shift+Tab`):
 
 ```
 /mode chat   # Switch to chat mode
 /mode exec   # Switch to execute mode
+/plan        # Toggle plan mode (read-only)
 ```
 
 #### Visual Indicators
@@ -95,6 +114,7 @@ Type `/mode` followed by the mode name:
 The prompt changes to indicate your current mode:
 - Chat mode: `💬 >`
 - Execute mode: `🚀 >`
+- Plan mode: `[plan] 💬 >`
 
 ## Mode Behavior
 
@@ -167,6 +187,7 @@ notice when the title does not exist. See [Chat Sessions & Resume](sessions.md).
 
 ## Next Steps
 
+- Learn more about [plan mode](plan-mode.md)
 - Learn more about [CLI shortcuts and hotkeys](cli.md)
 - Explore [configuration options](configuration.md)
 - Check out all available [commands](commands.md)

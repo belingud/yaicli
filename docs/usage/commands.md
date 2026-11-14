@@ -39,6 +39,7 @@ Here's a comprehensive list of all available options:
 | `--allowed-tools "a,b*"` | | Per-run tool allowlist, comma-separated names or globs |
 | `--cwd DIR` | | Working directory / workspace root for the run (also selects the project for sessions and project context) |
 | `--fail-on-tool-denied` | | Exit with code `3` when a tool was denied |
+| `--plan` | | One-shot **planning** run: explore read-only, save the plan as a draft and exit without executing it (JSON adds `plan`/`plan_path`/`revision`; conflicts with `--shell`/`--code`; see [Plan Mode](plan-mode.md#headless-planning-plan-f6)) |
 
 See [Headless & Scripting](headless.md) for JSON schemas, exit codes and signal handling, and
 [Permissions & Safety](permissions.md) for `--yes` / `--allowed-tools` semantics.
@@ -135,6 +136,12 @@ ai -p "summarize the git log" --output-format json
 # Answer-only output (for pipelines)
 ai -q -p "list the open TODOs in src/"
 
+# One-shot planning: save a plan and exit without executing it
+ai -p "Add a --dry-run flag to fs_write_file" --plan --output-format json | jq '{plan_path, revision}'
+
+# Plan first in the REPL, then approve and let it execute step by step
+# (press Shift+Tab or type /plan, then send the task)
+
 # Get a quick answer
 ai "What is the capital of France?"
 
@@ -195,7 +202,9 @@ When in interactive chat or shell mode, you can use these special commands:
 | `/load <index>` | Load a saved chat |
 | `/del <index>` | Delete a saved chat |
 | `/exit` | Exit the application |
-| `/mode chat\|exec` | Switch between chat and execute modes |
+| `/mode chat\|exec` | Switch between chat and execute modes (plan mode is toggled with `Shift+Tab` or `/plan`) |
+| `/plan [task\|list [--all]\|show [id]\|edit\|review [id]\|resume [id]\|clear [--done\|--all]\|abort]` | Plan mode: toggle, or plan a task; list/show/edit/review/resume/clear/abort plans (see [Plan Mode](plan-mode.md)) |
+| `/todo` | Show the current plan todos |
 | `/add <path>` | Add file or directory to context |
 | `/context` or `/ctx` | Show estimated context/token usage for the current conversation |
 | `/context <subcmd>` | Manage file context (`list`, `add`, `remove`, `clear`) |
@@ -210,6 +219,38 @@ When in interactive chat or shell mode, you can use these special commands:
 | `/role` | Show the current role and the available roles |
 | `/role <name>` | Switch the assistant role for this session (case-insensitive; unknown names list the available roles) |
 | `/retry` | Re-run the last user turn from its pre-turn snapshot (useful after an API error; partial messages from the failed turn are discarded) |
+
+#### Plan Mode Commands
+
+`/plan` toggles the read-only planning mode and manages saved plan files; `/todo` shows the todo
+list of the current plan. The full workflow is described in [Plan Mode](plan-mode.md).
+
+| Command | Behaviour |
+|---------|-----------|
+| `/plan` | Toggle plan mode (normal ↔ plan); while a plan is executing, enter revision mode (re-plan); while reviewing, cancel the review |
+| `/plan <task>` | Enter plan mode if needed and send `<task>` as the prompt; while a plan is waiting for review it is refused with `a plan is waiting for review; approve or cancel it first` |
+| `/plan list [--all]` | Table of plans for this project (`ID`, `STATUS`, `REV`, `UPDATED`, `GOAL`); `--all` lists every project; prints `no plans yet` when there is none |
+| `/plan show [id]` | Show a plan (default: the current one); prints `plan not found: <id>` when missing |
+| `/plan edit` | Open the current plan in `$EDITOR` and re-validate it; on failure prints `invalid plan file: <path>: <reason>` |
+| `/plan review [id]` | Reopen a saved draft in the approval panel |
+| `/plan resume [id]` | Continue an `in-progress` plan, or reopen a draft in the approval panel; another session's plan prints `plan is already in progress in another session` |
+| `/plan clear [--done\|--all]` | Delete plan files after an interactive confirmation (`--done`: finished plans only; `--all`: all plans of this project); `plan clear needs an interactive confirmation` in non-interactive runs |
+| `/plan abort` | Abandon the current plan (`status=aborted`, todos cleared); prints `plan aborted · todos cleared` |
+| `/todo` | Show the current todo table with the plan id/status/revision; prints `no plan in this session` when none |
+
+The plan approval panel uses:
+
+| Key | Action |
+|-----|--------|
+| `a` | Approve and execute: `✓ plan approved · exiting plan mode · todo seeded (N steps)` |
+| `e` | Edit the plan in `$EDITOR` and re-validate it |
+| `r` | Redo: keep planning with the research context kept |
+| `s` | Save only, keeping the plan as a draft: `✓ saved as draft (<path>) · exit plan mode` |
+| `Esc` | Cancel the submission, keeping the plan as a draft: `plan cancelled; draft saved at <path>` |
+
+A revision panel (submitted while a plan is executing) uses `[a]pply & continue`, `[e]dit`,
+`[r]edo` and `Esc` to cancel the revision (`revision discarded`); approving prints
+`✓ revision N applied · plan.md updated in place · resuming execution at <Sx>`.
 
 #### Context Management Commands
 
@@ -311,7 +352,7 @@ In addition to persistent context, you can temporarily reference files using the
 
 | Shortcut | Description |
 |----------|-------------|
-| `Shift+Tab` | Toggle between Chat/Execute modes |
+| `Shift+Tab` | Toggle plan mode (normal ↔ plan, read-only); `/mode chat\|exec` switches between chat and execute modes. The plan approval panel accepts `a`/`e`/`r`/`s` and `Esc` |
 | `Ctrl+C` | Clear the current input line; during generation it cancels the turn; press twice quickly to exit |
 | `Ctrl+D` | Exit (exit code 0) |
 | `Ctrl+R` | Search history |
@@ -323,6 +364,7 @@ In addition to persistent context, you can temporarily reference files using the
 
 ## Next Steps
 
+- Learn about [plan mode](plan-mode.md)
 - Learn about [configuration options](configuration.md)
 - Explore different [interaction modes](modes.md)
 - Discover [CLI shortcuts and hotkeys](cli.md)

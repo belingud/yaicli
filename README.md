@@ -123,6 +123,8 @@ headless approval flags.
 - **stdout only carries the result**; labels, warnings and errors go to stderr
 - **Deterministic exit codes** (`0/1/2/3/130/141`) and SIGINT/EPIPE handling
 - **Non-interactive approvals** with `--yes`, `--allowed-tools` and `--fail-on-tool-denied`
+- **One-shot planning** with `--plan`: a read-only planning run saves the plan (JSON adds `plan` /
+  `plan_path` / `revision`) and exits without executing it
 - **Tool schema narrowing** with `--tools 'fs_*,web_search'` (or `ENABLED_TOOLS`) to cut the
   per-request payload down to the tools a script actually needs
 
@@ -144,6 +146,52 @@ headless approval flags.
 - **💬 Chat Mode**: Engage in persistent conversations with full context tracking
 - **🚀 Execute Mode**: Generate and safely run OS-specific shell commands
 - **⚡ Quick Query**: Get instant answers without entering interactive mode
+- **🧭 Plan Mode**: A persistent read-only planning phase toggled with `Shift+Tab` / `/plan` (see below)
+
+### 🧭 Plan Mode (Read-Only Planning)
+
+Plan first, then execute: press `Shift+Tab` (or run `/plan`) to switch the agent into a persistent
+**read-only** planning mode. It can read files, use the network and run a fixed read-only shell
+allowlist, but it cannot write; it ends by calling `submit_plan` and you decide what happens next.
+
+- **Approval panel**: `[a]`pprove & execute, `[e]`dit the plan in `$EDITOR`, `[r]`edo (keep
+  planning), `[s]`ave only, `Esc` cancel — nothing is written before you approve
+- **Todo-driven execution**: approving seeds the plan steps as todos (`S1`..`Sn`); the model marks
+  progress with `todo_write` and each status is written back into the plan file
+- **Re-plan in place**: `Shift+Tab` during execution submits a revision (`revision: N+1`) with a
+  step diff; approving updates the same plan file and continues where execution left off
+- **Persistent per project**: plans live under `<config-dir>/plans/<project-key>/` (never in the
+  repo), are private (`0700`/`0600`), and finished plans are pruned at 80 per project
+- **Headless**: `--plan` saves a plan without executing it; JSON adds `plan`, `plan_path` and
+  `revision`
+
+```text
+ 💬 > Add a --dry-run flag to fs_write_file
+<press Shift+Tab>
+[plan] exploring (read-only) …
+plan mode · read-only
+[plan] 💬 > Plan the change first
+  @Function call: submit_plan({"goal": "Add a --dry-run flag to fs_write_file", ...})
+
+╭─ Plan ready: 20261114-004512-fs-dry-run ─────────────────────────────────────╮
+│ Goal: Add a --dry-run flag to fs_write_file                                  │
+│ Steps:                                                                       │
+│  1. Locate the fs_write_file schema and execution path                       │
+│  2. Add dry_run and short-circuit in the execution layer                     │
+│  3. Add tests                                                                │
+│ File: ~/.config/yaicli/plans/3f9a1c2d…/20261114-004512-fs-dry-run.md         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+[a]pprove & execute  [e]dit  [r]edo  [s]ave only  [Esc]cancel: a
+✓ plan approved · exiting plan mode · todo seeded (3 steps)
+```
+
+```bash
+# One-shot planning: save a plan and exit without executing it
+ai -p "Add a --dry-run flag to fs_write_file" --plan --output-format json \
+  | jq '{plan_path, revision, steps: [.plan.steps[].title]}'
+```
+
+See [Plan Mode](docs/usage/plan-mode.md) for the full workflow, plan file format and known limits.
 
 ### 💻 Enhanced Terminal Experience
 
@@ -371,6 +419,11 @@ The default configuration file is `config.ini` inside the config directory above
 | `ENABLE_MODEL_METADATA` | Probe provider metadata (OpenRouter `/models`, Gemini `models.get`, Ollama `/api/show`) for the model context window | `true` | `YAI_ENABLE_MODEL_METADATA` |
 | `CONTEXT_SAFETY_TOKENS` | Extra headroom kept below `window - MAX_TOKENS` when deriving the request budget | `1024` | `YAI_CONTEXT_SAFETY_TOKENS` |
 | `ENABLE_MODEL_LIMITS_CACHE` | Cache resolved windows in `<config-dir>/cache/model_limits.json` (provider metadata 7 days, learned limits 30 days) | `true` | `YAI_ENABLE_MODEL_LIMITS_CACHE` |
+| `PLAN_ENABLED`         | Enable persistent plan mode (`Shift+Tab` / `/plan`; `false` hides it and `--plan` exits `2`) | `true` | `YAI_PLAN_ENABLED` |
+| `PLAN_MAX_STEPS`       | Maximum number of steps accepted in one submitted plan | `20` | `YAI_PLAN_MAX_STEPS` |
+| `PLAN_KEEP`            | Finished (done/aborted) plan files kept per project; older ones are pruned (draft/in-progress plans are never auto-deleted) | `80` | `YAI_PLAN_KEEP` |
+| `PLAN_ALLOW_READONLY_SHELL` | Expose the fixed read-only shell allowlist while planning | `true` | `YAI_PLAN_ALLOW_READONLY_SHELL` |
+| `PLAN_DIR`             | Plans root directory (empty = `<config-dir>/plans`; plans are isolated per project) | - | `YAI_PLAN_DIR` |
 | `TOOL_TIMEOUT`         | Max seconds a shell tool command may run    | `120`                    | `YAI_TOOL_TIMEOUT`         |
 | `TOOL_ENV_INHERIT`     | Pass the full parent environment to shell tools (old behaviour) | `false` | `YAI_TOOL_ENV_INHERIT` |
 | `WORKSPACE_ROOT`       | Directory shell tools are confined to (empty = current dir) | -         | `YAI_WORKSPACE_ROOT`       |
@@ -918,6 +971,9 @@ ai '@Justfile What does this file do'
 ai -p "summarize the git log" --output-format json
 ai -p "list open TODOs" --quiet
 
+# One-shot planning: save a plan and exit without executing it
+ai -p "Add a --dry-run flag to fs_write_file" --plan --output-format json | jq '{plan_path, revision}'
+
 # Send an image to a vision model
 ai --image photo.jpg "What is in this image?"
 
@@ -947,7 +1003,9 @@ ai --verbose "Explain quantum computing"
 - `/load <index>` - Load a saved chat
 - `/del <index>` - Delete a saved chat
 - `/exit` - Exit the application
-- `/mode chat|exec` - Switch modes
+- `/mode chat|exec` - Switch between chat and execute modes
+- `/plan [subcommand]` - Toggle plan mode or manage saved plans
+- `/todo` - Show the current plan todos
 - `/add <path>` - Add file/dir to context
 - `/context|/ctx` - Context usage and file context (list, add, remove, clear)
 - `/cost` - Session tokens, estimated USD cost, per-model breakdown and tool time/size
@@ -960,7 +1018,7 @@ ai --verbose "Explain quantum computing"
 
 **Keyboard Shortcuts**
 
-- `Shift+Tab` - Toggle between Chat/Execute modes
+- `Shift+Tab` - Toggle plan mode (normal ↔ plan, read-only); `/mode chat|exec` switches Chat/Execute modes
 - `Alt+Enter` / `Ctrl+J` - Insert a newline (multi-line prompt without submitting)
 - `Ctrl+C` - Clear the current input (during generation: cancel the turn); press twice quickly to exit
 - `Ctrl+D` - Exit
@@ -1043,7 +1101,7 @@ Chat title: hello
 
 Welcome to YAICLI!
 Current: Persistent Session: hello
-Press Shift+Tab to switch mode
+Press Shift+Tab to toggle plan mode (normal ↔ plan, read-only)
 /clear             : Clear chat history
 /his               : Show chat history
 /list              : List saved chats
@@ -1053,6 +1111,7 @@ Press Shift+Tab to switch mode
 /exit|Ctrl+D       : Exit
 Ctrl+C             : Clear input / cancel turn; press twice to exit
 /mode chat|exec    : Switch mode (Case insensitive)
+Plan mode: Shift+Tab / /plan · plan files under ~/.config/yaicli/plans
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 > /his
 Chat History:
@@ -1232,7 +1291,7 @@ Starting a temporary chat session (will not be saved automatically)
 
 Welcome to YAICLI!
 Current: Temporary Session (use /save to make persistent)
-Press Shift+Tab to switch mode
+Press Shift+Tab to toggle plan mode (normal ↔ plan, read-only)
 /clear             : Clear chat history
 /his               : Show chat history
 /list              : List saved chats
@@ -1243,6 +1302,7 @@ Press Shift+Tab to switch mode
 /exit|Ctrl+D       : Exit
 Ctrl+C             : Clear input / cancel turn; press twice to exit
 /mode chat|exec    : Switch mode (Case insensitive)
+Plan mode: Shift+Tab / /plan · plan files under ~/.config/yaicli/plans
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  💬 > Tell me about the solar system
 
