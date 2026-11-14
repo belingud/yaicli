@@ -1,5 +1,29 @@
 
 ---
+## [0.24.1](https://github.com/belingud/yaicli/compare/v0.24.0..v0.24.1) - 2026-11-14
+
+### ⛰️  Features
+
+- feat(viewer): show complete tool-call arguments in Ctrl+O detail pane
+
+The Ctrl+O / `/show-output` viewer rendered the right-pane arguments with the
+compact summarize_arguments preview (300 chars; long values became
+`… <N chars>`), hiding the executed command/parameters. Record the full
+arguments per executed tool call (ToolOutputEntry.full_arguments, pretty
+JSON, control characters stripped) and render them in the detail pane,
+while the left list caption and the inline `@Function call:` line keep
+their compact summaries. Docs and the CLI rendering spec updated. - ([ced8618](https://github.com/belingud/yaicli/commit/ced8618a08e9428a0595075becf4f79541e51933)) - Belingud
+
+### 📚 Documentation
+
+- docs(changelog): update changelog for v0.24.0 release - ([0433937](https://github.com/belingud/yaicli/commit/04339373d252f860652dbb3701b7f30e00981eaa)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore(trellis): record v0.24.0 release session - ([3d7a8ac](https://github.com/belingud/yaicli/commit/3d7a8acc2cd5eef5cff9b11dfcade4f20b841d0c)) - Belingud
+
+
+---
 ## [0.24.0](https://github.com/belingud/yaicli/compare/v0.23.0..v0.24.0) - 2026-11-14
 
 ### ⚠️ Behaviour changes
