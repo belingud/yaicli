@@ -114,3 +114,23 @@ class TestEntryMetadata:
             total_chars=2,
         )
         assert entry.caption == "pytest -q"
+
+    def test_entry_keeps_full_arguments(self):
+        output_history.begin_turn()
+        full = '{\n  "command": "pytest -q"\n}'
+        entry = output_history.record_output(
+            kind="function",
+            name="execute_shell_command",
+            arguments='{"command": "pytest -q"}',
+            full_arguments=full,
+            text="ok",
+            total_chars=2,
+        )
+        assert entry.full_arguments == full
+        # The compact summary stays on ``arguments`` (viewer list / announce line).
+        assert entry.arguments == '{"command": "pytest -q"}'
+
+    def test_full_arguments_defaults_to_empty(self):
+        output_history.begin_turn()
+        entry = record("tool")
+        assert entry.full_arguments == ""

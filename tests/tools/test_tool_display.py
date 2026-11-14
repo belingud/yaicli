@@ -18,6 +18,7 @@ from yaicli.tools import execute_tool_call, get_last_tool_output, show_last_tool
 from yaicli.tools import output_history
 from yaicli.tools.limits import (
     build_preview_marker,
+    format_arguments_text,
     make_display_preview,
     summarize_arguments,
     truncate_tool_output_meta,
@@ -149,6 +150,50 @@ class TestSummarizeArguments:
         assert len(summary) <= 300
 
 
+class TestFormatArgumentsText:
+    """The Ctrl+O detail pane gets the complete arguments, never the summary."""
+
+    def test_dict_is_pretty_printed(self):
+        text = format_arguments_text({"command": "pytest -q", "timeout": 120})
+        assert text == '{\n  "command": "pytest -q",\n  "timeout": 120\n}'
+        assert json.loads(text) == {"command": "pytest -q", "timeout": 120}
+
+    def test_json_string_is_pretty_printed(self):
+        raw = json.dumps({"path": "/tmp/a.txt", "content": "A" * 500})
+        text = format_arguments_text(raw)
+        assert text == json.dumps(json.loads(raw), ensure_ascii=False, indent=2)
+        assert "A" * 500 in text
+        assert "<500 chars>" not in text
+
+    def test_list_is_pretty_printed(self):
+        text = format_arguments_text(["a", {"b": 1}])
+        assert text.startswith("[\n")
+        assert json.loads(text) == ["a", {"b": 1}]
+
+    def test_invalid_json_string_is_passed_through(self):
+        raw = "not json {'a': "
+        assert format_arguments_text(raw) == raw
+
+    def test_none_and_empty(self):
+        assert format_arguments_text(None) == ""
+        assert format_arguments_text("") == ""
+
+    def test_unicode_is_not_escaped(self):
+        text = format_arguments_text({"city": "北京"})
+        assert "北京" in text
+        assert "\\u" not in text
+
+    def test_control_chars_are_stripped_from_plain_strings(self):
+        text = format_arguments_text("plain\x00te\x1b[31mxt\x9bmore")
+        # C0/C1 bytes are dropped; the printable remainder of the escape stays.
+        assert text == "plainte[31mxtmore"
+        assert "\x00" not in text and "\x1b" not in text and "\x9b" not in text
+
+    def test_scalars_are_json_encoded(self):
+        assert format_arguments_text(42) == "42"
+        assert format_arguments_text(True) == "true"
+
+
 class TestExecuteToolCallDisplay:
     def test_short_output_has_no_marker(self):
         _, ok, console = _tool_call(result="short result")
@@ -182,6 +227,29 @@ class TestExecuteToolCallDisplay:
         assert call_line.startswith("@Function call: get_weather(")
         assert "<2,000 chars>" in call_line
         assert "A" * 100 not in call_line
+
+    def test_long_command_is_still_summarized_inline_but_recorded_in_full(self):
+        command = "echo " + "a" * 297  # 302 characters: over the 300-char preview cap
+        raw = json.dumps({"command": command})
+        _, ok, console = _tool_call(arguments=raw)
+        assert ok is True
+
+        # The inline console line stays compact: clipped value + <N chars> marker.
+        call_line = next(str(c.args[0]) for c in console.print.call_args_list if c.args)
+        assert call_line.startswith("@Function call: get_weather(")
+        assert "<302 chars>" in call_line
+        assert command not in call_line
+        assert "a" * 302 not in call_line
+
+        # The recorded entry keeps the compact summary AND the complete arguments
+        # (pretty JSON) for the Ctrl+O detail pane.
+        entries, _ = output_history.viewer_outputs()
+        entry = entries[0]
+        assert entry.arguments == summarize_arguments(raw)
+        assert "<302 chars>" in entry.arguments
+        assert entry.full_arguments == json.dumps({"command": command}, ensure_ascii=False, indent=2)
+        assert json.loads(entry.full_arguments) == {"command": command}
+        assert command in entry.full_arguments
 
     def test_result_is_recorded_in_history(self):
         result = "\n".join(f"line {i}" for i in range(1, 101))

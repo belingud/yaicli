@@ -15,6 +15,7 @@ from . import output_history, workspace
 from .function import get_function, list_functions
 from .limits import (
     build_preview_marker,
+    format_arguments_text,
     make_display_preview,
     summarize_arguments,
     truncate_tool_output_meta,
@@ -497,10 +498,15 @@ def _emit_tool_result(
     kind: str,
     name: str,
     preview_arguments: str,
+    full_arguments: str = "",
     caption: str,
     show_output: bool,
 ) -> str:
     """Truncate, record and display one tool result (successful or guard-denied).
+
+    ``preview_arguments`` is the compact one-line summary shown on the announce
+    line and, as a fallback, in the viewer list; ``full_arguments`` is the
+    complete pretty-printed argument text kept for the Ctrl+O detail pane.
 
     Returns the model-visible text. Guard denials go through the same pipeline as
     successful results, so the terminal/``Ctrl+O`` view and the model context stay
@@ -522,6 +528,7 @@ def _emit_tool_result(
         total_chars=result_meta.total_chars,
         spill_path=result_meta.spill_path,
         truncated=result_meta.truncated,
+        full_arguments=full_arguments,
     )
     if show_output:
         preview = make_display_preview(display_text)
@@ -550,10 +557,14 @@ def _execute_plan_mode_call(
     *,
     kind: str,
     preview_arguments: str,
+    full_arguments: str = "",
     caption: str,
     show_output: bool,
 ) -> Optional[Tuple[str, bool]]:
     """Run one plan-mode-only tool call, or return ``None`` for the normal path.
+
+    ``preview_arguments`` is the compact announce-line summary; ``full_arguments``
+    is the complete argument text recorded for the Ctrl+O detail pane.
 
     Handles (v0.24 K23, only active while ``set_plan_tool_mode`` selected a mode):
 
@@ -578,6 +589,7 @@ def _execute_plan_mode_call(
             kind=kind,
             name=name,
             preview_arguments=preview_arguments,
+            full_arguments=full_arguments,
             caption=caption,
             # The tool result is the session state JSON; the plan/todo panel is the
             # user-facing view, so don't print a duplicate output panel.
@@ -607,6 +619,7 @@ def _execute_plan_mode_call(
             kind=kind,
             name=name,
             preview_arguments=preview_arguments,
+            full_arguments=full_arguments,
             caption=caption,
             show_output=False,
         )
@@ -628,6 +641,7 @@ def _execute_plan_mode_call(
             kind=kind,
             name=name,
             preview_arguments=preview_arguments,
+            full_arguments=full_arguments,
             caption=caption,
             show_output=False,
         )
@@ -644,6 +658,7 @@ def _execute_plan_mode_call(
         kind=kind,
         name=name,
         preview_arguments=preview_arguments,
+        full_arguments=full_arguments,
         caption=caption,
         show_output=show_output,
     )
@@ -689,6 +704,9 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
     # would reject them. The normal path (no plan tool mode) keeps its ordering.
     arguments: Dict[str, Any] | None = None
     caption = ""
+    # Complete argument text for the Ctrl+O detail pane; the announce line keeps
+    # using the compact ``preview_arguments`` summary above.
+    full_arguments = ""
     if is_function_call and _plan_mode is not None:
         try:
             parsed_arguments = repair_json(tool_call.arguments, return_objects=True)
@@ -702,11 +720,13 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
             console.print(safe_text(error_msg), style="red")
             return error_msg, False
         caption = _tool_call_caption(arguments)
+        full_arguments = format_arguments_text(arguments)
         plan_result = _execute_plan_mode_call(
             tool_call,
             arguments,
             kind=_type,
             preview_arguments=preview_arguments,
+            full_arguments=full_arguments,
             caption=caption,
             show_output=show_output,
         )
@@ -735,6 +755,7 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
             console.print(safe_text(error_msg), style="red")
             return error_msg, False
         caption = _tool_call_caption(arguments)
+        full_arguments = format_arguments_text(arguments)
 
     # 3. Execute the tool
     try:
@@ -766,6 +787,7 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
             kind=_type,
             name=tool_call.name,
             preview_arguments=preview_arguments,
+            full_arguments=full_arguments,
             caption=caption,
             show_output=show_output,
         )

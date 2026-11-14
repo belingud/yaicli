@@ -10,6 +10,12 @@ By default the right pane shows what the model saw (``TOOL_OUTPUT_MAX_CHARS``
 capped). When truncation spilled the original output to disk, pressing ``f``
 loads that full file (capped at :data:`MAX_FULL_TEXT_CHARS` for responsiveness);
 pressing ``f`` again returns to the model-visible text.
+
+The detail pane is also the one place that shows the *complete* tool call: the
+tool name plus every argument as recorded at execution time (pretty-printed
+JSON, :attr:`ToolOutputEntry.full_arguments`). The left list keeps the compact
+one-line caption / argument summary, so a long command or file content cannot
+flood the list.
 """
 
 import sys
@@ -52,10 +58,17 @@ def _entry_header(entry: ToolOutputEntry, position: int, total: int) -> str:
 
 
 def _body_text(entry: ToolOutputEntry, full_text: Optional[str] = None) -> str:
-    """Build the right-pane document: call header, result, spill hint."""
+    """Build the right-pane document: call header, full arguments, result, spill hint.
+
+    The arguments block renders ``full_arguments`` (the complete argument text
+    recorded at execution time) and falls back to the compact ``arguments``
+    summary for legacy/manual entries that never recorded one.
+    """
+    arguments_text = entry.full_arguments or entry.arguments
     lines = [
         f"@ {entry.kind.title()} call: {entry.name}",
-        f"arguments: {entry.arguments}",
+        "arguments:",
+        arguments_text,
         "",
     ]
     if full_text is not None:
