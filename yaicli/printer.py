@@ -756,11 +756,18 @@ class Printer:
         except Exception:  # pragma: no cover - never let the panel kill the REPL
             return "save"
         value = str(decision or "").strip().lower()
+        # The key bindings above exit with full decision words ("approve", "edit", ...);
+        # keep accepting the short letters too (older prompts / injected test doubles).
         mapping = {
+            "approve": "approve",
             "a": "approve",
+            "edit": "edit",
             "e": "edit",
+            "redo": "redo",
             "r": "redo",
+            "save": "save",
             "s": "save",
+            "cancel": "cancel",
             "": "cancel",
         }
         return mapping.get(value, "cancel")

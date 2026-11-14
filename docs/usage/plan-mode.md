@@ -153,13 +153,13 @@ The plan is then shown in the approval panel.
 
 | Key | Action | Result |
 | --- | --- | --- |
-| `a` | Approve and execute | Leaves plan mode, restores the normal tool set, seeds the todo list and starts executing: `✓ plan approved · exiting plan mode · todo seeded (N steps)` |
+| `a` | Approve and execute | Leaves plan mode, restores the normal tool set, seeds the todo list and starts executing immediately: `✓ plan approved · exiting plan mode · todo seeded (N steps)` then `[plan] executing approved plan (N steps)…` |
 | `e` | Edit the plan in `$EDITOR` (fallback `vi`) | The edited file is re-parsed and validated, then the panel is shown again; no model call |
 | `r` | Redo — keep planning | Discards the draft and returns to plan mode with the research context kept |
-| `s` | Save only | Keeps the plan file as a draft and exits plan mode: `✓ saved as draft (<path>) · exit plan mode` |
-| `Esc` | Cancel the submission | Keeps the plan file as a draft and exits plan mode: `plan cancelled; draft saved at <path>` |
+| `s` | Save only | Keeps the plan file as a draft and exits plan mode: `✓ saved as draft (<path>) · exit plan mode`, then `Use /plan resume to review and execute this plan later.` |
+| `Esc` | Cancel the submission | Keeps the plan file as a draft and exits plan mode: `plan cancelled; draft saved at <path>` (+ the same `/plan resume` hint) |
 
-Reopen a saved draft later with `/plan review`. If the session's `TOOL_POLICY` is `readonly`,
+Reopen a saved draft later with `/plan review`, or run `/plan resume` to review **and execute** it (a draft goes through the approval panel again; an in-progress plan continues execution directly). Plain chat does not auto-execute a saved plan: the plan context is only injected while in plan mode or while executing an approved plan, so use the command to pick the plan back up. If the session's `TOOL_POLICY` is `readonly`,
 approving first asks `current TOOL_POLICY=readonly would deny writes; switch to standard? [y/N]`;
 answering no leaves you in the approval panel.
 

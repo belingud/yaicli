@@ -252,3 +252,32 @@ class TestPlanPromptDelivery:
         assert len(system_messages) == 1
         assert "PLAN MODE" not in (system_messages[0].content or "")
         assert "EXECUTING AN APPROVED PLAN" not in (system_messages[0].content or "")
+
+
+class TestSavedPlanResume:
+    """A saved draft can be reviewed/executed later with /plan resume (or /plan review)."""
+
+    def test_plan_resume_saved_draft_opens_panel_and_executes(self, plan_cli, monkeypatch):
+        plan = _submit(plan_cli, goal="Saved for later")
+        plan_cli.printer.ask_plan_decision.return_value = "save"
+        plan_cli._handle_plan_review_panel()
+        assert plan_cli.plan_session.mode == "normal"
+        assert plan_cli.chat.plan.get("id") == plan.id
+        assert "Use /plan resume to review and execute this plan later." in _printed(plan_cli)
+
+        # Simulate a fresh process: only the saved session pointer survives.
+        plan_mode.reset_plan_session()
+        plan_cli.plan_session = None
+        executed = []
+        monkeypatch.setattr(CLI, "_execute_plan", lambda self: executed.append(True))
+        plan_cli.printer.ask_plan_decision.return_value = "approve"
+
+        assert plan_cli.cmd_handler.handle_plan("/plan resume") is True
+
+        session = plan_cli.plan_session
+        assert session.active_plan is not None
+        assert session.active_plan.id == plan.id
+        assert session.mode == "executing"
+        assert [todo.id for todo in session.todos] == ["S1", "S2"]
+        assert executed, "/plan resume on a draft must go through the panel and execute"
+        assert "✓ plan approved" in _printed(plan_cli)

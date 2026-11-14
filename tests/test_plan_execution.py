@@ -518,3 +518,59 @@ class TestEditPlanFromPanel:
         assert plan_cli.plan_session.mode == "executing"
         # The hidden editor draft must be cleaned up after re-validation.
         assert not list(plan.path.parent.glob(".*.editor.md"))
+
+
+class TestDecisionPromptMapping:
+    """The modal panel bindings exit with decision words; map them to actions.
+
+    Regression: pressing ``a`` in the real terminal returned ``"approve"`` from the
+    prompt_toolkit binding, but the old single-letter mapping turned every result into
+    ``cancel`` — approving a plan silently cancelled it and never executed.
+    """
+
+    @staticmethod
+    def _printer():
+        from yaicli.printer import Printer
+
+        return Printer(console=MagicMock(is_terminal=True))
+
+    @pytest.mark.parametrize(
+        "binding_result,expected",
+        [
+            ("approve", "approve"),
+            ("edit", "edit"),
+            ("redo", "redo"),
+            ("save", "save"),
+            ("cancel", "cancel"),
+            ("a", "approve"),
+            ("e", "edit"),
+            ("r", "redo"),
+            ("s", "save"),
+            ("", "cancel"),
+        ],
+    )
+    def test_binding_results_map_to_decisions(self, binding_result, expected, monkeypatch):
+        from yaicli import printer as printer_module
+
+        printer = self._printer()
+        monkeypatch.setattr(printer_module, "_prompt_function", lambda: (lambda *args, **kwargs: binding_result))
+        assert printer.ask_plan_decision() == expected
+
+    def test_approval_panel_approves_and_starts_execution(self, plan_cli, monkeypatch):
+        from yaicli import printer as printer_module
+        from yaicli.printer import Printer
+
+        plan_cli._toggle_plan_mode()
+        _submit(plan_cli)
+        executed = _no_execute(monkeypatch)
+        plan_cli.printer = Printer(console=MagicMock(is_terminal=True))
+        monkeypatch.setattr(printer_module, "_prompt_function", lambda: (lambda *args, **kwargs: "approve"))
+
+        plan_cli._handle_plan_review_panel()
+
+        printed = _printed(plan_cli)
+        assert executed, "approving through the real decision prompt must execute"
+        assert plan_cli.plan_session.mode == "executing"
+        assert "✓ plan approved" in printed
+        assert "plan cancelled" not in printed
+        assert "[plan] executing approved plan" in printed

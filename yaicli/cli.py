@@ -1217,6 +1217,14 @@ class CLI:
                     )
                 self._sync_chat_plan(session)
                 self._sync_plan_tool_mode()
+                try:
+                    step_count = len(getattr(session, "todos", None) or [])
+                except Exception:  # pragma: no cover - defensive
+                    step_count = 0
+                self.console.print(
+                    f"[plan] executing approved plan ({step_count} steps)… todo progress below; Ctrl-C pauses.",
+                    style="dim",
+                )
                 self._execute_plan()
                 return
 
@@ -1240,8 +1248,16 @@ class CLI:
             path_text = safe_text(self._shorten_plan_path(path)) if path else "(unknown path)"
             if decision == "save":
                 self.console.print(f"✓ saved as draft ({path_text}) · exit plan mode", style="dim")
+                self.console.print(
+                    "Use /plan resume to review and execute this plan later.",
+                    style="dim",
+                )
             else:
                 self.console.print(f"plan cancelled; draft saved at {path_text}", style="dim")
+                self.console.print(
+                    "Use /plan resume to review and execute this plan later.",
+                    style="dim",
+                )
             return
 
     def _pause_plan_execution(self, plan_mode: Any, session: Any) -> None:
