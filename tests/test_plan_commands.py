@@ -14,6 +14,7 @@ from yaicli.cli import CLI
 from yaicli.cmd_handler import COMMAND_INFO, CmdHandler, command_completions
 from yaicli.config import cfg
 from yaicli.const import CHAT_MODE, CMD_PLAN, CMD_TODO
+from yaicli.schemas import ChatMessage, ToolCall
 
 
 @pytest.fixture(autouse=True)
@@ -284,3 +285,50 @@ class TestTodoCommand:
         assert tables[0].row_count == 2
         cells = [str(cell) for column in tables[0].columns for cell in column._cells]
         assert "pending" in cells
+
+
+class TestPlanReplyWithoutPlanHint:
+    """A text-only plan-mode answer is flagged instead of pretending a plan exists.
+
+    This is the guard for the reported failure mode: the user asks for an HTML page
+    in plan mode and the model replies with the code (possibly because a provider
+    dropped the plan-mode system block). The turn still completes, but the REPL
+    must surface that no plan was submitted.
+    """
+
+    @staticmethod
+    def _run_turn(plan_cli, monkeypatch, updated_messages):
+        monkeypatch.setattr(
+            CLI,
+            "_handle_llm_response",
+            lambda self, user_input, images=None: ("<html>weather</html>", list(updated_messages)),
+        )
+        return plan_cli._process_user_input("build a weather page")
+
+    def test_text_only_reply_prints_hint(self, plan_cli, monkeypatch):
+        plan_cli._toggle_plan_mode()
+        self._run_turn(plan_cli, monkeypatch, [])
+        assert "[plan] no plan submitted" in _printed(plan_cli)
+
+    def test_reply_with_tool_calls_prints_no_hint(self, plan_cli, monkeypatch):
+        plan_cli._toggle_plan_mode()
+        messages = [
+            ChatMessage(role="user", content="build a weather page"),
+            ChatMessage(
+                role="assistant",
+                content="",
+                tool_calls=[ToolCall(id="call-1", name="fs_read_file", arguments='{"file_paths": ["a.py"]}')],
+            ),
+        ]
+        self._run_turn(plan_cli, monkeypatch, messages)
+        assert "[plan] no plan submitted" not in _printed(plan_cli)
+
+    def test_normal_mode_reply_prints_no_hint(self, plan_cli, monkeypatch):
+        self._run_turn(plan_cli, monkeypatch, [])
+        assert "[plan] no plan submitted" not in _printed(plan_cli)
+
+    def test_machine_output_reply_prints_no_hint(self, plan_cli, monkeypatch):
+        plan_cli._toggle_plan_mode()
+        plan_cli.machine_output = True
+        self._run_turn(plan_cli, monkeypatch, [])
+        assert "[plan] no plan submitted" not in _printed(plan_cli)

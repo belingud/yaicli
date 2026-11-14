@@ -58,6 +58,28 @@ Not available in plan mode: file-writing tools (`fs_write_file`, `fs_edit_file`,
 not available, it receives a structured `tool_not_available_in_mode` error, the tool is not run,
 and the refusal is written to the audit log.
 
+### What the model is told (and what happens if it ignores it)
+
+Plan mode is enforced in the request, not only in the UI: a bounded (≤ 2 KB) block of plan-mode rules is
+appended to the request's **system prompt** together with the current plan/revision/todo state. It is
+part of the first system message on purpose — some providers only transmit a single system prompt
+(Anthropic and Gemini both do), so a separate system message would be dropped and plan mode would
+silently behave like normal chat. The block tells the model to stay read-only, to **never write the
+implementation or the final answer while planning**, and that `submit_plan` is the only way to end the
+phase.
+
+If the model still answers in plain text without calling any tool (for example it prints the HTML page
+you asked for instead of planning), the REPL prints one warning line instead of pretending a plan
+exists:
+
+```text
+[plan] no plan submitted — this turn answered in text without using tools; ask again to research and
+submit a plan, or press Shift+Tab to leave plan mode.
+```
+
+The rules are re-sent on every plan-mode turn, so simply asking again (or restating the task) is usually
+enough. Press `Shift+Tab` to leave plan mode when you want a normal answer instead of a plan.
+
 ## Controlled read-only shell
 
 `PLAN_ALLOW_READONLY_SHELL` (default `true`) exposes `execute_shell_command` in plan mode, but only

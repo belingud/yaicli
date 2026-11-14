@@ -1448,21 +1448,29 @@ def resume_plan(session: PlanSession) -> bool:
 # Context blocks / summaries
 # ---------------------------------------------------------------------------
 _PLAN_INSTRUCTIONS = (
-    "PLAN MODE (read-only): you are researching before acting. Read files, search, fetch web pages and "
-    "run read-only shell commands, but do not modify files, install anything, run builds/tests or change "
-    "the workspace. Finish by calling submit_plan with a concrete, ordered step list; every step needs a "
-    "title and acceptance criteria. submit_plan asks the user to approve the plan."
+    "PLAN MODE IS ACTIVE (read-only). You are researching before acting, NOT implementing. You MUST NOT "
+    "modify files, install anything, run builds/tests or change the workspace, and you MUST NOT write the "
+    "implementation, code or the final answer in this mode. Use the available read-only tools (read files, "
+    "search, web pages, read-only shell) to understand the task, then finish by calling submit_plan with a "
+    "concrete, ordered step list; every step needs a title and acceptance criteria. The submit_plan tool "
+    "call is the ONLY way to end planning and ask the user to approve the plan: do not answer the build "
+    "request directly with code or prose, and never claim work is done while planning. If the task is "
+    "small, submit a short plan (1-3 steps) instead of answering directly. If you need information from "
+    "the user, ask one short question in text and wait."
 )
 _REVISION_INSTRUCTIONS = (
-    "PLAN MODE (revising): the user is adjusting an already approved plan and you are still read-only. "
-    "Call submit_plan with the complete updated step list, revision={next_revision} and a short "
-    "change_summary. Keep existing step ids unchanged; new steps take ids S{n} and continue from there. "
-    "submit_plan shows the diff for approval and then execution resumes."
+    "PLAN MODE IS ACTIVE (revising): the user is adjusting an already approved plan and you are still "
+    "read-only. You MUST NOT write the implementation or the final answer. Research the changed "
+    "requirements with the read-only tools, then call submit_plan with the complete updated step list, "
+    "revision={next_revision} and a short change_summary. Keep existing step ids unchanged; new steps take "
+    "ids S{n} and continue from there. submit_plan is the ONLY way to end planning here; it shows the diff "
+    "for approval and then execution resumes."
 )
 _EXECUTION_INSTRUCTIONS = (
     "EXECUTING THE APPROVED PLAN: work through the todo list one step at a time and update it with "
     "todo_write. Keep exactly one step in_progress, mark it completed when done and move the next step to "
-    "in_progress. Do not add or remove steps; re-enter plan mode (Shift+Tab) to revise the plan."
+    "in_progress. Do not add or remove steps; re-enter plan mode (Shift+Tab) to revise the plan. Keep chat "
+    "replies brief; the todo list is the source of truth for progress."
 )
 
 

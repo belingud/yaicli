@@ -1032,6 +1032,32 @@ class CLI:
         else:  # pragma: no cover - a submitted plan always has a path
             self.console.print("plan cancelled", style="dim")
 
+    def _warn_plan_reply_without_plan(self) -> None:
+        """One-line hint when a plan-mode turn answered in text without using tools.
+
+        A plan-mode request is not a normal chat request: the model is supposed to
+        research with the read-only tools and finish with ``submit_plan``. Weak or
+        prompt-dropping provider paths can still produce a plain answer (e.g. code
+        in the terminal); surface that instead of pretending a plan exists.
+        """
+        session = getattr(self, "plan_session", None)
+        if session is None or not getattr(session, "is_plan_mode", False):
+            return
+        if self.tool_calls:
+            return
+        if getattr(self, "machine_output", False):
+            return
+        mode = str(getattr(session, "mode", ""))
+        try:
+            _plan_mode_module().plan_audit("no_plan_submitted", mode=mode)
+        except Exception:  # pragma: no cover - audit is best-effort
+            pass
+        self.console.print(
+            "[plan] no plan submitted — this turn answered in text without using tools; "
+            "ask again to research and submit a plan, or press Shift+Tab to leave plan mode.",
+            style="yellow",
+        )
+
     def _after_plan_turn(self) -> None:
         """Hook run after each REPL turn: persist plan state and open the panel.
 
@@ -1917,14 +1943,18 @@ class CLI:
         project_context = self._get_project_context()
         if project_context:
             system_prompt = f"{system_prompt}\n\n{project_context}"
-        messages = [ChatMessage(role="system", content=system_prompt)]
 
-        # v0.24 K23: plan mode/execution injects a temporary bounded context block
-        # (goal + steps or todo status) right after the role system message. Normal
-        # runs are byte-identical: no plan session means an empty block.
+        # v0.24 K23: plan mode/execution appends a temporary bounded context block
+        # (mode rules + goal/steps or todo status) to the SAME first system message.
+        # It must not be a second system message: Anthropic only sends one system
+        # prompt and Gemini only reads messages[0] as system_instruction, so a
+        # separate message would silently disappear for those providers (and is an
+        # invalid message role for Anthropic). Normal runs are byte-identical: no
+        # plan session means an empty block.
         plan_context = self._plan_context_block_text()
         if plan_context:
-            messages.append(ChatMessage(role="system", content=plan_context))
+            system_prompt = f"{system_prompt}\n\n{plan_context}"
+        messages = [ChatMessage(role="system", content=system_prompt)]
 
         # Add context messages if any
         context_msgs = self.context_manager.get_context_messages()
@@ -2241,6 +2271,7 @@ class CLI:
         content, updated_messages = self._handle_llm_response(user_input, images=images)
         elapsed_seconds = time.perf_counter() - turn_started_at
         self._record_tool_calls(updated_messages)
+        self._warn_plan_reply_without_plan()
 
         if content is None and not any(getattr(msg, "tool_calls", None) for msg in updated_messages):
             self.last_content = ""

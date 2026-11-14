@@ -42,6 +42,23 @@ SHALL hide the behavior behind one explicit notice.
 - **WHEN** a new or resumed session starts
 - **THEN** the session SHALL start in normal mode and plan mode SHALL only activate on an explicit toggle, `/plan` command or `--plan`
 
+### Requirement: Plan-mode rules reach the model through the first system message
+
+Every planning/execution request SHALL carry the mode rules and the current plan/todo state inside the
+request's first system message (bounded, currently 2 KB), and SHALL NOT add a separate system message
+for them. Providers that transmit only a single system prompt (Anthropic, Gemini) MUST therefore still
+receive the plan-mode contract. When a planning turn produces assistant text with no tool call (no
+`submit_plan`), the interactive REPL SHALL print one `[plan] no plan submitted` hint and SHALL NOT
+persist or display a plan.
+
+#### Scenario: Plan rules survive provider conversion
+- **WHEN** a plan-mode request is built for any provider
+- **THEN** the plan-mode instructions SHALL be part of `messages[0].content` (the only system message) and the tool list SHALL include `submit_plan`
+
+#### Scenario: Text-only answer is surfaced, not accepted as a plan
+- **WHEN** the model answers a plan-mode turn in plain text without calling any tool
+- **THEN** the REPL SHALL print one `[plan] no plan submitted` warning, the session SHALL stay in the planning phase, and no plan file SHALL be created
+
 ### Requirement: The model ends planning only through a validated `submit_plan`
 
 `submit_plan` SHALL accept `goal` (required, ≤500 chars), `assumptions`, `risks`, `not_doing`, and

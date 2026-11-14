@@ -126,7 +126,7 @@ class TestCompactInteraction:
         ]
         assert plan_cli.cmd_handler.handle_command("/compact 1") is True
         blocks = _system_text(plan_cli._build_messages("more research"))
-        assert "PLAN MODE (read-only)" in blocks
+        assert "PLAN MODE IS ACTIVE (read-only)" in blocks
         assert "Research plan" in blocks
 
 
@@ -199,3 +199,56 @@ class TestPlanDiskCommands:
         assert session.todos == []
         assert plan.path is not None and plan.path.exists()
         assert "plan aborted · todos cleared" in _printed(plan_cli)
+
+
+class TestPlanPromptDelivery:
+    """Plan rules must travel in the FIRST system message (provider portability).
+
+    Anthropic only sends one system prompt and Gemini only reads ``messages[0]`` as
+    ``system_instruction``; a second system message carrying the plan rules would be
+    silently dropped there (and is an invalid role for Anthropic), which made plan
+    mode behave like plain chat for those providers.
+    """
+
+    @staticmethod
+    def _messages(cli, mode: str):
+        session = cli._get_plan_session()
+        if mode == "executing":
+            _submit(cli, goal="Delivery plan")
+            plan_mode.approve_new_plan(session)
+        session.mode = mode
+        return cli._build_messages("go on")
+
+    def test_researching_rules_are_in_the_first_system_message(self, plan_cli):
+        messages = self._messages(plan_cli, "researching")
+        system_messages = [message for message in messages if message.role == "system"]
+        assert len(system_messages) == 1
+        content = system_messages[0].content
+        assert "PLAN MODE IS ACTIVE (read-only)" in content
+        assert "submit_plan" in content
+        assert "MUST NOT write the implementation" in content
+
+    def test_revising_rules_are_in_the_first_system_message(self, plan_cli):
+        _submit(plan_cli, goal="Revise me")
+        plan_mode.approve_new_plan(plan_cli.plan_session)
+        plan_cli.plan_session.enter_revising()
+        messages = plan_cli._build_messages("adjust the plan")
+        system_messages = [message for message in messages if message.role == "system"]
+        assert len(system_messages) == 1
+        assert "PLAN MODE IS ACTIVE (revising)" in system_messages[0].content
+        assert "revision=2" in system_messages[0].content
+
+    def test_execution_rules_are_in_the_first_system_message(self, plan_cli):
+        messages = self._messages(plan_cli, "executing")
+        system_messages = [message for message in messages if message.role == "system"]
+        assert len(system_messages) == 1
+        content = system_messages[0].content
+        assert "EXECUTING THE APPROVED PLAN" in content
+        assert "Delivery plan" in content
+
+    def test_normal_mode_adds_no_plan_prompt(self, plan_cli):
+        messages = plan_cli._build_messages("hello")
+        system_messages = [message for message in messages if message.role == "system"]
+        assert len(system_messages) == 1
+        assert "PLAN MODE" not in (system_messages[0].content or "")
+        assert "EXECUTING THE APPROVED PLAN" not in (system_messages[0].content or "")
