@@ -2341,17 +2341,22 @@ pass a <code>limit</code> comfortably below that (e.g. <code>limit: 12000</code>
   flood your screen. This never changes what the model receives — the model still gets up to
   <code>TOOL_OUTPUT_MAX_CHARS</code> characters; set both display limits to <code>0</code> to show everything.</li>
 <li><code>Ctrl+O</code> (or <code>/show-output</code>) opens a <strong>full-screen viewer</strong> with every tool output of the current
-  turn: left pane lists the entries (tool name, size and a command/path caption), right pane shows
-  the selected result. <code>↑/↓</code> select, <code>Tab</code>
-  switches pane, <code>PgUp/PgDn</code> scroll, <code>f</code> toggles between the model-visible text and the spilled full
-  file (capped at 1 MB), and <code>q</code>/<code>Esc</code>/<code>Ctrl+O</code> closes it, restoring the REPL. Non-interactive runs
-  fall back to the inline last-output panel.</li>
+  turn: the left pane lists the entries (tool name, size and a compact command/path caption), and the
+  right pane shows the selected entry's <strong>complete tool-call arguments</strong> — pretty-printed JSON
+  (indent 2) under an <code>arguments:</code> label, after the <code>@ Function call:</code> header — followed by the
+  selected result. Long arguments wrap to the pane width and scroll with <code>PgUp/PgDn</code>. <code>↑/↓</code> select,
+  <code>Tab</code> switches pane, <code>f</code> toggles between the model-visible text and the spilled full file (capped
+  at 1 MB), and <code>q</code>/<code>Esc</code>/<code>Ctrl+O</code> closes it, restoring the REPL. Non-interactive runs fall back to
+  the inline last-output panel.</li>
 <li>The same shortcut works <strong>while the assistant is generating</strong> an answer: the viewer opens without
   waiting for the turn to finish and the generation keeps running in a background worker thread
   while it is open; closing it redraws the accumulated answer and streaming continues. Typed-ahead
   text is kept and pre-filled into the next prompt.</li>
-<li>Long tool-call arguments on the <code>@Function call:</code> line are summarized
-  (<code>TOOL_CALL_PREVIEW_MAX_CHARS=300</code>); a large <code>content</code>/<code>command</code> value appears as <code>&lt;N chars&gt;</code>.</li>
+<li>Only the inline <code>@Function call:</code> line is summarized
+  (<code>TOOL_CALL_PREVIEW_MAX_CHARS=300</code>); a large <code>content</code>/<code>command</code> value appears there as
+  <code>&lt;N chars&gt;</code>, e.g. <code>@Function call: execute_shell_command({"command": "… &lt;302 chars&gt;"})</code>. That cap
+  is display-only and does not apply to the viewer: its detail pane always shows the complete
+  arguments, as executed. Use <code>Ctrl+O</code> when the inline summary hides the value you need.</li>
 <li>If the spill file cannot be written (read-only disk, permission error), YAICLI degrades to plain
   truncation without the path — the request still succeeds.</li>
 <li>Spilled files are created with mode <code>0600</code> on POSIX (file output may contain secrets); clean the
@@ -2800,7 +2805,7 @@ answers.</p>
 <tr>
 <td><code>TOOL_CALL_PREVIEW_MAX_CHARS</code></td>
 <td><code>300</code></td>
-<td>Max characters of the <code>@Function call:</code> argument line (<code>0</code> = raw)</td>
+<td>Max characters of the inline <code>@Function call:</code> argument line (<code>0</code> = raw); the viewer shows full arguments</td>
 </tr>
 <tr>
 <td><code>CONTEXT_BUDGET_TOKENS</code></td>

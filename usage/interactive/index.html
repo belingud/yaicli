@@ -2132,9 +2132,11 @@ JSON runs report usage through their structured output instead.</p>
   twice quickly to exit (single press keeps the session alive)</li>
 <li><code>Ctrl+D</code> - Exit (exit code 0)</li>
 <li><code>Ctrl+R</code> - Search history</li>
-<li><code>Ctrl+O</code> - Open the full-screen tool-output viewer for this turn (<code>↑/↓</code> select, <code>Tab</code> switch
-  pane, <code>f</code> full text, <code>q</code>/<code>Esc</code> close). It also works while the assistant is generating:
-  generation continues in the background and closing the viewer redraws the accumulated answer</li>
+<li><code>Ctrl+O</code> - Open the full-screen tool-output viewer for this turn: the left pane lists the entries
+  and the right pane shows the complete tool-call arguments (pretty-printed JSON) plus the selected
+  result (<code>↑/↓</code> select, <code>Tab</code> switch pane, <code>f</code> full text, <code>q</code>/<code>Esc</code> close). It also works while the
+  assistant is generating: generation continues in the background and closing the viewer redraws the
+  accumulated answer</li>
 <li><code>↑/↓</code> - Navigate through history</li>
 <li><code>Alt+Enter</code> (or <code>Esc</code> then <code>Enter</code>) - Insert a newline instead of submitting</li>
 <li><code>Ctrl+J</code> - Insert a newline (same as <code>Alt+Enter</code>); <code>Enter</code> still submits the whole input</li>
