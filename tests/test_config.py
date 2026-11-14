@@ -470,3 +470,106 @@ class TestEnsureConfigFile:
             assert yaicli.config.ensure_config_file() is None
         finally:
             read_only.chmod(0o700)
+
+
+class TestPlanModeConfig:
+    """v0.24 K23: plan-mode keys are wired through map + INI + env + typing."""
+
+    PLAN_KEYS = {
+        "PLAN_ENABLED": ("true", "YAI_PLAN_ENABLED", bool),
+        "PLAN_MAX_STEPS": (20, "YAI_PLAN_MAX_STEPS", int),
+        "PLAN_KEEP": (80, "YAI_PLAN_KEEP", int),
+        "PLAN_ALLOW_READONLY_SHELL": ("true", "YAI_PLAN_ALLOW_READONLY_SHELL", bool),
+        "PLAN_DIR": ("", "YAI_PLAN_DIR", str),
+    }
+
+    def test_plan_keys_are_in_the_map_and_the_template(self):
+        for key, (default, env_key, expected_type) in self.PLAN_KEYS.items():
+            entry = DEFAULT_CONFIG_MAP[key]
+            assert entry["value"] == default, key
+            assert entry["env_key"] == env_key, key
+            assert entry["type"] is expected_type, key
+            assert f"{key}=" in DEFAULT_CONFIG_INI, key
+
+    def test_plan_defaults_without_file_or_env(self, mock_console):
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            patch("builtins.open", mock_open()),
+            patch("pathlib.Path.mkdir"),
+            patch("yaicli.config.getenv", return_value=None),
+        ):
+            config = Config(mock_console)
+
+        assert config["PLAN_ENABLED"] is True
+        assert config["PLAN_MAX_STEPS"] == 20
+        assert config["PLAN_KEEP"] == 80
+        assert config["PLAN_ALLOW_READONLY_SHELL"] is True
+        assert config["PLAN_DIR"] == ""
+        assert config["PLAN_MAX_STEPS"] == TYPED_DEFAULTS["PLAN_MAX_STEPS"]
+
+    def test_plan_keys_are_typed_from_file(self, mock_console):
+        mock_config_content = """[core]
+PLAN_ENABLED=false
+PLAN_MAX_STEPS=5
+PLAN_KEEP=7
+PLAN_ALLOW_READONLY_SHELL=no
+PLAN_DIR=/tmp/plans
+"""
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data=mock_config_content)),
+            patch("yaicli.config.getenv", return_value=None),
+        ):
+            config = Config(mock_console)
+
+        assert config["PLAN_ENABLED"] is False
+        assert isinstance(config["PLAN_ENABLED"], bool)
+        assert config["PLAN_MAX_STEPS"] == 5
+        assert isinstance(config["PLAN_MAX_STEPS"], int)
+        assert config["PLAN_KEEP"] == 7
+        assert isinstance(config["PLAN_KEEP"], int)
+        assert config["PLAN_ALLOW_READONLY_SHELL"] is False
+        assert isinstance(config["PLAN_ALLOW_READONLY_SHELL"], bool)
+        assert config["PLAN_DIR"] == "/tmp/plans"
+
+    def test_plan_keys_env_override(self, mock_console):
+        def mock_getenv(key, default=None):
+            env_vars = {
+                "YAI_PLAN_ENABLED": "false",
+                "YAI_PLAN_MAX_STEPS": "3",
+                "YAI_PLAN_KEEP": "9",
+                "YAI_PLAN_ALLOW_READONLY_SHELL": "off",
+                "YAI_PLAN_DIR": "~/plans",
+            }
+            return env_vars.get(key, default)
+
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            patch("builtins.open", mock_open()),
+            patch("pathlib.Path.mkdir"),
+            patch("yaicli.config.getenv", side_effect=mock_getenv),
+        ):
+            config = Config(mock_console)
+
+        assert config["PLAN_ENABLED"] is False
+        assert config["PLAN_MAX_STEPS"] == 3
+        assert config["PLAN_KEEP"] == 9
+        assert config["PLAN_ALLOW_READONLY_SHELL"] is False
+        assert config["PLAN_DIR"] == "~/plans"
+
+    def test_invalid_plan_values_fall_back_to_defaults(self, mock_console):
+        def mock_getenv(key, default=None):
+            env_vars = {"YAI_PLAN_ENABLED": "maybe", "YAI_PLAN_MAX_STEPS": "not-a-number"}
+            return env_vars.get(key, default)
+
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            patch("builtins.open", mock_open()),
+            patch("pathlib.Path.mkdir"),
+            patch("yaicli.config.getenv", side_effect=mock_getenv),
+        ):
+            config = Config(mock_console)
+
+        assert config["PLAN_ENABLED"] is True
+        assert config["PLAN_MAX_STEPS"] == 20
+        assert mock_console.print.call_count >= 2
