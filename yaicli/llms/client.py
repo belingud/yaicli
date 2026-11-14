@@ -45,6 +45,11 @@ from .tool_calls import dedupe_tool_calls
 #: ``finish_reason`` value used when the tool-call depth limit stops the run.
 DEPTH_LIMIT_FINISH_REASON = "depth_limit"
 
+#: Session-state tools of the persistent plan workflow (v0.24 K23). Kept in sync
+#: with :data:`yaicli.plan_mode.SESSION_TOOL_NAMES`; duplicated here so the normal
+#: tool gate never imports the plan-mode module (plan mode is fully optional).
+_SESSION_STATE_TOOL_NAMES = frozenset({"submit_plan", "todo_write"})
+
 
 class LLMClient:
     """
@@ -102,6 +107,11 @@ class LLMClient:
         #: True when the last top-level turn hit ``finish_reason == "length"``
         #: (the answer was truncated by MAX_TOKENS). Reset at the start of each turn.
         "output_truncated",
+        # ---- v0.24 K23 persistent plan mode ----
+        #: Plan session injected by the CLI (``None`` = normal tool gating). Typed as
+        #: ``Any`` because the client must not import ``yaicli.plan_mode`` at module
+        #: level; only ``.mode`` (a string) is read here.
+        "plan_session",
     )
 
     def __init__(
@@ -163,6 +173,11 @@ class LLMClient:
         self.usage_tracker: UsageTracker = UsageTracker()
         self.last_usage: Optional[Usage] = None
         self.output_truncated: bool = False
+
+        # ---- v0.24 K23 persistent plan mode ----
+        #: Set by the CLI (``cli._get_plan_session``); the plan-mode gate reads
+        #: ``.mode`` from it. ``None`` keeps the pre-K23 permission gate unchanged.
+        self.plan_session: Any = None
 
     # ------------------- usage / cost (v0.22 K17) -------------------
     @property
@@ -812,6 +827,10 @@ class LLMClient:
             raw_arguments = getattr(tool_call, "arguments", "")
             parsed_arguments = parse_tool_arguments(raw_arguments)
             risk = get_tool_risk(gate_name)
+            # v0.24 K23: session-state tools are not builtins, so the risk map would
+            # classify them as unknown/exec. They never touch the workspace; record
+            # them as read in the audit trail (the builtin map invariant is unchanged).
+            audit_risk = RiskLevel.read if gate_name in _SESSION_STATE_TOOL_NAMES else risk
             shell_risk = self._gate_shell_risk(gate_name, parsed_arguments)
             dangerous = bool(shell_risk is not None and shell_risk.dangerous)
 
@@ -836,7 +855,7 @@ class LLMClient:
                 )
                 self._audit_tool_decision(
                     tool=gate_name,
-                    risk=risk,
+                    risk=audit_risk,
                     policy=policy_mode,
                     decision="disabled",
                     source="tool_selection",
@@ -850,8 +869,69 @@ class LLMClient:
             source: Optional[str] = None
             reason: Optional[str] = None
             prompted = False
+            plan_override = False
 
-            if dangerous:
+            # ---- v0.24 K23 persistent plan mode gate -------------------------
+            # This branch runs BEFORE the danger classification / TOOL_POLICY /
+            # approval branches: plan-mode tools are read-only or session-state,
+            # never prompt, and tools hidden in the current mode are refused
+            # in-band (structured error + audit, no approval prompt).
+            plan_state = getattr(self.plan_session, "mode", None) if self.plan_session is not None else None
+            if plan_state is not None or gate_name in _SESSION_STATE_TOOL_NAMES:
+                deny_reason: Optional[str] = None
+                if plan_state in ("researching", "revising"):
+                    from ..plan_mode import is_tool_allowed_in_plan
+
+                    allow_readonly_shell = True
+                    try:
+                        allow_readonly_shell = bool(self.config.get("PLAN_ALLOW_READONLY_SHELL", True))
+                    except (TypeError, AttributeError):  # pragma: no cover - exotic config mappings
+                        allow_readonly_shell = True
+                    if not is_tool_allowed_in_plan(gate_name, allow_readonly_shell=allow_readonly_shell):
+                        deny_reason = (
+                            f"Tool '{gate_name}' is not available in plan mode; planning is read-only. "
+                            "Use the read/network tools or a read-only shell command, then call submit_plan, "
+                            "or leave plan mode with Shift+Tab."
+                        )
+                    else:
+                        # Allowed in the read-only phase: run without an approval prompt.
+                        # The read-only shell allowlist is validated in execute_tool_call.
+                        decision, source = ToolConfirmDecision.ONCE, "plan_mode"
+                        plan_override = True
+                elif plan_state == "executing" and gate_name == "todo_write":
+                    decision, source = ToolConfirmDecision.ONCE, "plan_mode"
+                    plan_override = True
+                elif gate_name in _SESSION_STATE_TOOL_NAMES:
+                    deny_reason = (
+                        f"Tool '{gate_name}' is not available in mode '{plan_state or 'normal'}': it only "
+                        "runs while planning (submit_plan) or while executing an approved plan (todo_write)."
+                    )
+                if deny_reason is not None:
+                    messages.append(
+                        ChatMessage(
+                            role=tool_role,
+                            content=json.dumps(
+                                {"error": "tool_not_available_in_mode", "reason": deny_reason}, ensure_ascii=False
+                            ),
+                            name=gate_name.removeprefix(MCP_TOOL_NAME_PREFIX),
+                            tool_call_id=tool_call.id,
+                        )
+                    )
+                    self._audit_tool_decision(
+                        tool=gate_name,
+                        risk=audit_risk,
+                        policy=policy_mode,
+                        decision="denied",
+                        source="plan_mode",
+                        arguments=raw_arguments,
+                        duration_ms=0.0,
+                        reason=deny_reason,
+                    )
+                    continue
+
+            if plan_override:
+                pass
+            elif dangerous:
                 # A danger-classified shell command can never be auto-approved: it needs
                 # an explicit interactive confirmation, and non-interactive runs refuse it.
                 # This branch keeps its precedence in every TOOL_POLICY mode (K10).
@@ -913,7 +993,7 @@ class LLMClient:
                 )
                 self._audit_tool_decision(
                     tool=gate_name,
-                    risk=risk,
+                    risk=audit_risk,
                     policy=policy_mode,
                     decision="denied",
                     source=source,
@@ -945,7 +1025,7 @@ class LLMClient:
             )
             self._audit_tool_decision(
                 tool=gate_name,
-                risk=risk,
+                risk=audit_risk,
                 policy=policy_mode,
                 decision="allowed" if ok else "error",
                 source=source,

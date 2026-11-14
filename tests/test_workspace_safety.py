@@ -891,3 +891,62 @@ class TestUndoCommand:
         CLI.print_help(cli)
         printed = " ".join(str(call.args[0]) for call in console.print.call_args_list)
         assert CMD_UNDO in printed
+
+
+class TestPlansRootProtection:
+    """Persistent plan files are written by the CLI only (v0.24 K23)."""
+
+    def test_agent_write_under_plans_root_is_refused(self, tmp_path, monkeypatch):
+        from yaicli.config import cfg
+
+        plans = tmp_path / "plans"
+        monkeypatch.setitem(cfg, "PLAN_DIR", str(plans))
+        workspace_root = tmp_path / "ws"
+        workspace_root.mkdir()
+        target = plans / "project-key" / "20261114-004230-plan.md"
+
+        plan = workspace.prepare_mutation(
+            "fs_write_file",
+            {"file_path": str(target), "content": "tampered", "mode": "write"},
+            root=workspace_root,
+        )
+
+        assert plan.denial is not None
+        payload = json.loads(plan.denial)
+        assert payload["error"] == "protected_path"
+        assert payload["reason"] == "plan files are managed by the CLI"
+        assert not target.exists()
+
+    def test_plans_root_inside_the_workspace_is_refused_too(self, tmp_path, monkeypatch):
+        from yaicli.config import cfg
+
+        workspace_root = tmp_path / "ws"
+        plans = workspace_root / "plans"
+        monkeypatch.setitem(cfg, "PLAN_DIR", str(plans))
+        target = plans / "project-key" / "plan.md"
+
+        plan = workspace.prepare_mutation(
+            "fs_write_file",
+            {"file_path": str(target), "content": "tampered", "mode": "write"},
+            root=workspace_root,
+        )
+
+        assert plan.denial is not None
+        assert json.loads(plan.denial)["error"] == "protected_path"
+
+    def test_agent_write_outside_the_plans_root_still_works(self, tmp_path, monkeypatch):
+        from yaicli.config import cfg
+
+        monkeypatch.setitem(cfg, "PLAN_DIR", str(tmp_path / "plans"))
+        workspace_root = tmp_path / "ws"
+        workspace_root.mkdir()
+        target = workspace_root / "notes.txt"
+
+        plan = workspace.prepare_mutation(
+            "fs_write_file",
+            {"file_path": str(target), "content": "ok", "mode": "write"},
+            root=workspace_root,
+        )
+
+        assert plan.allowed
+        assert plan.denial is None

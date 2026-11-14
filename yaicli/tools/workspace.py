@@ -16,7 +16,9 @@ Three guarantees:
 2. **Protection** — ``.git`` / ``.ssh`` / ``.aws`` / ``.gnupg`` path components and
    ``.env`` / ``.env.*`` / ``*.pem`` / ``*.key`` basenames are refused even inside the
    workspace. ``.yaicli-backups`` is deliberately *not* protected: the guard itself
-   writes there (and only there).
+   writes there (and only there). The persistent plan files root (``PLAN_DIR`` or
+   ``<config-dir>/plans``) is refused too: plan files are written by the CLI only
+   (v0.24 K23), so the agent cannot edit or delete approved plans.
 3. **Revertibility** — before an existing file/directory is overwritten, edited,
    appended to, deleted or moved, it is copied to
    ``<workspace>/.yaicli-backups/<UTC stamp>/<relative path>`` (files ``0600``,
@@ -259,6 +261,59 @@ def _deny_protected(raw: str, reason: str, root: Path) -> str:
     )
 
 
+def plans_root(plan_dir: str = "") -> Optional[Path]:
+    """Return the persistent plan-files root protected from agent writes.
+
+    Resolution follows the plan feature: an explicit ``PLAN_DIR`` (from the config
+    singleton, imported lazily to keep this module a stdlib leaf) wins, otherwise
+    ``<config-dir>/plans``. Returns ``None`` when it cannot be resolved; a missing
+    config is *not* an error (the guard simply has nothing extra to protect).
+    """
+    try:
+        raw = str(plan_dir or "").strip()
+    except Exception:  # pragma: no cover - exotic config values
+        raw = ""
+    try:
+        if raw:
+            return Path(raw).expanduser().resolve()
+        from ..config import cfg
+        from ..const import get_config_dir
+
+        try:
+            raw = str(cfg.get("PLAN_DIR") or "").strip()
+        except (AttributeError, TypeError):  # pragma: no cover - exotic config mappings
+            raw = ""
+        if raw:
+            return Path(raw).expanduser().resolve()
+        return (Path(get_config_dir()).expanduser() / "plans").resolve()
+    except Exception:  # pragma: no cover - resolution must never block a write
+        return None
+
+
+def is_inside_plans_root(path: Union[str, Path], root: Union[str, Path, None] = None) -> bool:
+    """True when ``path`` (already resolved) is inside the persistent plan root."""
+    plans = Path(root) if root is not None else plans_root()
+    if plans is None:
+        return False
+    try:
+        return is_inside_workspace(Path(path), plans)
+    except Exception:  # pragma: no cover - defensive
+        return False
+
+
+def _deny_plans_root(raw: str, plans: Path, root: Path) -> str:
+    """In-band denial for writes under the CLI-managed plan files root."""
+    payload: Dict[str, Any] = {
+        "success": False,
+        "error": "protected_path",
+        "reason": "plan files are managed by the CLI",
+        "path": raw,
+        "plans_root": str(plans),
+        "workspace_root": str(root),
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
 def _deny_root(raw: str, root: Path) -> str:
     return _denial(
         "workspace_root",
@@ -293,6 +348,9 @@ def _check_target(raw: Any, root: Path) -> Tuple[Optional[Path], Optional[str]]:
     if not text:
         return None, None
     resolved = resolve_target(text)
+    plan_root = plans_root()
+    if plan_root is not None and is_inside_plans_root(resolved, plan_root):
+        return None, _deny_plans_root(text, plan_root, root)
     if not is_inside_workspace(resolved, root):
         return None, _deny_outside(text, root)
     if resolved == root:
@@ -746,8 +804,10 @@ __all__ = [
     "UndoOutcome",
     "backup_existing",
     "backup_path_for",
+    "is_inside_plans_root",
     "is_inside_workspace",
     "peek_undo",
+    "plans_root",
     "prepare_mutation",
     "protected_reason",
     "push_undo",

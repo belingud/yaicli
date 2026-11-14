@@ -239,19 +239,74 @@ def get_function(name: str) -> Function:
     raise ValueError(f"Function {name!r} not found")
 
 
-_gemini_functions_cache: Optional[List[Callable]] = None
+#: Gemini declarations cache, keyed by plan tool mode (``""`` = normal run).
+_gemini_functions_cache: Optional[Dict[str, List[Callable]]] = None
+
+
+def reset_gemini_schema_cache() -> None:
+    """Drop the Gemini declaration cache (called when the plan tool mode changes)."""
+    global _gemini_functions_cache
+    _gemini_functions_cache = None
+
+
+def _plan_tool_mode() -> Optional[str]:
+    """Return the plan tool mode from :mod:`yaicli.tools` (lazy import, no cycle)."""
+    try:
+        from . import get_plan_tool_mode
+    except ImportError:  # pragma: no cover - partial package import / embedders
+        return None
+    try:
+        return get_plan_tool_mode()
+    except Exception:  # pragma: no cover - defensive
+        return None
+
+
+def _gemini_plan_allowlist() -> Optional[frozenset]:
+    """Read the plan-mode allowlist for Gemini declarations (``None`` outside plan mode).
+
+    ``yaicli.plan_mode`` and the config singleton are imported lazily so the normal
+    (non-plan) path never pays for them.
+    """
+    try:
+        from .. import plan_mode
+        from ..config import cfg
+
+        allow_shell = bool(cfg.get("PLAN_ALLOW_READONLY_SHELL", True))
+        return plan_mode.plan_tool_allowlist(allow_shell)
+    except Exception:  # pragma: no cover - defensive: never break tool advertisement
+        return frozenset()
 
 
 def get_functions_gemini_format() -> List[Callable]:
-    """Get functions in gemini format"""
+    """Get functions in gemini format.
+
+    Mode-aware (v0.24 K23): in plan mode only the read-only allowlist is declared
+    and ``submit_plan`` is appended; in execution mode the normal builtin set is
+    declared plus ``todo_write``. Declarations are cached per mode.
+    """
     global _gemini_functions_cache
-    if _gemini_functions_cache is not None:
-        return _gemini_functions_cache
+    mode = _plan_tool_mode()
+    if mode not in ("plan", "execution"):
+        mode = None
+    cache = _gemini_functions_cache
+    if cache is None:
+        cache = {}
+        _gemini_functions_cache = cache
+    cache_key = mode or ""
+    if cache_key in cache:
+        return cache[cache_key]
+    allowed = _gemini_plan_allowlist() if mode == "plan" else None
     gemini_functions = []
     for func_name, func in get_func_name_map().items():
+        if allowed is not None and func_name not in allowed:
+            continue
         wrapped_func = wrap_gemini_function(func.execute)
         wrapped_func.__name__ = func_name
         wrapped_func.__doc__ = func.description
         gemini_functions.append(wrapped_func)
-    _gemini_functions_cache = gemini_functions
+    if mode in ("plan", "execution"):
+        from . import session_tools
+
+        gemini_functions.extend(session_tools.gemini_functions(mode))
+    cache[cache_key] = gemini_functions
     return gemini_functions
