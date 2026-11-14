@@ -45,6 +45,16 @@ from .tool_calls import dedupe_tool_calls
 #: ``finish_reason`` value used when the tool-call depth limit stops the run.
 DEPTH_LIMIT_FINISH_REASON = "depth_limit"
 
+
+def _as_positive_int(value: Any) -> Optional[int]:
+    """Best-effort positive-int parse (``None`` for unset/invalid values)."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
 #: Session-state tools of the persistent plan workflow (v0.24 K23). Kept in sync
 #: with :data:`yaicli.plan_mode.SESSION_TOOL_NAMES`; duplicated here so the normal
 #: tool gate never imports the plan-mode module (plan mode is fully optional).
@@ -107,6 +117,9 @@ class LLMClient:
         #: True when the last top-level turn hit ``finish_reason == "length"``
         #: (the answer was truncated by MAX_TOKENS). Reset at the start of each turn.
         "output_truncated",
+        #: Set after an oversized MAX_TOKENS was clamped to fit the context window
+        #: (one stderr warning per client; the clamped value is written back to config).
+        "_max_tokens_clamped",
         # ---- v0.24 K23 persistent plan mode ----
         #: Plan session injected by the CLI (``None`` = normal tool gating). Typed as
         #: ``Any`` because the client must not import ``yaicli.plan_mode`` at module
@@ -173,6 +186,7 @@ class LLMClient:
         self.usage_tracker: UsageTracker = UsageTracker()
         self.last_usage: Optional[Usage] = None
         self.output_truncated: bool = False
+        self._max_tokens_clamped: bool = False
 
         # ---- v0.24 K23 persistent plan mode ----
         #: Set by the CLI (``cli._get_plan_session``); the plan-mode gate reads
@@ -225,9 +239,52 @@ class LLMClient:
             safety_tokens=self.config.get("CONTEXT_SAFETY_TOKENS", 1024),
             override=self.config.get("CONTEXT_BUDGET_TOKENS"),
         )
+        self._clamp_oversized_max_tokens(limits, budget)
         self.last_context_limits = limits
         self._warn_unknown_model_limits(limits, model)
         return limits, budget
+
+    def _clamp_oversized_max_tokens(self, limits: ModelLimits, budget: int) -> None:
+        """Clamp a MAX_TOKENS that would leave no room for the input (once).
+
+        ``MAX_TOKENS`` is reserved out of the same context window as the input. A
+        value close to (or above) the window — e.g. ``MAX_TOKENS=128000`` with the
+        default 128k window — used to collapse the input budget to 1 token, so every
+        request trimmed the entire conversation (a ``/load``-ed chat looked empty to
+        the model even though ``/his`` had it). Clamp the effective output size for
+        this process (input + output fit the window), warn on stderr, and keep the
+        configuration coherent for the provider request.
+
+        An explicit ``CONTEXT_BUDGET_TOKENS`` override is respected verbatim and
+        disables this clamp.
+        """
+        if self._max_tokens_clamped:
+            return
+        if _as_positive_int(self.config.get("CONTEXT_BUDGET_TOKENS")) is not None:
+            return
+        requested = _as_positive_int(self.config.get("MAX_TOKENS"))
+        if requested is None:
+            return
+        try:
+            safety = max(0, int(self.config.get("CONTEXT_SAFETY_TOKENS", 1024) or 0))
+        except (TypeError, ValueError):  # pragma: no cover - exotic config mappings
+            safety = 1024
+        cap = limits.window_for_budget()
+        effective = max(1, cap - budget - safety)
+        if requested <= effective:
+            return
+        self._max_tokens_clamped = True
+        try:
+            self.config["MAX_TOKENS"] = effective
+        except (TypeError, AttributeError):  # pragma: no cover - read-only config mappings
+            pass
+        self._error_console().print(
+            f"MAX_TOKENS={requested:,} + CONTEXT_SAFETY_TOKENS={safety:,} leaves no room for input "
+            f"in the {cap:,}-token context window; using MAX_TOKENS={effective:,} for this session. "
+            "Lower MAX_TOKENS in config.ini (or set MODEL_CONTEXT_WINDOWS to the model's real window) "
+            "to silence this.",
+            style="yellow",
+        )
 
     def _warn_unknown_model_limits(self, limits: ModelLimits, model: str) -> None:
         """Warn once per client when the window is the conservative default (K22).

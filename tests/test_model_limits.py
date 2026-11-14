@@ -387,8 +387,18 @@ class TestBudget:
         limits = ModelLimits(window=1_000_000, max_input=32_768)
         assert context_input_budget(limits, max_tokens=0, safety_tokens=0) == 32_768
 
-    def test_never_below_one(self):
-        assert context_input_budget(ModelLimits(window=100), max_tokens=1024, safety_tokens=1024) == 1
+    def test_oversized_max_tokens_never_starves_the_input_budget(self):
+        # MAX_TOKENS >= window used to collapse the budget to 1 token, which made
+        # the client trim the whole conversation on every request. At least half of
+        # the window is now always available for the input.
+        limits = ModelLimits(window=100)
+        assert context_input_budget(limits, max_tokens=1024, safety_tokens=1024) == 50
+        assert context_input_budget(limits, max_tokens=100, safety_tokens=0) == 50
+        assert context_input_budget(limits, max_tokens=1, safety_tokens=1) == 98
+
+    def test_normal_max_tokens_is_not_capped(self):
+        limits = ModelLimits(window=128_000)
+        assert context_input_budget(limits, max_tokens=8_192, safety_tokens=1024) == 128_000 - 9_216
 
     def test_unknown_limits_use_default_window(self):
         budget = context_input_budget(ModelLimits(source="default"), max_tokens=1024, safety_tokens=1024)

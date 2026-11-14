@@ -868,3 +868,80 @@ class TestContextLengthSelfHealLearning:
 
         assert client.last_context_limits.window == 200_000
         assert client.last_context_budget == 5000
+
+
+class TestOversizedMaxTokensClamp:
+    """A MAX_TOKENS near/above the context window must not starve the input budget.
+
+    Regression: ``MAX_TOKENS=128000`` with the default (unknown) 128k window left a
+    budget of 1 token, so the client trimmed the whole conversation on every request:
+    a ``/load``-ed session looked like a fresh conversation to the model although
+    ``/his`` showed the history.
+    """
+
+    @pytest.fixture
+    def max_config(self):
+        return {
+            "API_KEY": "fake_api_key",
+            "BASE_URL": "https://fake-api.openai.com/v1",
+            "MODEL": "z-ai/glm-5.3-flash",  # unknown to the catalog -> default 128k window
+            "TEMPERATURE": 0.7,
+            "TOP_P": 1.0,
+            "MAX_TOKENS": 128_000,
+            "TIMEOUT": 60,
+            "PROVIDER": "openai",
+            "ENABLE_FUNCTIONS": False,
+            "ENABLE_MCP": False,
+            "MAX_TOOL_CALL_DEPTH": 5,
+            "TOOL_CONFIRM": False,
+            "CONTEXT_SAFETY_TOKENS": 1024,
+            "MODEL_CONTEXT_WINDOWS": {},
+            "ENABLE_MODEL_METADATA": False,
+            "ENABLE_MODEL_LIMITS_CACHE": False,
+        }
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_max_tokens_is_clamped_and_history_survives(self, mock_factory, max_config, capsys):
+        mock_factory.return_value = MockProvider(responses=[LLMResponse(content="ok")])
+        config = max_config
+        client = LLMClient(provider_name="openai", config=config)
+        messages = [ChatMessage(role="system", content="system prompt")]
+        for index in range(40):
+            messages.append(ChatMessage(role="user", content=f"question {index}"))
+            messages.append(ChatMessage(role="assistant", content="answer " * 20))
+
+        list(client.completion_with_tools(messages))
+
+        half_window = 128_000 // 2
+        assert config["MAX_TOKENS"] == half_window - 1024
+        assert client.last_context_budget == half_window
+        assert client.context_trimmed is False
+        assert len([message for message in messages if message.role == "user"]) == 40
+        error_output = capsys.readouterr().err
+        assert "MAX_TOKENS=128,000" in error_output
+        assert f"using MAX_TOKENS={half_window - 1024:,}" in error_output
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_clamp_warning_and_value_are_applied_once(self, mock_factory, max_config, capsys):
+        mock_factory.return_value = MockProvider(responses=[LLMResponse(content="ok")])
+        config = max_config
+        client = LLMClient(provider_name="openai", config=config)
+        messages = [ChatMessage(role="user", content="hi")]
+
+        list(client.completion_with_tools(messages))
+        list(client.completion_with_tools(messages))
+
+        assert config["MAX_TOKENS"] == 128_000 // 2 - 1024
+        assert capsys.readouterr().err.count("leaves no room for input") == 1
+
+    @patch("yaicli.llms.provider.ProviderFactory.create_provider")
+    def test_explicit_context_budget_override_is_respected(self, mock_factory, max_config):
+        mock_factory.return_value = MockProvider(responses=[LLMResponse(content="ok")])
+        config = dict(max_config)
+        config.update({"CONTEXT_BUDGET_TOKENS": 2000})
+        client = LLMClient(provider_name="openai", config=config)
+
+        list(client.completion_with_tools([ChatMessage(role="user", content="hi")]))
+
+        assert config["MAX_TOKENS"] == 128_000  # explicit override disables the clamp
+        assert client.last_context_budget == 2000

@@ -386,7 +386,7 @@ The default configuration file is `config.ini` inside the config directory above
 | `TEMPERATURE`          | Response randomness                         | `0.3`                    | `YAI_TEMPERATURE`          |
 | `FREQUENCY_PENALTY`    | Frequency penalty                           | `0.0`                    | `YAI_FREQUENCY_PENALTY`    |
 | `TOP_P`                | Top-p sampling                              | `1.0`                    | `YAI_TOP_P`                |
-| `MAX_TOKENS`           | Max response tokens                         | `1024`                   | `YAI_MAX_TOKENS`           |
+| `MAX_TOKENS`           | Max response tokens (reserved from the context window) | `1024`          | `YAI_MAX_TOKENS`           |
 | `MAX_HISTORY`          | Max history entries                         | `500`                    | `YAI_MAX_HISTORY`          |
 | `AUTO_SUGGEST`         | Enable history suggestions                  | `true`                   | `YAI_AUTO_SUGGEST`         |
 | `SHOW_REASONING`       | Enable reasoning display                    | `true`                   | `YAI_SHOW_REASONING`       |

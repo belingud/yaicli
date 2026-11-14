@@ -341,6 +341,10 @@ class TestModelWindowAndBudget:
         # User config overrides the resolved window through the layered resolver.
         overridden = make_config(MODEL_CONTEXT_WINDOWS={"gpt-4o": 32000})
         assert resolve_context_budget(overridden, "gpt-4o") == 32000 - 2048
+        # An oversized MAX_TOKENS keeps at least half of the window for the input
+        # (regression: it used to collapse the budget to 1 token and trim all history).
+        oversized = make_config(MAX_TOKENS=128_000)
+        assert resolve_context_budget(oversized, "z-ai/glm-5.3-flash") == 64_000
 
     def test_estimate_context_usage_breakdown(self):
         messages = [
