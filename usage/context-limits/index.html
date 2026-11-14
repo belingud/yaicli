@@ -356,6 +356,8 @@
       
         
       
+        
+      
     
     
     
@@ -400,6 +402,29 @@
   
   <span class="md-ellipsis">
     Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plan Mode (Read-Only Planning)
     
   </span>
   
@@ -636,6 +661,15 @@
   <a href="#unknown-model-warning" class="md-nav__link">
     <span class="md-ellipsis">
       Unknown-model warning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-max_tokens-larger-than-the-window-is-clamped-not-silently-honoured" class="md-nav__link">
+    <span class="md-ellipsis">
+      A MAX_TOKENS larger than the window is clamped, not silently honoured
     </span>
   </a>
   
@@ -2104,6 +2138,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#a-max_tokens-larger-than-the-window-is-clamped-not-silently-honoured" class="md-nav__link">
+    <span class="md-ellipsis">
+      A MAX_TOKENS larger than the window is clamped, not silently honoured
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2330,7 +2373,7 @@ pass a <code>limit</code> comfortably below that (e.g. <code>limit: 12000</code>
 </tr>
 <tr>
 <td><strong>Budget</strong></td>
-<td>How many <em>input</em> tokens one request may use: <code>min(window, max_input) - MAX_TOKENS - CONTEXT_SAFETY_TOKENS</code>.</td>
+<td>How many <em>input</em> tokens one request may use: <code>min(window, max_input) - MAX_TOKENS - CONTEXT_SAFETY_TOKENS</code>, with at least half of the window always kept for the input (see the MAX_TOKENS guard below).</td>
 </tr>
 <tr>
 <td><strong>Reserve</strong></td>
@@ -2478,6 +2521,10 @@ a <code>provider/model</code> pair; values may be an integer or an object with <
 <span class="c1"># values may be an int or an object with window / max_input / max_output.</span>
 <span class="na">MODEL_CONTEXT_WINDOWS</span><span class="o">=</span><span class="s">{&quot;my-gateway-model&quot;: 200000, &quot;openrouter/anthropic/claude-sonnet-5.5&quot;: 1000000, &quot;ollama/qwen2.5:7b&quot;: {&quot;window&quot;: 32768, &quot;max_output&quot;: 4096}}</span>
 </code></pre></div>
+<p>Model ids that themselves contain a slash (OpenRouter style, e.g. <code>z-ai/glm-5.3-flash</code>) are matched
+<strong>literally as well</strong>, so this works with any <code>PROVIDER</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="na">MODEL_CONTEXT_WINDOWS</span><span class="o">=</span><span class="s">{&quot;z-ai/glm-5.3-flash&quot;: 1000000}</span>
+</code></pre></div>
 <p>An explicit entry always wins over everything below it, and <code>/context</code> then reports <code>source: user</code>.
 Remove the entry to fall back to the learned/metadata/catalog/heuristic layers.</p>
 <h3 id="provider-metadata-probes">Provider metadata probes<a class="headerlink" href="#provider-metadata-probes" title="Permanent link">&para;</a></h3>
@@ -2550,7 +2597,7 @@ written to disk. Deleting the file is always safe: it is a pure cache and is reb
 </tr>
 <tr>
 <td><code>MAX_TOKENS</code></td>
-<td>The requested output limit. It is reserved from the window but never rewritten by YAICLI.</td>
+<td>The requested output limit. It is reserved from the window. If it would leave no room for the input (for example <code>MAX_TOKENS=128000</code> with the default 128k window), YAICLI keeps half of the window for input, clamps <code>MAX_TOKENS</code> for the session, writes the clamped value back to the in-process config and prints one stderr warning: <code>MAX_TOKENS=… leaves no room for input in the …-token context window; using MAX_TOKENS=… for this session. Lower MAX_TOKENS in config.ini (or set MODEL_CONTEXT_WINDOWS to the model's real window) to silence this.</code> An explicit <code>CONTEXT_BUDGET_TOKENS &gt; 0</code> disables the clamp and is respected verbatim.</td>
 </tr>
 </tbody>
 </table>
@@ -2561,6 +2608,15 @@ them:</p>
 <div class="highlight"><pre><span></span><code>Context window for model &quot;my-gateway-model&quot; is unknown; assuming 128,000 tokens (source: default).
 Set MODEL_CONTEXT_WINDOWS={&quot;my-gateway-model&quot;: 200000} or CONTEXT_BUDGET_TOKENS to override.
 </code></pre></div>
+<h3 id="a-max_tokens-larger-than-the-window-is-clamped-not-silently-honoured">A MAX_TOKENS larger than the window is clamped, not silently honoured<a class="headerlink" href="#a-max_tokens-larger-than-the-window-is-clamped-not-silently-honoured" title="Permanent link">&para;</a></h3>
+<p><code>MAX_TOKENS</code> is an <strong>output</strong> reservation taken out of the same context window as the input. Setting it
+close to (or above) the window leaves no room for the conversation: before this guard the budget
+collapsed to <code>1</code> token and every request trimmed the entire history, so a <code>/load</code>-ed session looked
+like a fresh conversation to the model even though <code>/his</code> showed it. YAICLI now always keeps at least
+half of the resolved window for the input, clamps the ineffective <code>MAX_TOKENS</code> for the session (so the
+provider request still fits the window) and prints one warning naming both values and the fix. Prefer
+a realistic output cap (for example <code>MAX_TOKENS=8192</code>) and set <code>MODEL_CONTEXT_WINDOWS</code> to the model's
+real window when it is larger than the conservative 128k default.</p>
 <h2 id="3-context-length-self-healing">3. Context-length self-healing<a class="headerlink" href="#3-context-length-self-healing" title="Permanent link">&para;</a></h2>
 <p>Even with estimation, a provider can reject a request with a <code>context_length</code> error (the exact
 window differs per model). When that happens, YAICLI:</p>

@@ -16,7 +16,7 @@
         <link rel="prev" href="../../install/">
       
       
-        <link rel="next" href="../headless/">
+        <link rel="next" href="../plan-mode/">
       
       
       <link rel="icon" href="../../assets/artwork/logo.png">
@@ -356,6 +356,8 @@
       
         
       
+        
+      
     
     
     
@@ -577,6 +579,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#plan-mode-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plan Mode Commands
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#context-management-commands" class="md-nav__link">
     <span class="md-ellipsis">
       Context Management Commands
@@ -621,6 +632,29 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plan Mode (Read-Only Planning)
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -2108,6 +2142,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#plan-mode-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plan Mode Commands
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#context-management-commands" class="md-nav__link">
     <span class="md-ellipsis">
       Context Management Commands
@@ -2268,6 +2311,11 @@ single one-shot run, and see <a href="../headless/">Headless &amp; Scripting</a>
 <td><code>--fail-on-tool-denied</code></td>
 <td></td>
 <td>Exit with code <code>3</code> when a tool was denied</td>
+</tr>
+<tr>
+<td><code>--plan</code></td>
+<td></td>
+<td>One-shot <strong>planning</strong> run: explore read-only, save the plan as a draft and exit without executing it (JSON adds <code>plan</code>/<code>plan_path</code>/<code>revision</code>; conflicts with <code>--shell</code>/<code>--code</code>; see <a href="../plan-mode/#headless-planning-plan-f6">Plan Mode</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -2534,6 +2582,12 @@ ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;summa
 <span class="c1"># Answer-only output (for pipelines)</span>
 ai<span class="w"> </span>-q<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;list the open TODOs in src/&quot;</span>
 
+<span class="c1"># One-shot planning: save a plan and exit without executing it</span>
+ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;Add a --dry-run flag to fs_write_file&quot;</span><span class="w"> </span>--plan<span class="w"> </span>--output-format<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;{plan_path, revision}&#39;</span>
+
+<span class="c1"># Plan first in the REPL, then approve and let it execute step by step</span>
+<span class="c1"># (press Shift+Tab or type /plan, then send the task)</span>
+
 <span class="c1"># Get a quick answer</span>
 ai<span class="w"> </span><span class="s2">&quot;What is the capital of France?&quot;</span>
 
@@ -2623,7 +2677,15 @@ ai<span class="w"> </span>--image<span class="w"> </span>diagram.png
 </tr>
 <tr>
 <td><code>/mode chat\|exec</code></td>
-<td>Switch between chat and execute modes</td>
+<td>Switch between chat and execute modes (plan mode is toggled with <code>Shift+Tab</code> or <code>/plan</code>)</td>
+</tr>
+<tr>
+<td><code>/plan [task\|list [--all]\|show [id]\|edit\|review [id]\|resume [id]\|clear [--done\|--all]\|abort]</code></td>
+<td>Plan mode: toggle, or plan a task; list/show/edit/review/resume/clear/abort plans (see <a href="../plan-mode/">Plan Mode</a>)</td>
+</tr>
+<tr>
+<td><code>/todo</code></td>
+<td>Show the current plan todos</td>
 </tr>
 <tr>
 <td><code>/add &lt;path&gt;</code></td>
@@ -2683,6 +2745,93 @@ ai<span class="w"> </span>--image<span class="w"> </span>diagram.png
 </tr>
 </tbody>
 </table>
+<h4 id="plan-mode-commands">Plan Mode Commands<a class="headerlink" href="#plan-mode-commands" title="Permanent link">&para;</a></h4>
+<p><code>/plan</code> toggles the read-only planning mode and manages saved plan files; <code>/todo</code> shows the todo
+list of the current plan. The full workflow is described in <a href="../plan-mode/">Plan Mode</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/plan</code></td>
+<td>Toggle plan mode (normal ↔ plan); while a plan is executing, enter revision mode (re-plan); while reviewing, cancel the review</td>
+</tr>
+<tr>
+<td><code>/plan &lt;task&gt;</code></td>
+<td>Enter plan mode if needed and send <code>&lt;task&gt;</code> as the prompt; while a plan is waiting for review it is refused with <code>a plan is waiting for review; approve or cancel it first</code></td>
+</tr>
+<tr>
+<td><code>/plan list [--all]</code></td>
+<td>Table of plans for this project (<code>ID</code>, <code>STATUS</code>, <code>REV</code>, <code>UPDATED</code>, <code>GOAL</code>); <code>--all</code> lists every project; prints <code>no plans yet</code> when there is none</td>
+</tr>
+<tr>
+<td><code>/plan show [id]</code></td>
+<td>Show a plan (default: the current one); prints <code>plan not found: &lt;id&gt;</code> when missing</td>
+</tr>
+<tr>
+<td><code>/plan edit</code></td>
+<td>Open the current plan in <code>$EDITOR</code> and re-validate it; on failure prints <code>invalid plan file: &lt;path&gt;: &lt;reason&gt;</code></td>
+</tr>
+<tr>
+<td><code>/plan review [id]</code></td>
+<td>Reopen a saved draft in the approval panel</td>
+</tr>
+<tr>
+<td><code>/plan resume [id]</code></td>
+<td>Continue an <code>in-progress</code> plan, or reopen a draft in the approval panel; another session's plan prints <code>plan is already in progress in another session</code></td>
+</tr>
+<tr>
+<td><code>/plan clear [--done\|--all]</code></td>
+<td>Delete plan files after an interactive confirmation (<code>--done</code>: finished plans only; <code>--all</code>: all plans of this project); <code>plan clear needs an interactive confirmation</code> in non-interactive runs</td>
+</tr>
+<tr>
+<td><code>/plan abort</code></td>
+<td>Abandon the current plan (<code>status=aborted</code>, todos cleared); prints <code>plan aborted · todos cleared</code></td>
+</tr>
+<tr>
+<td><code>/todo</code></td>
+<td>Show the current todo table with the plan id/status/revision; prints <code>no plan in this session</code> when none</td>
+</tr>
+</tbody>
+</table>
+<p>The plan approval panel uses:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>a</code></td>
+<td>Approve and execute: <code>✓ plan approved · exiting plan mode · todo seeded (N steps)</code></td>
+</tr>
+<tr>
+<td><code>e</code></td>
+<td>Edit the plan in <code>$EDITOR</code> and re-validate it</td>
+</tr>
+<tr>
+<td><code>r</code></td>
+<td>Redo: keep planning with the research context kept</td>
+</tr>
+<tr>
+<td><code>s</code></td>
+<td>Save only, keeping the plan as a draft: <code>✓ saved as draft (&lt;path&gt;) · exit plan mode</code></td>
+</tr>
+<tr>
+<td><code>Esc</code></td>
+<td>Cancel the submission, keeping the plan as a draft: <code>plan cancelled; draft saved at &lt;path&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<p>A revision panel (submitted while a plan is executing) uses <code>[a]pply &amp; continue</code>, <code>[e]dit</code>,
+<code>[r]edo</code> and <code>Esc</code> to cancel the revision (<code>revision discarded</code>); approving prints
+<code>✓ revision N applied · plan.md updated in place · resuming execution at &lt;Sx&gt;</code>.</p>
 <h4 id="context-management-commands">Context Management Commands<a class="headerlink" href="#context-management-commands" title="Permanent link">&para;</a></h4>
 <p>The <code>/add</code> and <code>/context</code> commands help you manage files and directories in the conversation context:</p>
 <table>
@@ -2822,7 +2971,7 @@ Context<span class="w"> </span>cleared.
 <tbody>
 <tr>
 <td><code>Shift+Tab</code></td>
-<td>Toggle between Chat/Execute modes</td>
+<td>Toggle plan mode (normal ↔ plan, read-only); <code>/mode chat\|exec</code> switches between chat and execute modes. The plan approval panel accepts <code>a</code>/<code>e</code>/<code>r</code>/<code>s</code> and <code>Esc</code></td>
 </tr>
 <tr>
 <td><code>Ctrl+C</code></td>
@@ -2860,6 +3009,7 @@ Context<span class="w"> </span>cleared.
 </table>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Learn about <a href="../plan-mode/">plan mode</a></li>
 <li>Learn about <a href="../configuration/">configuration options</a></li>
 <li>Explore different <a href="../modes/">interaction modes</a></li>
 <li>Discover <a href="../cli/">CLI shortcuts and hotkeys</a></li>

@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://belingud.github.io/yaicli/usage/headless/">
       
       
-        <link rel="prev" href="../commands/">
+        <link rel="prev" href="../plan-mode/">
       
       
         <link rel="next" href="../permissions/">
@@ -356,6 +356,8 @@
       
         
       
+        
+      
     
     
     
@@ -400,6 +402,29 @@
   
   <span class="md-ellipsis">
     Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plan Mode (Read-Only Planning)
     
   </span>
   
@@ -610,6 +635,39 @@
       Non-interactive --shell
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-shot-planning-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      One-shot planning (--plan)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="One-shot planning (--plan)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-plan-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      --plan output
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-plan-exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      --plan exit codes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2122,6 +2180,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#one-shot-planning-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      One-shot planning (--plan)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="One-shot planning (--plan)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-plan-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      --plan output
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-plan-exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      --plan exit codes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ci-recipe" class="md-nav__link">
     <span class="md-ellipsis">
       CI recipe
@@ -2190,6 +2281,9 @@ ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;Summa
 
 <span class="c1"># Streaming events (one JSON object per line)</span>
 ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;Find and fix the failing test&quot;</span><span class="w"> </span>--output-format<span class="w"> </span>stream-json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;select(.type==&quot;tool_call&quot;)&#39;</span>
+
+<span class="c1"># One-shot planning: save a plan and exit without executing it</span>
+ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;Add a --dry-run flag to fs_write_file&quot;</span><span class="w"> </span>--plan<span class="w"> </span>--output-format<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;{plan_path, revision}&#39;</span>
 
 <span class="c1"># Pipe input into the agent</span>
 cat<span class="w"> </span>error.log<span class="w"> </span><span class="p">|</span><span class="w"> </span>ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;Explain these errors and suggest a fix&quot;</span>
@@ -2301,12 +2395,16 @@ animation, no ANSI/box drawing. The output ends with exactly one newline.</p>
 <td>Last provider <code>finish_reason</code> (<code>"stop"</code>, <code>"length"</code>, <code>"tool_calls"</code>, <code>"depth_limit"</code>, or <code>null</code> when unknown)</td>
 </tr>
 <tr>
+<td><code>plan</code>, <code>plan_path</code>, <code>revision</code></td>
+<td><strong>Only added by <code>--plan</code> runs</strong>: the submitted plan object, the path of the saved plan file and its revision (see <a href="#one-shot-planning-plan">One-shot planning</a>)</td>
+</tr>
+<tr>
 <td><code>model</code>, <code>provider</code></td>
 <td>Effective model/provider for this run</td>
 </tr>
 <tr>
 <td><code>error</code></td>
-<td>Exactly <code>null</code> on success, otherwise <code>{"kind": "&lt;error kind&gt;", "message": "&lt;detail&gt;"}</code>. Possible kinds: <code>auth</code>, <code>rate_limit</code>, <code>context_length</code>, <code>network</code>, <code>timeout</code>, <code>bad_request</code>, <code>provider</code>, <code>tool</code>, <code>config</code>, <code>depth_limit</code>, <code>interrupted</code>, <code>unknown</code></td>
+<td>Exactly <code>null</code> on success, otherwise <code>{"kind": "&lt;error kind&gt;", "message": "&lt;detail&gt;"}</code>. Possible kinds: <code>auth</code>, <code>rate_limit</code>, <code>context_length</code>, <code>network</code>, <code>timeout</code>, <code>bad_request</code>, <code>empty_response</code>, <code>provider</code>, <code>tool</code>, <code>config</code>, <code>depth_limit</code>, <code>interrupted</code>, <code>plan_not_submitted</code>, <code>unknown</code></td>
 </tr>
 <tr>
 <td><code>exit_code</code></td>
@@ -2314,6 +2412,10 @@ animation, no ANSI/box drawing. The output ends with exactly one newline.</p>
 </tr>
 </tbody>
 </table>
+<p><code>empty_response</code> means the endpoint answered HTTP 200 but returned no model output at all (no
+text, reasoning or tool calls). This usually means <code>BASE_URL</code> points at a web page instead of the
+API — an OpenAI-compatible base URL normally ends with <code>/v1</code>. The CLI reports it as an error now
+instead of silently exiting 0 with empty content.</p>
 <p><code>usage</code> is no longer zeroed (v0.22 K17):</p>
 <table>
 <thead>
@@ -2399,6 +2501,16 @@ progress UIs, cancellation and tool-trace collection.</p>
 <td><code>type</code>, <code>name</code>, <code>result</code> (the tool result text as seen by the model, truncated as in context)</td>
 </tr>
 <tr>
+<td><code>plan_start</code></td>
+<td>A <code>--plan</code> run starts</td>
+<td><code>type</code></td>
+</tr>
+<tr>
+<td><code>plan_ready</code></td>
+<td>The model submitted a plan in a <code>--plan</code> run (emitted before the final <code>usage</code>/<code>done</code> events)</td>
+<td><code>type</code>, <code>steps</code> (step count), <code>path</code>, <code>revision</code></td>
+</tr>
+<tr>
 <td><code>usage</code></td>
 <td>The run finished collecting usage</td>
 <td><code>type</code>, <code>prompt_tokens</code>, <code>completion_tokens</code>, <code>total_tokens</code>, <code>cached_tokens</code>, <code>reasoning_tokens</code>, <code>estimated</code>, <code>requests</code>, <code>cost_usd</code>, <code>models</code>, <code>tools</code>, and <code>finish_reason</code> when known (same values as the JSON <code>usage</code> object)</td>
@@ -2445,11 +2557,11 @@ Without <code>-p</code>, <code>-q</code> or a non-<code>text</code> output forma
 </tr>
 <tr>
 <td><code>1</code></td>
-<td>Handled failure: invalid config/provider, auth/API error, network failure, no input, unexpected error</td>
+<td>Handled failure: invalid config/provider, auth/API error, network failure, no input, unexpected error — with <code>--plan</code>, also when the model did not submit a plan (<code>error.kind = "plan_not_submitted"</code>)</td>
 </tr>
 <tr>
 <td><code>2</code></td>
-<td>Usage error: invalid option or argument (including an unknown <code>--output-format</code> value or an invalid <code>--cwd</code>)</td>
+<td>Usage error: invalid option or argument (including an unknown <code>--output-format</code> value, an invalid <code>--cwd</code>, or <code>--plan</code> combined with <code>--shell</code>/<code>--code</code>)</td>
 </tr>
 <tr>
 <td><code>3</code></td>
@@ -2543,6 +2655,94 @@ need a few tools.</p>
 executing). When stdin/stdout is not a TTY, <code>ai --shell "..."</code> prints the generated command to
 stdout and <strong>does not execute it</strong>, exiting <code>0</code>. Add <code>-y</code>/<code>--yes</code> to execute it in a trusted
 context; if the command itself then exits non-zero, the run exits <code>1</code>.</p>
+<h2 id="one-shot-planning-plan">One-shot planning (<code>--plan</code>)<a class="headerlink" href="#one-shot-planning-plan" title="Permanent link">&para;</a></h2>
+<p><code>--plan</code> runs a single <strong>read-only planning turn</strong> and exits: the model works in plan mode (the
+read/network tools plus the fixed read-only shell allowlist, see <a href="../plan-mode/">Plan Mode</a>), must
+finish by calling <code>submit_plan</code>, and YAICLI saves the submitted plan as a <code>draft</code> under
+<code>&lt;config-dir&gt;/plans/&lt;project-key&gt;/</code>. The plan is <strong>not executed</strong>: there is no approval panel and
+no todo execution in headless mode.</p>
+<div class="highlight"><pre><span></span><code>ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;Add a --dry-run flag to fs_write_file&quot;</span><span class="w"> </span>--plan<span class="w"> </span>--output-format<span class="w"> </span>json
+</code></pre></div>
+<p>Rules:</p>
+<ul>
+<li><code>--plan</code> forces one-shot output. <code>--chat</code> / <code>--resume</code> are ignored with a warning; a prompt or
+  piped stdin is still required.</li>
+<li><code>--plan</code> cannot be combined with <code>--shell</code> or <code>--code</code>: the run fails with
+  <code>Error: --plan cannot be combined with --shell/--code.</code> on stderr and exits <code>2</code>.</li>
+<li>When <code>PLAN_ENABLED=false</code>, <code>--plan</code> fails with <code>Error: --plan requires PLAN_ENABLED=true.</code> and
+  exits <code>2</code>.</li>
+<li>The plan file is left in <code>draft</code> status; open it later from an interactive session with
+  <code>/plan review</code> (see <a href="../plan-mode/#approval-panel">Plan Mode</a>).</li>
+</ul>
+<h3 id="-plan-output"><code>--plan</code> output<a class="headerlink" href="#-plan-output" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>text</strong> (default): the submitted plan Markdown (goal, assumptions, steps, risks, ...) is written
+  to stdout; progress, warnings and errors stay on stderr.</li>
+<li><strong>json</strong>: the normal result object gains three top-level keys:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>plan</code></td>
+<td>The full plan object: <code>id</code>, <code>goal</code>, <code>assumptions</code>, <code>steps</code>, <code>risks</code>, <code>not_doing</code>, <code>status</code>, <code>revision</code>, <code>session_id</code>, <code>created</code>, <code>updated</code>, <code>cwd</code>, <code>project_key</code>, <code>model</code>, <code>base_rev</code>, <code>approved_at</code>, <code>change_summary</code>, <code>path</code></td>
+</tr>
+<tr>
+<td><code>plan_path</code></td>
+<td>Absolute path of the saved plan file</td>
+</tr>
+<tr>
+<td><code>revision</code></td>
+<td>Plan revision (<code>1</code> for a first plan)</td>
+</tr>
+</tbody>
+</table>
+<p>The remaining JSON keys are unchanged from a normal run. Example (Feature example F6):</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>ai<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;Add a --dry-run flag to fs_write_file&quot;</span><span class="w"> </span>--plan<span class="w"> </span>--output-format<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;{plan_path, revision, steps: [.plan.steps[].title]}&#39;</span>
+<span class="o">{</span>
+<span class="w">  </span><span class="s2">&quot;plan_path&quot;</span>:<span class="w"> </span><span class="s2">&quot;/Users/vic/.config/yaicli/plans/3f9a1c2d…/20261114-004512-fs-dry-run.md&quot;</span>,
+<span class="w">  </span><span class="s2">&quot;revision&quot;</span>:<span class="w"> </span><span class="m">1</span>,
+<span class="w">  </span><span class="s2">&quot;steps&quot;</span>:<span class="w"> </span><span class="o">[</span><span class="s2">&quot;Locate the fs_write_file schema and execution path&quot;</span>,<span class="w"> </span><span class="s2">&quot;Add dry_run and short-circuit in the execution layer&quot;</span>,<span class="w"> </span><span class="s2">&quot;Add tests&quot;</span><span class="o">]</span>
+<span class="o">}</span>
+$<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span><span class="w">   </span><span class="c1"># 0</span>
+</code></pre></div>
+<ul>
+<li><strong>stream-json</strong>: two additional events describe the planning run before the usual <code>usage</code> /
+  <code>done</code> events:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;plan_start&quot;</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;plan_ready&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/Users/vic/.config/yaicli/plans/3f9a1c2d…/20261114-004512-fs-dry-run.md&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;revision&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">}</span>
+</code></pre></div>
+<h3 id="-plan-exit-codes"><code>--plan</code> exit codes<a class="headerlink" href="#-plan-exit-codes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>A plan was submitted and saved; <code>plan</code>/<code>plan_path</code>/<code>revision</code> are in the result</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>The model did not submit a plan: <code>error.kind = "plan_not_submitted"</code>, message <code>plan mode ended: model did not submit a plan</code></td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Usage error: <code>--plan</code> combined with <code>--shell</code>/<code>--code</code>, or <code>PLAN_ENABLED=false</code></td>
+</tr>
+</tbody>
+</table>
+<p>Without a prompt or piped stdin a <code>--plan</code> run falls back to the usual no-input behaviour (the help
+screen for <code>text</code> output, exit <code>2</code> for machine output formats).</p>
 <h2 id="ci-recipe">CI recipe<a class="headerlink" href="#ci-recipe" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
@@ -2574,6 +2774,7 @@ jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.conte
 </ul>
 <h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
+<li><a href="../plan-mode/">Plan Mode</a> — the interactive plan → approve → todo execution workflow</li>
 <li><a href="../permissions/">Permissions &amp; Safety</a></li>
 <li><a href="../context-limits/">Context &amp; Limits</a></li>
 <li><a href="../commands/">Command Reference</a></li>

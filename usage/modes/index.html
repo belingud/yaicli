@@ -356,6 +356,8 @@
       
         
       
+        
+      
     
     
     
@@ -400,6 +402,29 @@
   
   <span class="md-ellipsis">
     Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plan Mode (Read-Only Planning)
     
   </span>
   
@@ -659,6 +684,15 @@
   <a href="#3-quick-query-mode-default" class="md-nav__link">
     <span class="md-ellipsis">
       3. Quick Query Mode (Default)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-plan-mode-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Plan Mode ([plan] 💬)
     </span>
   </a>
   
@@ -1996,6 +2030,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#4-plan-mode-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Plan Mode ([plan] 💬)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2140,7 +2183,7 @@
 <h1 id="mode-switching-chat-execute">Mode Switching (Chat / Execute)<a class="headerlink" href="#mode-switching-chat-execute" title="Permanent link">&para;</a></h1>
 <p>YAICLI offers multiple interaction modes to suit different needs. This page explains each mode and how to switch between them.</p>
 <h2 id="available-modes">Available Modes<a class="headerlink" href="#available-modes" title="Permanent link">&para;</a></h2>
-<p>YAICLI has three primary interaction modes:</p>
+<p>YAICLI has three primary interaction modes, plus a read-only plan mode you can toggle inside the REPL:</p>
 <h3 id="1-chat-mode">1. Chat Mode (💬)<a class="headerlink" href="#1-chat-mode" title="Permanent link">&para;</a></h3>
 <p>Chat mode provides a natural conversation experience with the LLM, maintaining context and formatting responses with markdown.</p>
 <p><strong>Features:</strong>
@@ -2176,6 +2219,18 @@
 - Quick information lookups
 - Image analysis with vision models
 - Script integration</p>
+<h3 id="4-plan-mode-plan">4. Plan Mode (<code>[plan] 💬</code>)<a class="headerlink" href="#4-plan-mode-plan" title="Permanent link">&para;</a></h3>
+<p>Plan mode is a persistent, <strong>read-only</strong> phase toggled in the interactive REPL with <code>Shift+Tab</code>
+(or <code>/plan</code>): the model inspects the project with read/network tools and a fixed read-only shell
+allowlist, submits a structured plan with <code>submit_plan</code>, and waits for your approval before it gets
+the normal tool set back and executes the plan step by step. See <a href="../plan-mode/">Plan Mode</a>.</p>
+<p><strong>Features:</strong>
+- No writes while planning; write/exec tools are not offered and forced calls are refused
+- Approval panel (<code>[a]</code>pprove &amp; execute, <code>[e]</code>dit, <code>[r]</code>edo, <code>[s]</code>ave only, <code>Esc</code> cancel)
+- Todo-driven execution; plans persist per project and can be revised in place</p>
+<p><strong>Best for:</strong>
+- Multi-file changes you want to review before anything is written
+- Tasks where the approach matters as much as the result</p>
 <h2 id="switching-between-modes">Switching Between Modes<a class="headerlink" href="#switching-between-modes" title="Permanent link">&para;</a></h2>
 <h3 id="command-line-switches">Command Line Switches<a class="headerlink" href="#command-line-switches" title="Permanent link">&para;</a></h3>
 <p>Use these flags when starting YAICLI:</p>
@@ -2192,18 +2247,22 @@ ai<span class="w"> </span><span class="s2">&quot;What is the capital of France?&
 ai<span class="w"> </span>--image<span class="w"> </span>photo.jpg<span class="w"> </span><span class="s2">&quot;What is in this image?&quot;</span>
 </code></pre></div>
 <h3 id="interactive-mode-switching">Interactive Mode Switching<a class="headerlink" href="#interactive-mode-switching" title="Permanent link">&para;</a></h3>
-<p>When in interactive mode (chat or execute), you can switch modes in several ways:</p>
+<p>When in interactive mode (chat, execute or plan), you can switch modes in several ways:</p>
 <h4 id="using-shifttab-key">Using Shift+Tab Key<a class="headerlink" href="#using-shifttab-key" title="Permanent link">&para;</a></h4>
-<p>Press the <code>Shift+Tab</code> key to toggle between Chat and Execute modes.</p>
+<p>Press <code>Shift+Tab</code> to toggle the read-only <strong>plan mode</strong> on and off (normal ↔ plan). In execute
+mode it first returns to chat mode and then enters plan mode. The plan approval panel accepts
+<code>a</code>/<code>e</code>/<code>r</code>/<code>s</code> and <code>Esc</code> to cancel a submission. See <a href="../plan-mode/">Plan Mode</a>.</p>
 <h4 id="using-commands">Using Commands<a class="headerlink" href="#using-commands" title="Permanent link">&para;</a></h4>
-<p>Type <code>/mode</code> followed by the mode name:</p>
+<p>Chat and execute modes are switched with <code>/mode</code>, and plan mode with <code>/plan</code> (or <code>Shift+Tab</code>):</p>
 <div class="highlight"><pre><span></span><code>/mode chat   # Switch to chat mode
 /mode exec   # Switch to execute mode
+/plan        # Toggle plan mode (read-only)
 </code></pre></div>
 <h4 id="visual-indicators">Visual Indicators<a class="headerlink" href="#visual-indicators" title="Permanent link">&para;</a></h4>
 <p>The prompt changes to indicate your current mode:
 - Chat mode: <code>💬 &gt;</code>
-- Execute mode: <code>🚀 &gt;</code></p>
+- Execute mode: <code>🚀 &gt;</code>
+- Plan mode: <code>[plan] 💬 &gt;</code></p>
 <h2 id="mode-behavior">Mode Behavior<a class="headerlink" href="#mode-behavior" title="Permanent link">&para;</a></h2>
 <h3 id="chat-mode-behavior">Chat Mode Behavior<a class="headerlink" href="#chat-mode-behavior" title="Permanent link">&para;</a></h3>
 <p>In chat mode:
@@ -2254,6 +2313,7 @@ continues the newest session of the current project, and <code>--chat "&lt;title
 notice when the title does not exist. See <a href="../sessions/">Chat Sessions &amp; Resume</a>.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Learn more about <a href="../plan-mode/">plan mode</a></li>
 <li>Learn more about <a href="../cli/">CLI shortcuts and hotkeys</a></li>
 <li>Explore <a href="../configuration/">configuration options</a></li>
 <li>Check out all available <a href="../commands/">commands</a></li>

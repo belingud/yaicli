@@ -356,6 +356,8 @@
       
         
       
+        
+      
     
     
     
@@ -400,6 +402,29 @@
   
   <span class="md-ellipsis">
     Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plan Mode (Read-Only Planning)
     
   </span>
   
@@ -2138,6 +2163,9 @@ permissions you control.</p>
 Metadata describes <strong>how the conversation was recorded</strong>: resuming does not switch the current
 configuration back to that model/provider — the current config supplies the model for new turns, and
 the notice just lets you see the mismatch.</p>
+<p>A session also records its active plan (id, path, status, revision, session id and todos) when one
+exists, so the resume hint above can point at the plan file; the plan-mode state itself is never
+persisted or restored.</p>
 <p>When <code>--resume</code> finds a session, it prints one line to the terminal before the REPL starts:</p>
 <div class="highlight"><pre><span></span><code>Resumed session &quot;refactor the config loader&quot; (model=gpt-5.2, provider=openai, role=DEFAULT, messages=14)
 </code></pre></div>
@@ -2154,6 +2182,13 @@ the notice just lets you see the mismatch.</p>
 <li><strong>Interactive only.</strong> It is ignored (with a warning) when combined with <code>-p/--print</code>, with
   <code>--output-format</code> other than <code>text</code>, or when stdin is redirected. Those runs continue as normal
   one-shot runs; no session is resumed.</li>
+<li><strong>Plan mode is never restored.</strong> A resumed session always starts in the normal mode, even if it
+  was closed while planning or executing a plan. If the session has an unfinished plan, one hint is
+  printed after the resume notice — <code>⚠ unfinished plan found: &lt;id&gt; (draft, revision N)</code> with
+  <code>Use /plan review to continue it, or /plan list to see all plans.</code>, or the <code>(in-progress, ...)</code>
+  variant pointing at <code>/plan resume</code>. A plan whose file is missing, corrupt or bound to another
+  session is ignored with <code>saved plan not found/inconsistent; starting in normal mode</code> on stderr;
+  see <a href="../plan-mode/#resuming-a-session">Plan Mode</a>.</li>
 </ul>
 <h2 id="the-chat-title-behaviour">The <code>--chat</code> title behaviour<a class="headerlink" href="#the-chat-title-behaviour" title="Permanent link">&para;</a></h2>
 <p><code>ai --chat "&lt;title&gt;"</code> loads the session with that exact title from the current project's store:</p>
@@ -2300,6 +2335,7 @@ history file with mode <code>0644</code> is repaired to <code>0600</code> the ne
 <li><a href="../../advanced/history/">Conversation &amp; History</a> — session JSON format, atomic saves, history limits</li>
 <li><a href="../commands/">Command Reference</a> — <code>/save</code>, <code>/load</code>, <code>/list</code>, <code>/del</code></li>
 <li><a href="../project-context/">Project Context</a> — the other per-project behaviour added in v0.21</li>
+<li><a href="../plan-mode/">Plan Mode</a> — plan files and the <code>--resume</code> plan hint</li>
 <li><a href="../../advanced/upgrade/">Upgrade Notes</a> — migration stance and what changed in v0.21</li>
 </ul>
 

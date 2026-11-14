@@ -356,6 +356,8 @@
       
         
       
+        
+      
     
     
     
@@ -400,6 +402,29 @@
   
   <span class="md-ellipsis">
     Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plan Mode (Read-Only Planning)
     
   </span>
   
@@ -680,6 +705,15 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plan-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plan Mode
+    </span>
+  </a>
   
 </li>
       
@@ -1999,6 +2033,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#plan-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plan Mode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#interactive-commands" class="md-nav__link">
     <span class="md-ellipsis">
       Interactive Commands
@@ -2172,7 +2215,7 @@
 </tr>
 <tr>
 <td><code>Shift+Tab</code></td>
-<td>Toggle between Chat/Execute modes</td>
+<td>Toggle plan mode (normal ↔ plan, read-only); in execute mode it returns to chat and enters plan mode. While a plan is waiting for review, it cancels the review. Use <code>/mode chat\|exec</code> to switch between chat and execute modes</td>
 </tr>
 <tr>
 <td><code>Ctrl+R</code></td>
@@ -2244,6 +2287,45 @@
 </tr>
 </tbody>
 </table>
+<h2 id="plan-mode">Plan Mode<a class="headerlink" href="#plan-mode" title="Permanent link">&para;</a></h2>
+<p><code>Shift+Tab</code> (or <code>/plan</code>) toggles the persistent, read-only <strong>plan mode</strong>; there the model only
+researches and submits a plan, which you approve before anything is executed. In plan mode the
+prompt becomes <code>[plan] 💬 &gt;</code> and the status line <code>plan mode · read-only</code> is printed. See
+<a href="../plan-mode/">Plan Mode</a> for the full workflow.</p>
+<p>While the plan approval panel is open:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>a</code></td>
+<td>Approve and execute (<code>[a]pprove &amp; execute</code>)</td>
+</tr>
+<tr>
+<td><code>e</code></td>
+<td>Edit the plan in <code>$EDITOR</code></td>
+</tr>
+<tr>
+<td><code>r</code></td>
+<td>Redo — keep planning</td>
+</tr>
+<tr>
+<td><code>s</code></td>
+<td>Save only, keeping the plan as a draft</td>
+</tr>
+<tr>
+<td><code>Esc</code></td>
+<td>Cancel the submission (the draft plan file is kept)</td>
+</tr>
+</tbody>
+</table>
+<p>A revision submitted while a plan is executing uses <code>[a]pply &amp; continue</code> / <code>[e]dit</code> / <code>[r]edo</code>, and
+<code>Esc</code> cancels the revision and returns to execution. In the first-plan panel <code>Esc</code> cancels the
+submission (the plan file is kept as a draft).</p>
 <h2 id="interactive-commands">Interactive Commands<a class="headerlink" href="#interactive-commands" title="Permanent link">&para;</a></h2>
 <p>YAICLI provides special commands that begin with a slash (<code>/</code>) or an exclamation mark (<code>!</code>):</p>
 <table>
@@ -2288,7 +2370,15 @@
 </tr>
 <tr>
 <td><code>/mode chat\|exec</code></td>
-<td>Switch between chat and execute modes</td>
+<td>Switch between chat and execute modes (plan mode is toggled with <code>Shift+Tab</code> or <code>/plan</code>)</td>
+</tr>
+<tr>
+<td><code>/plan [task\|list [--all]\|show [id]\|edit\|review [id]\|resume [id]\|clear [--done\|--all]\|abort]</code></td>
+<td>Plan mode: toggle, or plan a task; list/show/edit/review/resume/clear/abort plans (see <a href="../plan-mode/">Plan Mode</a>)</td>
+</tr>
+<tr>
+<td><code>/todo</code></td>
+<td>Show the current plan todos</td>
 </tr>
 <tr>
 <td><code>/cost</code></td>
@@ -2362,8 +2452,9 @@ directory (or use <code>--cwd</code>) so the per-project store matches the sessi
 <p>The prompt supports multiline editing: press <code>Alt+Enter</code> (or <code>Esc</code> then <code>Enter</code>) or <code>Ctrl+J</code> to
 insert a newline, and <code>Enter</code> alone to submit the whole buffer. This is handy for pasting logs or
 composing long instructions. The prompt itself is just the mode icon and <code>&gt;</code>, so the cursor
-position never changes; the current model and last-known context usage appear on the dim status
-line after each answer (see <a href="../interactive/#prompt">Interactive Mode</a>).</p>
+position never changes; in plan mode the prompt is <code>[plan] 💬 &gt;</code>. The current model and last-known
+context usage appear on the dim status line after each answer (see
+<a href="../interactive/#prompt">Interactive Mode</a>).</p>
 <p>For long or multi-line prompts in scripts, pass the text as a quoted argument or pipe it:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Quote a multi-line string</span>
 ai<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>cat<span class="w"> </span>prompt.txt<span class="k">)</span><span class="s2">&quot;</span>
@@ -2428,6 +2519,10 @@ ai<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span
 <td>Execute mode prompt</td>
 </tr>
 <tr>
+<td><code>[plan] 💬 &gt;</code></td>
+<td>Plan mode prompt (read-only)</td>
+</tr>
+<tr>
 <td>Cursor animation</td>
 <td>Processing your request</td>
 </tr>
@@ -2478,7 +2573,7 @@ tell success from failure:</p>
 </tr>
 <tr>
 <td><code>1</code></td>
-<td>A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, retry exhaustion, no input/aborted action, or an unexpected error printed as <code>Unknown error: ...</code>.</td>
+<td>A handled failure: invalid/malformed configuration, unknown or misconfigured provider, missing/invalid API key or API error, retry exhaustion, no input/aborted action, or an unexpected error printed as <code>Unknown error: ...</code>. With <code>--plan</code>, also when the model did not submit a plan (<code>plan_not_submitted</code>).</td>
 </tr>
 <tr>
 <td><code>2</code></td>
@@ -2510,6 +2605,7 @@ contract (JSON output, signals, non-interactive approvals) is in
 <a href="../headless/">Headless &amp; Scripting</a>.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Learn about <a href="../plan-mode/">plan mode</a></li>
 <li>Learn about different <a href="../modes/">interaction modes</a></li>
 <li>Explore <a href="../configuration/">configuration options</a></li>
 <li>Check out <a href="../commands/">command references</a></li>

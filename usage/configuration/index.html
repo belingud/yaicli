@@ -356,6 +356,8 @@
       
         
       
+        
+      
     
     
     
@@ -400,6 +402,29 @@
   
   <span class="md-ellipsis">
     Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plan Mode (Read-Only Planning)
     
   </span>
   
@@ -686,6 +711,15 @@
   <a href="#chat-sessions" class="md-nav__link">
     <span class="md-ellipsis">
       Chat Sessions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plan-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plan Mode
     </span>
   </a>
   
@@ -2020,6 +2054,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#plan-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plan Mode
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#state-files" class="md-nav__link">
     <span class="md-ellipsis">
       State Files
@@ -2251,6 +2294,18 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="c1"># (0 = no cap; a truncated block prints one warning naming the files involved).</span>
 <span class="na">PROJECT_CONTEXT_MAX_CHARS</span><span class="o">=</span><span class="s">20000</span>
 
+<span class="c1"># Plan mode (v0.24 K23)</span>
+<span class="c1"># Persistent read-only planning mode: Shift+Tab / /plan, submit_plan -&gt; approve -&gt; todo execution.</span>
+<span class="na">PLAN_ENABLED</span><span class="o">=</span><span class="s">true</span>
+<span class="c1"># Maximum number of steps accepted in one plan.</span>
+<span class="na">PLAN_MAX_STEPS</span><span class="o">=</span><span class="s">20</span>
+<span class="c1"># Finished (done/aborted) plan files kept per project; older ones are pruned.</span>
+<span class="na">PLAN_KEEP</span><span class="o">=</span><span class="s">80</span>
+<span class="c1"># Allow a fixed read-only shell allowlist while planning (true/false).</span>
+<span class="na">PLAN_ALLOW_READONLY_SHELL</span><span class="o">=</span><span class="s">true</span>
+<span class="c1"># Plans root directory (empty = &lt;config-dir&gt;/plans).</span>
+<span class="na">PLAN_DIR</span><span class="o">=</span>
+
 <span class="c1"># Shell tool settings (v0.19)</span>
 <span class="c1"># Max seconds a shell command may run (killed with its process group on timeout).</span>
 <span class="na">TOOL_TIMEOUT</span><span class="o">=</span><span class="s">120</span>
@@ -2297,7 +2352,7 @@ provider name invalid).</p>
 </tr>
 <tr>
 <td><code>BASE_URL</code></td>
-<td>API endpoint URL</td>
+<td>Provider API base URL (OpenAI-compatible ones usually end with <code>/v1</code>)</td>
 <td>-</td>
 <td><code>YAI_BASE_URL</code></td>
 </tr>
@@ -2399,7 +2454,7 @@ provider name invalid).</p>
 </tr>
 <tr>
 <td><code>MAX_TOKENS</code></td>
-<td>Max response tokens</td>
+<td>Max response tokens (reserved from the context window)</td>
 <td><code>1024</code></td>
 <td><code>YAI_MAX_TOKENS</code></td>
 </tr>
@@ -2596,6 +2651,36 @@ provider name invalid).</p>
 <td><code>YAI_PROJECT_CONTEXT_MAX_CHARS</code></td>
 </tr>
 <tr>
+<td><code>PLAN_ENABLED</code></td>
+<td>Enable persistent plan mode (<code>Shift+Tab</code> / <code>/plan</code>; <code>false</code> hides it and <code>--plan</code> exits <code>2</code>)</td>
+<td><code>true</code></td>
+<td><code>YAI_PLAN_ENABLED</code></td>
+</tr>
+<tr>
+<td><code>PLAN_MAX_STEPS</code></td>
+<td>Maximum number of steps accepted in one submitted plan</td>
+<td><code>20</code></td>
+<td><code>YAI_PLAN_MAX_STEPS</code></td>
+</tr>
+<tr>
+<td><code>PLAN_KEEP</code></td>
+<td>Finished (done/aborted) plan files kept per project; older ones are pruned (draft/in-progress plans are never auto-deleted)</td>
+<td><code>80</code></td>
+<td><code>YAI_PLAN_KEEP</code></td>
+</tr>
+<tr>
+<td><code>PLAN_ALLOW_READONLY_SHELL</code></td>
+<td>Expose the fixed read-only shell allowlist while planning</td>
+<td><code>true</code></td>
+<td><code>YAI_PLAN_ALLOW_READONLY_SHELL</code></td>
+</tr>
+<tr>
+<td><code>PLAN_DIR</code></td>
+<td>Plans root directory (empty = <code>&lt;config-dir&gt;/plans</code>; plans are isolated per project)</td>
+<td>-</td>
+<td><code>YAI_PLAN_DIR</code></td>
+</tr>
+<tr>
 <td><code>TOOL_TIMEOUT</code></td>
 <td>Max seconds a shell tool command may run</td>
 <td><code>120</code></td>
@@ -2693,6 +2778,11 @@ to the built-in default counts as unset. <code>MAX_SAVED_CHATS</code> applies wi
 JSON, so a resumed session describes how it was produced. Sessions saved by older versions load
 normally and are backfilled on their next save. Use <code>--resume</code> to continue the newest session of the
 current project — see <a href="../sessions/">Chat Sessions &amp; Resume</a>.</p>
+<h2 id="plan-mode">Plan Mode<a class="headerlink" href="#plan-mode" title="Permanent link">&para;</a></h2>
+<p>Plan mode is a read-only planning phase in the REPL, toggled with <code>Shift+Tab</code> / <code>/plan</code>. Its five
+keys are <code>PLAN_ENABLED</code>, <code>PLAN_MAX_STEPS</code>, <code>PLAN_KEEP</code>, <code>PLAN_ALLOW_READONLY_SHELL</code> and <code>PLAN_DIR</code>.
+Plan files are stored per project under <code>&lt;config-dir&gt;/plans/&lt;project-key&gt;/</code> and only the CLI writes
+them. See <a href="../plan-mode/">Plan Mode</a> for the full workflow.</p>
 <h2 id="state-files">State Files<a class="headerlink" href="#state-files" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2737,6 +2827,10 @@ current project — see <a href="../sessions/">Chat Sessions &amp; Resume</a>.</
 <tr>
 <td><code>~/.yaicli/sessions/&lt;hash&gt;/</code></td>
 <td>Saved chat sessions per project, mode <code>0700</code> dirs / <code>0600</code> files (or an explicit <code>CHAT_HISTORY_DIR</code>)</td>
+</tr>
+<tr>
+<td><code>&lt;config-dir&gt;/plans/&lt;project-key&gt;/</code></td>
+<td>Plan-mode plan files (<code>draft</code>/<code>in-progress</code>/<code>done</code>/<code>aborted</code>), mode <code>0700</code> dirs / <code>0600</code> files (or a <code>PLAN_DIR</code> override)</td>
 </tr>
 <tr>
 <td><code>$XDG_STATE_HOME/yaicli/history</code> or <code>~/.yaicli_history</code></td>
