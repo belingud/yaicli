@@ -149,7 +149,9 @@ DEFAULT_TOP_P: float = 1.0
 DEFAULT_MAX_TOKENS: int = 1024
 DEFAULT_MAX_HISTORY: int = 500
 DEFAULT_AUTO_SUGGEST: BOOL_STR = "true"
-DEFAULT_SHOW_REASONING: BOOL_STR = "true"
+DEFAULT_SHOW_REASONING: BOOL_STR = "false"
+# Collapsed thinking display: one live "Thinking… Ns" line, then "Thought for Ns".
+DEFAULT_SHOW_THINKING_STATUS: BOOL_STR = "true"
 DEFAULT_TIMEOUT: int = 60
 DEFAULT_EXTRA_HEADERS: str = "{}"
 DEFAULT_EXTRA_BODY: str = "{}"
@@ -320,6 +322,11 @@ DEFAULT_CONFIG_MAP = {
     "MAX_HISTORY": {"value": DEFAULT_MAX_HISTORY, "env_key": "YAI_MAX_HISTORY", "type": int},
     "AUTO_SUGGEST": {"value": DEFAULT_AUTO_SUGGEST, "env_key": "YAI_AUTO_SUGGEST", "type": bool},
     "SHOW_REASONING": {"value": DEFAULT_SHOW_REASONING, "env_key": "YAI_SHOW_REASONING", "type": bool},
+    "SHOW_THINKING_STATUS": {
+        "value": DEFAULT_SHOW_THINKING_STATUS,
+        "env_key": "YAI_SHOW_THINKING_STATUS",
+        "type": bool,
+    },
     "JUSTIFY": {"value": DEFAULT_JUSTIFY, "env_key": "YAI_JUSTIFY", "type": str},
     # Chat history settings
     "CHAT_HISTORY_DIR": {"value": DEFAULT_CHAT_HISTORY_DIR, "env_key": "YAI_CHAT_HISTORY_DIR", "type": str},
@@ -473,8 +480,10 @@ CODE_THEME={DEFAULT_CONFIG_MAP["CODE_THEME"]["value"]}
 # Max entries kept in history file
 MAX_HISTORY={DEFAULT_CONFIG_MAP["MAX_HISTORY"]["value"]}
 AUTO_SUGGEST={DEFAULT_CONFIG_MAP["AUTO_SUGGEST"]["value"]}
-# Print reasoning content or not
+# Print the full reasoning content (default: off — a collapsed "Thought for Ns" line is shown)
 SHOW_REASONING={DEFAULT_CONFIG_MAP["SHOW_REASONING"]["value"]}
+# Show the collapsed thinking status line while the model reasons (TTY only)
+SHOW_THINKING_STATUS={DEFAULT_CONFIG_MAP["SHOW_THINKING_STATUS"]["value"]}
 # Text alignment (default, left, center, right, full)
 JUSTIFY={DEFAULT_CONFIG_MAP["JUSTIFY"]["value"]}
 

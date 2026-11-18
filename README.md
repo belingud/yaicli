@@ -196,6 +196,7 @@ See [Plan Mode](docs/usage/plan-mode.md) for the full workflow, plan file format
 ### 💻 Enhanced Terminal Experience
 
 - **Real-time Streaming**: See responses as they're generated with cursor animation
+- **Collapsed thinking status**: one live `✻ Thinking… Ns` line while the model actually reasons, then a single `∴ Thought for Ns`; the full chain of thought is hidden by default (`--show-reasoning` restores it)
 - **Agent-aware status**: the current model and context usage appear in the dim per-turn status
   line (and the welcome banner), while the prompt itself stays a clean fixed ` 💬 > ` with `/`
   command completion and multi-line editing (Alt+Enter)
@@ -389,7 +390,8 @@ The default configuration file is `config.ini` inside the config directory above
 | `MAX_TOKENS`           | Max response tokens (reserved from the context window) | `1024`          | `YAI_MAX_TOKENS`           |
 | `MAX_HISTORY`          | Max history entries                         | `500`                    | `YAI_MAX_HISTORY`          |
 | `AUTO_SUGGEST`         | Enable history suggestions                  | `true`                   | `YAI_AUTO_SUGGEST`         |
-| `SHOW_REASONING`       | Enable reasoning display                    | `true`                   | `YAI_SHOW_REASONING`       |
+| `SHOW_REASONING`       | Print the full reasoning content (off = collapsed thinking line) | `false`      | `YAI_SHOW_REASONING`       |
+| `SHOW_THINKING_STATUS` | Show the collapsed `Thinking… Ns` / `Thought for Ns` line (TTY only) | `true` | `YAI_SHOW_THINKING_STATUS` |
 | `JUSTIFY`              | Text alignment                              | `default`                | `YAI_JUSTIFY`              |
 | `CHAT_HISTORY_DIR`     | Explicit session-directory override (old flat layout); a value equal to the built-in default means the per-project store | *unset* (per-project `~/.yaicli/sessions/<hash>/`) | `YAI_CHAT_HISTORY_DIR` |
 | `MAX_SAVED_CHATS`      | Max saved sessions per store                | `20`                     | `YAI_MAX_SAVED_CHATS`      |
@@ -589,8 +591,9 @@ To disable thinking mode:
 EXTRA_BODY={"thinking":{"type":"disabled"}}
 ```
 
-When thinking mode is enabled, DeepSeek returns `reasoning_content`, which YAICLI displays as reasoning output and
-preserves during live tool-call conversations. DeepSeek ignores `temperature`, `top_p`, `presence_penalty`, and
+When thinking mode is enabled, DeepSeek returns `reasoning_content`, which YAICLI collapses into its one-line
+thinking status by default (`SHOW_REASONING=true` prints the full text). It is preserved during live tool-call
+conversations and in saved sessions. DeepSeek ignores `temperature`, `top_p`, `presence_penalty`, and
 `frequency_penalty` while thinking is enabled.
 
 #### OpenRouter
@@ -703,7 +706,7 @@ Extra params:
 MINIMAX_REASONING_SPLIT=true
 ```
 
-MiniMax-M2.1 supports **Interleaved Thinking** - the model can reason before each tool use. When enabled, reasoning content is preserved in conversation history and displayed alongside responses.
+MiniMax-M2.1 supports **Interleaved Thinking** - the model can reason before each tool use. When enabled, reasoning content is preserved in conversation history and saved sessions; by default it is collapsed into the one-line thinking status (`SHOW_REASONING=true` prints the full text).
 
 #### Chatglm
 
@@ -1039,7 +1042,7 @@ ai --verbose "Explain quantum computing"
 
 - Natural conversations with context
 - Markdown and code formatting
-- Reasoning display for complex queries
+- Collapsed thinking status (`∴ Thought for Ns`) for complex queries
 
 **Execute Mode** (🚀)
 
@@ -1270,7 +1273,7 @@ In code mode, select the language for code generation. If none is specified, Pyt
 
 The `--code` mode outputs plain text, making it easy to copy, paste, or redirect to a file, especially when using the standard model.
 
-When using a deep reasoning model, the thinking content is displayed with syntax highlighting. To disable this, use the `--hide-reasoning` option or set `SHOW_REASONING` to `false` in the configuration.
+When using a deep reasoning model, the thinking is collapsed into one `✻ Thinking… Ns` status line and a `∴ Thought for Ns` summary. To print the full reasoning content instead, use the `--show-reasoning` option or set `SHOW_REASONING` to `true` in the configuration.
 
 ```bash
 $ ai --code 'Write a fib generator'

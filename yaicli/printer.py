@@ -1,4 +1,5 @@
 import difflib
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Tuple, Union
@@ -7,6 +8,7 @@ from rich.console import Group, RenderableType
 from rich.live import Live
 from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.text import Text
 
 from .config import Config, get_config
 from .console import YaiConsole, get_console, safe_text, strip_control_chars, untrusted_text
@@ -69,6 +71,18 @@ _PREVIEW_READ_MAX_CHARS = 200_000
 #: How long the UI thread waits for a background stream chunk before re-checking
 #: for a Ctrl+O viewer request (used with ThreadedStream.poll_next).
 _STREAM_POLL_SECONDS = 0.05
+
+#: Collapsed thinking status: one ephemeral live line while the model actually
+#: reasons, then one permanent ``∴ Thought for Ns`` line. The stopwatch starts at
+#: the first reasoning chunk (not at submission), so a model that emits no
+#: reasoning never shows a status line.
+_THINKING_STATUS_FRAMES: Tuple[str, ...] = ("·", "✢", "✳", "✶", "✻", "✽")
+_THINKING_STATUS_ASCII_FRAMES: Tuple[str, ...] = ("-", "\\", "|", "/")
+_THINKING_STATUS_FRAME_SECONDS = 0.1
+_THOUGHT_SUMMARY_MIN_SECONDS = 1.0
+_THINKING_LABEL = "Thinking"
+_THOUGHT_MARKER = "∴"
+_THINKING_ELLIPSIS = "…"
 
 
 def _clip_line(text: Any, limit: int = _PREVIEW_LINE_MAX_CHARS) -> str:
@@ -202,6 +216,19 @@ def _edit_snippet_diff(edits: List[Any], current: Optional[str]) -> List[str]:
 
 
 @dataclass
+class _RoundState:
+    """Per assistant-round thinking-status state.
+
+    ``started_at`` is set when the round's first reasoning chunk arrives (not when
+    the request is sent); ``summary_printed`` makes the collapsed line idempotent.
+    """
+
+    started_at: float = 0.0
+    reasoning_seen: bool = False
+    summary_printed: bool = False
+
+
+@dataclass
 class Printer:
     """Render LLM output to the terminal.
 
@@ -217,12 +244,15 @@ class Printer:
     content_markdown: bool = True
     machine: bool = False
     events: Optional[Callable[[Dict[str, Any]], None]] = None
+    #: Monotonic clock, injectable so tests can drive the status timer deterministically.
+    clock: Callable[[], float] = time.monotonic
 
     _REASONING_PREFIX: str = "> "
 
     def __post_init__(self):
         self.code_theme: str = self.config["CODE_THEME"]
         self.show_reasoning: bool = self.config["SHOW_REASONING"]
+        self.show_thinking_status: bool = self.config["SHOW_THINKING_STATUS"]
         # Set formatter for reasoning and content
         self.reasoning_formatter = Markdown
         self.content_formatter = Markdown if self.content_markdown else plain_formatter
@@ -232,6 +262,72 @@ class Printer:
     def _reset_state(self) -> None:
         """Reset printer state for a new stream."""
         self.in_reasoning = False
+
+    # ------------------- collapsed thinking status -------------------
+    def _thinking_status_enabled(self) -> bool:
+        """Whether the collapsed thinking status can be rendered in this run.
+
+        Machine/headless output and non-TTY consoles never render it: those streams
+        must stay byte-stable for scripts and pipes.
+        """
+        if self.machine or not getattr(self, "show_thinking_status", False):
+            return False
+        try:
+            return bool(getattr(self.console, "is_terminal", False))
+        except Exception:  # pragma: no cover - exotic console objects
+            return False
+
+    def _status_glyphs(self) -> Tuple[str, Tuple[str, ...], str]:
+        """Return ``(summary marker, spinner frames, ellipsis)`` with ASCII fallback.
+
+        Legacy Windows/codepage terminals cannot encode the star glyphs; fall back to
+        plain ASCII instead of raising ``UnicodeEncodeError`` mid-stream.
+        """
+        encoding = getattr(self.console, "encoding", None)
+        if not isinstance(encoding, str) or not encoding:
+            encoding = "utf-8"
+        probe = "".join((*_THINKING_STATUS_FRAMES, _THOUGHT_MARKER, _THINKING_ELLIPSIS))
+        try:
+            probe.encode(encoding)
+        except (UnicodeEncodeError, LookupError):
+            return "*", _THINKING_STATUS_ASCII_FRAMES, "..."
+        return _THOUGHT_MARKER, _THINKING_STATUS_FRAMES, _THINKING_ELLIPSIS
+
+    @staticmethod
+    def _format_elapsed(seconds: float) -> str:
+        """Render an elapsed duration as ``12s`` (``1m 12s`` from 60 s on)."""
+        total = int(round(max(0.0, seconds)))
+        if total < 60:
+            return f"{total}s"
+        return f"{total // 60}m {total % 60:02d}s"
+
+    def _thinking_status_text(self, elapsed: float) -> Text:
+        """Build the live ``✻ Thinking… Ns`` renderable; the frame follows elapsed time."""
+        _, frames, ellipsis = self._status_glyphs()
+        frame = frames[int(max(0.0, elapsed) / _THINKING_STATUS_FRAME_SECONDS) % len(frames)]
+        text = Text()
+        text.append(f"{frame} {_THINKING_LABEL}{ellipsis} {self._format_elapsed(elapsed)}", style="dim cyan")
+        return text
+
+    def _update_thinking_status(self, live: Live, state: _RoundState, enabled: bool) -> None:
+        """Refresh the ephemeral status line; no-op until the model starts reasoning."""
+        if not enabled or not state.reasoning_seen or state.summary_printed:
+            return
+        live.update(self._thinking_status_text(self.clock() - state.started_at), refresh=True)
+
+    def _finish_thinking(self, state: _RoundState, enabled: bool) -> None:
+        """Collapse this round's thinking into one dim ``∴ Thought for Ns`` line."""
+        if state.summary_printed:
+            return
+        state.summary_printed = True
+        if not enabled or not state.reasoning_seen or self.show_reasoning:
+            return
+        elapsed = self.clock() - state.started_at
+        if elapsed < _THOUGHT_SUMMARY_MIN_SECONDS:
+            return
+        marker, _, _ = self._status_glyphs()
+        # Trusted literal + formatted number: no model text, safe without escaping.
+        self.console.print(f"{marker} Thought for {self._format_elapsed(elapsed)}", style="dim")
 
     def _emit_event(self, event: Dict[str, Any]) -> None:
         """Forward one structured event to the configured sink (stream-json)."""
@@ -820,9 +916,14 @@ class Printer:
     ) -> tuple[str, str]:
         """Process and display an LLM stream.
 
-        Reasoning is streamed as append-only text; only the content is rendered in the
-        live region. Driven with next()/send() so a ConfirmToolCall signal can pause the
-        live, prompt the user, and resume the generator with the user's decision.
+        Reasoning is collapsed by default: the ephemeral ``✻ Thinking… Ns`` line only
+        appears once the model actually reasons, and it is replaced by one dim
+        ``∴ Thought for Ns`` line when the answer starts. With ``show_reasoning`` the
+        full text is streamed append-only as before (and no summary is printed).
+
+        Only the content is rendered in the live region. Driven with next()/send() so a
+        ConfirmToolCall signal can pause the live, prompt the user, and resume the
+        generator with the user's decision.
 
         ``pause_requested``/``on_pause`` implement the generation-time Ctrl+O toggle:
         between chunks the caller is asked whether the user requested the viewer; when
@@ -832,12 +933,15 @@ class Printer:
         if self.machine:
             return self._display_stream_machine(stream_iterator)
 
+        status_enabled = self._thinking_status_enabled()
         self._reset_state()
         full_content = full_reasoning = ""
         printed_reasoning = 0
         reasoning_header_shown = False
+        round_state = _RoundState()
         live = self._create_and_start_live()
         send_value: Optional[ToolConfirmDecision] = None
+        completed = False
 
         try:
             while True:
@@ -851,8 +955,11 @@ class Printer:
                     try:
                         chunk = pollable(_STREAM_POLL_SECONDS)
                     except StopIteration:
+                        completed = True
                         break
                     if chunk is None:
+                        # Idle between chunks: keep the thinking timer/spinner moving.
+                        self._update_thinking_status(live, round_state, status_enabled)
                         continue
                 else:
                     try:
@@ -862,6 +969,7 @@ class Printer:
                             chunk = stream_iterator.send(send_value)
                             send_value = None
                     except StopIteration:
+                        completed = True
                         break
 
                 if isinstance(chunk, ConfirmToolCall):
@@ -873,6 +981,9 @@ class Printer:
                     continue
 
                 if isinstance(chunk, RefreshLive):
+                    # The round ended (before the client executes its tool calls):
+                    # collapse this round's thinking before any tool output is printed.
+                    self._finish_thinking(round_state, status_enabled)
                     # Flush buffered reasoning, then transition to a new live session.
                     printed_reasoning, reasoning_header_shown = self._emit_reasoning(
                         full_reasoning, printed_reasoning, reasoning_header_shown, flush=True
@@ -884,6 +995,7 @@ class Printer:
                     full_content = full_reasoning = ""
                     printed_reasoning = 0
                     reasoning_header_shown = False
+                    round_state = _RoundState()
                     self._reset_state()
                     continue
 
@@ -892,18 +1004,27 @@ class Printer:
                     chunk.content or "", chunk.reasoning or "", full_content, full_reasoning
                 )
 
+                if full_reasoning and not round_state.reasoning_seen:
+                    # Start the stopwatch when the model actually begins to reason, not
+                    # when the request was sent: a non-thinking model never shows a line.
+                    round_state.reasoning_seen = True
+                    round_state.started_at = self.clock()
+
                 if full_content:
-                    # Content has started: flush any remaining reasoning above it, then
+                    # Content has started: collapse the thinking line above it, then
                     # render the content in the live region.
+                    self._finish_thinking(round_state, status_enabled)
                     printed_reasoning, reasoning_header_shown = self._emit_reasoning(
                         full_reasoning, printed_reasoning, reasoning_header_shown, flush=True
                     )
                     live.update(self._format_display_text(full_content, ""), refresh=True)
                 else:
-                    # Reasoning only so far: stream it append-only (whole lines).
+                    # Reasoning only so far: stream it (full-text mode) and keep the
+                    # collapsed status line moving.
                     printed_reasoning, reasoning_header_shown = self._emit_reasoning(
                         full_reasoning, printed_reasoning, reasoning_header_shown, flush=False
                     )
+                    self._update_thinking_status(live, round_state, status_enabled)
 
         except Exception as e:
             self._safe_stop_live(live)
@@ -911,6 +1032,9 @@ class Printer:
         finally:
             # Flush any trailing reasoning that never received a newline.
             self._emit_reasoning(full_reasoning, printed_reasoning, reasoning_header_shown, flush=True)
+            if completed:
+                # A round that produced reasoning but no content still gets its summary.
+                self._finish_thinking(round_state, status_enabled)
             self._safe_stop_live(live)
 
         return full_content, full_reasoning

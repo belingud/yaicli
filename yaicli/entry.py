@@ -457,6 +457,18 @@ class OtherOptions:
         callback=override_config,
     )
 
+    show_thinking_status = typer.Option(
+        cfg["SHOW_THINKING_STATUS"],
+        "--thinking-status/--no-thinking-status",
+        help=(
+            "Show the collapsed thinking status line while the model reasons "
+            f"[dim](default: {'show' if cfg['SHOW_THINKING_STATUS'] else 'hide'})[/dim]"
+        ),
+        rich_help_panel="Other Options",
+        show_default=False,
+        callback=override_config,
+    )
+
     justify = typer.Option(
         cfg["JUSTIFY"],
         "--justify",
@@ -648,6 +660,7 @@ def main(
     template: bool = OtherOptions.template,
     list_providers: bool = OtherOptions.list_providers,  # noqa: F841
     show_reasoning: bool = OtherOptions.show_reasoning,  # noqa: F841
+    show_thinking_status: bool = OtherOptions.show_thinking_status,  # noqa: F841
     justify: JustifyEnum = OtherOptions.justify,  # noqa: F841
     # ------------------- Function Options -------------------
     install_functions: bool = FunctionOptions.install_functions,  # noqa: F841
