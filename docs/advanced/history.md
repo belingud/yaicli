@@ -180,7 +180,9 @@ This removes all previous messages from the current session's context but does n
 
 Chat sessions are stored as JSON files in `CHAT_HISTORY_DIR` (see
 [Configuration](../usage/configuration.md)). The current format keeps every field of a
-message, so restoring a session preserves tool calls, images, and reasoning content:
+message, so restoring a session preserves tool calls, images, and reasoning content. Reasoning is
+always stored, even though the interactive display collapses it into the one-line thinking status by
+default (`SHOW_REASONING=true` prints it):
 
 ```json
 {

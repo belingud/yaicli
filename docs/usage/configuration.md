@@ -82,8 +82,10 @@ CODE_THEME=monokai
 # Max entries kept in history file
 MAX_HISTORY=500
 AUTO_SUGGEST=true
-# Print reasoning content or not
-SHOW_REASONING=true
+# Print the full reasoning content (off = a collapsed "Thought for Ns" line is shown instead)
+SHOW_REASONING=false
+# Show the collapsed thinking status line while the model reasons (TTY only)
+SHOW_THINKING_STATUS=true
 # Text alignment (default, left, center, right, full)
 JUSTIFY=default
 
@@ -245,7 +247,8 @@ TOOL_AUDIT=true
 | `MAX_TOKENS`           | Max response tokens (reserved from the context window) | `1024`          | `YAI_MAX_TOKENS`           |
 | `MAX_HISTORY`          | Max history entries                         | `500`                    | `YAI_MAX_HISTORY`          |
 | `AUTO_SUGGEST`         | Enable history suggestions                  | `true`                   | `YAI_AUTO_SUGGEST`         |
-| `SHOW_REASONING`       | Enable reasoning display                    | `true`                   | `YAI_SHOW_REASONING`       |
+| `SHOW_REASONING`       | Print the full reasoning content (off = collapsed thinking line) | `false`      | `YAI_SHOW_REASONING`       |
+| `SHOW_THINKING_STATUS` | Show the collapsed `Thinking… Ns` / `Thought for Ns` line (TTY only) | `true` | `YAI_SHOW_THINKING_STATUS` |
 | `JUSTIFY`              | Text alignment                              | `default`                | `YAI_JUSTIFY`              |
 | `CHAT_HISTORY_DIR`     | Explicit session-directory override (old flat layout); a value equal to the built-in default means the per-project store | *unset* (per-project `~/.yaicli/sessions/<hash>/`) | `YAI_CHAT_HISTORY_DIR` |
 | `MAX_SAVED_CHATS`      | Max saved sessions per store                | `20`                     | `YAI_MAX_SAVED_CHATS`      |

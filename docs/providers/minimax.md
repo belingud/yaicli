@@ -85,7 +85,7 @@ EXTRA_BODY={"reasoning_split": true}
 
 - Reasoning content is **preserved in conversation history** and sent back to the model in subsequent requests
 - This ensures the model maintains continuity in its thinking process across multiple tool calls
-- Reasoning content is displayed alongside the main response when `SHOW_REASONING=true`
+- By default the reasoning is collapsed into the one-line thinking status; `SHOW_REASONING=true` prints the full reasoning text alongside the response, and it is always stored in history
 
 ## Important Notes
 
