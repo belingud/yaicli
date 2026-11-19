@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "verify machine/headless output contract and Live cleanup unchanged"}
+{"file": ".trellis/spec/py/config-and-context.md", "reason": "verify flag/env/file/default precedence for the new config pair"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "run the documented quality gate incl. docs drift tests"}
+{"file": ".trellis/spec/repo/feature-spec-writing.md", "reason": "diff rendered examples against the PRD blocks"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "trace reasoning display vs history persistence across printer/client/chat layers"}

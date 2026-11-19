@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "printer.py display_stream/Live/REPL and machine-output rules; where new rendering behavior goes"}
+{"file": ".trellis/spec/py/config-and-context.md", "reason": "config key contract: DEFAULT_CONFIG_MAP + entry override_config + docs drift guard"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "format/lint/test commands and console/test patterns for printer tests"}
+{"file": ".trellis/spec/repo/feature-spec-writing.md", "reason": "README/docs must match the PRD Feature examples"}
