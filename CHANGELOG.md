@@ -1,5 +1,26 @@
 
 ---
+## [0.25.0](https://github.com/belingud/yaicli/compare/v0.24.1..v0.25.0) - 2026-11-19
+
+### ⛰️  Features
+
+- feat(printer)!: collapse reasoning into a thinking status line
+
+- reasoning is hidden by default (SHOW_REASONING=false); one live '✻ Thinking… Ns' line appears only when the model actually reasons, then one dim '∴ Thought for Ns' line is left when the answer starts
+- new SHOW_THINKING_STATUS switch (--thinking-status/--no-thinking-status, YAI_SHOW_THINKING_STATUS); TTY-only, machine/pipe output unchanged
+- reasoning is still returned by display_stream and persisted in chat history (client/serialization untouched)
+- full text mode (--show-reasoning) keeps the previous behavior and prints no summary; each tool round gets its own timer/summary - ([17f6346](https://github.com/belingud/yaicli/commit/17f6346aee1f4fb89883c9f8f666aa4ed6288bb6)) - Belingud
+
+### 📚 Documentation
+
+- docs(changelog): update changelog for v0.24.1 release - ([a4a4f30](https://github.com/belingud/yaicli/commit/a4a4f308c9dad0784c8d0c392a6856bd11b0bd2d)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore(trellis): archive 11-18-thinking-status-line and record PR #58 - ([3364040](https://github.com/belingud/yaicli/commit/33640401d06957a2aa03ed9efe2aa807730e5779)) - Belingud
+
+
+---
 ## [0.24.1](https://github.com/belingud/yaicli/compare/v0.24.0..v0.24.1) - 2026-11-14
 
 ### ⛰️  Features
