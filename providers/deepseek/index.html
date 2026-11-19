@@ -2036,9 +2036,9 @@
 <ul>
 <li>Uses OpenAI-compatible client implementation</li>
 <li>Supports standard OpenAI API features</li>
-<li>Thinking mode returns <code>reasoning_content</code>, which YAICLI displays as reasoning output</li>
+<li>Thinking mode returns <code>reasoning_content</code>, which YAICLI collapses into its one-line thinking status by default (<code>SHOW_REASONING=true</code> prints the full text)</li>
 <li>In thinking mode, DeepSeek ignores <code>temperature</code>, <code>top_p</code>, <code>presence_penalty</code>, and <code>frequency_penalty</code></li>
-<li>Live tool-call conversations preserve DeepSeek <code>reasoning_content</code> for follow-up requests; saved chat files do not yet persist full reasoning/tool metadata for exact replay after reload</li>
+<li>Live tool-call conversations and saved sessions preserve DeepSeek <code>reasoning_content</code> (it is stored even when the display is collapsed)</li>
 <li>Designed for coding and reasoning tasks</li>
 <li>Cost-effective alternative to other providers</li>
 </ul>

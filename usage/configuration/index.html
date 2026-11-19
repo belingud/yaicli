@@ -2195,8 +2195,10 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="c1"># Max entries kept in history file</span>
 <span class="na">MAX_HISTORY</span><span class="o">=</span><span class="s">500</span>
 <span class="na">AUTO_SUGGEST</span><span class="o">=</span><span class="s">true</span>
-<span class="c1"># Print reasoning content or not</span>
-<span class="na">SHOW_REASONING</span><span class="o">=</span><span class="s">true</span>
+<span class="c1"># Print the full reasoning content (off = a collapsed &quot;Thought for Ns&quot; line is shown instead)</span>
+<span class="na">SHOW_REASONING</span><span class="o">=</span><span class="s">false</span>
+<span class="c1"># Show the collapsed thinking status line while the model reasons (TTY only)</span>
+<span class="na">SHOW_THINKING_STATUS</span><span class="o">=</span><span class="s">true</span>
 <span class="c1"># Text alignment (default, left, center, right, full)</span>
 <span class="na">JUSTIFY</span><span class="o">=</span><span class="s">default</span>
 
@@ -2472,9 +2474,15 @@ provider name invalid).</p>
 </tr>
 <tr>
 <td><code>SHOW_REASONING</code></td>
-<td>Enable reasoning display</td>
-<td><code>true</code></td>
+<td>Print the full reasoning content (off = collapsed thinking line)</td>
+<td><code>false</code></td>
 <td><code>YAI_SHOW_REASONING</code></td>
+</tr>
+<tr>
+<td><code>SHOW_THINKING_STATUS</code></td>
+<td>Show the collapsed <code>Thinking… Ns</code> / <code>Thought for Ns</code> line (TTY only)</td>
+<td><code>true</code></td>
+<td><code>YAI_SHOW_THINKING_STATUS</code></td>
 </tr>
 <tr>
 <td><code>JUSTIFY</code></td>

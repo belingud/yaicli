@@ -2409,7 +2409,9 @@ ai<span class="w"> </span>--chat<span class="w"> </span><span class="s2">&quot;P
 <h3 id="chat-file-format">Chat File Format<a class="headerlink" href="#chat-file-format" title="Permanent link">&para;</a></h3>
 <p>Chat sessions are stored as JSON files in <code>CHAT_HISTORY_DIR</code> (see
 <a href="../../usage/configuration/">Configuration</a>). The current format keeps every field of a
-message, so restoring a session preserves tool calls, images, and reasoning content:</p>
+message, so restoring a session preserves tool calls, images, and reasoning content. Reasoning is
+always stored, even though the interactive display collapses it into the one-line thinking status by
+default (<code>SHOW_REASONING=true</code> prints it):</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Chat Title&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-06-01T12:00:00+00:00&quot;</span><span class="p">,</span>
