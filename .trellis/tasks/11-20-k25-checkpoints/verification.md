@@ -92,11 +92,48 @@
 | 每轮新建普通文件 | 10.742 | 18946 |
 | 连续改写同一文件 | 13.150 | 478978 |
 
+## 发布前复核与根目录修复（2026-11-27）
+
+针对 `6758c18` 的首次发布复核中，隔离全量 **3068 passed in 84.86s**，全项目 Ruff 通过。
+真实 PTY 保留实际入口、PromptSession、终端检测、按键监听和流式线程，仅替换模型提供商；
+`ai -c chat-name` 创建 `var/test.txt` 后修改两次，得到 #0–#3，无需执行 `/save`。
+
+另一个配置场景确定复现了空列表：仅在配置文件设置 `WORKSPACE_ROOT` 且其值与 cwd 不同，
+未继承 `YAI_WORKSPACE_ROOT` 时，检查点首次从 cwd 解析根目录；文件工具随后把配置根同步到环境，
+再次查询便因 workspace mismatch 更换身份，显示 `No checkpoints for this session.`。
+原有默认测试框架一直在环境中设置根目录，未覆盖这条配置文件路径。
+
+修复限定为 `_checkpoint_store()` 显式调用
+`resolve_workspace_root(cfg.get("WORKSPACE_ROOT") or Path.cwd())`，不改变共享 helper 或工具同步时机。
+新增同步与流式两项完整 CLI 回归，修复前均因根目录不匹配失败，修复后通过。
+每项均验证子进程启动时没有 `YAI_WORKSPACE_ROOT`、cwd 是配置根的子目录、首轮文件操作后列表可见、
+独立进程 `--resume` 保持完整 manifest/会话身份/保存路径，以及第三个进程实际回退文件。
+
+| 修复后的检查 | 结果 |
+| --- | --- |
+| 检查点专项与 CLI/config/entry/headless/session/workspace/stream/command 回归 | **469 passed in 23.76s** |
+| 独立隔离全量测试 | **3070 passed in 90.15s** |
+| 检查点专项数量 | 73 项：存储 34、命令 26、完整 CLI 集成 13 |
+| 独立真实 PTY，配置根为启动目录父目录 | 创建和修改得到 head=3；新进程保持同一身份与路径；再次重启回退后字节恢复并移除新增文件 |
+| 全项目 Ruff `--no-fix` | 通过 |
+| 两份修改 Python 文件的 Ruff format / isort | 通过 |
+| MkDocs strict | 通过，3.07s |
+| 修复后启动基准，5 次采样 | 六项均通过，且在全量测试结束后单独执行 |
+| `git diff --check` | 通过 |
+
+本次启动 P50（毫秒）：version 40.4、help 499.4、template 454.3、entry_import 384.1、
+repl_ready 607.4、oneshot_local 1639.9，均低于上表既有门限。
+
+所有有效测试从进程启动前即隔离 HOME、配置目录及继承的 `YAI_*` / `XDG_*`，
+使用 `uv run --no-sync`；本机模拟 HTTP 测试经授权在沙箱外执行，不调用真实模型 API。
+规范已补充配置根在首轮、工具执行、查询和跨进程恢复之间必须一致的契约。
+
 ## 提交与交接
 
 提交前复核（2026-11-26）：三份新增测试共 **71 passed in 14.01s**，
 全项目 `ruff check --no-fix yaicli tests` 与 `git diff --check` 通过。实现代码没有新增修改。
 
 代码、测试、文档、规范和任务记录的范围见 [commit-plan.md](commit-plan.md)。
-用户已于 2026-11-26 按仓库 Phase 3.4 确认提交，执行 `feat/checkpoints` 上的本地工作提交。
-任务尚未归档；PR 与合并按仓库流程继续。
+用户已于 2026-11-26 按仓库 Phase 3.4 确认提交，主体实现已提交为 `6758c18` 并推送。
+PR #59 已创建，用户于 2026-11-27 授权合并；根目录修复作为后续提交推送后，核对最新 CI 再合并。
+任务尚未归档；版本升级、更新日志和发布按仓库 master 发布流程继续。

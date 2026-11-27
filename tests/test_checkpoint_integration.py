@@ -21,6 +21,7 @@ CLI_PROCESS = textwrap.dedent(
     import importlib.abc
     import io
     import json
+    import os
     import sys
     import threading
     from dataclasses import asdict
@@ -28,7 +29,7 @@ CLI_PROCESS = textwrap.dedent(
 
     payload = json.load(sys.stdin)
     sys.path.insert(0, payload["repo"])
-    report = {"requests": [], "import_attempts": []}
+    report = {"requests": [], "import_attempts": [], "workspace_env_at_start": os.environ.get("YAI_WORKSPACE_ROOT")}
 
     class CheckpointImportGuard(importlib.abc.MetaPathFinder):
         def find_spec(self, fullname, path=None, target=None):
@@ -154,7 +155,19 @@ CLI_PROCESS = textwrap.dedent(
 )
 
 
-def run_cli(root, args, *, inputs=(), answers=(), tty=True, worker=False, forbid_checkpoints=False, enabled=True):
+def run_cli(
+    root,
+    args,
+    *,
+    inputs=(),
+    answers=(),
+    tty=True,
+    worker=False,
+    forbid_checkpoints=False,
+    enabled=True,
+    workspace_from_config=False,
+    cwd=None,
+):
     """Use a fresh interpreter with no inherited config, secrets or real HOME."""
     home = root / "home"
     project = root / "project"
@@ -194,10 +207,15 @@ def run_cli(root, args, *, inputs=(), answers=(), tty=True, worker=False, forbid
         "NO_COLOR": "1",
         "COLUMNS": "200",
     }
+    if workspace_from_config:
+        env.pop("YAI_WORKSPACE_ROOT")
+        config_dir = home / "config"
+        config_dir.mkdir(exist_ok=True)
+        (config_dir / "config.ini").write_text(f"[core]\nWORKSPACE_ROOT={project}\n", encoding="utf-8")
     result = subprocess.run(
         [sys.executable, "-c", CLI_PROCESS],
         input=json.dumps(payload),
-        cwd=project,
+        cwd=cwd or project,
         env=env,
         capture_output=True,
         text=True,
@@ -222,6 +240,83 @@ def manifest(root, session_id):
     paths = list((root / "home" / "sessions" / "checkpoints").glob(f"*/{session_id}/manifest.json"))
     assert len(paths) == 1
     return json.loads(paths[0].read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("worker", [False, True], ids=["sync", "stream-worker"])
+def test_config_only_workspace_root_survives_first_write_resume_and_rewind(tmp_path, worker):
+    project = tmp_path / "project"
+    cwd = project / "nested"
+    cwd.mkdir(parents=True)
+    options = {"workspace_from_config": True, "cwd": cwd, "worker": worker}
+
+    result, created = run_cli(
+        tmp_path,
+        ["--chat", "Config root", "--allowed-tools", "fs_write_file"],
+        inputs=["write the itinerary", "/checkpoints", "pack for the weekend", "/checkpoints"],
+        **options,
+    )
+
+    assert created["workspace_env_at_start"] is None
+    assert result.stderr == 'No saved session titled "Config root" for this project; starting a new session.\n'
+    assert "No checkpoints for this session." not in result.stdout
+    assert "#1" in result.stdout and "#2" in result.stdout
+    current_rows = [
+        line.split()[0] for line in result.stdout.splitlines() if line.startswith("#") and line.endswith("current")
+    ]
+    assert current_rows == ["#1", "#2"]
+    source_path, source = saved_chats(tmp_path)["Config root"]
+    session_id = source["checkpoint_session_id"]
+    before = manifest(tmp_path, session_id)
+    assert created["chat_path"] == str(source_path)
+    assert created["chat"]["checkpoint_session_id"] == before["session_id"] == session_id
+    assert created["chat"]["checkpoint_head"] == source["checkpoint_head"] == before["head"] == 2
+    assert before["root"] == str(project.resolve())
+    assert before["session_path"] == str(source_path.resolve())
+    assert [record["id"] for record in before["records"]] == [0, 1, 2]
+    assert [[item["path"] for item in record["files"]] for record in before["records"]] == [
+        [],
+        ["nested/trip.md"],
+        ["nested/trip.md", "nested/packing.md"],
+    ]
+    tool_messages = [message for message in source["history"] if message["role"] == "tool"]
+    assert len(tool_messages) == 3
+    assert all(json.loads(message["content"])["success"] for message in tool_messages)
+    assert all((request["thread"] != "MainThread") is worker for request in created["requests"])
+    assert (cwd / "trip.md").read_bytes() == TRIP_SECOND.encode()
+    assert (cwd / "packing.md").read_bytes() == PACKING.encode()
+
+    result, resumed = run_cli(tmp_path, ["--resume"], inputs=["/checkpoints"], **options)
+
+    assert resumed["workspace_env_at_start"] is None
+    assert result.stderr == ""
+    assert "#2" in result.stdout and "current" in result.stdout
+    assert resumed["chat_path"] == str(source_path)
+    assert resumed["chat"]["checkpoint_session_id"] == session_id
+    assert resumed["chat"]["checkpoint_head"] == 2
+    assert resumed["chat"]["history"] == source["history"]
+    assert manifest(tmp_path, session_id) == before
+
+    result, rewound = run_cli(tmp_path, ["--resume"], inputs=["/rewind 1"], answers=["y"], **options)
+
+    assert rewound["workspace_env_at_start"] is None
+    assert result.stderr == ""
+    assert "Restore: nested/trip.md" in result.stdout
+    assert "Remove:  nested/packing.md" in result.stdout
+    assert "Rewound to #1." in result.stdout
+    saved_path, saved = saved_chats(tmp_path)["Config root"]
+    after = manifest(tmp_path, session_id)
+    assert saved_path == source_path
+    assert rewound["chat_path"] == str(source_path)
+    assert saved["checkpoint_session_id"] == rewound["chat"]["checkpoint_session_id"] == session_id
+    assert saved["checkpoint_head"] == rewound["chat"]["checkpoint_head"] == after["head"] == 1
+    assert saved["history"] == rewound["chat"]["history"]
+    assert [message["content"] for message in saved["history"] if message["role"] == "user"] == ["write the itinerary"]
+    assert after["root"] == before["root"]
+    assert after["session_path"] == before["session_path"]
+    assert [record["id"] for record in after["records"]] == [0, 1]
+    assert after["next"] > 2
+    assert (cwd / "trip.md").read_bytes() == TRIP_FIRST.encode()
+    assert not (cwd / "packing.md").exists()
 
 
 @pytest.mark.parametrize(("restore_entry", "worker", "command"), [("resume", False, "rewind"), ("load", True, "fork")])

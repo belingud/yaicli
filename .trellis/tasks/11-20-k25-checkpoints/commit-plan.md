@@ -43,6 +43,26 @@ docs/usage/workspace-safety.md
 .trellis/tasks/11-20-k25-checkpoints/commit-plan.md
 ```
 
+## 提交 2：发布前配置根目录修复
+
+```text
+fix(checkpoints): honor configured workspace root from first turn
+```
+
+用户已要求提交、发布，并于 2026-11-27 明确授权合并 PR #59。此提交修复发布复核确定复现的配置根目录不一致问题，同时记录回归证据与规范。
+
+```text
+yaicli/cli.py
+tests/test_checkpoint_integration.py
+.trellis/spec/py/checkpoints.md
+.trellis/tasks/11-20-k25-checkpoints/design.md
+.trellis/tasks/11-20-k25-checkpoints/implement.md
+.trellis/tasks/11-20-k25-checkpoints/prd.md
+.trellis/tasks/11-20-k25-checkpoints/task.json
+.trellis/tasks/11-20-k25-checkpoints/verification.md
+.trellis/tasks/11-20-k25-checkpoints/commit-plan.md
+```
+
 ## 原有其他改动
 
 以下路径在本次实现之前已处于未提交状态，不纳入本计划：
@@ -53,6 +73,7 @@ docs/usage/workspace-safety.md
 .agents/skills/trellis-finish-work/
 .agents/skills/trellis-start/
 .codex/
+uv.lock
 ```
 
 ## 确认与后续

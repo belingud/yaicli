@@ -71,6 +71,10 @@ bound saved-chat path, including chains whose identity is no longer in the lates
 
 ### Identity and disk format
 
+- Resolve the workspace from the effective configuration on the first checkpoint access:
+  `resolve_workspace_root(cfg.get("WORKSPACE_ROOT") or Path.cwd())`. A config-file-only root
+  must work before any tool synchronizes guardrail environment variables. Keep that root stable
+  across capture, listing and restart; the project/session key still follows the invocation cwd.
 - Chat JSON adds optional `checkpoint_session_id` (UUID encoded as 32 lowercase hex characters)
   and `checkpoint_head` (integer,
   `-1` when unbound). Legacy chats without them remain loadable.
@@ -129,6 +133,7 @@ bound saved-chat path, including chains whose identity is no longer in the lates
 | Condition | Required behavior |
 | --- | --- |
 | Temporary / disabled / noninteractive | Explain the prerequisite; no restore or archive writes |
+| Config-only `WORKSPACE_ROOT` differs from cwd | Use the configured root from the first access; tool execution must not detach the chain or change the session identity |
 | `TOOL_POLICY=readonly` | Listing allowed; `Rewind and fork are unavailable in readonly mode.` |
 | Missing retained id | `Checkpoint #<id> is unavailable.`; no changes |
 | Workspace/session writer busy | `Workspace is busy. Try again when its file operations finish.` |
@@ -151,6 +156,8 @@ without introducing a process exit code. In headless mode `/rewind 1` remains a 
   Confirming rewind restores original bytes/mode, removes the new file and empty parent, restores
   #1 conversation history, and makes #2 unavailable. A later turn gets a fresh id above #2.
 - Base: a pure conversation turn records history without file entries and survives process restart.
+- Good: a named chat starts in a workspace subdirectory with only config-file `WORKSPACE_ROOT`.
+  Its first file write, listing, cross-process resume and rewind retain one root and session id.
 - Bad: a shell/custom tool ran, a file changed externally, a backup disappeared or another client
   advanced the chat. Refuse unsafe replay rather than restoring only the paths that still work.
 
@@ -166,12 +173,20 @@ without introducing a process exit code. In headless mode `/rewind 1` remains a 
   fake provider, including the actual stream worker, cross-process resume/load/rewind/fork,
   binary file copy/move/delete/recreate and exact machine-output comparisons. Only provider
   and terminal input are replaced; do not mock capture or the saved-chat commit being asserted.
+  Cover a config-only workspace root different from cwd with no inherited `YAI_WORKSPACE_ROOT`,
+  both sync and stream-worker execution, stable identity/manifest across restart and actual file rewind.
 - Existing session, workspace, tool dispatch, streaming, plan and headless tests must pass.
   Verify no startup checkpoint imports/IO and run the existing startup benchmark gate.
 - Use temporary homes/stores and mocked providers. For multi-step failure tests, assert workspace,
   saved chat, manifest and recovery data together; a printed success message is insufficient.
 
 ## 7. Wrong vs Correct
+
+Wrong: call `resolve_workspace_root()` without passing effective configuration and depend on a
+later tool call to populate `YAI_WORKSPACE_ROOT`. A config-only root can then change mid-session,
+invalidate the manifest and make `/checkpoints` appear empty.
+
+Correct: resolve `cfg.get("WORKSPACE_ROOT") or Path.cwd()` explicitly before beginning the first turn.
 
 Wrong: infer support from `tool_call.name == "fs_write_file"`, restore all paths with a backup,
 then save the chat without checking its current version. A same-name override can have unknown

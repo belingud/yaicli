@@ -2344,7 +2344,7 @@ class CLI:
         ):
             chat.checkpoint_session_id = uuid.uuid4().hex
             chat.checkpoint_head = -1
-        root = resolve_workspace_root()
+        root = resolve_workspace_root(cfg.get("WORKSPACE_ROOT") or Path.cwd())
         if chat.path is None:
             self.chat_manager.save_chat(chat)
         directory = (
