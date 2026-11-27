@@ -34,7 +34,7 @@ def rendered(console: Console) -> str:
 
 
 def make_cli(console: Console) -> CLI:
-    cli = CLI.__new__(CLI)
+    cli = CLI(client=MagicMock(), chat_manager=MagicMock())
     cli.console = console
     cli.chat = Chat(title="", history=[])
     cli.is_temp_session = True

@@ -1,5 +1,5 @@
 import base64
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
@@ -305,7 +305,6 @@ class TestGeminiConvertMessages:
 
     @patch("yaicli.llms.providers.gemini_provider.genai")
     def test_base64_image_produces_part(self, mock_genai):
-
         from yaicli.llms.providers.gemini_provider import GeminiProvider
 
         config = {
@@ -410,15 +409,15 @@ class TestOllamaConvertMessages:
 class TestGracefulDegradation:
     """Test non-vision provider strips images and warns."""
 
-    def test_no_vision_provider_strips_images(self, cli):
+    def test_no_vision_provider_strips_images(self, cli, monkeypatch):
         """Images should be stripped for non-vision providers."""
         from yaicli.schemas import ImageData
 
         img = ImageData(data="abc", media_type="image/jpeg", is_url=False)
 
-        with patch.object(cli, "console"):
-            with patch("yaicli.cli.cfg", {**cfg, "PROVIDER": "cohere"}):
-                messages = cli._build_messages("test", images=[img])
+        monkeypatch.setattr(cli, "console", MagicMock())
+        with patch("yaicli.cli.cfg", {**cfg, "PROVIDER": "cohere"}):
+            messages = cli._build_messages("test", images=[img])
 
         # The user message should have no images
         user_msg = [m for m in messages if m.role == "user"][0]

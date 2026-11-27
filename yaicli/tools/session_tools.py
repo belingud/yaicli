@@ -19,8 +19,8 @@ from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
-from .. import plan_mode
 from ..function_schema import OpenAISchema
+from ..planning import service as plan_mode
 
 #: Session tool names exposed by this module (plan/todo state only).
 SESSION_TOOL_NAMES = frozenset({"submit_plan", "todo_write"})
@@ -312,8 +312,8 @@ def _emit_todo_progress(name: str, result: str) -> None:
     if index <= 0 or total <= 0 or not todo_id:
         return
     try:
-        from ..console import safe_text
         from .. import tools as tools_module
+        from ..console import safe_text
 
         tools_module.console.print(f"[todo {index}/{total}] {safe_text(todo_id)} {safe_text(title)}", style="cyan")
     except Exception:  # pragma: no cover - progress display must never break the tool

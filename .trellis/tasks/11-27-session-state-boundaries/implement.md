@@ -2,9 +2,9 @@
 
 ## Before implementation
 
-- [ ] 前两阶段已合并；同步最新 master，重核所有配置读取及计划/工具模式数据流。
-- [ ] 补齐并评审本阶段最终摘要，获得实现批准；校验本任务上下文。
-- [ ] 创建 chore/refactor-session-state，PR 目标 master，使用 Trellis implement/check 子代理。
+- [ ] 前两阶段已验收并提交；以前置提交为基线，重核所有配置读取及计划/工具模式数据流。
+- [x] 用户于 2026-11-27 授权自主完成整个重构；阶段开始前仍须核对设计及上下文。
+- [ ] 在共同分支 chore/refactor-command-tools 继续，PR 目标 master，使用 Trellis implement/check 子代理。
 - [ ] 按父 implement.md 建立隔离 HOME/配置/工作区和本阶段基线。
 - [ ] 验证环境适配与现有 workspace/undo/checkpoint 锁的顺序；不在未验证的假设上扩大迁移。
 

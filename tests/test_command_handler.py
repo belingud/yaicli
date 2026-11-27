@@ -23,6 +23,19 @@ from yaicli.const import (
 )
 
 
+def _command_ports(cli):
+    """Provide the explicit data/service ports consumed by command presentation."""
+    cli.run_state = cli
+    if hasattr(cli, "sessions"):
+        cli.sessions.state = cli
+        cli.sessions.chat = cli.chat
+    if hasattr(cli, "invalidate_client"):
+        cli.invalidate_client.side_effect = lambda: setattr(cli, "active_client", None)
+    if hasattr(cli, "clear_retry_snapshot"):
+        cli.clear_retry_snapshot.side_effect = lambda: setattr(cli.sessions, "retry_snapshot", None)
+    return cli
+
+
 @pytest.fixture
 def mock_cli():
     """Create a mock CLI for testing CmdHandler."""
@@ -39,7 +52,7 @@ def mock_cli():
 @pytest.fixture
 def cmd_handler(mock_cli):
     """Create a CmdHandler instance with mock CLI for testing."""
-    return CmdHandler(mock_cli)
+    return CmdHandler(_command_ports(mock_cli))
 
 
 class TestCmdHandler:
@@ -136,50 +149,50 @@ class TestCmdHandler:
         # Test with title
         result = cmd_handler.handle_command("/save New Title")
         assert result is True
-        cmd_handler.cli._save_chat.assert_called_once_with("New Title")
+        cmd_handler.cli.sessions.save_chat.assert_called_once_with("New Title")
 
         # Test without title
-        cmd_handler.cli._save_chat.reset_mock()
+        cmd_handler.cli.sessions.save_chat.reset_mock()
         result = cmd_handler.handle_command("/save")
         assert result is True
-        cmd_handler.cli._save_chat.assert_called_once_with(cmd_handler.cli.chat.title)
+        cmd_handler.cli.sessions.save_chat.assert_called_once_with(cmd_handler.cli.chat.title)
 
     def test_handle_load_command(self, cmd_handler):
         """Test handling load command."""
         # Test with valid index
         result = cmd_handler.handle_command("/load 1")
         assert result is True
-        cmd_handler.cli._load_chat_by_index.assert_called_once_with(index="1")
+        cmd_handler.cli.sessions.load_chat_by_index.assert_called_once_with(index="1")
 
         # Test without index - should show usage message
-        cmd_handler.cli._load_chat_by_index.reset_mock()
+        cmd_handler.cli.sessions.load_chat_by_index.reset_mock()
         cmd_handler.cli.console.print.reset_mock()
         result = cmd_handler.handle_command("/load")
         assert result is True
         cmd_handler.cli.console.print.assert_any_call("Usage: /load <index>", style="yellow")
-        cmd_handler.cli._list_chats.assert_called_once()
+        cmd_handler.cli.sessions.list_chats.assert_called_once()
 
     def test_handle_delete_command(self, cmd_handler):
         """Test handling delete command."""
         # Test with valid index
         result = cmd_handler.handle_command("/delete 1")
         assert result is True
-        cmd_handler.cli._delete_chat_by_index.assert_called_once_with(index="1")
+        cmd_handler.cli.sessions.delete_chat_by_index.assert_called_once_with(index="1")
 
         # Test without index - should show usage message
-        cmd_handler.cli._delete_chat_by_index.reset_mock()
+        cmd_handler.cli.sessions.delete_chat_by_index.reset_mock()
         cmd_handler.cli.console.print.reset_mock()
         result = cmd_handler.handle_command("/delete")
         assert result is True
         cmd_handler.cli.console.print.assert_any_call("Usage: /del <index>", style="yellow")
-        cmd_handler.cli._list_chats.assert_called_once()
+        cmd_handler.cli.sessions.list_chats.assert_called_once()
 
     def test_handle_list_command(self, cmd_handler):
         """Test handling list command."""
         with patch.object(cmd_handler, "handle_list", return_value=True):
             result = cmd_handler.handle_command("/chats")
             assert result is True
-            cmd_handler.cli._list_chats.assert_called_once()
+            cmd_handler.cli.sessions.list_chats.assert_called_once()
 
     def test_handle_mode_command(self, cmd_handler):
         """Test handling mode command."""
@@ -363,7 +376,7 @@ class TestContextUsageOutput:
         cli.chat.history = []
         for name, value in cli_attrs.items():
             setattr(cli, name, value)
-        return cli, CmdHandler(cli)
+        return cli, CmdHandler(_command_ports(cli))
 
     def test_known_model_prints_window_source_and_reserve(self):
         cli, handler = self._handler()
@@ -459,7 +472,7 @@ class TestContextUsageOutput:
         cli.console = MagicMock()
         cli.chat = MagicMock()
         cli.chat.history = []
-        handler = CmdHandler(cli)
+        handler = CmdHandler(_command_ports(cli))
         fake_usage = self._usage()
 
         with (
@@ -520,14 +533,14 @@ class TestHandleCost:
     def _handler(self, snapshot):
         cli = MagicMock()
         cli.console = MagicMock()
-        cli._client = MagicMock()
-        cli._client.usage_snapshot = MagicMock(return_value=snapshot)
-        cli._client.last_finish_reason = "stop"
-        return CmdHandler(cli)
+        cli.active_client = MagicMock()
+        cli.active_client.usage_snapshot = MagicMock(return_value=snapshot)
+        cli.active_client.last_finish_reason = "stop"
+        return CmdHandler(_command_ports(cli))
 
     def test_cost_without_client_prints_friendly_line(self, mock_cli):
-        mock_cli._client = None
-        handler = CmdHandler(mock_cli)
+        mock_cli.active_client = None
+        handler = CmdHandler(_command_ports(mock_cli))
 
         assert handler.handle_command(CMD_COST) is True
 
@@ -603,8 +616,8 @@ _FAKE_MODEL_CFG = {"MODEL": "gpt-4o-mini", "PROVIDER": "openai"}
 def _model_handler():
     cli = MagicMock()
     cli.console = MagicMock()
-    cli._client = MagicMock()
-    return cli, CmdHandler(cli)
+    cli.active_client = MagicMock()
+    return cli, CmdHandler(_command_ports(cli))
 
 
 class TestHandleModel:
@@ -625,13 +638,13 @@ class TestHandleModel:
 
     def test_switch_model_updates_config_and_invalidates_client(self):
         cli, handler = _model_handler()
-        old_client = cli._client
+        old_client = cli.active_client
         with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)) as fake_cfg:
             assert handler.handle_command(f"{CMD_MODEL} gpt-4o") is True
             assert fake_cfg["MODEL"] == "gpt-4o"
 
-        assert cli._client is None
-        assert cli._client is not old_client
+        assert cli.active_client is None
+        assert cli.active_client is not old_client
         printed = _printed_text(cli.console)
         assert "Model switched: gpt-4o-mini -> gpt-4o" in printed
         # The notice says how to revert.
@@ -639,11 +652,11 @@ class TestHandleModel:
 
     def test_switch_to_same_model_is_a_noop(self):
         cli, handler = _model_handler()
-        old_client = cli._client
+        old_client = cli.active_client
         with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)):
             handler.handle_command(f"{CMD_MODEL} gpt-4o-mini")
 
-        assert cli._client is old_client
+        assert cli.active_client is old_client
         assert "Already using model" in _printed_text(cli.console)
 
     def test_switch_without_writable_config_prints_error(self):
@@ -671,7 +684,7 @@ class TestHandleRole:
             {"id": "Code Assistant", "name": "Code Assistant"},
             {"id": "SQL Expert", "name": "SQL Expert"},
         ]
-        return cli, CmdHandler(cli)
+        return cli, CmdHandler(_command_ports(cli))
 
     def test_role_is_registered(self, cmd_handler):
         assert CMD_ROLE in cmd_handler.commands
@@ -722,15 +735,15 @@ class TestHandleRetry:
     def test_retry_delegates_to_cli(self):
         cli = MagicMock()
         cli.console = MagicMock()
-        handler = CmdHandler(cli)
+        handler = CmdHandler(_command_ports(cli))
 
         assert handler.handle_command(CMD_RETRY) is True
-        cli._retry_last_turn.assert_called_once()
+        cli.retry_last_turn.assert_called_once()
 
     def test_retry_without_snapshot_support_is_friendly(self):
         cli = MagicMock(spec=["console"])
         cli.console = MagicMock()
-        handler = CmdHandler(cli)
+        handler = CmdHandler(_command_ports(cli))
 
         assert handler.handle_retry() is True
         assert "Nothing to retry" in _printed_text(cli.console)
@@ -738,8 +751,8 @@ class TestHandleRetry:
     def test_retry_failure_does_not_escape(self):
         cli = MagicMock()
         cli.console = MagicMock()
-        cli._retry_last_turn.side_effect = RuntimeError("boom")
-        handler = CmdHandler(cli)
+        cli.retry_last_turn.side_effect = RuntimeError("boom")
+        handler = CmdHandler(_command_ports(cli))
 
         assert handler.handle_retry() is True
         assert "Retry failed: boom" in _printed_text(cli.console)
@@ -843,7 +856,7 @@ def isolated_command_routes(mock_cli):
             name: stack.enter_context(patch.object(CmdHandler, name, return_value=True))
             for name in {handler for _, handler, _ in _COMMAND_ROUTES}
         }
-        yield CmdHandler(mock_cli), handlers
+        yield CmdHandler(_command_ports(mock_cli)), handlers
 
 
 class TestFrozenCommandContract:
@@ -948,10 +961,51 @@ class TestHistoryCommandsRefreshPromptState:
                 ChatMessage(role="assistant", content=f"answer {index}"),
             ]
         cli.chat.history = history
-        cli._last_turn_snapshot = {"input": "old", "images": [], "history": []}
-        handler = CmdHandler(cli)
+        cli.sessions.retry_snapshot = {"input": "old", "images": [], "history": []}
+        handler = CmdHandler(_command_ports(cli))
 
         assert handler.handle_command(f"{CMD_COMPACT} 1") is True
 
-        cli._update_context_percent.assert_called_once()
+        cli.refresh_context_percent.assert_called_once()
+        assert cli.sessions.retry_snapshot is None
+
+
+class TestRealCommandServiceState:
+    """Named command ports mutate the actual application's single state."""
+
+    def test_model_switch_invalidates_actual_client_and_keeps_history(self, monkeypatch):
+        from yaicli.cli import CLI
+        from yaicli.config import cfg
+
+        monkeypatch.setitem(cfg, "MODEL", "before-model")
+        existing_client = object()
+        cli = CLI(client=existing_client)
+        cli.console = MagicMock()
+        cli.chat.add_message("user", "keep this history")
+        history = cli.chat.history
+        assert cli.active_client is existing_client
+
+        assert cli.cmd_handler.handle_model("/model after-model") is True
+
+        assert cfg["MODEL"] == "after-model"
+        assert cli.active_client is None
+        assert cli.chat.history is history
+        assert cli.chat.history[0].content == "keep this history"
+
+    def test_clear_forgets_actual_retry_snapshot_and_keeps_shared_chat(self):
+        from yaicli.cli import CLI
+
+        cli = CLI(client=object())
+        cli.console = MagicMock()
+        cli.current_mode = CHAT_MODE
+        cli.chat.add_message("user", "old turn")
+        chat = cli.chat
+        cli._remember_turn_for_retry("retry me")
+        assert cli.sessions.retry_snapshot["input"] == "retry me"
+
+        assert cli.cmd_handler.handle_clear() is True
+
+        assert cli.chat is chat is cli.sessions.chat
+        assert cli.chat.history == []
+        assert cli.sessions.retry_snapshot is None
         assert cli._last_turn_snapshot is None

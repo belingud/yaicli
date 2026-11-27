@@ -6,7 +6,7 @@
 
 ## Background
 
-依赖第一阶段 11-27-command-tool-boundaries 合并到 master。基线证据：cli.py:162、676、873、1328、1724、2046、2313；cmd_handler.py:551、849、866、1130；plan_mode.py:1、526；plan_store.py。见父任务研究笔记。
+依赖第一阶段 11-27-command-tool-boundaries 验收提交 b7d3ce4，已完成 3152 项完整测试及独立审查。用户于 2026-11-27 授权自主完成全部阶段，现调整为同分支顺序提交、最终统一 PR。基线证据：cli.py:162、676、873、1328、1724、2046、2313；cmd_handler.py 中的命令实现；plan_mode.py、plan_store.py。见父任务研究笔记。
 
 第一阶段的工具及命令入口为本阶段提供接缝；本阶段不同时改变会话配置及计划状态的所有权，该项由第三阶段负责。
 
@@ -43,4 +43,4 @@ Save this chat with /save before using checkpoints.
 
 ## Dependencies and status
 
-当前为 planning。第一阶段未合并前不得启动；合并后先刷新本任务的设计、源文件锚点和上下文清单，确认拆分范围未扩大，再提交当阶段最终摘要供用户批准。
+用户已授权实施；以第一阶段验收提交为基线，核对设计和上下文后启动。只实施本 PRD 的职责提取，不提前改变第三阶段的状态所有权；所有阶段验收后统一 PR，合并仍需用户明确确认。

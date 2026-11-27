@@ -8,10 +8,13 @@ import json
 import os
 import stat
 from types import SimpleNamespace
+
 import pytest
 
-from yaicli import const, plan_mode
+from yaicli import const
 from yaicli.config import cfg
+from yaicli.planning import editor as plan_editor
+from yaicli.planning import service as plan_mode
 from yaicli.tools import set_plan_tool_mode
 
 
@@ -546,7 +549,7 @@ class TestLifecycle:
                 handle.write(text.replace("Add the flag", "Add the --dry-run flag"))
             return SimpleNamespace(returncode=0)
 
-        monkeypatch.setattr(plan_mode.subprocess, "run", fake_run)
+        monkeypatch.setattr(plan_editor.subprocess, "run", fake_run)
         ok, error = plan_mode.edit_plan_file(target)
         assert ok is True
         assert error == ""
@@ -563,7 +566,7 @@ class TestLifecycle:
                 handle.write("broken")
             return SimpleNamespace(returncode=0)
 
-        monkeypatch.setattr(plan_mode.subprocess, "run", fake_run)
+        monkeypatch.setattr(plan_editor.subprocess, "run", fake_run)
         ok, error = plan_mode.edit_plan_file(target)
         assert ok is False
         assert "invalid plan file" in error
@@ -572,7 +575,7 @@ class TestLifecycle:
         def fake_run(argv, check=False):
             raise FileNotFoundError("no such editor")
 
-        monkeypatch.setattr(plan_mode.subprocess, "run", fake_run)
+        monkeypatch.setattr(plan_editor.subprocess, "run", fake_run)
         ok, error = plan_mode.edit_plan_file(plan_state.tmp_path / "x.md")
         assert ok is False
         assert "cannot open editor" in error

@@ -1,5 +1,3 @@
-import json
-import os
 import subprocess
 import sys
 import time
@@ -12,6 +10,10 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
 
+from .application.output import TOOL_DENIED_MARKERS as TOOL_DENIED_MARKERS
+from .application.output import MachineOutput
+from .application.session import SessionController
+from .application.state import RunState
 from .chat import Chat, FileChatManager, chat_mgr, resolve_default_chat_dir
 from .cmd_handler import COMMAND_INFO, CmdHandler
 from .config import cfg
@@ -31,18 +33,15 @@ from .const import (
 )
 from .context import ContextManager, ctx_mgr
 from .errors import (
-    EXIT_ERROR,
     EXIT_OK,
-    EXIT_SIGINT,
-    EXIT_TOOL_DENIED,
     ErrorKind,
     classify_exception,
 )
-from .exceptions import ChatLoadError, ChatSaveError, YaicliError
+from .exceptions import ChatSaveError, YaicliError
 from .printer import Printer
 from .project_context import load_project_context
 from .role import Role, RoleManager, role_mgr
-from .schemas import ChatMessage, ImageData, RefreshLive, ToolPolicy
+from .schemas import ChatMessage, ImageData, ToolPolicy
 from .tokens import (
     estimate_context_usage,
     resolve_context_budget,
@@ -50,7 +49,6 @@ from .tokens import (
     trim_oldest_group,
 )
 from .tools.approval import ToolApprovalManager
-from .usage import Usage, estimate_cost
 from .utils import detect_os, detect_shell, filter_command
 
 #: Lazily imported prompt_toolkit / LLM-client names (K08).
@@ -129,21 +127,20 @@ def _llm_client_class() -> Any:
 
 def _plan_mode_module() -> Any:
     """Import the plan-mode state machine on first use (K23; normal path stays import-free)."""
-    from . import plan_mode
+    from .planning import service
 
-    return plan_mode
+    return service
 
 
 def _plan_store_module() -> Any:
     """Import the stdlib-only plan store on first use (K23)."""
-    from . import plan_store
+    from .planning import store
 
-    return plan_store
+    return store
 
 
 OUTPUT_FORMATS = ("text", "json", "stream-json")
 #: Content of the in-band tool result the client appends when a tool call is denied.
-TOOL_DENIED_MARKERS = ("declined to execute", "tool_denied")
 
 #: v0.24 K23: bounded plan-execution loop (turns that may make no todo progress).
 PLAN_MAX_EXECUTION_TURNS = 20
@@ -164,48 +161,28 @@ class CLI:
         "verbose",
         # ----- v0.19 headless state contract (public; entry.py maps it) -----
         #: True when a human terminal UI is available (TTY stdin+stdout, not -p).
-        "interactive",
         #: Process exit code resolved by the CLI for a non-chat run.
-        "exit_code",
         #: A handled LLM/tool failure occurred (maps to exit 1).
-        "had_error",
         #: The run/turn was interrupted by SIGINT (maps to exit 130).
-        "interrupted",
         #: The tool-call depth limit was reached (maps to exit 1 when configured).
-        "depth_limit_reached",
         #: At least one tool call was denied in this run (maps to exit 3 with
         #: --fail-on-tool-denied).
-        "tool_denied",
         #: Last handled error (kind + message) for JSON output.
-        "error_kind",
-        "error_message",
         #: Final assistant answer of the last turn (JSON ``content``).
-        "last_content",
         #: Tool calls/results of the last turn (JSON ``tool_calls``).
-        "tool_calls",
         # ---- headless run options (set by entry.CLI.configure_headless) ----
-        "print_mode",
-        "output_format",
-        "quiet",
-        "resume",
-        "yes",
-        "allowed_tools",
-        "fail_on_tool_denied",
-        "max_turns",
-        "cwd",
         #: True when stdout must contain only results/events (pipe, -p, -q, json).
-        "machine_output",
-        "init_role",
-        "role_name",
-        "console",
-        "chat_manager",
+        "_console",
+        "_run_state",
+        "_output",
+        "_sessions",
+        "_planning",
         "role_manager",
         "role",
         "printer",
         "_client",
         "cmd_handler",
         "bindings",
-        "current_mode",
         "interactive_round",
         #: K02: one-shot flag so the group-trim notice is printed at most once.
         "_trim_notified",
@@ -214,28 +191,17 @@ class CLI:
         "_project_context_text",
         #: last-known context usage percentage for the REPL status/usage line (updated
         #: once per turn / history-mutating command; display code must never estimate).
-        "_context_percent",
         #: history + input + images of the last turn, used by ``/retry``.
-        "_last_turn_snapshot",
         #: Text typed while the assistant was generating (Ctrl+O watcher); used as
         #: the initial prompt buffer for the next input.
         "_pending_prompt_text",
-        "chat_start_time",
-        "is_temp_session",
-        "chat",
-        "chat_history_dir",
         "session",
         "history",
         "context_manager",
         # ---- v0.24 K23 persistent plan mode (lazily configured) ----
         #: The shared PlanSession (``None`` until plan mode is first used).
-        "plan_session",
         #: ``--plan`` headless flag (one-shot planning run).
-        "plan_requested",
         #: Plan submitted by a ``--plan`` run (JSON output: plan/plan_path/revision).
-        "_plan_output_plan",
-        "_checkpoint_worker",
-        "_checkpoint_capture",
     )
 
     def __init__(
@@ -250,6 +216,9 @@ class CLI:
         output_format: str = DEFAULT_OUTPUT_FORMAT,
         quiet: bool = False,
     ):
+        self._run_state = RunState()
+        self._output = MachineOutput(cfg, self._run_state, lambda: getattr(self, "_client", None))
+        self._planning = None
         self.verbose: bool = verbose
         # Set when a handled LLM/API failure occurs; single-shot mode turns it into
         # a non-zero process exit (the REPL only prints and continues).
@@ -288,11 +257,11 @@ class CLI:
         # In machine/headless runs all diagnostics go to stderr; stdout is reserved
         # for the final result/events.
         self.console = get_console() if not self.machine_output else get_error_console()
-        self.chat_manager = chat_manager or chat_mgr
-        if chat_manager is None and hasattr(self.chat_manager, "chat_dir"):
+        manager = chat_manager or chat_mgr
+        if chat_manager is None and hasattr(manager, "chat_dir"):
             # ``--cwd`` may have changed the process cwd after import: re-resolve
             # the per-project session directory (v0.21 K13).
-            self.chat_manager.chat_dir = resolve_default_chat_dir()
+            manager.chat_dir = resolve_default_chat_dir()
         self.role_manager = role_manager or role_mgr
         self.context_manager = context_manager or ctx_mgr
         self.role: Role = self.role_manager.get_role(self.role_name)
@@ -306,6 +275,9 @@ class CLI:
             # machine mode every diagnostic (verbose request dumps, error bodies) must
             # use stderr, so re-point the client *and* its provider console here.
             self._sync_client_console()
+        self._sessions = SessionController(
+            cfg, manager, self._run_state, self.console, history_changed=self._update_context_percent
+        )
         self.cmd_handler = CmdHandler(self)
 
         # Created lazily by prepare_chat_loop()/_setup_key_bindings(); prompt_toolkit is
@@ -363,6 +335,356 @@ class CLI:
         self.plan_session = None
         self.plan_requested = False
         self._plan_output_plan = None
+
+    @property
+    def interactive(self):
+        return self.run_state.interactive
+
+    @interactive.setter
+    def interactive(self, value):
+        self.run_state.interactive = value
+
+    @property
+    def print_mode(self):
+        return self.run_state.print_mode
+
+    @print_mode.setter
+    def print_mode(self, value):
+        self.run_state.print_mode = value
+
+    @property
+    def output_format(self):
+        return self.run_state.output_format
+
+    @output_format.setter
+    def output_format(self, value):
+        self.run_state.output_format = value
+
+    @property
+    def quiet(self):
+        return self.run_state.quiet
+
+    @quiet.setter
+    def quiet(self, value):
+        self.run_state.quiet = value
+
+    @property
+    def machine_output(self):
+        return self.run_state.machine_output
+
+    @machine_output.setter
+    def machine_output(self, value):
+        self.run_state.machine_output = value
+
+    @property
+    def yes(self):
+        return self.run_state.yes
+
+    @yes.setter
+    def yes(self, value):
+        self.run_state.yes = value
+
+    @property
+    def allowed_tools(self):
+        return self.run_state.allowed_tools
+
+    @allowed_tools.setter
+    def allowed_tools(self, value):
+        self.run_state.allowed_tools = value
+
+    @property
+    def fail_on_tool_denied(self):
+        return self.run_state.fail_on_tool_denied
+
+    @fail_on_tool_denied.setter
+    def fail_on_tool_denied(self, value):
+        self.run_state.fail_on_tool_denied = value
+
+    @property
+    def max_turns(self):
+        return self.run_state.max_turns
+
+    @max_turns.setter
+    def max_turns(self, value):
+        self.run_state.max_turns = value
+
+    @property
+    def cwd(self):
+        return self.run_state.cwd
+
+    @cwd.setter
+    def cwd(self, value):
+        self.run_state.cwd = value
+
+    @property
+    def resume(self):
+        return self.run_state.resume
+
+    @resume.setter
+    def resume(self, value):
+        self.run_state.resume = value
+
+    @property
+    def init_role(self):
+        return self.run_state.init_role
+
+    @init_role.setter
+    def init_role(self, value):
+        self.run_state.init_role = value
+
+    @property
+    def role_name(self):
+        return self.run_state.role_name
+
+    @role_name.setter
+    def role_name(self, value):
+        self.run_state.role_name = value
+
+    @property
+    def current_mode(self):
+        return self.run_state.current_mode
+
+    @current_mode.setter
+    def current_mode(self, value):
+        self.run_state.current_mode = value
+
+    @property
+    def plan_requested(self):
+        return self.run_state.plan_requested
+
+    @plan_requested.setter
+    def plan_requested(self, value):
+        self.run_state.plan_requested = value
+
+    @property
+    def exit_code(self):
+        return self._output.result.exit_code
+
+    @exit_code.setter
+    def exit_code(self, value):
+        self._output.result.exit_code = value
+
+    @property
+    def had_error(self):
+        return self._output.result.had_error
+
+    @had_error.setter
+    def had_error(self, value):
+        self._output.result.had_error = value
+
+    @property
+    def interrupted(self):
+        return self._output.result.interrupted
+
+    @interrupted.setter
+    def interrupted(self, value):
+        self._output.result.interrupted = value
+
+    @property
+    def depth_limit_reached(self):
+        return self._output.result.depth_limit_reached
+
+    @depth_limit_reached.setter
+    def depth_limit_reached(self, value):
+        self._output.result.depth_limit_reached = value
+
+    @property
+    def tool_denied(self):
+        return self._output.result.tool_denied
+
+    @tool_denied.setter
+    def tool_denied(self, value):
+        self._output.result.tool_denied = value
+
+    @property
+    def error_kind(self):
+        return self._output.result.error_kind
+
+    @error_kind.setter
+    def error_kind(self, value):
+        self._output.result.error_kind = value
+
+    @property
+    def error_message(self):
+        return self._output.result.error_message
+
+    @error_message.setter
+    def error_message(self, value):
+        self._output.result.error_message = value
+
+    @property
+    def last_content(self):
+        return self._output.result.last_content
+
+    @last_content.setter
+    def last_content(self, value):
+        self._output.result.last_content = value
+
+    @property
+    def tool_calls(self):
+        return self._output.result.tool_calls
+
+    @tool_calls.setter
+    def tool_calls(self, value):
+        self._output.result.tool_calls = value
+
+    @property
+    def chat_manager(self):
+        return self._sessions.chat_manager
+
+    @chat_manager.setter
+    def chat_manager(self, value):
+        self._sessions.chat_manager = value
+
+    @property
+    def chat_start_time(self):
+        return self._sessions.chat_start_time
+
+    @chat_start_time.setter
+    def chat_start_time(self, value):
+        self._sessions.chat_start_time = value
+
+    @property
+    def is_temp_session(self):
+        return self._sessions.is_temp_session
+
+    @is_temp_session.setter
+    def is_temp_session(self, value):
+        self._sessions.is_temp_session = value
+
+    @property
+    def chat(self):
+        return self._sessions.chat
+
+    @chat.setter
+    def chat(self, value):
+        self._sessions.chat = value
+
+    @property
+    def chat_history_dir(self):
+        return self._sessions.chat_history_dir
+
+    @chat_history_dir.setter
+    def chat_history_dir(self, value):
+        self._sessions.chat_history_dir = value
+
+    @property
+    def _last_turn_snapshot(self):
+        return self._sessions.retry_snapshot
+
+    @_last_turn_snapshot.setter
+    def _last_turn_snapshot(self, value):
+        self._sessions.retry_snapshot = value
+
+    @property
+    def _checkpoint_capture(self):
+        return self._sessions.capture
+
+    @_checkpoint_capture.setter
+    def _checkpoint_capture(self, value):
+        self._sessions.capture = value
+
+    @property
+    def _context_percent(self):
+        return self.run_state.context_percent
+
+    @_context_percent.setter
+    def _context_percent(self, value):
+        self.run_state.context_percent = value
+
+    @property
+    def _checkpoint_worker(self):
+        return self._sessions.worker
+
+    @_checkpoint_worker.setter
+    def _checkpoint_worker(self, value):
+        self._sessions.worker = value
+
+    @property
+    def _plan_output_plan(self):
+        return self._output.plan_output
+
+    @_plan_output_plan.setter
+    def _plan_output_plan(self, value):
+        self._output.plan_output = value
+
+    @property
+    def run_state(self):
+        """Shared run options; also usable by a bare prompt-only CLI instance."""
+        state = getattr(self, "_run_state", None)
+        if state is None:
+            state = self._run_state = RunState()
+        return state
+
+    @property
+    def console(self):
+        return self._console
+
+    @console.setter
+    def console(self, value):
+        self._console = value
+        sessions = getattr(self, "_sessions", None)
+        if sessions is not None:
+            sessions.console = value
+        planning = getattr(self, "_planning", None)
+        if planning is not None:
+            planning.console = value
+
+    @property
+    def sessions(self):
+        return self._sessions
+
+    @property
+    def output(self):
+        return self._output
+
+    @property
+    def planning(self):
+        if self._planning is None:
+            from .planning.coordinator import PlanCoordinator, PlanTurns
+
+            self._planning = PlanCoordinator(
+                cfg,
+                self.sessions,
+                self._run_state,
+                self.output,
+                self.console,
+                lambda: self.printer,
+                PlanTurns(
+                    lambda text: self._process_user_input(text),
+                    lambda text: self._run_once(text),
+                    self.set_role,
+                    self._sync_client_plan_session,
+                ),
+            )
+        return self._planning
+
+    @property
+    def plan_session(self):
+        coordinator = getattr(self, "_planning", None)
+        return coordinator.plan_session if coordinator is not None else None
+
+    @plan_session.setter
+    def plan_session(self, value):
+        if value is not None or self._planning is not None:
+            self.planning.plan_session = value
+
+    @property
+    def active_client(self):
+        """Return an existing client without constructing one."""
+        return self._client
+
+    def invalidate_client(self):
+        self._client = None
+
+    def refresh_context_percent(self):
+        self._update_context_percent()
+
+    def clear_retry_snapshot(self):
+        self.sessions.clear_retry_snapshot()
+
+    def retry_last_turn(self):
+        return self._retry_last_turn()
 
     @property
     def client(self):
@@ -508,126 +830,40 @@ class CLI:
         self._sync_client_console()
 
     def _emit_event(self, event: Dict[str, Any]) -> None:
-        """Write one stream-json event (one JSON object per line) to stdout."""
-        if self.output_format != "stream-json":
-            return
-        sys.stdout.write(json.dumps(event, ensure_ascii=False, default=str) + "\n")
-        sys.stdout.flush()
+        return self.output.emit_event(event)
 
     def _write_text_result(self, content: Optional[str]) -> None:
-        """Write the final text answer to stdout with exactly one trailing newline."""
-        if not self.machine_output or self.output_format != "text" or content is None:
-            return
-        if content == "":
-            return
-        sys.stdout.write(content.rstrip("\n") + "\n")
-        sys.stdout.flush()
+        return self.output.write_text_result(content)
 
     @staticmethod
     def _parse_arguments(arguments: Any) -> Any:
-        """Best-effort JSON decoding of tool-call arguments for structured output."""
-        if isinstance(arguments, str):
-            try:
-                return json.loads(arguments)
-            except (ValueError, TypeError):
-                return arguments
-        return arguments
+        return MachineOutput.parse_arguments(arguments)
 
     def _record_error(self, exc: BaseException) -> None:
-        """Store a classified error for JSON output/stderr rendering."""
-        try:
-            agent_error = classify_exception(exc)
-            self.error_kind = agent_error.kind
-            self.error_message = agent_error.message or str(exc)
-        except Exception:  # pragma: no cover - classifier must never break the CLI
-            self.error_kind = ErrorKind.UNKNOWN
-            self.error_message = str(exc)
+        return self.output.record_error(exc)
 
     def _error_payload(self) -> Optional[Dict[str, Any]]:
-        """The JSON ``error`` field: ``null`` on success, ``{kind, message}``."""
-        if not self.error_message:
-            return None
-        kind = self.error_kind.value if isinstance(self.error_kind, ErrorKind) else str(self.error_kind)
-        return {"kind": kind, "message": self.error_message}
+        return self.output.error_payload()
 
     # ------------------- v0.22 K17 usage / cost -------------------
     @staticmethod
     def _usage_dict_int(usage: Optional[Dict[str, Any]], key: str) -> int:
-        """Read a non-negative integer field from a usage snapshot (never raises)."""
-        if not isinstance(usage, dict):
-            return 0
-        value = usage.get(key, 0)
-        if isinstance(value, bool) or not isinstance(value, int):
-            return 0
-        return max(0, value)
+        return MachineOutput.usage_dict_int(usage, key)
 
     def _client_usage_snapshot(self) -> Optional[Dict[str, Any]]:
-        """Return the live client's session usage snapshot, or ``None``.
-
-        The private client slot is used on purpose: emitting a result or a usage
-        line must never construct the LLM client as a side effect. Any missing
-        client/API degrades to ``None`` instead of breaking output.
-        """
-        client = getattr(self, "_client", None)
-        if client is None:
-            return None
-        snapshot = getattr(client, "usage_snapshot", None)
-        if not callable(snapshot):
-            return None
-        try:
-            data = snapshot()
-        except Exception:  # pragma: no cover - usage reporting must never break the CLI
-            return None
-        return data if isinstance(data, dict) else None
+        return self.output.client_usage_snapshot()
 
     def _usage_payload(self) -> Dict[str, Any]:
-        """The JSON ``usage`` object: real session usage or a zeroed fallback."""
-        snapshot = self._client_usage_snapshot()
-        if snapshot is not None:
-            return snapshot
-        return {
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
-            "total_tokens": 0,
-            "cached_tokens": 0,
-            "reasoning_tokens": 0,
-            "estimated": False,
-            "requests": 0,
-            "cost_usd": None,
-            "models": {},
-            "tools": {"count": 0, "duration_ms": 0.0, "result_chars": 0},
-        }
+        return self.output.usage_payload()
 
     def _turn_finish_reason(self) -> Optional[str]:
-        """Last provider ``finish_reason`` (only when the client exposed a string)."""
-        client = getattr(self, "_client", None)
-        if client is None:
-            return None
-        try:
-            value = getattr(client, "last_finish_reason", None)
-        except Exception:  # pragma: no cover
-            return None
-        return value if isinstance(value, str) else None
+        return self.output.turn_finish_reason()
 
     def _turn_output_truncated(self) -> bool:
-        """True when the last turn stopped at MAX_TOKENS (``finish_reason=length``)."""
-        client = getattr(self, "_client", None)
-        if client is None:
-            return False
-        try:
-            if getattr(client, "output_truncated", False) is True:
-                return True
-        except Exception:  # pragma: no cover
-            pass
-        return self._turn_finish_reason() == "length"
+        return self.output.turn_output_truncated()
 
-    @staticmethod
-    def _show_usage_enabled() -> bool:
-        """Whether the interactive per-turn usage line is enabled (``SHOW_USAGE``)."""
-        try:
-            return bool(cfg.get("SHOW_USAGE", True))
-        except Exception:  # pragma: no cover - config lookups must never break a turn
-            return True
+    def _show_usage_enabled(self) -> bool:
+        return self.output.show_usage_enabled()
 
     def _format_usage_line(
         self,
@@ -636,974 +872,132 @@ class CLI:
         elapsed_seconds: float,
         finish_reason: Optional[str],
     ) -> Optional[str]:
-        """Build the dim per-turn status line (``model · context 12% · tokens … · 1.2s``).
-
-        It carries the session status the REPL prompt used to show: current model,
-        cached context usage, then this turn's tokens/cost/time/finish reason.
-        ``before``/``after`` are session snapshots; the difference is this turn's
-        usage. Returns ``None`` when no usage data is available at all (graceful
-        degrade); unknown model pricing simply omits the cost segment.
-        """
-        if not isinstance(after, dict):
-            return None
-        prompt = max(0, self._usage_dict_int(after, "prompt_tokens") - self._usage_dict_int(before, "prompt_tokens"))
-        completion = max(
-            0, self._usage_dict_int(after, "completion_tokens") - self._usage_dict_int(before, "completion_tokens")
-        )
-        parts: List[str] = []
-        model = self._prompt_model_name()
-        if model:
-            parts.append(model)
-        percent = getattr(self, "_context_percent", None)
-        if isinstance(percent, (int, float)) and not isinstance(percent, bool):
-            parts.append(f"context {max(0.0, float(percent)):.0f}%")
-        if prompt or completion:
-            parts.append(f"tokens {prompt:,} in / {completion:,} out")
-            try:
-                model = str(cfg.get("MODEL") or "")
-                cost = estimate_cost(model, Usage(prompt, completion, prompt + completion), cfg)
-            except Exception:  # pragma: no cover - cost display must never break a turn
-                cost = None
-            if cost is not None:
-                parts.append(f"${cost:.4f}")
-        else:
-            parts.append("tokens n/a")
-        parts.append(f"{max(0.0, elapsed_seconds):.1f}s")
-        if finish_reason:
-            parts.append(str(finish_reason))
-        return " · ".join(parts)
+        return self.output.format_usage_line(before, after, elapsed_seconds, finish_reason)
 
     def _build_result(self) -> Dict[str, Any]:
-        """The single JSON object emitted by ``--output-format json``."""
-        result: Dict[str, Any] = {
-            "content": self.last_content or "",
-            "tool_calls": [
-                {"name": call.get("name", ""), "arguments": call.get("arguments"), "result": call.get("result")}
-                for call in self.tool_calls
-            ],
-            "usage": self._usage_payload(),
-            "finish_reason": self._turn_finish_reason(),
-            "model": cfg.get("MODEL", ""),
-            "provider": cfg.get("PROVIDER", ""),
-            "error": self._error_payload(),
-            "exit_code": self.exit_code,
-        }
-        # v0.24 K23: only ``--plan`` runs add the planning payload, so the normal
-        # headless JSON key set stays exactly as documented.
-        plan = getattr(self, "_plan_output_plan", None)
-        if plan is not None or getattr(self, "plan_requested", False):
-            try:
-                result["plan"] = plan.to_dict() if plan is not None else None
-            except Exception:  # pragma: no cover - serialization must never break output
-                result["plan"] = None
-            path = getattr(plan, "path", None) if plan is not None else None
-            result["plan_path"] = str(path) if path is not None else None
-            result["revision"] = getattr(plan, "revision", None) if plan is not None else None
-        return result
+        return self.output.build_result()
 
     def _record_tool_calls(self, messages: Optional[List[ChatMessage]]) -> None:
-        """Extract tool calls/results of the last user turn from the client messages.
-
-        The client mutates the message list in place (no client.py changes needed):
-        assistant messages carry ``tool_calls`` and the following ``role=tool``
-        messages carry the matching results via ``tool_call_id``.
-        """
-        calls: List[Dict[str, Any]] = []
-        if not messages:
-            self.tool_calls = calls
-            return
-        last_user = -1
-        for index, message in enumerate(messages):
-            if getattr(message, "role", None) == "user":
-                last_user = index
-        pending: Dict[str, Dict[str, Any]] = {}
-        for message in messages[last_user + 1 :]:
-            role = getattr(message, "role", None)
-            if role == "assistant":
-                for tool_call in getattr(message, "tool_calls", None) or []:
-                    entry: Dict[str, Any] = {
-                        "name": getattr(tool_call, "name", ""),
-                        "arguments": self._parse_arguments(getattr(tool_call, "arguments", None)),
-                        "result": None,
-                    }
-                    calls.append(entry)
-                    call_id = getattr(tool_call, "id", None)
-                    if call_id:
-                        pending[call_id] = entry
-            elif role == "tool":
-                content = message.content or ""
-                if self._is_denied_result(content):
-                    self.tool_denied = True
-                entry = pending.pop(getattr(message, "tool_call_id", None) or "", None)
-                if entry is not None and entry.get("result") is None:
-                    entry["result"] = content
-                else:
-                    calls.append(
-                        {
-                            "name": getattr(message, "name", None) or "",
-                            "arguments": None,
-                            "result": content,
-                        }
-                    )
-        self.tool_calls = calls
+        return self.output.record_tool_calls(messages)
 
     @staticmethod
     def _is_denied_result(content: str) -> bool:
-        """True when a tool result represents a denied tool call."""
-        lowered = (content or "").lower()
-        return any(marker in lowered for marker in TOOL_DENIED_MARKERS)
+        return MachineOutput.is_denied_result(content)
 
     def _emit_tool_events_from(self, messages: List[ChatMessage], cursor: int) -> int:
-        """Emit stream-json tool_call/tool_result events for messages[cursor:]."""
-        if self.output_format != "stream-json":
-            return len(messages)
-        for message in messages[cursor:]:
-            role = getattr(message, "role", None)
-            if role == "assistant":
-                for tool_call in getattr(message, "tool_calls", None) or []:
-                    self._emit_event(
-                        {
-                            "type": "tool_call",
-                            "name": getattr(tool_call, "name", ""),
-                            "arguments": self._parse_arguments(getattr(tool_call, "arguments", None)),
-                        }
-                    )
-            elif role == "tool":
-                content = message.content or ""
-                if self._is_denied_result(content):
-                    self.tool_denied = True
-                self._emit_event(
-                    {
-                        "type": "tool_result",
-                        "name": getattr(message, "name", None) or "",
-                        "result": content,
-                    }
-                )
-        return len(messages)
+        return self.output.emit_tool_events_from(messages, cursor)
 
     def _instrument_tool_events(self, stream_iterator, messages: List[ChatMessage]):
-        """Tee the LLM stream so stream-json tool events are emitted per round.
-
-        ``RefreshLive`` marks the end of a completion round; the client executes the
-        tools when the generator is resumed, so new messages are inspected right
-        after the next chunk arrives (or when the stream ends).
-        """
-        cursor = len(messages)
-
-        def _forward():
-            nonlocal cursor
-            send_value = None
-            boundary_pending = False
-            while True:
-                try:
-                    if send_value is None:
-                        chunk = next(stream_iterator)
-                    else:
-                        chunk = stream_iterator.send(send_value)
-                except StopIteration:
-                    cursor = self._emit_tool_events_from(messages, cursor)
-                    return
-                send_value = None
-                if boundary_pending:
-                    cursor = self._emit_tool_events_from(messages, cursor)
-                    boundary_pending = False
-                if isinstance(chunk, RefreshLive):
-                    boundary_pending = True
-                try:
-                    send_value = yield chunk
-                except GeneratorExit:  # pragma: no cover - consumer stopped early
-                    return
-
-        return _forward()
+        return self.output.instrument_tool_events(stream_iterator, messages)
 
     def _finalize_exit_code(self) -> int:
-        """Resolve the process exit code from the public state contract."""
-        if self.interrupted:
-            self.exit_code = EXIT_SIGINT
-        elif self.tool_denied and self.fail_on_tool_denied:
-            self.exit_code = EXIT_TOOL_DENIED
-        elif self.had_error:
-            self.exit_code = EXIT_ERROR
-        elif self.depth_limit_reached and cfg.get("EXIT_ON_DEPTH_LIMIT", True):
-            self.exit_code = EXIT_ERROR
-        else:
-            self.exit_code = EXIT_OK
-        return self.exit_code
+        return self.output.finalize_exit_code()
 
     def _finalize_headless(self) -> int:
-        """Emit the final structured output (json/stream-json) and resolve the code."""
-        self._finalize_exit_code()
-        if self.exit_code != EXIT_OK and not self.error_message:
-            # Describe flag-only outcomes (depth limit / denied tool) so JSON and
-            # stream-json consumers never see a non-zero code with a null error.
-            if self.depth_limit_reached:
-                self.error_kind = ErrorKind.DEPTH_LIMIT
-                self.error_message = "tool-call depth limit reached"
-            elif self.tool_denied and self.fail_on_tool_denied:
-                self.error_kind = ErrorKind.TOOL
-                self.error_message = "a tool call was denied"
-        if self.output_format == "json":
-            payload = json.dumps(self._build_result(), ensure_ascii=False, default=str)
-            sys.stdout.write(payload + "\n")
-            sys.stdout.flush()
-        elif self.output_format == "stream-json":
-            usage_event: Dict[str, Any] = {"type": "usage", **self._usage_payload()}
-            finish_reason = self._turn_finish_reason()
-            if finish_reason is not None:
-                usage_event["finish_reason"] = finish_reason
-            self._emit_event(usage_event)
-            self._emit_event(
-                {
-                    "type": "done",
-                    "exit_code": self.exit_code,
-                    "error": self._error_payload(),
-                }
-            )
-        return self.exit_code
+        return self.output.finalize_headless()
 
     # ------------------- v0.24 K23 persistent plan mode -------------------
-    @staticmethod
-    def _plan_enabled() -> bool:
-        """Whether persistent plan mode is enabled (``PLAN_ENABLED``; defaults on)."""
-        try:
-            return bool(cfg.get("PLAN_ENABLED", True))
-        except Exception:  # pragma: no cover - config lookups must never break the REPL
-            return True
+    def _plan_enabled(self) -> bool:
+        return self.planning.plan_enabled()
 
     def _get_plan_session(self) -> Any:
-        """Return the shared :class:`PlanSession`, configuring it on first use.
-
-        Imports plan_mode/plan_store lazily so a normal (non-plan) run never pays
-        those imports, and mirrors the session's mode into the tool schema filter
-        and the (lazily created) LLM client.
-        """
-        session = getattr(self, "plan_session", None)
-        if session is not None:
-            return session
-        plan_mode = _plan_mode_module()
-        plan_store = _plan_store_module()
-        from .const import get_config_dir
-
-        session = plan_mode.get_plan_session()
-        session.configure(
-            plans_root=plan_store.plans_root(str(cfg.get("PLAN_DIR") or ""), get_config_dir()),
-            cwd=Path.cwd(),
-            model=str(cfg.get("MODEL") or ""),
-            session_id=str(getattr(self.chat, "date", "") or ""),
-            max_steps=int(cfg.get("PLAN_MAX_STEPS", 20)),
-            keep=int(cfg.get("PLAN_KEEP", 80)),
-            allow_readonly_shell=bool(cfg.get("PLAN_ALLOW_READONLY_SHELL", True)),
-        )
-        self.plan_session = session
-        self._sync_plan_tool_mode()
-        return session
+        return self.planning.get_plan_session()
 
     def _sync_plan_tool_mode(self) -> None:
-        """Mirror the plan-session mode into the global tool schema filter."""
-        session = getattr(self, "plan_session", None)
-        state = getattr(session, "mode", None) if session is not None else None
-        if state in ("researching", "revising"):
-            target = "plan"
-        elif state == "executing":
-            target = "execution"
-        else:
-            target = None
-        try:
-            from . import tools as _tools
-
-            setter = getattr(_tools, "set_plan_tool_mode", None)
-            if callable(setter):
-                setter(target)
-        except Exception:  # pragma: no cover - tool plumbing must never break a turn
-            pass
-        self._sync_client_plan_session()
+        return self.planning.sync_plan_tool_mode()
 
     def _plan_files_location(self) -> str:
-        """Human-readable plans root (``PLAN_DIR`` or ``<config-dir>/plans``)."""
-        try:
-            configured = str(cfg.get("PLAN_DIR") or "").strip()
-            if configured:
-                return str(Path(configured).expanduser())
-            from .const import get_config_dir
-
-            return str(get_config_dir() / "plans")
-        except Exception:  # pragma: no cover - banner must never break
-            return "the config directory"
+        return self.planning.plan_files_location()
 
     def _shorten_plan_path(self, path: Any) -> str:
-        """Render a plan path with the home directory abbreviated (best-effort)."""
-        try:
-            return _plan_store_module().shorten_path(path)
-        except Exception:  # pragma: no cover
-            return str(path)
+        return self.planning.shorten_plan_path(path)
 
     def _persist_chat_plan(self, data: Any) -> None:
-        """Store one session-plan payload on the chat and save it best-effort (K23)."""
-        try:
-            changed = self.chat.plan != (data if isinstance(data, dict) else {})
-            self.chat.plan = dict(data) if isinstance(data, dict) else {}
-        except Exception:  # pragma: no cover - legacy chat objects
-            return
-        if getattr(self, "is_temp_session", True):
-            return
-        try:
-            if getattr(self.chat, "path", None):
-                self.chat.save(self.chat_history_dir)
-        except Exception:  # pragma: no cover - best-effort persistence only
-            pass
-        if changed:
-            self._checkpoint_reset()
+        return self.planning.persist_chat_plan(data)
 
     def _sync_chat_plan(self, session: Any = None) -> None:
-        """Store the plan pointer/todos in the chat and save it best-effort (K23)."""
-        session = session if session is not None else getattr(self, "plan_session", None)
-        if session is None:
-            return
-        try:
-            data = session.to_session_dict()
-        except Exception:  # pragma: no cover - session serialization must never break a turn
-            return
-        self._persist_chat_plan(data)
+        return self.planning.sync_chat_plan(session)
 
     def _toggle_plan_mode(self) -> None:
-        """Toggle normal <-> plan mode (``Shift+Tab`` and bare ``/plan``).
-
-        From exec mode this first returns to chat (``/mode`` owns chat/exec).
-        REVIEWING cancels the pending submission; researching/revising leaves plan
-        mode; a session with an in-progress plan enters revising, otherwise
-        exploring. ``PLAN_ENABLED=false`` only prints a one-line notice.
-        """
-        if not self._plan_enabled():
-            self.console.print("plan mode is disabled (PLAN_ENABLED=false)", style="dim")
-            return
-        session = self._get_plan_session()
-        if getattr(self, "current_mode", None) == EXEC_MODE:
-            self.current_mode = CHAT_MODE
-            self.set_role(self.init_role)
-        if getattr(session, "is_reviewing", False):
-            self._cancel_plan_review()
-            return
-        if getattr(session, "is_plan_mode", False):
-            session.cancel_draft()
-            self._sync_plan_tool_mode()
-            self._sync_chat_plan(session)
-            self.console.print("plan mode off", style="dim")
-            return
-        if getattr(session, "active_plan", None) is not None:
-            session.enter_revising()
-            self.console.print("[plan] revising (read-only) …", style="dim")
-        else:
-            session.enter_researching()
-            self.console.print("[plan] exploring (read-only) …", style="dim")
-        self.console.print("plan mode · read-only", style="dim")
-        self._sync_plan_tool_mode()
-        self._sync_chat_plan(session)
+        return self.planning.toggle_plan_mode()
 
     @staticmethod
     def _discard_revision(session: Any) -> None:
         """Drop the pending revision draft and return to execution (if any)."""
-        plan_mode = _plan_mode_module()
-        session.cancel_draft()
-        if getattr(session, "active_plan", None) is not None:
-            try:
-                plan_mode.resume_plan(session)
-            except Exception:  # pragma: no cover - state machine handles this
-                pass
+        from .planning.coordinator import PlanCoordinator
+
+        PlanCoordinator.discard_revision(session)
 
     def _cancel_plan_review(self) -> None:
-        """Cancel a pending plan submission without approving it."""
-        session = getattr(self, "plan_session", None)
-        if session is None:  # pragma: no cover - defensive
-            return
-        if getattr(session, "revision_base", None) is not None:
-            self._discard_revision(session)
-            self._sync_plan_tool_mode()
-            self._sync_chat_plan(session)
-            self.console.print("revision discarded", style="dim")
-            return
-        plan = getattr(session, "draft_plan", None)
-        path = getattr(plan, "path", None) if plan is not None else None
-        # Capture the draft pointer before cancel_draft() clears it: a saved draft
-        # is still an unfinished plan, so --resume must be able to advertise it.
-        try:
-            snapshot = session.to_session_dict()
-        except Exception:  # pragma: no cover - serialization must never break exit
-            snapshot = {}
-        session.cancel_draft()
-        self._sync_plan_tool_mode()
-        self._persist_chat_plan(snapshot)
-        if path:
-            self.console.print(
-                f"plan cancelled; draft saved at {safe_text(self._shorten_plan_path(path))}", style="dim"
-            )
-        else:  # pragma: no cover - a submitted plan always has a path
-            self.console.print("plan cancelled", style="dim")
+        return self.planning.cancel_plan_review()
 
     def _warn_plan_reply_without_plan(self) -> None:
-        """One-line hint when a plan-mode turn answered in text without using tools.
-
-        A plan-mode request is not a normal chat request: the model is supposed to
-        research with the read-only tools and finish with ``submit_plan``. Weak or
-        prompt-dropping provider paths can still produce a plain answer (e.g. code
-        in the terminal); surface that instead of pretending a plan exists.
-        """
-        session = getattr(self, "plan_session", None)
-        if session is None or not getattr(session, "is_plan_mode", False):
-            return
-        if self.tool_calls:
-            return
-        if getattr(self, "machine_output", False):
-            return
-        mode = str(getattr(session, "mode", ""))
-        try:
-            _plan_mode_module().plan_audit("no_plan_submitted", mode=mode)
-        except Exception:  # pragma: no cover - audit is best-effort
-            pass
-        self.console.print(
-            "[plan] no plan submitted — this turn answered in text without using tools; "
-            "ask again to research and submit a plan, or press Shift+Tab to leave plan mode.",
-            style="yellow",
-        )
+        return self.planning.warn_plan_reply_without_plan()
 
     def _after_plan_turn(self) -> None:
-        """Hook run after each REPL turn: persist plan state and open the panel.
-
-        Headless ``--plan`` runs also call this to persist the submitted plan, but
-        they never open the approval panel (the caller only saves the draft).
-        """
-        session = getattr(self, "plan_session", None)
-        if session is None:
-            return
-        self._sync_chat_plan(session)
-        if getattr(session, "mode", None) != "reviewing":
-            return
-        if getattr(self, "plan_requested", False):
-            return
-        if not getattr(self, "interactive", False):
-            return
-        self._handle_plan_review_panel()
+        return self.planning.after_plan_turn()
 
     @staticmethod
     def _next_todo_id(session: Any) -> str:
         """First todo that is not completed (``S1`` fallback); used in re-plan output."""
-        for todo in getattr(session, "todos", None) or []:
-            if getattr(todo, "status", "") != "completed":
-                return str(getattr(todo, "id", "") or "")
-        plan = getattr(session, "active_plan", None) or getattr(session, "draft_plan", None)
-        steps = getattr(plan, "steps", None) or []
-        return str(getattr(steps[0], "id", "")) if steps else ""
+        from .planning.coordinator import PlanCoordinator
+
+        return PlanCoordinator.next_todo_id(session)
 
     @staticmethod
     def _attach_todo_impact(session: Any) -> None:
         """Attach the todo-impact text to the session diff for the printer (K23)."""
-        diff = getattr(session, "diff", None)
-        if diff is None or getattr(diff, "todo_impact_text", ""):
-            return
-        try:
-            diff.todo_impact_text = diff.todo_impact(session.todos)
-        except Exception:  # pragma: no cover - display detail only
-            pass
+        from .planning.coordinator import PlanCoordinator
+
+        PlanCoordinator.attach_todo_impact(session)
 
     def _confirm_plan_approval_policy(self, session: Any) -> bool:
-        """Ask before executing an approved plan when ``TOOL_POLICY=readonly``."""
-        try:
-            policy = str(cfg.get("TOOL_POLICY", "standard") or "").lower()
-        except Exception:  # pragma: no cover
-            policy = "standard"
-        if policy != "readonly":
-            return True
-        try:
-            answer = Prompt.ask(
-                "current TOOL_POLICY=readonly would deny writes; switch to standard?",
-                default="n",
-            )
-        except (KeyboardInterrupt, EOFError):
-            return False
-        if str(answer or "").strip().lower() in ("y", "yes"):
-            try:
-                cfg["TOOL_POLICY"] = "standard"
-            except Exception:  # pragma: no cover - read-only config objects
-                pass
-            return True
-        return False
+        return self.planning.confirm_plan_approval_policy(session)
 
     def _edit_plan_from_panel(self, session: Any, plan: Any) -> bool:
-        """Open ``$EDITOR`` on the draft plan, re-validate it and refresh the panel."""
-        plan_mode = _plan_mode_module()
-        plan_store = _plan_store_module()
-        target = None
-        try:
-            if getattr(session, "revision_base", None) is not None:
-                target = plan_mode.write_plan_editor_draft(session, plan)
-            else:
-                target = getattr(plan, "path", None)
-            if target is None:  # pragma: no cover - defensive
-                self.console.print("cannot open editor; plan unchanged", style="yellow")
-                return False
-            ok, error = plan_mode.edit_plan_file(Path(target))
-        except Exception as exc:  # pragma: no cover - editor failures are best-effort
-            self.console.print(f"cannot open editor; plan unchanged: {safe_text(exc)}", style="yellow")
-            return False
-        try:
-            if not ok:
-                self.console.print(f"invalid plan file: {safe_text(target)}: {safe_text(error)}", style="red")
-                return False
-            parsed = plan_store.read_plan(Path(target))
-            if getattr(session, "revision_base", None) is not None:
-                parsed.path = getattr(plan, "path", None)
-                session.draft_plan = parsed
-                session.diff = plan_mode.diff_plans(session.revision_base, parsed)
-            else:
-                session.draft_plan = parsed
-        except Exception as exc:
-            self.console.print(f"invalid plan file: {safe_text(target)}: {safe_text(exc)}", style="red")
-            return False
-        finally:
-            if getattr(session, "revision_base", None) is not None:
-                try:
-                    Path(target).unlink(missing_ok=True)
-                except Exception:  # pragma: no cover - temp cleanup only
-                    pass
-        self._sync_chat_plan(session)
-        return True
+        return self.planning.edit_plan_from_panel(session, plan)
 
     def _handle_plan_review_panel(self) -> None:
-        """Show the plan/approval panel and act on the user's decision (K23)."""
-        session = self._get_plan_session()
-        plan_mode = _plan_mode_module()
-        while True:
-            plan = getattr(session, "draft_plan", None)
-            if plan is None:  # pragma: no cover - defensive
-                session.cancel_draft()
-                self._sync_plan_tool_mode()
-                return
-            is_revision = getattr(session, "revision_base", None) is not None
-            self._attach_todo_impact(session)
-            try:
-                self.printer.show_plan_panel(plan, revision=is_revision, diff=getattr(session, "diff", None))
-            except Exception:  # pragma: no cover - display must never block approval
-                pass
-            decision = self.printer.ask_plan_decision(revision=is_revision)
-
-            if decision == "edit":
-                self._edit_plan_from_panel(session, plan)
-                continue
-            if decision == "redo":
-                session.cancel_draft()
-                if getattr(session, "active_plan", None) is not None:
-                    session.enter_revising()
-                else:
-                    session.enter_researching()
-                self._sync_plan_tool_mode()
-                self._sync_chat_plan(session)
-                self.console.print("[plan] keep planning — send a new message to revise the plan.", style="dim")
-                return
-            if decision == "approve":
-                if not self._confirm_plan_approval_policy(session):
-                    continue  # stay in REVIEWING
-                if is_revision:
-                    result = plan_mode.apply_revision(session)
-                    revision = result.get("revision") if isinstance(result, dict) else None
-                    if revision is None:
-                        active = getattr(session, "active_plan", None)
-                        revision = getattr(active, "revision", getattr(plan, "revision", 0))
-                    resume_at = result.get("resuming_at", "") if isinstance(result, dict) else ""
-                    if not resume_at:
-                        resume_at = self._next_todo_id(session)
-                    self.console.print(
-                        f"✓ revision {safe_text(revision)} applied · plan.md updated in place · "
-                        f"resuming execution at {safe_text(resume_at)}",
-                        style="green",
-                    )
-                else:
-                    plan_mode.approve_new_plan(session)
-                    step_count = len(getattr(plan, "steps", None) or [])
-                    self.console.print(
-                        f"✓ plan approved · exiting plan mode · todo seeded ({step_count} steps)",
-                        style="green",
-                    )
-                self._sync_chat_plan(session)
-                self._sync_plan_tool_mode()
-                try:
-                    step_count = len(getattr(session, "todos", None) or [])
-                except Exception:  # pragma: no cover - defensive
-                    step_count = 0
-                self.console.print(
-                    f"[plan] executing approved plan ({step_count} steps)… todo progress below; Ctrl-C pauses.",
-                    style="dim",
-                )
-                self._execute_plan()
-                return
-
-            # save / cancel (and any unknown decision)
-            path = getattr(plan, "path", None)
-            if is_revision:
-                self._discard_revision(session)
-                self._sync_plan_tool_mode()
-                self._sync_chat_plan(session)
-                self.console.print("revision discarded", style="dim")
-                return
-            # A saved (or cancelled) first plan keeps its draft file: capture the
-            # pointer before cancel_draft() clears it so --resume can hint it.
-            try:
-                snapshot = session.to_session_dict()
-            except Exception:  # pragma: no cover - serialization must never break exit
-                snapshot = {}
-            session.cancel_draft()
-            self._sync_plan_tool_mode()
-            self._persist_chat_plan(snapshot)
-            path_text = safe_text(self._shorten_plan_path(path)) if path else "(unknown path)"
-            if decision == "save":
-                self.console.print(f"✓ saved as draft ({path_text}) · exit plan mode", style="dim")
-                self.console.print(
-                    "Use /plan resume to review and execute this plan later.",
-                    style="dim",
-                )
-            else:
-                self.console.print(f"plan cancelled; draft saved at {path_text}", style="dim")
-                self.console.print(
-                    "Use /plan resume to review and execute this plan later.",
-                    style="dim",
-                )
-            return
+        return self.planning.handle_plan_review_panel()
 
     def _pause_plan_execution(self, plan_mode: Any, session: Any) -> None:
-        """Pause the execution loop, keep the todos and print the resume hint."""
-        try:
-            plan_mode.pause_plan(session)
-        except Exception:  # pragma: no cover - state machine handles this
-            pass
-        self._sync_plan_tool_mode()
-        self._sync_chat_plan(session)
-        try:
-            completed, total = session.todo_progress()
-        except Exception:  # pragma: no cover
-            completed = total = 0
-        self.console.print(
-            f"[plan] execution paused at {completed}/{total} steps · /plan resume to continue · /plan abort to abandon",
-            style="dim",
-        )
+        return self.planning.pause_plan_execution(plan_mode, session)
 
     def _execute_plan(self) -> None:
-        """Run the approved plan with bounded synthetic turns until all todos are done.
-
-        Every turn is a hidden instruction (kickoff then continue); the model drives
-        progress via ``todo_write``. Ctrl-C pauses (todos kept); two turns without
-        todo progress also pause instead of burning the whole turn budget.
-        """
-        session = getattr(self, "plan_session", None)
-        if session is None:  # pragma: no cover - defensive
-            return
-        plan_mode = _plan_mode_module()
-        turns = no_progress = 0
-        try:
-            while turns < PLAN_MAX_EXECUTION_TURNS and not session.all_todos_completed():
-                before = session.todo_snapshot()
-                instruction = PLAN_KICKOFF_INSTRUCTION if turns == 0 else PLAN_CONTINUE_INSTRUCTION
-                try:
-                    self._process_user_input(instruction)
-                except KeyboardInterrupt:
-                    raise
-                turns += 1
-                if session.todo_snapshot() == before and not session.all_todos_completed():
-                    no_progress += 1
-                else:
-                    no_progress = 0
-                if no_progress >= 2:
-                    break
-            if session.all_todos_completed():
-                try:
-                    completed, total = session.todo_progress()
-                except Exception:  # pragma: no cover
-                    completed = total = 0
-                plan_mode.finish_plan(session)
-                self._sync_plan_tool_mode()
-                self.console.print(f"✓ plan done · {completed}/{total} steps", style="green")
-                self._sync_chat_plan(session)
-            else:
-                self._pause_plan_execution(plan_mode, session)
-        except KeyboardInterrupt:
-            self._pause_plan_execution(plan_mode, session)
+        return self.planning.execute_plan()
 
     def _run_headless_plan(self, user_input: str) -> None:
-        """One-shot ``--plan`` run: explore read-only, save the submitted plan, exit.
-
-        Never executes anything: the plan is written in ``draft`` status and the
-        JSON/text output describes it. A model that never calls ``submit_plan``
-        ends with ``plan_not_submitted`` (exit 1).
-        """
-        plan_mode = _plan_mode_module()
-        session = self._get_plan_session()
-        session.enter_researching()
-        self._sync_plan_tool_mode()
-        self._emit_event({"type": "plan_start"})
-        try:
-            self._run_once(user_input)
-        finally:
-            self._after_plan_turn()
-        plan = getattr(session, "draft_plan", None)
-        if plan is None:
-            self.had_error = True
-            self.error_kind = ErrorKind.PLAN_NOT_SUBMITTED
-            self.error_message = "plan mode ended: model did not submit a plan"
-            get_error_console().print(self.error_message, style="red")
-        else:
-            self._plan_output_plan = plan
-            try:
-                plan_mode.plan_audit("headless_saved", plan_id=plan.id, revision=plan.revision)
-            except Exception:  # pragma: no cover - audit is best-effort
-                pass
-            self._emit_event(
-                {
-                    "type": "plan_ready",
-                    "steps": len(getattr(plan, "steps", None) or []),
-                    "path": str(getattr(plan, "path", "") or ""),
-                    "revision": getattr(plan, "revision", 1),
-                }
-            )
-            if self.output_format == "text" and not self.quiet:
-                try:
-                    markdown = plan.to_markdown()
-                except Exception:  # pragma: no cover - rendering must never break the run
-                    markdown = ""
-                if markdown:
-                    sys.stdout.write(markdown.rstrip("\n") + "\n")
-                    sys.stdout.flush()
-        session.cancel_draft()
-        self._sync_plan_tool_mode()
-        self._finalize_headless()
+        return self.planning.run_headless_plan(user_input)
 
     def _plan_store_context(self) -> tuple:
-        """Return ``(plan_store, plans_root, project_key, cwd)`` for disk access."""
-        plan_store = _plan_store_module()
-        from .const import get_config_dir
-
-        root = plan_store.plans_root(str(cfg.get("PLAN_DIR") or ""), get_config_dir())
-        cwd = Path.cwd()
-        return plan_store, root, plan_store.project_key(cwd), cwd
+        return self.planning.plan_store_context()
 
     def _find_plan_from_disk(self, plan_id: Optional[str] = None) -> Any:
-        """Find the current-session plan or a plan file by id (``None`` when missing)."""
-        session = getattr(self, "plan_session", None)
-        plan_store, root, project_key, _ = self._plan_store_context()
-        if not plan_id:
-            if session is not None:
-                plan = getattr(session, "active_plan", None) or getattr(session, "draft_plan", None)
-                if plan is not None:
-                    return plan
-            try:
-                return plan_store.find_latest_unfinished(root, project_key)
-            except Exception:  # pragma: no cover - corrupt store degrades to "not found"
-                return None
-        try:
-            plan = plan_store.find_plan(root, plan_id, project_key=project_key)
-            if plan is None:
-                plan = plan_store.find_plan(root, plan_id)  # --all-style cross-project lookup
-            return plan
-        except Exception:  # pragma: no cover - corrupt plan files are skipped
-            return None
+        return self.planning.find_plan_from_disk(plan_id)
 
     def _list_plans_from_disk(self, all_projects: bool = False) -> list:
-        """List this project's plans (or all projects') sorted by ``updated`` desc."""
-        plan_store, root, project_key, _ = self._plan_store_context()
-        try:
-            return plan_store.list_plans(root, None if all_projects else project_key)
-        except Exception:  # pragma: no cover - listing must never crash the REPL
-            return []
+        return self.planning.list_plans_from_disk(all_projects)
 
     def _clear_plans_from_disk(self, done_only: bool = False) -> list:
-        """Delete plan files of this project (terminal ones only when ``done_only``)."""
-        plan_store, root, project_key, _ = self._plan_store_context()
-        try:
-            return plan_store.clear_plans(root, project_key, done_only=done_only)
-        except Exception:  # pragma: no cover
-            return []
+        return self.planning.clear_plans_from_disk(done_only)
 
     def _review_plan_from_disk(self, plan_id: Optional[str] = None) -> bool:
-        """Open a draft plan from disk in the approval panel (non-drafts are printed)."""
-        session = self._get_plan_session()
-        plan_mode = _plan_mode_module()
-        plan = self._find_plan_from_disk(plan_id)
-        if plan is None:
-            if plan_id:
-                self.console.print(f"plan not found: {safe_text(plan_id)}", style="yellow")
-            else:
-                self.console.print("no plan in this session", style="yellow")
-            return False
-        if getattr(plan, "status", None) != "draft":
-            self.console.print(Markdown(plan.to_markdown(), code_theme=cfg["CODE_THEME"]))
-            return True
-        session.active_plan = None
-        session.todos = []
-        session.revision_base = None
-        session.diff = None
-        session.draft_plan = plan
-        try:
-            session.mode = plan_mode.PlanMode.REVIEWING
-        except Exception:  # pragma: no cover - mode is a plain string attribute too
-            session.mode = "reviewing"
-        self._sync_chat_plan(session)
-        self._handle_plan_review_panel()
-        return True
+        return self.planning.review_plan_from_disk(plan_id)
 
     def _resume_plan_from_disk(self, plan_id: Optional[str] = None) -> bool:
-        """Resume a draft (panel) or in-progress (execution) plan from disk."""
-        session = self._get_plan_session()
-        plan_mode = _plan_mode_module()
-        plan = self._find_plan_from_disk(plan_id)
-        if plan is None:
-            if plan_id:
-                self.console.print(f"plan not found: {safe_text(plan_id)}", style="yellow")
-            else:
-                self.console.print("no plan in this session", style="yellow")
-            return False
-        status = str(getattr(plan, "status", "") or "")
-        if status == "draft":
-            return self._review_plan_from_disk(getattr(plan, "id", None))
-        if status != "in-progress":
-            self.console.print(
-                f"plan {safe_text(getattr(plan, 'id', ''))} is {safe_text(status)}; nothing to resume",
-                style="yellow",
-            )
-            return True
-        plan_session_id = str(getattr(plan, "session_id", "") or "")
-        chat_session_id = str(getattr(self.chat, "date", "") or "")
-        if plan_session_id and chat_session_id and plan_session_id != chat_session_id:
-            self.console.print("plan is already in progress in another session", style="yellow")
-            return False
-        current = getattr(session, "active_plan", None)
-        if current is None or getattr(current, "id", None) != getattr(plan, "id", None):
-            session.active_plan = plan
-            try:
-                session.todos = plan_mode.seed_todos(plan)
-            except Exception:  # pragma: no cover - state machine handles todos
-                session.todos = []
-        try:
-            resumed = plan_mode.resume_plan(session)
-        except Exception:  # pragma: no cover
-            resumed = False
-        if not resumed:
-            self.console.print("plan is already in progress in another session", style="yellow")
-            return False
-        self._sync_plan_tool_mode()
-        self._sync_chat_plan(session)
-        self._execute_plan()
-        return True
+        return self.planning.resume_plan_from_disk(plan_id)
 
     def _prepare_plan_task(self, task: str) -> Optional[str]:
-        """Enter plan mode for ``/plan <task>`` and return the task as the next turn."""
-        if not self._plan_enabled():
-            self.console.print("plan mode is disabled (PLAN_ENABLED=false)", style="dim")
-            return None
-        session = self._get_plan_session()
-        if getattr(session, "is_reviewing", False):
-            self.console.print("a plan is waiting for review; approve or cancel it first", style="yellow")
-            return None
-        if not getattr(session, "is_plan_mode", False):
-            self._toggle_plan_mode()
-        return task
+        return self.planning.prepare_plan_task(task)
 
     def _abort_current_plan(self) -> bool:
-        """Abort the active plan (status aborted, todos cleared); False when none."""
-        session = getattr(self, "plan_session", None)
-        if session is None:
-            return False
-        if getattr(session, "active_plan", None) is None:
-            return False
-        plan_mode = _plan_mode_module()
-        try:
-            plan_mode.abort_plan(session)
-        except Exception as exc:  # pragma: no cover - state machine should not fail
-            self.console.print(f"failed to abort plan: {safe_text(exc)}", style="red")
-            return False
-        self._sync_plan_tool_mode()
-        self._sync_chat_plan(session)
-        self.console.print("plan aborted · todos cleared", style="green")
-        return True
+        return self.planning.abort_current_plan()
 
     def _edit_current_plan(self) -> Optional[bool]:
-        """Edit the current plan file in ``$EDITOR``; ``None`` = no plan in session."""
-        session = self._get_plan_session()
-        plan_mode = _plan_mode_module()
-        plan_store = _plan_store_module()
-        plan = (
-            getattr(session, "draft_plan", None) or getattr(session, "active_plan", None) or self._find_plan_from_disk()
-        )
-        if plan is None:
-            return None
-        path = getattr(plan, "path", None)
-        if path is None:  # pragma: no cover - a persisted plan always has a path
-            return False
-        try:
-            ok, error = plan_mode.edit_plan_file(path)
-        except Exception as exc:  # pragma: no cover - editor failures are best-effort
-            self.console.print(f"cannot open editor; plan unchanged: {safe_text(exc)}", style="yellow")
-            return False
-        if not ok:
-            self.console.print(f"invalid plan file: {safe_text(path)}: {safe_text(error)}", style="red")
-            return False
-        if getattr(session, "draft_plan", None) is not None:
-            try:
-                session.draft_plan = plan_store.read_plan(path)
-            except Exception as exc:
-                self.console.print(f"invalid plan file: {safe_text(path)}: {safe_text(exc)}", style="red")
-                return False
-            self._sync_chat_plan(session)
-        return True
+        return self.planning.edit_current_plan()
 
     def _restore_plan_from_session(self) -> None:
-        """Restore the plan pointer of a resumed/loaded chat (always in NORMAL mode).
-
-        ``--resume`` never re-enters plan mode: an unfinished plan only prints a
-        two-line hint telling the user which explicit command continues it. Broken
-        or stale pointers are dropped with one stderr notice.
-        """
-        plan_data = getattr(self.chat, "plan", None)
-        if not isinstance(plan_data, dict) or not plan_data:
-            return
-        session = self._get_plan_session()
-        plan_mode = _plan_mode_module()
-        _, root, _, cwd = self._plan_store_context()
-        try:
-            detail = session.restore_from_session(
-                plan_data,
-                session_id=str(getattr(self.chat, "date", "") or ""),
-                plans_root=root,
-                cwd=cwd,
-            )
-        except Exception:  # pragma: no cover - restore is defensive by contract
-            detail = "saved plan not found/inconsistent; starting in normal mode"
-        if detail is not None:
-            get_error_console().print(str(detail), style="yellow")
-            try:
-                self.chat.plan = {}
-            except Exception:  # pragma: no cover - legacy chat objects
-                pass
-            session.reset()
-            self._sync_plan_tool_mode()
-            return
-        plan = getattr(session, "active_plan", None) or getattr(session, "draft_plan", None)
-        # Restoring never enables plan mode; tool filtering stays in normal mode.
-        self._sync_plan_tool_mode()
-        self._sync_chat_plan(session)
-        if plan is None:
-            return
-        try:
-            plan_mode.plan_audit("resume_hint", plan_id=plan.id, status=plan.status)
-        except Exception:  # pragma: no cover - audit is best-effort
-            pass
-        if getattr(plan, "status", "") == "draft":
-            self.console.print(
-                f"  ⚠ unfinished plan found: {safe_text(plan.id)} (draft, revision {plan.revision})",
-                style="yellow",
-            )
-            self.console.print("  Use /plan review to continue it, or /plan list to see all plans.", style="dim")
-        else:
-            self.console.print(
-                f"  ⚠ unfinished plan found: {safe_text(plan.id)} (in-progress, revision {plan.revision})",
-                style="yellow",
-            )
-            self.console.print("  Use /plan resume to continue it, or /plan list to see all plans.", style="dim")
+        return self.planning.restore_plan_from_session()
 
     def set_role(self, role_name: str) -> None:
         self.role_name = role_name
@@ -1722,224 +1116,36 @@ class CLI:
 
     # ------------------- Chat Command Methods -------------------
     def _save_chat(self, title: Union[str, None] = None) -> None:
-        """Serialize a saved checkpoint identity before replacing its chat file."""
-        lock = None
-        try:
-            store = self._checkpoint_store() if self.chat.checkpoint_session_id else None
-            if store is not None:
-                lock = store.session_lock()
-                if not lock.acquire():
-                    raise OSError("Workspace is busy. Try again when its file operations finish.")
-                store._fresh(store._load())
-            old_path = self.chat.path
-            if store is not None and title and title != self.chat.title:
-                self.chat.path = None
-            self._save_chat_inner(title)
-            if store is not None and self.chat.path != old_path:
-                data = store._load()
-                data["session_path"] = str(self.chat.path.resolve())
-                store._save(data)
-                if old_path is not None:
-                    old_path.unlink(missing_ok=True)
-        except Exception as exc:
-            get_error_console().print(safe_text(f"Failed to save chat: {exc}"), markup=False)
-            return
-        finally:
-            if lock is not None:
-                lock.release()
-        self._checkpoint_reset(only_if_new=True)
+        return self.sessions.save_chat(title)
 
     def _save_chat_inner(self, title: Union[str, None] = None) -> None:
-        """Save current chat history to a file using session manager."""
-        # Update title if provided
-        if title:
-            self.chat.title = title
-        if not cfg.get("CHECKPOINT_ENABLED", True):
-            self.chat.checkpoint_head = -1
-
-        # v0.21 K13: persist model/provider/role/cwd/created_at/updated_at.
-        try:
-            self._apply_session_metadata(self.chat)
-        except AttributeError:
-            # Legacy/bare Chat-like object (tests/integrations): keep saving it.
-            pass
-
-        # Save chat and get the saved title back
-        try:
-            saved_title = self.chat_manager.save_chat(self.chat)
-        except ChatSaveError as e:
-            self.console.print(f"Failed to save chat: {safe_text(e)}", style="red")
-            return
-
-        # Session list will be refreshed automatically by the save method
-        self.console.print(f"Chat saved as: {safe_text(saved_title)}", style="bold green")
-
-        # Mark session as persistent if it was temporary
-        if self.is_temp_session:
-            self.is_temp_session = False
-            self.chat_start_time = int(time.time())
-            self.console.print(
-                "Session is now marked as persistent and will be auto-saved on exit.", style="bold green"
-            )
+        return self.sessions.save_chat_inner(title)
 
     def _list_chats(self) -> None:
-        """List all saved chat sessions using session manager."""
-        chats: list[Chat] = self.chat_manager.list_chats()
-
-        if not chats:
-            self.console.print("No saved chats found.", style="yellow")
-            return
-
-        self.console.print("Saved Chats:", style="bold underline")
-        for chat in chats:
-            index = chat.idx
-            title = chat.title
-            date = chat.date
-
-            if date:
-                self.console.print(
-                    f"[dim]{safe_text(index)}.[/dim] [bold blue]{safe_text(title)}[/bold blue] - {safe_text(date)}"
-                )
-            else:
-                self.console.print(f"[dim]{safe_text(index)}.[/dim] [bold blue]{safe_text(title)}[/bold blue]")
+        return self.sessions.list_chats()
 
     def _refresh_chats(self) -> None:
-        """Force refresh the chat list."""
-        self.chat_manager.refresh_chats()
+        return self.sessions.refresh_chats()
 
     def _load_chat_by_index(self, index: str) -> bool:
-        """Load a chat session by its index using session manager."""
-        if not self.chat_manager.validate_chat_index(index):
-            self.console.print("Invalid chat index.", style="bold red")
-            return False
-
-        chat_data = self.chat_manager.load_chat_by_index(index)
-
-        if not chat_data:
-            self.console.print("Invalid chat index or chat not found.", style="bold red")
-            return False
-
-        self.chat = chat_data
-        self.chat_start_time = chat_data.date
-        self.is_temp_session = False
-        # the loaded conversation has its own turn history — forget the old
-        # /retry snapshot and refresh the prompt's context percentage immediately.
-        self._last_turn_snapshot = None
-        self._update_context_percent()
-
-        self.console.print(f"Loaded chat: {safe_text(self.chat.title)}", style="bold green")
-        return True
+        return self.sessions.load_chat_by_index(index)
 
     def _delete_chat_by_index(self, index: str) -> bool:
-        """Delete a chat session by its index using session manager."""
-        if not self.chat_manager.validate_chat_index(index):
-            self.console.print("Invalid chat index.", style="bold red")
-            return False
-
-        chat_data = self.chat_manager.load_chat_by_index(index)
-
-        if not chat_data:
-            self.console.print("Invalid chat index or chat not found.", style="bold red")
-            return False
-
-        if chat_data.path is None:
-            self.console.print(f"Chat has no associated file to delete: {safe_text(chat_data.title)}", style="bold red")
-            return False
-
-        if self.chat_manager.delete_chat(chat_data.path):
-            self.console.print(f"Deleted chat: {safe_text(chat_data.title)}", style="bold green")
-            return True
-        else:
-            self.console.print(f"Failed to delete chat: {safe_text(chat_data.title)}", style="bold red")
-            return False
+        return self.sessions.delete_chat_by_index(index)
 
     # ------------------- Session metadata / resume (v0.21 K13) -------------------
     def _apply_session_metadata(self, chat: Chat) -> None:
-        """Record model/provider/role/cwd on a session before it is saved.
-
-        Resumed sessions keep their recorded values (they describe how the
-        conversation was produced); new/legacy sessions get the current config.
-        """
-        model = str(cfg.get("MODEL", "") or "")
-        provider = str(cfg.get("PROVIDER", "") or "")
-        try:
-            cwd = os.getcwd()
-        except OSError:  # pragma: no cover - deleted cwd
-            cwd = ""
-        if not chat.model:
-            chat.model = model
-        if not chat.provider:
-            chat.provider = provider
-        chat.role = chat.role or str(self.role_name or "")
-        if not chat.cwd:
-            chat.cwd = cwd
-        chat.update_metadata()
+        return self.sessions.apply_session_metadata(chat)
 
     @staticmethod
     def _session_notice(chat: Chat) -> str:
-        """One-line description of a resumed session (title + recorded metadata)."""
-        model = chat.model or "unknown"
-        provider = chat.provider or "unknown"
-        role = chat.role or "unknown"
-        return (
-            f'Resumed session "{chat.title}" '
-            f"(model={model}, provider={provider}, role={role}, messages={len(chat.history)})"
-        )
+        return SessionController.session_notice(chat)
 
     def _resume_latest_session(self) -> bool:
-        """Make the newest saved session of this project the active one (--resume).
-
-        Returns:
-            bool: True when an existing session was resumed, False when a new
-            session was started after printing an explicit notice.
-        """
-        try:
-            latest = self.chat_manager.latest_chat()
-        except ChatLoadError as e:
-            get_error_console().print(f"Could not load the latest session: {safe_text(e)}", style="yellow")
-            latest = None
-
-        if latest is None:
-            get_error_console().print(
-                "No saved session found for this project; starting a new session.",
-                style="yellow",
-            )
-            self.chat = Chat(title="", history=[])
-            self._apply_session_metadata(self.chat)
-            self.is_temp_session = True
-            return False
-
-        self.chat = latest
-        self.is_temp_session = False
-        self.chat_start_time = latest.date
-        self.console.print(self._session_notice(latest), style="bold green")
-        return True
+        return self.sessions.resume_latest_session()
 
     def _start_chat_by_title(self, title: str) -> None:
-        """Load the session named ``title`` or explicitly start a new one.
-
-        v0.21 K13: a missed title must never silently create a session; print
-        one explicit notice instead (the old behaviour made the user believe
-        they were resuming a saved conversation).
-        """
-        loaded: Optional[Chat] = None
-        try:
-            loaded = self.chat_manager.load_chat_by_title(title)
-        except ChatLoadError as e:
-            get_error_console().print(f"Could not load session '{safe_text(title)}': {safe_text(e)}", style="yellow")
-
-        if loaded is not None and loaded.path is not None:
-            self.chat = loaded
-            self.is_temp_session = False
-            self.chat_start_time = loaded.date
-            return
-
-        self.chat = loaded if loaded is not None else Chat(title=title, history=[])
-        self.is_temp_session = False
-        get_error_console().print(
-            f'No saved session titled "{safe_text(title)}" for this project; starting a new session.',
-            style="yellow",
-        )
+        return self.sessions.start_chat_by_title(title)
 
     # ------------------- Special commands -------------------
     def _handle_special_commands(self, user_input: str) -> Union[bool, str]:
@@ -2271,22 +1477,7 @@ class CLI:
         )
 
     def _remember_turn_for_retry(self, user_input: str, images: Optional[List[ImageData]] = None) -> None:
-        """Snapshot the conversation + input *before* a turn so ``/retry`` can replay it.
-
-        The snapshot is restored by :meth:`_retry_last_turn`, which drops any
-        partial/duplicated assistant or tool messages a failed turn produced
-        before sending the same input again.
-        """
-        try:
-            history = getattr(getattr(self, "chat", None), "history", None)
-            history_snapshot = list(history) if isinstance(history, list) else []
-        except (AttributeError, TypeError):  # pragma: no cover - bare/legacy CLI objects
-            history_snapshot = []
-        self._last_turn_snapshot = {
-            "input": user_input,
-            "images": list(images or []),
-            "history": history_snapshot,
-        }
+        return self.sessions.remember_turn_for_retry(user_input, images)
 
     def _retry_last_turn(self) -> bool:
         """Re-run the last user turn from its pre-turn snapshot (``/retry``).
@@ -2311,96 +1502,10 @@ class CLI:
         return self._process_user_input(user_input, images=list(images) if isinstance(images, list) else [])
 
     def _checkpoint_store(self):
-        """Resolve the current saved-chat store only for a real interactive REPL."""
-        if (
-            not self.interactive
-            or self.machine_output
-            or self.quiet
-            or self.is_temp_session
-            or self.current_mode == TEMP_MODE
-            or not cfg.get("CHECKPOINT_ENABLED", True)
-        ):
-            return None
-        import uuid
-
-        from .checkpoints import CheckpointError, CheckpointStore
-        from .const import project_sessions_key
-        from .tools.workspace import resolve_workspace_root
-
-        worker = getattr(self, "_checkpoint_worker", None)
-        if worker is not None:
-            if worker.alive:
-                raise CheckpointError("Workspace is busy. Try again when its file operations finish.")
-            capture = getattr(self, "_checkpoint_capture", None)
-            if capture is not None:
-                capture.store.abandon_turn(capture)
-            self._checkpoint_worker = None
-            self._checkpoint_capture = None
-        chat = self.chat
-        if (
-            not chat.checkpoint_session_id
-            or len(chat.checkpoint_session_id) != 32
-            or any(char not in "0123456789abcdef" for char in chat.checkpoint_session_id)
-        ):
-            chat.checkpoint_session_id = uuid.uuid4().hex
-            chat.checkpoint_head = -1
-        root = resolve_workspace_root(cfg.get("WORKSPACE_ROOT") or Path.cwd())
-        if chat.path is None:
-            self.chat_manager.save_chat(chat)
-        directory = (
-            self.chat_history_dir.resolve() / "checkpoints" / project_sessions_key() / chat.checkpoint_session_id
-        )
-        store = CheckpointStore(
-            directory,
-            root,
-            chat.checkpoint_session_id,
-            cfg.get("CHECKPOINT_KEEP", 20),
-            cfg.get("CHECKPOINT_MAX_MB", 50),
-            session_path=chat.path.resolve(),
-            expected_head=chat.checkpoint_head,
-        )
-        if not store.belongs_to_path():
-            # A copied session shares its conversation, never another file's journal.
-            chat.checkpoint_session_id = uuid.uuid4().hex
-            chat.checkpoint_head = -1
-            return self._checkpoint_store()
-        try:
-            data = store._load()
-            if chat.checkpoint_head < 0 and data["head"] >= 0 and not store.pending_path.exists():
-                chat.checkpoint_session_id = uuid.uuid4().hex
-                return self._checkpoint_store()
-        except CheckpointError as exc:
-            if (
-                str(exc)
-                not in ("Checkpoint data is corrupt.", "Checkpoint data does not match this session or workspace.")
-                or store.has_recovery()
-            ):
-                raise
-            get_error_console().print(safe_text(f"Checkpoint unavailable: {exc}"), markup=False)
-            chat.checkpoint_session_id = uuid.uuid4().hex
-            chat.checkpoint_head = -1
-            return self._checkpoint_store()
-        store.reconcile()
-        return store
+        return self.sessions.checkpoint_store()
 
     def _checkpoint_reset(self, only_if_new: bool = False) -> None:
-        capture = getattr(self, "_checkpoint_capture", None)
-        if capture is not None and not capture.finished:
-            capture.barrier = True
-            return
-        try:
-            store = self._checkpoint_store()
-            if store is None:
-                return
-            if only_if_new:
-                self.chat.checkpoint_head = store.ensure_base(self.chat.to_dict())
-            else:
-                self.chat.checkpoint_head = store.reset(self.chat.to_dict())
-            self.chat.save(self.chat_history_dir)
-            if store.warning:
-                get_error_console().print(store.warning, markup=False)
-        except Exception as exc:
-            get_error_console().print(safe_text(f"Checkpoint unavailable: {exc}"), markup=False)
+        return self.sessions.checkpoint_reset(only_if_new)
 
     def _process_user_input(self, user_input: str, images: Optional[List[ImageData]] = None) -> bool:
         """Wrap a successful persisted interactive turn in a checkpoint journal."""

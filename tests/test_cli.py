@@ -238,7 +238,7 @@ class TestSpecialCommands:
         # Just check that it was called again
         assert cli.chat_manager.save_chat.called
 
-    @patch("yaicli.cli.CLI._load_chat_by_index")
+    @patch("yaicli.application.session.SessionController.load_chat_by_index")
     def test_load_command(self, mock_load_method, cli_with_mocks):
         """Test /load command."""
         cli = cli_with_mocks
@@ -263,7 +263,7 @@ class TestSpecialCommands:
         # Should show usage message when no index is provided
         cli.console.print.assert_any_call("Usage: /load <index>", style="yellow")
 
-    @patch("yaicli.cli.CLI._delete_chat_by_index")
+    @patch("yaicli.application.session.SessionController.delete_chat_by_index")
     def test_delete_command(self, mock_delete_method, cli_with_mocks):
         """Test /delete command."""
         cli = cli_with_mocks
@@ -1513,7 +1513,8 @@ class TestCLIErrorTracking:
     """Tests for the had_error flag used by entry.main to pick a non-zero exit code."""
 
     def test_had_error_slot_initialised_false(self, cli_with_mocks):
-        assert "had_error" in CLI.__slots__
+        assert isinstance(CLI.had_error, property)
+        assert cli_with_mocks.output.result.had_error is False
         assert cli_with_mocks.had_error is False
 
     def test_handle_llm_response_failure_sets_had_error(self, cli_with_mocks):
@@ -1557,11 +1558,10 @@ class TestBackgroundGeneration:
         import time
 
         import yaicli.tools as tools_mod
+        from yaicli.printer import Printer
         from yaicli.schemas import LLMResponse
         from yaicli.stream_bridge import get_active_bridge
         from yaicli.tools import output_history
-
-        from yaicli.printer import Printer
 
         cli = cli_with_mocks
         cli.interactive = True

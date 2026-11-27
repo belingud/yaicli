@@ -2,15 +2,15 @@
 
 ## Scope and ownership
 
-父任务负责 R1—R4 的一致性和最终集成审查，不作为业务代码实现目标。每个子任务分别规划、实现、验证及合并；依赖顺序由任务文档约束，父子关系本身不代表依赖调度。
+父任务负责 R1—R4 的一致性和最终集成审查，不作为业务代码实现目标。依据用户 2026-11-27 自主完成全部重构的授权，各子任务顺序实现、验证并独立提交，最终统一 PR；依赖顺序由任务文档约束，父子关系本身不代表依赖调度。
 
 | 顺序 | 子任务 | 预期分支 | PR 目标 |
 | --- | --- | --- | --- |
 | 1 | 11-27-command-tool-boundaries | chore/refactor-command-tools | master |
-| 2 | 11-27-cli-planning-boundaries | chore/refactor-cli-planning | master |
-| 3 | 11-27-session-state-boundaries | chore/refactor-session-state | master |
+| 2 | 11-27-cli-planning-boundaries | chore/refactor-command-tools | master |
+| 3 | 11-27-session-state-boundaries | chore/refactor-command-tools | master |
 
-本次规划文档分支：chore/refactor-core-organization。子任务分支在各自实现前从更新后的 master 建立；本轮不创建这三个实现分支。
+共同实现分支为 chore/refactor-command-tools，起点为 master 的 d0cbb8f。第一阶段已提交 b7d3ce4；后续阶段从前一阶段已验收提交继续，不提前合并远端。
 
 ## Intended boundaries
 
@@ -75,6 +75,6 @@ _faststart -> entry -> CLI（应用组装、REPL、模式选择）
 
 ## Rollout / rollback
 
-每阶段独立 PR，以 merge commit 合并。CI 通过后仍需用户明确授权合并。未进入下一阶段时，可回退本阶段 PR；进入下一阶段后按 3 -> 2 -> 1 反向回退。由于没有数据迁移，回退不应要求修复用户数据。
+每阶段独立可审查提交，全部完成后统一创建 PR，记录三阶段验收证据。CI 通过后仍需用户明确授权以 merge commit 合并。未进入下一阶段时，可回退本阶段提交；进入下一阶段后按 3 -> 2 -> 1 反向回退。由于没有数据迁移，回退不应要求修复用户数据。
 
 发现现存行为缺陷时单独记录，除非属于本次重构引入的回归，否则不混入本任务修复。后续阶段若需扩大用户可见行为或兼容范围，先更新规划并重新评审。

@@ -192,7 +192,7 @@ def _mode_schema_list(
 
     base = list(schemas)
     if mode == "plan":
-        from ..plan_mode import plan_tool_allowlist
+        from ..planning.model import plan_tool_allowlist
 
         allowed = plan_tool_allowlist(plan_allows_readonly_shell())
         name_getter = _anthropic_schema_name if anthropic else _openai_schema_name

@@ -12,7 +12,7 @@
   "assignee": "belingud",
   "createdAt": "2026-11-27",
   "completedAt": null,
-  "branch": "chore/refactor-core-organization",
+  "branch": "chore/refactor-command-tools",
   "base_branch": "master",
   "worktree_path": null,
   "commit": null,

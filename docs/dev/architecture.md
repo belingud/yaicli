@@ -9,12 +9,19 @@ behaviour is documented under `docs/usage/`; coding conventions live in `CLAUDE.
 ```
 _faststart.py (thin console entry; -v/--version fast path, EPIPE-safe)
   └─ entry.py (Typer CLI; headless flags -> CLI.configure_headless, exit-code mapping)
-       └─ cli.py (CLI: mode dispatch, REPL, headless output, tool-confirmation pump)
+       └─ cli.py (CLI: assembly, mode dispatch, REPL, tool-confirmation pump)
        ├─ llms/client.py (LLMClient: provider call + tool loop + streaming)
        │    └─ llms/provider.py (ProviderFactory -> Provider)
        │         └─ llms/providers/<name>_provider.py
        ├─ commands/registry.py (one definition for dispatch, help and completion)
-       ├─ cmd_handler.py (bound command handlers and command business logic)
+       ├─ cmd_handler.py (bound handlers; named session/planning operations)
+       ├─ application/session.py (chat state, persistence and checkpoint coordination)
+       ├─ application/output.py (result state, machine events and exit mapping)
+       ├─ application/state.py (shared run options)
+       ├─ planning/coordinator.py (plan interaction and application coordination)
+       │    ├─ planning/model.py / validation.py (session models and input validation)
+       │    ├─ planning/service.py / store.py (state transitions and persistence)
+       │    └─ planning/prompt.py / editor.py (context text and editor adapter)
        ├─ tools/__init__.py (compatible public schema/execution entry points)
        │    ├─ tools/schemas.py (selection, declarations, mode and caches)
        │    ├─ tools/policy.py (permission decisions; no confirmation IO)
@@ -41,10 +48,16 @@ with the tool results.
 | --- | --- |
 | `_faststart.py` | Console entry (`ai`, `yaicli`, `python -m yaicli`); static `--version` fast path, SIGPIPE/EPIPE handling; then delegates to `entry.py`. |
 | `entry.py` | Typer app/options, stdin/image handling, headless flags, top-level error → exit-code mapping. |
-| `cli.py` | `CLI` orchestrator: temp/chat/exec modes, REPL, chat save/load, role wiring, machine output (`json`/`stream-json`), exit-code state contract. |
+| `cli.py` | Application assembly, temp/chat/exec dispatch, REPL, role wiring and generation/terminal lifecycle; compatible public properties delegate to the underlying state. |
+| `application/session.py` | `SessionController`: one chat state, save/load/resume and checkpoint storage coordination, using the actual injected chat manager's directory. |
+| `application/output.py` | `MachineOutput`/`ResultState`: result payloads, tool events, usage, errors and exit mapping; serialization does not eagerly construct a provider. |
+| `application/state.py` | `RunState`: shared interaction/mode options, without a reference back to the CLI. |
+| `planning/` | Models, validation, persistence, state operations, prompt formatting and editor adapter; `PlanCoordinator` connects them to session/output services and a small set of terminal lifecycle operations. |
+| `plan_mode.py` / `plan_store.py` | Explicit compatibility exports for the planning implementation; no duplicate model classes or plan state. Product imports use `planning/`. |
 | `errors.py` | `ErrorKind`/`AgentError`, exception classification, retry helpers, `EXIT_*` constants. |
 | `commands/registry.py` | Immutable command metadata: handler name, aliases, help and argument policy; generates dispatch metadata and slash completions. |
 | `cmd_handler.py` | Binds registry entries to command methods; slash command business logic and `!shell`; preserves existing metadata/constant exports. |
+| `commands/session.py` / `planning.py` / `runtime.py` | Session, plan and model/role/retry command groups use named services and operations; their business logic does not reach into CLI private state. |
 | `config.py` | Layered `cfg` singleton: env > `config.ini` > defaults; type conversion. |
 | `const.py` | Defaults (`DEFAULT_CONFIG_MAP`), paths, commands/modes, default roles. |
 | `console.py` | `YaiConsole` singleton, stderr console for machine mode, EPIPE-safe broken-pipe handling, untrusted-text helpers. |
@@ -100,9 +113,11 @@ command) are the only runtime modes. `--code` is not a runtime mode: it selects 
 
 Command registration and tool execution remain separate boundaries. Add a handler and one
 `CommandInfo` entry to extend the slash command set; help and completion derive from that same
-entry. Builtin/user/MCP loading contracts and public tool entry points are preserved. This stage
-does not change CLI session ownership, add configuration, or unify existing provider differences;
-Gemini retains its current callable/MCP declaration path.
+entry. Session and planning coordination receive concrete dependencies rather than the CLI;
+the CLI retains generation threads, confirmation and terminal lifecycle. Core planning models,
+validation and storage do not import the CLI or terminal presentation code. Builtin/user/MCP
+loading contracts and public tool entry points are preserved; Gemini retains its existing
+callable/MCP declaration path.
 
 ## Where to read next
 

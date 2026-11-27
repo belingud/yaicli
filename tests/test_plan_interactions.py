@@ -19,6 +19,7 @@ import pytest
 from yaicli import plan_mode
 from yaicli.cli import CLI
 from yaicli.config import cfg
+from yaicli.planning.coordinator import PlanCoordinator
 from yaicli.schemas import ChatMessage
 
 
@@ -166,7 +167,7 @@ class TestPlanDiskCommands:
         plan_cli.plan_session = None
 
         executed = []
-        monkeypatch.setattr(CLI, "_execute_plan", lambda self: executed.append(True))
+        monkeypatch.setattr(PlanCoordinator, "execute_plan", lambda self: executed.append(True))
 
         assert plan_cli.cmd_handler.handle_plan("/plan resume") is True
 
@@ -183,7 +184,7 @@ class TestPlanDiskCommands:
         plan_mode.reset_plan_session()
         plan_cli.plan_session = None
         plan_cli.chat.date = "2026-01-01T00:00:00"  # different session id
-        monkeypatch.setattr(CLI, "_execute_plan", lambda self: pytest.fail("must not execute"))
+        monkeypatch.setattr(PlanCoordinator, "execute_plan", lambda self: pytest.fail("must not execute"))
 
         assert plan_cli.cmd_handler.handle_plan(f"/plan resume {plan.id}") is True
         assert "plan is already in progress in another session" in _printed(plan_cli)
@@ -192,7 +193,7 @@ class TestPlanDiskCommands:
         plan = _submit(plan_cli, goal="Abort me")
         plan_mode.approve_new_plan(plan_cli.plan_session)
         plan_cli._sync_chat_plan()
-        monkeypatch.setattr("yaicli.cmd_handler.Prompt.ask", lambda *args, **kwargs: "y")
+        monkeypatch.setattr("yaicli.commands.planning.Prompt.ask", lambda *args, **kwargs: "y")
         assert plan_cli.cmd_handler.handle_plan("/plan abort") is True
         session = plan_cli.plan_session
         assert session.active_plan is None
@@ -269,7 +270,7 @@ class TestSavedPlanResume:
         plan_mode.reset_plan_session()
         plan_cli.plan_session = None
         executed = []
-        monkeypatch.setattr(CLI, "_execute_plan", lambda self: executed.append(True))
+        monkeypatch.setattr(PlanCoordinator, "execute_plan", lambda self: executed.append(True))
         plan_cli.printer.ask_plan_decision.return_value = "approve"
 
         assert plan_cli.cmd_handler.handle_plan("/plan resume") is True

@@ -1123,7 +1123,7 @@ class TestCliErrorActionability:
             def __init__(self):
                 super().__init__("Incorrect API key provided")
 
-        cli = CLI.__new__(CLI)
+        cli = CLI(client=MagicMock(), chat_manager=MagicMock())
         cli.console = MagicMock()
         cli.verbose = False
         cli.machine_output = True
@@ -1155,7 +1155,7 @@ class TestCliHistoryTrim:
     def test_check_history_len_is_group_aware(self):
         from yaicli.cli import CLI
 
-        cli = CLI.__new__(CLI)
+        cli = CLI(client=MagicMock(), chat_manager=MagicMock())
         cli.console = MagicMock()
         cli.verbose = True
         cli.interactive_round = 2  # max 4 messages
@@ -1174,7 +1174,7 @@ class TestCliHistoryTrim:
     def test_cli_persists_a_trim_after_a_context_length_error(self):
         from yaicli.cli import CLI
 
-        cli = CLI.__new__(CLI)
+        cli = CLI(client=MagicMock(), chat_manager=MagicMock())
         cli.console = MagicMock()
         history = []
         for index in range(3):
@@ -1190,7 +1190,7 @@ class TestCliHistoryTrim:
     def test_cli_does_not_touch_history_for_other_error_kinds(self):
         from yaicli.cli import CLI
 
-        cli = CLI.__new__(CLI)
+        cli = CLI(client=MagicMock(), chat_manager=MagicMock())
         cli.console = MagicMock()
         history = assistant_tool_turn(0)
         cli.chat = SimpleNamespace(history=history)

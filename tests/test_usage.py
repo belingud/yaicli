@@ -396,7 +396,7 @@ class TestCliJsonUsage:
 class TestCliUsageLine:
     def test_format_usage_line(self):
         cli = CLI()
-        with patch("yaicli.cli.cfg", {"MODEL": "gpt-4o-mini", "MODEL_PRICING": {}}):
+        with patch.object(cli.output, "config", {"MODEL": "gpt-4o-mini", "MODEL_PRICING": {}}):
             line = cli._format_usage_line(
                 {"prompt_tokens": 100, "completion_tokens": 10},
                 {"prompt_tokens": 1334, "completion_tokens": 577},
@@ -415,7 +415,7 @@ class TestCliUsageLine:
     def test_format_usage_line_includes_model_and_context(self):
         cli = CLI()
         cli._context_percent = 12.6
-        with patch("yaicli.cli.cfg", {"MODEL": "openai/gpt-4o", "MODEL_PRICING": {}}):
+        with patch.object(cli.output, "config", {"MODEL": "openai/gpt-4o", "MODEL_PRICING": {}}):
             line = cli._format_usage_line(None, {"prompt_tokens": 10, "completion_tokens": 5}, 0.5, "stop")
 
         assert line is not None
@@ -423,7 +423,7 @@ class TestCliUsageLine:
 
     def test_format_usage_line_unknown_pricing_omits_cost(self):
         cli = CLI()
-        with patch("yaicli.cli.cfg", {"MODEL": "totally-unknown-model", "MODEL_PRICING": {}}):
+        with patch.object(cli.output, "config", {"MODEL": "totally-unknown-model", "MODEL_PRICING": {}}):
             line = cli._format_usage_line(None, {"prompt_tokens": 10, "completion_tokens": 5}, 0.5, "stop")
 
         assert line is not None
@@ -470,7 +470,7 @@ class TestCliUsageLine:
         cli._client.output_truncated = False
 
         with (
-            patch("yaicli.cli.cfg", {"SHOW_USAGE": False}),
+            patch.object(cli.output, "config", {"SHOW_USAGE": False}),
             patch.object(CLI, "_handle_llm_response", return_value=("hello", [])),
         ):
             assert cli._process_user_input("hi") is True

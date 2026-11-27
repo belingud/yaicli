@@ -6,7 +6,7 @@
 
 ## Background
 
-依赖第一、第二阶段合并到 master。原始证据：config.py:365—375；cli.py:873—919；llms/client.py:130—194；tools/__init__.py:70—101、169—198；tools/function.py:252—312；plan_mode.py:526—549；tests/conftest.py:131。
+依赖第一、第二阶段验收并提交。用户于 2026-11-27 授权自主完成全部重构，采用共同分支顺序提交、最终统一 PR。原始证据：config.py、cli.py、llms/client.py、tools/schemas.py、tools/executor.py、tools/function.py、plan_mode.py；第二阶段完成后重核 planning/ 与 application/ 的实际边界。
 
 配置加载优先级和独立工具兼容边界仍有效；本任务仅调整运行时取得及持有依赖的方式，不改用户的配置来源或文件格式。
 
@@ -47,4 +47,4 @@ B 的工具声明包含其当前计划模式允许的工具
 
 ## Dependencies and status
 
-当前为 planning。第二阶段合并后先重核实际服务入口和配置读取点，更新本阶段设计及上下文，向用户展示当阶段最终摘要并获实现批准后再启动。实例状态隔离仅覆盖上述计划、配置、声明和执行边界，不把未承诺的全进程并发隔离纳入验收。
+当前为 planning，已有用户实施授权。第二阶段验收提交后先重核实际服务入口和配置读取点，更新本阶段设计及上下文，再串行启动。实例状态隔离仅覆盖上述计划、配置、声明和执行边界，不把未承诺的全进程并发隔离纳入验收；最终统一 PR，合并仍需用户明确确认。

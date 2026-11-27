@@ -3,7 +3,7 @@
 ## 1. Scope / Trigger
 
 Applies to `checkpoints.py`, `checkpoint_lock.py`, checkpoint metadata in `chat.py`,
-the REPL lifecycle in `cli.py`, slash commands in `cmd_handler.py`, and mutation capture
+the REPL lifecycle in `cli.py`, session coordination in `application/session.py`, slash commands in `cmd_handler.py`, and mutation capture
 in `tools/`. Read [config-and-context.md](./config-and-context.md),
 [function-tool-guidelines.md](./function-tool-guidelines.md) and
 [cli-and-rendering.md](./cli-and-rendering.md) for the existing surrounding contracts.
@@ -36,10 +36,13 @@ store.preview(target, head)  # validates without workspace writes
 store.rewind(target, head, commit_chat, source_snapshot=None, before_apply=None)
 CLI._checkpoint_store()
 CLI._checkpoint_reset(only_if_new=False)
+SessionController.checkpoint_store()
+SessionController.checkpoint_reset(only_if_new=False)
 ```
 
-The CLI owns conversation state; the tool executor records actual
-mutations; the store owns validation, retention and recovery. Do not import the CLI from the store
+`SessionController` owns conversation state and storage coordination; compatible CLI properties and
+private wrappers delegate to it. The CLI keeps generation worker lifetime and terminal interaction;
+the tool executor records actual mutations; the store owns validation, retention and recovery. Do not import the CLI from the store
 or teach providers about checkpoints. `checkpoint_lock.py` is a small stdlib-only lock primitive.
 For persisted CLI turns, pass `commit_chat` to `finish_turn` so the saved chat and index advance
 under the same session writer lock; an unlocked save after releasing the capture is not sufficient.

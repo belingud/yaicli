@@ -10,3 +10,5 @@
 {"file": ".trellis/spec/py/checkpoints.md", "reason": "验证配置 root 首次生效、捕获上下文、取消和跨进程回退"}
 {"file": ".trellis/spec/py/context-window-limits.md", "reason": "会话配置贯穿预算与 provider 限制解析，保持窗口优先级"}
 {"file": ".trellis/tasks/11-27-core-organization-refactor/research/test-safety-review.md", "reason": "按行为证据补齐重构前的关键回归，保留 provider 差异并识别测试隔离和基线限制"}
+{"file": ".trellis/tasks/11-27-session-state-boundaries/research/runtime-config-review.md", "reason": "核对有效配置、声明/执行/脱敏、环境适配及 checkpoint/undo 锁顺序的已知接缝；阶段三启动前用阶段二实际接口重核"}
+{"file": ".trellis/tasks/11-27-cli-planning-boundaries/research/stage3-handoff.md", "reason": "依据第二阶段真实服务接口明确共享运行时API、配置消费点、MCP延迟回调、默认聊天目录及环境/工作区锁顺序"}

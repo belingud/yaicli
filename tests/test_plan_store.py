@@ -12,9 +12,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from yaicli import plan_store
 from yaicli.chat import Chat
-from yaicli.const import DEFAULT_CONFIG_MAP, DEFAULT_CONFIG_INI
+from yaicli.const import DEFAULT_CONFIG_INI, DEFAULT_CONFIG_MAP
 from yaicli.plan_store import (
     PLAN_STATUS_ABORTED,
     PLAN_STATUS_DONE,
@@ -39,6 +38,7 @@ from yaicli.plan_store import (
     update_plan_status,
     write_plan,
 )
+from yaicli.planning import store as plan_store
 
 CREATED = "2026-11-14T00:42:30+08:00"
 UPDATED = "2026-11-14T01:10:05+08:00"

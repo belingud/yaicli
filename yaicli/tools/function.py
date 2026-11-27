@@ -268,8 +268,8 @@ def _gemini_plan_allowlist() -> Optional[frozenset]:
     (non-plan) path never pays for them.
     """
     try:
-        from .. import plan_mode
         from ..config import cfg
+        from ..planning import model as plan_mode
 
         allow_shell = bool(cfg.get("PLAN_ALLOW_READONLY_SHELL", True))
         return plan_mode.plan_tool_allowlist(allow_shell)

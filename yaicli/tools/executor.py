@@ -145,7 +145,7 @@ def _execute_plan_mode_call(
       ``plan_shell_denied`` JSON plus one red REPL line and one audit event, an
       allowed command runs with the plan-shell guardrails (argv only, no shell).
     """
-    from .. import plan_mode
+    from ..planning import service as plan_mode
 
     name = tool_call.name
     if name in plan_mode.SESSION_TOOL_NAMES:

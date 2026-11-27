@@ -2,8 +2,8 @@
   "id": "cli-planning-boundaries",
   "name": "cli-planning-boundaries",
   "title": "第二阶段：拆分 CLI 协调职责与计划模块",
-  "description": "在第一阶段合并后提取会话操作、机器输出和计划协调职责，归拢计划模块并减少命令层对 CLI 私有状态的依赖",
-  "status": "planning",
+  "description": "以前置验收提交为基线提取会话操作、机器输出和计划协调职责，归拢计划模块并减少命令层对 CLI 私有状态的依赖；同分支串行交付",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -12,7 +12,7 @@
   "assignee": "belingud",
   "createdAt": "2026-11-27",
   "completedAt": null,
-  "branch": "chore/refactor-cli-planning",
+  "branch": "chore/refactor-command-tools",
   "base_branch": "master",
   "worktree_path": null,
   "commit": null,
@@ -21,6 +21,6 @@
   "children": [],
   "parent": "11-27-core-organization-refactor",
   "relatedFiles": [],
-  "notes": "",
+  "notes": "用户 2026-11-27 授权自主完成全部重构；基线为已验收第一阶段 b7d3ce4，同分支串行提交，最终统一 PR。",
   "meta": {}
 }

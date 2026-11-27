@@ -1,13 +1,13 @@
 # Config, Context & Session Guidelines
 
-> Scope: before touching `yaicli/config.py`, `const.py`, `role.py`, `context.py`, `history.py`, `schemas.py`,
+> Scope: before touching `yaicli/config.py`, `application/session.py`, `const.py`, `role.py`, `context.py`, `history.py`, `schemas.py`,
 > `console.py`, `utils.py`, or their tests. CLI/rendering wiring is in
 > [cli-and-rendering.md](./cli-and-rendering.md); cross-layer data flow in the
 > [cross-layer guide](../guides/cross-layer-thinking-guide.md).
 
-Configuration is a single global dict `cfg` (`yaicli/config.py`) built at import time from three layers:
-defaults in `const.DEFAULT_CONFIG_MAP` → the config file (`CONFIG_PATH`) → environment variables. Everything
-else (roles, context, chat sessions, printer, CLI) imports `cfg` and reads uppercase keys. Importing config
+The default parsed configuration is `cfg` (`yaicli/config.py`), built at import time from three layers:
+defaults in `const.DEFAULT_CONFIG_MAP` → the config file (`CONFIG_PATH`) → environment variables.
+Application services receive their configuration mapping explicitly and read uppercase keys. Importing config
 never writes: a missing config file is parsed from `DEFAULT_CONFIG_INI` in memory, and the file is created
 on demand by `ensure_config_file()` (first real run, never for `--version`/`--help`/`--template`/`--list-*`).
 
@@ -83,6 +83,20 @@ on demand by `ensure_config_file()` (first real run, never for `--version`/`--he
   (`utils.py`) and written back into global `cfg`; `role`, `chat_manager`, `context_manager` and cfg-derived
   state (`interactive_round`, `chat_history_dir`) are captured on the instance.
 - `--verbose` prints config with `API_KEY` replaced by `"****"`; any new secret key must be masked there.
+
+### Session coordination
+
+`application/session.py::SessionController` owns chat identity, persistence state, retry snapshots and
+checkpoint storage coordination. Its constructor receives the configuration mapping, actual chat
+manager, shared run options, console and a history-change callback; never pass it the whole CLI.
+The manager's actual directory determines saved-chat and checkpoint ownership. Existing public CLI
+chat properties delegate to this same state rather than storing copies.
+
+Keep save/load/resume metadata, tool-message pairing and checkpoint identities intact. History changes
+invalidate the retry snapshot and notify the application to refresh its context. Generation workers
+and terminal confirmation remain controlled by the CLI; moving chat coordination must preserve the
+existing writer/workspace lock and save-callback order. Verify services with real temporary Chat and
+FileChatManager dependencies independently of constructing a CLI.
 
 ## Constants & Paths (`const.py`)
 

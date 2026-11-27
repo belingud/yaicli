@@ -101,7 +101,7 @@ def _pointer(plan, todos=()) -> dict:
 
 def _silence_stderr():
     """Patch the stderr console used by resume hints (returns the mock)."""
-    return patch("yaicli.cli.get_error_console")
+    return patch("yaicli.planning.coordinator.get_error_console")
 
 
 class TestRestoreUnfinishedPlan:

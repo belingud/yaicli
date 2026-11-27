@@ -32,7 +32,12 @@ Entry flow (verified against imports in the tree):
 
 ```
 _faststart.py (console entry: --version fast path)  ->  entry.py (Typer app)
-entry.py (Typer app)  ->  cli.py (CLI: mode dispatch, REPL, headless output)
+entry.py (Typer app)  ->  cli.py (CLI: assembly, mode dispatch, REPL, generation lifecycle)
+                          -> application/session.py (chat state, persistence, checkpoints)
+                          -> application/output.py (results, events, exit mapping)
+                          -> planning/coordinator.py (plan application coordination)
+                                 -> planning/model.py / validation.py / store.py
+                                 -> planning/service.py / prompt.py / editor.py
                           -> llms/client.py (LLMClient: stream + tool loop, budget/retry/depth)
                           -> llms/provider.py (ProviderFactory -> Provider)
                           -> commands/registry.py (dispatch/help/completion definitions)
@@ -56,10 +61,14 @@ Module map:
 | --- | --- |
 | `yaicli/_faststart.py` | Console entry (`ai`/`yaicli`/`python -m yaicli`): answers `-v/--version` with only `sys` + the static `yaicli.__version__` (no config/role import, zero writes), then delegates to `entry.app`. Handles a closed stdout/pipe quietly. |
 | `yaicli/entry.py` | Typer app (`YaiApp` restores POSIX SIGPIPE default), CLI options incl. headless (`-p`, `--output-format`, `--json`, `-q`, `--max-turns`, `-y`, `--allowed-tools`, `--cwd`, `--fail-on-tool-denied`) and chat session flags (`--chat`, `--resume`), `--list-*`/`--install-functions` callbacks, exit-code mapping, top-level error→stderr rendering. Imports `CLI` lazily inside `main()`. |
-| `yaicli/cli.py` | `CLI` orchestrator: runtime mode dispatch (`TEMP_MODE`/`CHAT_MODE`/`EXEC_MODE`), REPL loop, role/session/history wiring, tool-call confirmation `generator.send()` plumbing, headless/JSON/NDJSON output contract and CLI state (`interactive`, `exit_code`, `had_error`, `interrupted`, `depth_limit_reached`, `tool_denied`, `yes`, `allowed_tools`). |
+| `yaicli/cli.py` | Application assembly, runtime modes, REPL, generation threads and confirmation `generator.send()` plumbing. Public state properties delegate to the single underlying run/session/result state. |
+| `yaicli/application/` | `SessionController` owns chat/save/load/resume/checkpoint coordination; `MachineOutput` owns result/event/exit state; `RunState` carries shared run options. None receives the whole CLI. |
+| `yaicli/planning/` | Model, validation, store, service, prompt, editor and application coordinator. Core model/validation/storage have no CLI or terminal dependency; coordinator uses named session/output services and narrow terminal operations. |
+| `yaicli/plan_mode.py` / `plan_store.py` | Explicit compatibility exports backed by `planning/`; preserve class identity and existing data formats without copying mutable state. |
 | `yaicli/chat.py` | `Chat` message model + `FileChatManager` (per-project session store under `~/.yaicli/sessions/<sha256(cwd)[:16]>/` with 0700/0600, session metadata model/provider/role/cwd/created/updated, legacy flat `CHAT_HISTORY_DIR` override, save/load/list/delete; dir created lazily on first save). |
 | `yaicli/checkpoints.py` / `checkpoint_lock.py` | Lazy persistent interactive checkpoint store, guarded turn capture, rewind preflight/compensation and cross-process locks. See [checkpoints.md](./checkpoints.md). |
-| `yaicli/commands/registry.py` / `cmd_handler.py` | Registry owns handler names, aliases, argument policy, help and completion metadata; `CmdHandler` binds and implements the command methods, preserving previous exports. |
+| `yaicli/commands/registry.py` / `cmd_handler.py` | Registry owns handler names, aliases, argument policy, help and completion metadata; `CmdHandler` binds command methods and preserves previous exports, delegating migrated commands to their groups. |
+| `yaicli/commands/session.py` / `planning.py` / `runtime.py` | Session, plan and model/role/retry command business uses explicit services and named operations, without CLI private business state. |
 | `yaicli/completer.py` | prompt_toolkit completer for `/` commands and `@` paths. |
 | `yaicli/config.py` | `Config(dict)` singleton `cfg`: env `YAI_*` > config file > `const.DEFAULT_CONFIG_MAP`. Import is write-free; `ensure_config_file()` creates the file lazily (0600/dir 0700, OSError-tolerant). |
 | `yaicli/const.py` | Config-dir/path resolution (`YAI_CONFIG_DIR`/XDG/APPDATA/`~/.config`, `get_config_dir()`, `get_history_file()`, `get_sessions_dir()`/`project_sessions_key()`/`get_project_sessions_dir()`), `CONFIG_PATH`/`FUNCTIONS_DIR`/`FUNCTIONS_MANIFEST_PATH`/`TOOL_PERMISSIONS_PATH`/`TOOL_AUDIT_PATH`/`TOOL_OUTPUT_DIR`, mode/command constants, `DEFAULT_CONFIG_MAP` + `DEFAULT_CONFIG_INI`. |
@@ -71,7 +80,7 @@ Module map:
 | `yaicli/history.py` | `LimitedFileHistory` (prompt_toolkit history trimming). |
 | `yaicli/role.py` | `Role`/`RoleManager`: built-in roles in memory, user JSON files under `ROLES_DIR`; import is write-free, writes only on create/delete (OSError-tolerant). |
 | `yaicli/schemas.py` | Shared dataclasses: `ChatMessage`, `LLMResponse`, `ToolCall`, `ToolPolicy`, `RefreshLive`, `ConfirmToolCall`, `ToolConfirmDecision`. |
-| `yaicli/output.py` (if present) | Headless result/event helpers; the current implementation keeps this logic in `cli.py` (`_write_text_result`, `_emit_event`, `_build_result`). |
+| `yaicli/application/output.py` | Machine result/event helpers and exit mapping; legacy CLI private entry points delegate to this service. |
 | `yaicli/printer.py` / `yaicli/render.py` | Streaming display, Live region, reasoning/think rendering, faithful tool confirmation preview (parsed args, shell command, fs diff), markdown rendering; `Printer(machine=True)` is the headless plain-text/event renderer (no Live/markdown). |
 | `yaicli/image.py` | `--image/-i` input (local files and URLs, base64/validation). |
 | `yaicli/function_schema.py` | Lightweight `OpenAISchema` replacing `instructor.OpenAISchema`. |
@@ -90,6 +99,12 @@ some filesystems). `entry.version_callback` prints the same constant.
   inside command functions, not at module top — startup time matters for a CLI.
 - `cli.py` may import any top-level subsystem. Subsystems must not import `cli.py`/`entry.py`
   (no cycles back into the orchestrator).
+- Session and planning application services take concrete data/services and a small number of named
+  lifecycle operations, not the CLI or a generic attribute-forwarding proxy. Chat, result and plan
+  state have one owner; CLI compatibility properties delegate instead of maintaining copies.
+- New product imports of plan implementation use `planning/`; root `plan_mode.py`/`plan_store.py`
+  remain explicit compatibility exports. Models/validation/storage stay independent of Rich and
+  terminal interaction, and editor/process dependencies remain confined to their adapter.
 - `llms/client.py` may import `tools/` (it executes tool calls); `tools/` must not import
   `llms.providers` or the CLI.
 - Provider modules (`llms/providers/*.py`) may import `..schemas`, `..config`, `..console`,
@@ -118,7 +133,7 @@ some filesystems). `entry.version_callback` prints the same constant.
 | Change | Files |
 | --- | --- |
 | New CLI flag / option | `yaicli/entry.py` (Typer option) -> `yaicli/cli.py`; config key -> `const.DEFAULT_CONFIG_MAP` + `docs/usage/configuration.md` |
-| New slash command | `commands/registry.py` metadata + `cmd_handler.py` handler -> docs `usage/commands.md`; dispatch/help/completion derive from the registry |
+| New slash command | `commands/registry.py` metadata + `cmd_handler.py` handler/forwarder to the relevant command group -> docs `usage/commands.md`; dispatch/help/completion derive from the registry |
 | New provider | `llms/providers/<name>_provider.py` -> `ProviderFactory.providers_map` -> `tests/llms/` -> `docs/providers/` -> optional extra in `pyproject.toml` |
 | New builtin function | `functions/buildin/<name>.py` -> `tests/tools/test_<name>.py` -> mention in README/docs |
 | Provider-agnostic tool policy / approval change | `tools/approval.py` + `llms/client.py` gate; update `openspec/specs/` when behavior is specified |

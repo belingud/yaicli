@@ -231,7 +231,7 @@ class TestPlanSubcommands:
         plan_mode.finish_plan(plan_cli.plan_session)
         assert plan.status == PLAN_STATUS_DONE
 
-        monkeypatch.setattr("yaicli.cmd_handler.Prompt.ask", lambda *args, **kwargs: "y")
+        monkeypatch.setattr("yaicli.commands.planning.Prompt.ask", lambda *args, **kwargs: "y")
         assert plan_cli.cmd_handler.handle_command(f"{CMD_PLAN} clear --done") is True
         assert "cleared 1 plan file(s)" in _printed(plan_cli)
         assert not plan.path.exists()
@@ -247,7 +247,7 @@ class TestPlanSubcommands:
         plan_cli._toggle_plan_mode()
         plan = _submit(plan_cli)
         plan_mode.approve_new_plan(plan_cli.plan_session)
-        monkeypatch.setattr("yaicli.cmd_handler.Prompt.ask", lambda *args, **kwargs: "y")
+        monkeypatch.setattr("yaicli.commands.planning.Prompt.ask", lambda *args, **kwargs: "y")
 
         assert plan_cli.cmd_handler.handle_command(f"{CMD_PLAN} abort") is True
         assert "plan aborted · todos cleared" in _printed(plan_cli)

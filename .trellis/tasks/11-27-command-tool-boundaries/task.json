@@ -15,12 +15,12 @@
   "branch": "chore/refactor-command-tools",
   "base_branch": "master",
   "worktree_path": null,
-  "commit": null,
+  "commit": "b7d3ce41d6c9050e03b7a35e3764d4d2c2181470",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": "11-27-core-organization-refactor",
   "relatedFiles": [],
-  "notes": "",
+  "notes": "第一阶段本地验收完成并提交。用户 2026-11-27 授权自主完成全部重构，后续阶段同分支串行推进，最终统一 PR，合并仍需明确确认。",
   "meta": {}
 }

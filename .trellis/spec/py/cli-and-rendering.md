@@ -1,13 +1,14 @@
 # CLI & Rendering Guidelines
 
-> Scope: before touching `yaicli/entry.py`, `cli.py`, `chat.py`, `cmd_handler.py`, `commands/`, `completer.py`,
+> Scope: before touching `yaicli/entry.py`, `cli.py`, `application/`, `planning/`, `chat.py`, `cmd_handler.py`, `commands/`, `completer.py`,
 > `printer.py`, `render.py`, `image.py`, `exceptions.py`, or their tests. Config/context internals:
 > [config-and-context.md](./config-and-context.md). Cross-layer data flow: [cross-layer guide](../guides/cross-layer-thinking-guide.md).
 
-`entry.py` (Typer surface) → `cli.py` (orchestrator) → `cmd_handler.py` / `chat.py` / `context.py`
-(session services) → `printer.py` (display) → `llms/client.py` (generator). Only `entry.py` parses
-arguments and only `printer.py` renders output; `entry.py` stays thin: normalize input → build `CLI` →
-`cli.run(...)` → map exceptions to messages.
+`entry.py` (Typer surface) → `cli.py` (assembly and terminal lifecycle) → named command,
+session, output and planning services → `printer.py` (stream display) / `llms/client.py` (generator).
+`application/session.py` owns chat state and persistence; `application/output.py` owns machine result
+state, events and exit mapping; `planning/coordinator.py` owns plan application coordination.
+`entry.py` stays thin: normalize input → build `CLI` → `cli.run(...)` → map exceptions to messages.
 
 ## Entry Points & Typer Surface
 
@@ -68,6 +69,13 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 
 ## Runtime Modes & Dispatch (`cli.py`)
 
+- `SessionController`, `MachineOutput` and `PlanCoordinator` receive concrete dependencies, never the
+  whole CLI or an object forwarding arbitrary CLI attributes. `RunState` holds shared run options;
+  result state belongs to `MachineOutput`, chat/checkpoint coordination to `SessionController`.
+  Preserve one authoritative state and delegate existing public CLI properties to it.
+- Keep provider generation, `Printer`, confirmation pumping, worker watching and terminal key
+  handling in the CLI. Planning coordination uses the named `PlanTurns` lifecycle operations;
+  do not move generation ownership into a storage service or change checkpoint lock ordering.
 - Runtime modes are three strings: `TEMP_MODE` (default single-shot), `CHAT_MODE` (REPL), `EXEC_MODE`
   (generate-then-confirm shell command). There is no code runtime mode: `--code` selects the `CODER` role
   plus `Printer(content_markdown=False)` through `evaluate_role_name`, not a `current_mode`. A fourth mode
@@ -98,7 +106,7 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   `fail_on_tool_denied`, `output_format`, `quiet`, `machine_output`. `_finalize_exit_code()` maps them:
   interrupted → 130, denied + `--fail-on-tool-denied` → 3, handled error / depth limit (when
   `EXIT_ON_DEPTH_LIMIT`) → 1, else 0. The client reports depth/denial via its own flags; the CLI
-  mirrors them after each turn.
+  records them in its output service after each turn; its public properties expose that same state.
 - `CLI.run()`: `chat=True` loads a session by `user_input` title then calls `_run_repl()`; otherwise
   `_run_once()` = `set_role(...)` + `_process_user_input()`. Empty `user_input` with `chat=False` raises
   `typer.Abort`; `entry.main` makes sure image-only calls pass a non-empty prompt.
@@ -240,7 +248,9 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
   `/ctx`, `/chats`, `/delete`, `?`; `?` executes but is excluded from slash completion.
   `!`/`！` retain their direct `subprocess.call(shell=True)` path.
   `handle_command()` returns `True` (continue), `False` (exit) or the original input; handlers return
-  `bool` and print via `self.cli.console`.
+  `bool` and use the bound console. Migrated session/planning/runtime commands live in
+  `commands/session.py`, `planning.py` and `runtime.py`, receiving the services and named operations
+  they use; they must not reach into CLI `_client`, retry snapshots or private business methods.
 - `/add`, `/context` use `shlex.split` (quoted paths work) and strip one leading `@`; bad quoting prints
   `Error parsing command`. Bare `/context` prints the estimated token usage block (window source,
   role/project/add buckets, history, `overhead`, total/budget, remaining, reserve) **and** the legacy
@@ -256,7 +266,8 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
   re-exported by `cmd_handler`; the undo stack
   lives in `yaicli/tools/workspace.py` and is populated by `execute_tool_call`, not by the handler.
   See [function-tool-guidelines.md](./function-tool-guidelines.md) for the guard/backup contract.
-- New command checklist: handler in `CmdHandler` plus one `CommandInfo(command, description, usage,
+- New command checklist: handler or thin forwarder in `CmdHandler` to the relevant command group,
+  plus one `CommandInfo(command, description, usage,
   aliases, handler, accepts_arguments)` entry in `commands/registry.py`; dispatch, help and completion
   follow it. Existing `const.CMD_*` values stay compatible; command-local constants now live in the
   registry. Add a path prefix in `completer.py::_is_context_command` only when path completion is needed.

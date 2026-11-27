@@ -169,7 +169,7 @@ def evaluate_tool_call(
     if plan_state is not None or name in _SESSION_STATE_TOOL_NAMES:
         reason = None
         if plan_state in ("researching", "revising"):
-            from ..plan_mode import is_tool_allowed_in_plan
+            from ..planning.model import is_tool_allowed_in_plan
 
             try:
                 allow_readonly_shell = bool(config.get("PLAN_ALLOW_READONLY_SHELL", True))

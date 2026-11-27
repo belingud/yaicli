@@ -2,7 +2,7 @@
 
 ## 状态及范围
 
-2026-11-27：本地实现、独立审查及最终验收完成，等待用户一次确认后执行本计划。当前没有提交、推送或 PR；不提前归档，不启动第二、三阶段。
+2026-11-27：用户授权自主完成全部重构后，已按本清单提交 b7d3ce41d6c9050e03b7a35e3764d4d2c2181470。以下保留已执行提交的范围和证据；后续按更新的父任务方案，在同一分支串行完成第二、三阶段，最终统一 PR。
 
 - 分支：chore/refactor-command-tools；PR 目标 master。
 - 拟作一个完整的行为保持重构提交：`refactor(core): separate command registry and tool responsibilities`。
