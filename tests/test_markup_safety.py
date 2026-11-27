@@ -117,9 +117,7 @@ class TestChatTitlesAndHistory:
         console = make_recording_console()
         cli = make_cli(console)
         cli.chat_manager = MagicMock()
-        cli.chat_manager.list_chats.return_value = [
-            Chat(idx="1", title="Fix [/etc/hosts]", date="2024-01-01T00:00:00")
-        ]
+        cli.chat_manager.list_chats.return_value = [Chat(idx="1", title="Fix [/etc/hosts]", date="2024-01-01T00:00:00")]
         cli._list_chats()
         out = rendered(console)
         assert "[/etc/hosts]" in out
@@ -184,7 +182,7 @@ class TestToolCallRendering:
         console = make_recording_console()
         monkeypatch.setattr(tools_module, "console", console)
         tool_call = ToolCall(id="1", name="run", arguments='{"cmd": "echo [/]"}')
-        with patch.object(tools_module, "get_function", side_effect=ValueError("nope")):
+        with patch.object(tools_module.executor, "get_function", side_effect=ValueError("nope")):
             result, ok = execute_tool_call(tool_call)
         assert ok is False
         out = rendered(console)
@@ -198,7 +196,7 @@ class TestToolCallRendering:
         tool = MagicMock()
         tool.execute.return_value = "output [/]\x1b[31mred"
         tool_call = ToolCall(id="1", name="get_weather", arguments='{"city": "NYC"}')
-        with patch.object(tools_module, "get_function", return_value=tool):
+        with patch.object(tools_module.executor, "get_function", return_value=tool):
             result, ok = execute_tool_call(tool_call)
         assert ok is True
         assert result == "output [/]\x1b[31mred"  # raw result still goes to the model

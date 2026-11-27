@@ -19,7 +19,6 @@ from yaicli.llms.client import LLMClient
 from yaicli.llms.provider import Provider, ProviderFactory
 from yaicli.schemas import ChatMessage, LLMResponse, ToolCall
 from yaicli.tools import (
-    _warned_tool_patterns,
     enabled_tool_patterns,
     filter_schemas,
     get_anthropic_mcp_tools,
@@ -37,7 +36,7 @@ runner = CliRunner()
 @pytest.fixture(autouse=True)
 def reset_schema_state(monkeypatch):
     """Reset the module-level schema caches and the warned-pattern set per test."""
-    import yaicli.tools as tools_mod
+    import yaicli.tools.schemas as tools_mod
 
     monkeypatch.setattr(tools_mod, "_openai_schemas_cache", None)
     monkeypatch.setattr(tools_mod, "_anthropic_schemas_cache", None)
@@ -147,7 +146,7 @@ class TestNarrowedSchemas:
         assert [schema["function"]["name"] for schema in other] == ["web_search"]
 
     def test_unfiltered_cache_identity_is_preserved(self, monkeypatch):
-        import yaicli.tools as tools_mod
+        import yaicli.tools.schemas as tools_mod
 
         monkeypatch.setitem(cfg, "ENABLED_TOOLS", "")
         first = get_openai_schemas()
@@ -163,7 +162,7 @@ class TestMcpSchemaFilter:
             {"type": "function", "function": {"name": "_mcp__github_search"}},
             {"type": "function", "function": {"name": "_mcp__slack_post"}},
         ]
-        with patch("yaicli.tools.get_mcp_manager", return_value=manager):
+        with patch("yaicli.tools.schemas.get_mcp_manager", return_value=manager):
             tools = get_openai_mcp_tools()
         assert [entry["function"]["name"] for entry in tools] == ["_mcp__github_search"]
 
@@ -174,7 +173,7 @@ class TestMcpSchemaFilter:
             {"name": "_mcp__github_search"},
             {"name": "_mcp__slack_post"},
         ]
-        with patch("yaicli.tools.get_mcp_manager", return_value=manager):
+        with patch("yaicli.tools.schemas.get_mcp_manager", return_value=manager):
             tools = get_anthropic_mcp_tools()
         assert [entry["name"] for entry in tools] == ["_mcp__github_search"]
 
@@ -185,7 +184,7 @@ class TestMcpSchemaFilter:
             {"type": "function", "function": {"name": "_mcp__a"}},
             {"type": "function", "function": {"name": "_mcp__b"}},
         ]
-        with patch("yaicli.tools.get_mcp_manager", return_value=manager):
+        with patch("yaicli.tools.schemas.get_mcp_manager", return_value=manager):
             tools = get_openai_mcp_tools()
         assert len(tools) == 2
 
@@ -194,7 +193,7 @@ class TestUnknownToolWarning:
     def test_unknown_literal_name_warns_once(self, monkeypatch):
         monkeypatch.setitem(cfg, "ENABLED_TOOLS", "fs_read_file,not_a_real_tool")
         error_console = MagicMock()
-        with patch("yaicli.tools.get_error_console", return_value=error_console):
+        with patch("yaicli.tools.schemas.get_error_console", return_value=error_console):
             get_openai_schemas()
             get_openai_schemas()
         assert error_console.print.call_count == 1
@@ -205,10 +204,12 @@ class TestUnknownToolWarning:
     def test_glob_and_mcp_names_do_not_warn(self, monkeypatch):
         monkeypatch.setitem(cfg, "ENABLED_TOOLS", "fs_*,_mcp__whatever")
         error_console = MagicMock()
-        with patch("yaicli.tools.get_error_console", return_value=error_console):
+        with patch("yaicli.tools.schemas.get_error_console", return_value=error_console):
             get_openai_schemas()
         error_console.print.assert_not_called()
-        assert _warned_tool_patterns == set()
+        import yaicli.tools.schemas as tools_mod
+
+        assert tools_mod._warned_tool_patterns == set()
 
 
 class TestGateRejectsDisabledTools:

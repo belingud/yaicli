@@ -51,22 +51,22 @@ class TestMcpToolSchemas:
     def test_openai_mcp_tools_success(self):
         mgr = MagicMock()
         mgr.to_openai_tools.return_value = [{"type": "function"}]
-        with patch("yaicli.tools.get_mcp_manager", return_value=mgr):
+        with patch("yaicli.tools.schemas.get_mcp_manager", return_value=mgr):
             assert get_openai_mcp_tools() == [{"type": "function"}]
 
     def test_openai_mcp_tools_error_wrapped(self):
-        with patch("yaicli.tools.get_mcp_manager", side_effect=RuntimeError("boom")):
+        with patch("yaicli.tools.schemas.get_mcp_manager", side_effect=RuntimeError("boom")):
             with pytest.raises(MCPToolsError, match="Error getting MCP tools"):
                 get_openai_mcp_tools()
 
     def test_anthropic_mcp_tools_success(self):
         mgr = MagicMock()
         mgr.to_anthropic_tools.return_value = [{"name": "x"}]
-        with patch("yaicli.tools.get_mcp_manager", return_value=mgr):
+        with patch("yaicli.tools.schemas.get_mcp_manager", return_value=mgr):
             assert get_anthropic_mcp_tools() == [{"name": "x"}]
 
     def test_anthropic_mcp_tools_error_wrapped(self):
-        with patch("yaicli.tools.get_mcp_manager", side_effect=RuntimeError("boom")):
+        with patch("yaicli.tools.schemas.get_mcp_manager", side_effect=RuntimeError("boom")):
             with pytest.raises(MCPToolsError, match="Error getting MCP tools for Anthropic"):
                 get_anthropic_mcp_tools()
 
@@ -79,7 +79,7 @@ class TestExecuteToolCall:
         tc = ToolCall(id="1", name="get_weather", arguments='{"city": "NYC"}')
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", console),
         ):
             result, ok = execute_tool_call(tc)
@@ -97,7 +97,7 @@ class TestExecuteToolCall:
         tc = ToolCall(id="1", name="get_weather", arguments='{"city": "NYC"}')
         with (
             patch("yaicli.tools.cfg", {"SHOW_FUNCTION_OUTPUT": True, "SHOW_MCP_OUTPUT": False}),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", console),
         ):
             result, ok = execute_tool_call(tc)
@@ -112,7 +112,7 @@ class TestExecuteToolCall:
         tc = ToolCall(id="1", name="_mcp__clock", arguments="{}")
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_mcp", return_value=tool),
+            patch("yaicli.tools.executor.get_mcp", return_value=tool),
             patch("yaicli.tools.console", console),
         ):
             result, ok = execute_tool_call(tc)
@@ -127,7 +127,7 @@ class TestExecuteToolCall:
         tc = ToolCall(id="1", name="missing", arguments="{}")
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_function", side_effect=ValueError("nope")),
+            patch("yaicli.tools.executor.get_function", side_effect=ValueError("nope")),
             patch("yaicli.tools.console", console),
         ):
             result, ok = execute_tool_call(tc)
@@ -141,7 +141,7 @@ class TestExecuteToolCall:
         tc = ToolCall(id="1", name="fn", arguments='"just a string"')
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", console),
         ):
             result, ok = execute_tool_call(tc)
@@ -156,9 +156,9 @@ class TestExecuteToolCall:
         tc = ToolCall(id="1", name="fn", arguments="{}")
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", console),
-            patch("yaicli.tools.repair_json", side_effect=ValueError("bad")),
+            patch("yaicli.tools.executor.repair_json", side_effect=ValueError("bad")),
         ):
             result, ok = execute_tool_call(tc)
 
@@ -172,7 +172,7 @@ class TestExecuteToolCall:
         tc = ToolCall(id="1", name="fn", arguments='{"a": 1}')
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", console),
         ):
             result, ok = execute_tool_call(tc)
@@ -187,7 +187,7 @@ class TestExecuteToolCall:
         tc = ToolCall(id="1", name="fn", arguments="{}")
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", console),
         ):
             result, ok = execute_tool_call(tc, announce=False)
@@ -204,8 +204,8 @@ class TestSchemas:
         func = MagicMock()
         func.func_cls.openai_schema = {"name": "fn", "parameters": {}}
         with (
-            patch("yaicli.tools._openai_schemas_cache", None),
-            patch("yaicli.tools.list_functions", return_value=[func]),
+            patch("yaicli.tools.schemas._openai_schemas_cache", None),
+            patch("yaicli.tools.schemas.list_functions", return_value=[func]),
         ):
             schemas = get_openai_schemas()
 
@@ -213,15 +213,15 @@ class TestSchemas:
 
     def test_get_openai_schemas_returns_cache(self):
         cached = [{"type": "function", "function": {"name": "cached"}}]
-        with patch("yaicli.tools._openai_schemas_cache", cached):
+        with patch("yaicli.tools.schemas._openai_schemas_cache", cached):
             assert get_openai_schemas() is cached
 
     def test_get_anthropic_schemas_builds(self):
         func = MagicMock()
         func.func_cls.anthropic_schema = {"name": "fn"}
         with (
-            patch("yaicli.tools._anthropic_schemas_cache", None),
-            patch("yaicli.tools.list_functions", return_value=[func]),
+            patch("yaicli.tools.schemas._anthropic_schemas_cache", None),
+            patch("yaicli.tools.schemas.list_functions", return_value=[func]),
         ):
             schemas = get_anthropic_schemas()
 
@@ -229,5 +229,5 @@ class TestSchemas:
 
     def test_get_anthropic_schemas_returns_cache(self):
         cached = [{"name": "cached"}]
-        with patch("yaicli.tools._anthropic_schemas_cache", cached):
+        with patch("yaicli.tools.schemas._anthropic_schemas_cache", cached):
             assert get_anthropic_schemas() is cached

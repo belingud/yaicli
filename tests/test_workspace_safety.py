@@ -55,12 +55,12 @@ def _run_tool(monkeypatch, tool_name, arguments, workspace_root=None, patch_sync
     function = _load_builtin_function(tool_name)
     console = MagicMock()
     patches = [
-        patch("yaicli.tools.get_function", return_value=function),
+        patch("yaicli.tools.executor.get_function", return_value=function),
         patch("yaicli.tools.cfg", _FAKE_CFG),
         patch("yaicli.tools.console", console),
     ]
     if patch_sync:
-        patches.append(patch("yaicli.tools._sync_shell_guardrail_env"))
+        patches.append(patch("yaicli.tools.executor._sync_shell_guardrail_env"))
     for item in patches:
         item.start()
     try:
@@ -542,7 +542,7 @@ class TestExecuteToolCallGuard:
         cfg = {**_FAKE_CFG, "WORKSPACE_ROOT": str(tmp_path)}
         console = MagicMock()
         with (
-            patch("yaicli.tools.get_function", return_value=_load_builtin_function("fs_write_file")),
+            patch("yaicli.tools.executor.get_function", return_value=_load_builtin_function("fs_write_file")),
             patch("yaicli.tools.cfg", cfg),
             patch("yaicli.tools.console", console),
         ):

@@ -16,10 +16,11 @@ specs and tests together.
 | Concern | Where | Contract |
 | --- | --- | --- |
 | Schema generation | `yaicli/function_schema.py` | `OpenAISchema.openai_schema` / `.anthropic_schema`, cached per class. |
-| Loading / dispatch | `yaicli/tools/function.py`, `yaicli/tools/__init__.py` | Package builtins + `FUNCTIONS_DIR` overrides, per-file robustness, `Function` metadata (`source`/`file_path`/`risk`), schema caches, `execute_tool_call()` (arg repair, output truncation). |
+| Loading / dispatch | `yaicli/tools/function.py`, `yaicli/tools/executor.py` | Package builtins + `FUNCTIONS_DIR` overrides, per-file robustness, `Function` metadata (`source`/`file_path`/`risk`); guarded execution and one result-processing pass behind the public `execute_tool_call()` entry. |
+| Declarations / presentation | `yaicli/tools/schemas.py`, `yaicli/tools/display.py` | Schemas owns selection/mode/cache; display owns announcements/previews/panels and never changes model-visible results. |
 | Built-ins | `yaicli/functions/buildin/`, `yaicli/functions/__init__.py` | Builtins load from the installed package (zero setup); `--install-functions` exports editable copies; `functions_manifest.json` version+sha256 drives the stale-copy warning. |
 | Risk / limit helpers | `yaicli/tools/risk.py`, `yaicli/tools/limits.py` | Risk classes + shlex shell-danger classifier; per-tool output caps and spill-to-disk. |
-| Policy / confirmation | `yaicli/llms/client.py`, `yaicli/tools/approval.py`, `yaicli/schemas.py` | Per-request `ToolPolicy` filter → risk/rule-aware confirmation gate (danger double-confirm, `--yes`/`--allowed-tools`) → execution → audit log. |
+| Policy / confirmation | `yaicli/tools/policy.py`, `yaicli/llms/client.py`, `yaicli/tools/approval.py` | Pure gate decisions live in policy; client retains generator/send, grant persistence, audit, paired messages and next request; approval stores rules/grants. |
 | MCP | `yaicli/tools/mcp.py` | Lazy `fastmcp`, `_mcp__` prefix, MCP→provider schema conversion; MCP tools default to `exec` risk. |
 
 ## Schema Generation (`OpenAISchema`)
@@ -92,7 +93,7 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
    the tool map is first built, so top-level imports slow the first tool-advertising request and a
    missing optional extra must degrade to an in-band error, not a load failure.
 7. No printing/UI from `execute`; the call line, `SHOW_FUNCTION_OUTPUT` panel and confirmation
-   prompt belong to `yaicli/tools/__init__.py` and `yaicli/llms/client.py`. Those render sites use
+   prompt belong to `yaicli/tools/display.py` and the client/printer confirmation path. Those render sites use
    the untrusted-text helpers (`safe_text`/`untrusted_text`) so tool arguments/results can never
    act as Rich markup or emit terminal control sequences.
 8. Write-backs must be all-or-nothing and atomic: validate every input first, never partially
@@ -123,10 +124,10 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
 - Per-file robustness (K15): a syntax/import error, missing `Function`, missing
   `openai_schema`/`anthropic_schema`/`execute`, or a bad `risk` import skips **that file** with one
   warning; all other tools keep working. `list_functions()` never creates `FUNCTIONS_DIR`.
-- Four caches: `_func_name_map`/`_gemini_functions_cache` in `tools/function.py`,
-  `_openai_schemas_cache`/`_anthropic_schemas_cache` in `tools/__init__.py`. Production never
-  invalidates them; tests patching `FUNCTIONS_DIR` must reset all four (autouse `reset_caches`
-  fixture in `tests/tools/test_function_loading.py`).
+- Loader/callable caches remain in `tools/function.py`; OpenAI/Anthropic schema, filtered-selection
+  caches, warned-pattern state and plan tool mode belong to `tools/schemas.py`. Mode changes invalidate
+  the relevant declarations, including Gemini callables. Tests replacing `FUNCTIONS_DIR` must reset
+  the actual owning caches; do not create a second cache on the public facade just to preserve a mock.
 - `Function` exposes `name`/`description`/`parameters`/`execute`/`func_cls` plus `source`
   (`builtin`/`user`), `file_path` and `risk` (from `tools/risk.py`, `ImportError`-tolerant). Add a
   builtin by adding the `buildin/` file + schema-contract/execute/end-to-end tests; no install step.
@@ -138,6 +139,9 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
 `_mcp__` prefix selects MCP (`SHOW_MCP_OUTPUT`) vs built-in (`SHOW_FUNCTION_OUTPUT`); arguments
 are parsed with `json_repair.repair_json(..., return_objects=True)` and must be a `dict` (never
 `json.loads`), then the tool runs and its output prints in a `Panel` when the flag is on.
+The public entry passes its current `cfg` and `console` explicitly to `tools/executor.py`; CLI and
+worker routing still set `tools.console`. Internal argument repair/dispatch patches target executor,
+while declaration/cache patches target schemas. Re-exporting a name does not rebind its dependencies.
 
 Terminal rendering is a separate, much tighter display layer (`yaicli/tools/limits.py`):
 `make_display_preview()` keeps only the first `TOOL_DISPLAY_MAX_LINES` (15) lines /
@@ -211,7 +215,7 @@ an exception from `execute`; the returned text is the error report. Do not raise
 dispatching `fs_write_file` / `fs_edit_file` / `fs_file_operations`. Builtins stay standalone, so the
 guard is a stdlib-only execution-layer module and never imports `cfg`: `execute_tool_call` first
 propagates the effective `WORKSPACE_ROOT` (and other guardrail keys) through
-`_sync_shell_guardrail_env()`. The guard enforces, in order: workspace containment (resolved target
+`tools/executor.py::_sync_shell_guardrail_env(config)`. The guard enforces, in order: workspace containment (resolved target
 strictly inside `WORKSPACE_ROOT`, default cwd; symlink escapes and `..` traversal refused), protected
 path components/basenames (`.git`/`.ssh`/`.aws`/`.gnupg`, `.env*`, `*.pem`, `*.key`), and
 backup-before-mutation under `<workspace>/.yaicli-backups/<UTC stamp>/<workspace-relative path>`
@@ -222,7 +226,7 @@ A denial is the tool result for the matching call — in-band JSON
 tool path), recorded through the same `_emit_tool_result` truncation/history pipeline. The guard never
 prints and never raises; any internal error fails closed. Successful mutations push an undo entry
 (`workspace.push_undo`, only when the tool result is not `success:false`); `/undo` (`CMD_UNDO`,
-defined locally in `cmd_handler.py`) restores the most recent mutation or deletes an agent-created
+defined in `commands/registry.py` and re-exported by `cmd_handler.py`) restores the most recent mutation or deletes an agent-created
 path. `fs_edit_file(dry_run=True)` performs no containment check, backup or undo push. The undo stack
 is bounded and process-local. Do not move the guard into a builtin file (user copies are exec'd
 standalone), do not call a mutating builtin's `execute()` from another path that bypasses
@@ -302,7 +306,7 @@ argument planning.
   `types.FunctionDeclaration.from_callable_with_api_option(..., api_option="GEMINI_API")` under
   `pytest.importorskip("google.genai")`.
 - End-to-end call tests patch `yaicli.tools.cfg` with
-  `{"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False}`, patch `get_function`/`get_mcp`, and
+  `{"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False}`, patch executor's `get_function`/`get_mcp`, and
   pass a `MagicMock` console (`tests/tools/test_tools_init.py`); `fastmcp` is a core dependency.
   Truncation/spill tests live in `tests/test_context_budget.py`.
 - Loader tests (`tests/tools/test_function_loading.py`, `tests/test_functions_init.py`) patch
@@ -335,3 +339,60 @@ argument planning.
 - Rendering raw model JSON in the confirmation prompt instead of `canonical_arguments()`.
 - Using the class/file name as the tool name, duplicating a title, printing from `execute`, or
   mutating a cached schema dict.
+
+## Module boundary contract
+
+### 1. Scope / Trigger
+
+Use this contract when moving declarations, permission evaluation, execution or rendering. Public
+entry points stay compatible; this stage keeps the existing default runtime and provider differences.
+
+### 2. Signatures
+
+- `tools.execute_tool_call(tool_call, announce=True) -> Tuple[str, bool]` remains public.
+- `tools.policy.evaluate_tool_call(name, raw_arguments, *, config, policy_mode, confirm_enabled,
+  interactive, approval, plan_state, selected) -> ToolDecision` is the internal decision boundary.
+- `ToolDecision` carries `risk`, `decision`, `source`, `reason`, `error`; it performs no prompt,
+  grant persistence, tool execution, audit write or provider request.
+
+### 3. Contracts
+
+Schema/mode/cache state has one owner in schemas. The facade forwards the live runtime console and
+configuration to executor, preserving background-worker output routing. Executor keeps the existing
+workspace lock/guard/capture/undo order, records one truncated model result and delegates only its
+presentation to display. A decision with `error` becomes the existing structured refusal; `DENY`
+refuses execution and a missing decision requests confirmation through the client generator. Client
+still remembers grants, audits, appends paired results and continues provider requests.
+
+Gemini currently retains its callable builder's ENABLED_TOOLS difference and direct MCP aggregation;
+freezing each provider's before/after behavior does not authorize unifying their semantics.
+
+### 4. Validation & Error Matrix
+
+| Input / outcome | Required result |
+| --- | --- |
+| Disabled or unavailable-in-mode tool | Existing structured refusal, matching call id and audit; no execution |
+| Interactive confirmation | Client yields and receives the same decision; announce only once |
+| PERSIST grant write raises OSError | Current call allowed, session-only fallback and warning; no durable grant |
+| Workspace guard refuses | In-band result with `ok=True`; one output-history entry |
+| Large tool output | Original spill/length metadata retained; one model truncation/history pass |
+
+### 5. Good / Base / Bad Cases
+
+Base: existing callers use `tools.execute_tool_call` unchanged. Good: two real calls produce paired
+messages and the same NDJSON frames while display is routed to stderr. Bad: the facade truncates an
+already processed executor result, or a copied cache diverges after a plan-mode switch.
+
+### 6. Tests Required
+
+Keep command expectations independent of registry contents. `tests/tools/test_execution_contract.py`
+covers real confirmation/dispatch/audit and grant-write failure, plus original spill metadata.
+`tests/test_refactor_integration.py` checks real NDJSON frames and Event-controlled cancellation with
+pending writer locks, saved chat/manifest bytes, barriers and subsequent safe baseline. Preserve the
+existing workspace/checkpoint, provider schema, permission, startup and complete regression suites.
+
+### 7. Wrong vs Correct
+
+Wrong: patch a facade's private cache or loader and assume a function imported by another module
+will use it; keep a second mutable copy to satisfy that test. Correct: patch the actual owning module,
+retain behavioral assertions, and test supported public cfg/console routing through the facade.

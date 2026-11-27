@@ -205,7 +205,6 @@ class TestURLValidation:
     def test_rejects_non_string_url(self):
         assert Function._validate_fetch_url(None) is not None  # type: ignore[arg-type]
 
-
     @pytest.mark.parametrize("host", ["100.100.100.200", "100.64.0.1", "100.127.255.254"])
     def test_rejects_cgnat_shared_address_space(self, host):
         """Test that 100.64.0.0/10 (CGNAT/shared space) is rejected.
@@ -240,7 +239,6 @@ class TestURLValidation:
         assert Function._is_public_ip("224.0.0.1") is False
         assert Function._is_public_ip("::ffff:127.0.0.1") is False
         assert Function._is_public_ip("not-an-ip") is False
-
 
     def test_normalize_host(self):
         """Test hostname normalisation used for cross-host redirect detection."""
@@ -316,9 +314,7 @@ class TestFetchWebpage:
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
     def test_execute_http_error(self, mock_client_class, public_dns, no_trafilatura):
         """Test execute with HTTP error status."""
-        mock_client_class.return_value = make_client(
-            make_stream_response(status_code=404, reason_phrase="Not Found")
-        )
+        mock_client_class.return_value = make_client(make_stream_response(status_code=404, reason_phrase="Not Found"))
 
         result = Function.execute("https://example.com/notfound")
 
@@ -578,9 +574,7 @@ class TestFetchWebpage:
         assert mock_client_class.call_args.kwargs["verify"] is False
 
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
-    def test_execute_does_not_warn_when_verify_ssl_enabled(
-        self, mock_client_class, public_dns, no_trafilatura, capfd
-    ):
+    def test_execute_does_not_warn_when_verify_ssl_enabled(self, mock_client_class, public_dns, no_trafilatura, capfd):
         """Test that no TLS warning is printed when verification stays enabled (default)."""
         mock_client_class.return_value = make_client(make_stream_response())
 
@@ -616,9 +610,7 @@ class TestFetchWebpage:
         client.cookies.clear.assert_called_once()
 
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
-    def test_execute_same_host_redirect_keeps_cookies_and_referer(
-        self, mock_client_class, public_dns, no_trafilatura
-    ):
+    def test_execute_same_host_redirect_keeps_cookies_and_referer(self, mock_client_class, public_dns, no_trafilatura):
         """Test that a same-host redirect keeps cookies and the explicit Referer."""
         redirect = make_stream_response(status_code=302, headers={"location": "/next"})
         final = make_stream_response(body=b"<html>Next</html>")
@@ -650,7 +642,7 @@ class TestFetchWebpage:
         assert client.stream.call_count == 1
 
     @patch("yaicli.functions.buildin.fetch_webpage.httpx.Client")
-    def test_execute_allows_http_to_https_upgrade(self, mock_client_class, no_trafilatura):
+    def test_execute_allows_http_to_https_upgrade(self, mock_client_class, public_dns, no_trafilatura):
         """Test that an http -> https upgrade redirect is followed."""
         redirect = make_stream_response(status_code=302, headers={"location": "https://example.com/secure"})
         final = make_stream_response(body=b"<html>Secure</html>")

@@ -13,8 +13,14 @@ _faststart.py (thin console entry; -v/--version fast path, EPIPE-safe)
        ├─ llms/client.py (LLMClient: provider call + tool loop + streaming)
        │    └─ llms/provider.py (ProviderFactory -> Provider)
        │         └─ llms/providers/<name>_provider.py
-       ├─ tools/__init__.py (tool schemas, execute_tool_call, output panels)
-       │    ├─ tools/function.py (built-in functions from ~/.config/yaicli/functions/)
+       ├─ commands/registry.py (one definition for dispatch, help and completion)
+       ├─ cmd_handler.py (bound command handlers and command business logic)
+       ├─ tools/__init__.py (compatible public schema/execution entry points)
+       │    ├─ tools/schemas.py (selection, declarations, mode and caches)
+       │    ├─ tools/policy.py (permission decisions; no confirmation IO)
+       │    ├─ tools/executor.py (dispatch, guard/capture/undo and result processing)
+       │    ├─ tools/display.py (tool announcements, previews and panels)
+       │    ├─ tools/function.py (package builtins, overridden by same-name user functions)
        │    └─ tools/mcp.py (MCP tools, lazy fastmcp import)
        ├─ chat.py (Chat model + FileChatManager persistence)
        └─ printer.py / render.py (streaming, reasoning, markdown, prompts)
@@ -37,7 +43,8 @@ with the tool results.
 | `entry.py` | Typer app/options, stdin/image handling, headless flags, top-level error → exit-code mapping. |
 | `cli.py` | `CLI` orchestrator: temp/chat/exec modes, REPL, chat save/load, role wiring, machine output (`json`/`stream-json`), exit-code state contract. |
 | `errors.py` | `ErrorKind`/`AgentError`, exception classification, retry helpers, `EXIT_*` constants. |
-| `cmd_handler.py` | Slash commands (`/add`, `/context`, `/save`, `/mode`, ...) and `!shell`. |
+| `commands/registry.py` | Immutable command metadata: handler name, aliases, help and argument policy; generates dispatch metadata and slash completions. |
+| `cmd_handler.py` | Binds registry entries to command methods; slash command business logic and `!shell`; preserves existing metadata/constant exports. |
 | `config.py` | Layered `cfg` singleton: env > `config.ini` > defaults; type conversion. |
 | `const.py` | Defaults (`DEFAULT_CONFIG_MAP`), paths, commands/modes, default roles. |
 | `console.py` | `YaiConsole` singleton, stderr console for machine mode, EPIPE-safe broken-pipe handling, untrusted-text helpers. |
@@ -52,7 +59,7 @@ with the tool results.
 | `function_schema.py` | `OpenAISchema`: pydantic model → OpenAI/Anthropic tool schemas. |
 | `functions/` | Built-in function templates (`buildin/`) and install/reinstall/list callbacks. |
 | `llms/` | `LLMClient`, provider ABC/registry, one module per provider. |
-| `tools/` | Tool schema aggregation/caching, function loading, MCP integration, approval store, `risk.py` (tool risk classes + shell danger classification). |
+| `tools/` | Public entry points delegate to `schemas.py`, `policy.py`, `executor.py` and `display.py`; `function.py` loads functions, `mcp.py` adapts MCP, `approval.py` stores grants/rules, `risk.py` classifies risk. |
 | `utils.py` | Shell/OS detection, `str2bool`, option callbacks, event-loop helper. |
 
 ## State on disk
@@ -84,10 +91,18 @@ command) are the only runtime modes. `--code` is not a runtime mode: it selects 
 1. A per-request `ToolPolicy` decides whether functions/MCP tools are advertised.
 2. Provider responses carry zero or more complete `ToolCall`s (streaming providers aggregate
    per tool index).
-3. `LLMClient` evaluates the policy, runs each call through the confirmation gate
-   (`TOOL_CONFIRM`) and `execute_tool_call()`.
+3. `tools/policy.py` evaluates permission/risk decisions. `LLMClient` keeps the confirmation
+   generator (`yield ConfirmToolCall` / `send`), remembered grants and audit, then calls the compatible
+   `execute_tool_call()` entry point. `tools/executor.py` owns actual dispatch, workspace mutation
+   capture/undo and one result-truncation/history pass; `tools/display.py` renders its preview.
 4. Tool results are appended as messages and the provider is called again, up to
    `MAX_TOOL_CALL_DEPTH` rounds.
+
+Command registration and tool execution remain separate boundaries. Add a handler and one
+`CommandInfo` entry to extend the slash command set; help and completion derive from that same
+entry. Builtin/user/MCP loading contracts and public tool entry points are preserved. This stage
+does not change CLI session ownership, add configuration, or unify existing provider differences;
+Gemini retains its current callable/MCP declaration path.
 
 ## Where to read next
 

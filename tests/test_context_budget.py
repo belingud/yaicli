@@ -607,7 +607,7 @@ class TestToolOutputLimits:
             name="fs_read_file",
             arguments=json.dumps({"file_paths": [str(big_path)]}),
         )
-        with patch("yaicli.tools.get_function", return_value=tool):
+        with patch("yaicli.tools.executor.get_function", return_value=tool):
             result, ok = execute_tool_call(tool_call)
 
         # 1. The model-facing result is capped and points at the spilled full text.
@@ -672,7 +672,7 @@ class TestToolOutputLimits:
 
         console = MagicMock()
         with (
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", console),
         ):
             result, ok = execute_tool_call(tool_call)
@@ -711,7 +711,7 @@ class TestClientContextBudget:
         client = make_client(provider, config)
 
         messages = [ChatMessage(role="user", content="cat the big log")]
-        with patch("yaicli.tools.get_function", return_value=tool):
+        with patch("yaicli.tools.executor.get_function", return_value=tool):
             responses = list(client.completion_with_tools(messages, stream=False))
 
         assert any(getattr(response, "content", None) == "done" for response in responses)
@@ -919,7 +919,7 @@ class TestShellGuardrailPropagation:
         }
         with (
             patch("yaicli.tools.cfg", fake_cfg),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
         ):
             result, ok = execute_tool_call(tool_call)
 
@@ -938,7 +938,7 @@ class TestShellGuardrailPropagation:
         fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "TOOL_TIMEOUT": 99}
         with (
             patch("yaicli.tools.cfg", fake_cfg),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
         ):
             execute_tool_call(tool_call)
 
@@ -965,7 +965,7 @@ class TestShellGuardrailPropagation:
         }
         with (
             patch("yaicli.tools.cfg", fake_cfg),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
         ):
             execute_tool_call(tool_call)
 
@@ -980,7 +980,7 @@ class TestShellGuardrailPropagation:
         fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "WORKSPACE_ROOT": ""}
         with (
             patch("yaicli.tools.cfg", fake_cfg),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
         ):
             execute_tool_call(tool_call)
 
@@ -993,7 +993,7 @@ class TestShellGuardrailPropagation:
         fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "TOOL_TIMEOUT": 7}
         with (
             patch("yaicli.tools.cfg", fake_cfg),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
         ):
             execute_tool_call(tool_call)
 

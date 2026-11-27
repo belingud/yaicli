@@ -1,5 +1,8 @@
+import subprocess
+import sys
+from contextlib import ExitStack
 from types import MappingProxyType
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -636,10 +639,11 @@ class TestHandleModel:
 
     def test_switch_to_same_model_is_a_noop(self):
         cli, handler = _model_handler()
+        old_client = cli._client
         with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)):
             handler.handle_command(f"{CMD_MODEL} gpt-4o-mini")
 
-        assert cli._client is cli._client  # untouched client slot
+        assert cli._client is old_client
         assert "Already using model" in _printed_text(cli.console)
 
     def test_switch_without_writable_config_prints_error(self):
@@ -758,6 +762,174 @@ class TestCommandMetadata:
     def test_cost_is_registered_and_offered(self, cmd_handler):
         assert "/cost" in cmd_handler.commands
         assert "/cost" in {command for command, _ in command_completions()}
+
+
+# Freeze the v0.26 contract independently of the production registry. Deriving
+# expected values from COMMAND_INFO would miss an entry deleted from every view.
+# Fields: token, handler, accepts trailing input, help spelling, description, aliases.
+_COMMAND_CONTRACT = (
+    ("/help", "handle_help", False, "/help|?", "Show help message", ("?",)),
+    ("/clear", "handle_clear", False, "/clear", "Clear chat history", ()),
+    ("/his", "handle_history", False, "/his", "Show chat history", ()),
+    ("/list", "handle_list", False, "/list|/chats", "List saved chats", ("/chats",)),
+    ("/save", "handle_save", True, "/save <title>", "Save current chat", ()),
+    ("/load", "handle_load", True, "/load <index>", "Load a saved chat", ()),
+    ("/del", "handle_delete", True, "/del|/delete <index>", "Delete a saved chat", ("/delete",)),
+    ("/add", "handle_add_context", True, "/add <path>", "Add @file/dir to context", ()),
+    (
+        "/context",
+        "handle_context",
+        True,
+        "/context, /ctx",
+        "Show context/token usage; manage context (list, add, remove, clear, budget)",
+        ("/ctx",),
+    ),
+    (
+        "/plan",
+        "handle_plan",
+        True,
+        "/plan [task|list [--all]|show [id]|edit|review [id]|resume [id]|clear [--done|--all]|abort]",
+        "Plan mode: toggle, or plan a task; list/show/edit/review/resume/clear/abort",
+        (),
+    ),
+    ("/todo", "handle_todo", False, "/todo", "Show the current plan todos", ()),
+    ("/cost", "handle_cost", False, "/cost", "Show session token usage and estimated cost", ()),
+    (
+        "/compact",
+        "handle_compact",
+        True,
+        "/compact [keep_rounds]",
+        "Compact history, keeping the last N turn groups (default 5)",
+        (),
+    ),
+    (
+        "/permissions",
+        "handle_permissions",
+        True,
+        "/permissions [revoke <tool-or-index>]",
+        "List/revoke tool permissions and session grants",
+        (),
+    ),
+    (
+        "/show-output",
+        "handle_show_output",
+        False,
+        "/show-output",
+        "View this turn's tool outputs (same as Ctrl+O)",
+        (),
+    ),
+    ("/undo", "handle_undo", False, "/undo", "Undo the last file change made by a tool", ()),
+    ("/checkpoints", "handle_checkpoints", True, "/checkpoints", "List saved conversation checkpoints", ()),
+    ("/rewind", "handle_rewind", True, "/rewind [id]", "Restore a previous conversation checkpoint", ()),
+    ("/fork", "handle_fork", True, "/fork [id] [title]", "Save the current conversation and rewind", ()),
+    ("/model", "handle_model", True, "/model [name]", "Show or switch the model for this session", ()),
+    ("/role", "handle_role", True, "/role [name]", "Show or switch the assistant role", ()),
+    ("/retry", "handle_retry", False, "/retry", "Re-run the last user turn (e.g. after an API error)", ()),
+    ("/exit", "handle_exit", False, "/exit|Ctrl+D", "Exit (Ctrl+D also exits)", ()),
+    ("/mode", "handle_mode", True, "/mode chat|exec", "Switch mode (Case insensitive)", ()),
+)
+_COMMAND_ROUTES = tuple(
+    (name, handler, accepts_arguments)
+    for token, handler, accepts_arguments, _, _, aliases in _COMMAND_CONTRACT
+    for name in (token, *aliases)
+)
+
+
+@pytest.fixture
+def isolated_command_routes(mock_cli):
+    """Keep all business handlers inert while checking the real dispatcher."""
+    with ExitStack() as stack:
+        handlers = {
+            name: stack.enter_context(patch.object(CmdHandler, name, return_value=True))
+            for name in {handler for _, handler, _ in _COMMAND_ROUTES}
+        }
+        yield CmdHandler(mock_cli), handlers
+
+
+class TestFrozenCommandContract:
+    def test_compatibility_exports_use_the_same_registry_objects(self):
+        from yaicli import cmd_handler
+        from yaicli.commands import registry
+
+        assert cmd_handler.COMMAND_INFO is registry.COMMAND_INFO
+        assert cmd_handler.CommandInfo is registry.CommandInfo
+        assert cmd_handler.command_completions is registry.command_completions
+
+    def test_registry_import_does_not_load_the_application_or_provider_sdks(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import sys; import yaicli.commands.registry; "
+                "assert not ({'yaicli.cli', 'yaicli.entry', 'yaicli.config', 'yaicli.llms', "
+                "'openai', 'anthropic', 'google.genai', 'fastmcp'} & sys.modules.keys())",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 0, result.stderr
+
+    def test_registration_contains_the_frozen_commands_and_aliases(self, cmd_handler):
+        assert set(cmd_handler.commands) == {name for name, _, _ in _COMMAND_ROUTES}
+
+    def test_help_and_completion_keep_the_frozen_order_and_text(self, mock_cli):
+        from yaicli.cli import CLI
+
+        CLI.print_help(mock_cli)
+
+        assert [item for item in mock_cli.console.print.call_args_list if item.kwargs.get("markup") is False] == [
+            call(f"{usage:<19}: {description}", markup=False) for _, _, _, usage, description, _ in _COMMAND_CONTRACT
+        ]
+        assert command_completions() == tuple(
+            (name, description)
+            for token, _, _, _, description, aliases in _COMMAND_CONTRACT
+            for name in (token, *aliases)
+            if name.startswith("/")
+        )
+
+    @pytest.mark.parametrize("token,handler_name,accepts_arguments", _COMMAND_ROUTES)
+    def test_exact_token_dispatch_is_case_insensitive_and_ignores_outer_whitespace(
+        self, isolated_command_routes, token, handler_name, accepts_arguments
+    ):
+        handler, methods = isolated_command_routes
+
+        assert handler.handle_command(f" \t{token.upper()} \t") is True
+
+        methods[handler_name].assert_called_once_with()
+        assert sum(method.call_count for method in methods.values()) == 1
+
+    @pytest.mark.parametrize("token,handler_name,accepts_arguments", _COMMAND_ROUTES)
+    def test_only_argument_commands_receive_the_unchanged_raw_input(
+        self, isolated_command_routes, token, handler_name, accepts_arguments
+    ):
+        handler, methods = isolated_command_routes
+        raw = f' \t{token.upper()}\t MixedCase  "A path with spaces"  \t'
+
+        result = handler.handle_command(raw)
+
+        if accepts_arguments:
+            assert result is True
+            methods[handler_name].assert_called_once_with(raw)
+            assert sum(method.call_count for method in methods.values()) == 1
+        else:
+            assert result == raw
+            assert all(not method.called for method in methods.values())
+
+    @pytest.mark.parametrize(
+        "raw",
+        ["/modelx hello", "/modelexec", "/ctxx list", "/unknown ARG", "hello world", " !pwd", " ！pwd", ""],
+    )
+    def test_unknown_or_approximate_command_is_the_original_prompt(self, isolated_command_routes, raw):
+        handler, methods = isolated_command_routes
+
+        assert handler.handle_command(raw) == raw
+        assert all(not method.called for method in methods.values())
+
+    def test_question_mark_really_displays_help_but_is_not_a_slash_completion(self, cmd_handler, mock_cli):
+        assert cmd_handler.handle_command(" ? ") is True
+        mock_cli.print_help.assert_called_once_with()
+        assert "?" not in dict(command_completions())
 
 
 class TestHistoryCommandsRefreshPromptState:

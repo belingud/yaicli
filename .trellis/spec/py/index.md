@@ -35,7 +35,12 @@ _faststart.py (console entry: --version fast path)  ->  entry.py (Typer app)
 entry.py (Typer app)  ->  cli.py (CLI: mode dispatch, REPL, headless output)
                           -> llms/client.py (LLMClient: stream + tool loop, budget/retry/depth)
                           -> llms/provider.py (ProviderFactory -> Provider)
-                          -> tools/__init__.py (schemas + execute_tool_call + truncation)
+                          -> commands/registry.py (dispatch/help/completion definitions)
+                          -> tools/__init__.py (compatible public entry points)
+                                 -> tools/schemas.py   (selection/mode/cache)
+                                 -> tools/policy.py    (permission decisions)
+                                 -> tools/executor.py  (guard/capture/dispatch/results)
+                                 -> tools/display.py   (tool presentation)
                                  -> tools/function.py  (builtin direct-load + user overrides)
                                  -> tools/risk.py      (risk classes / shell danger classification)
                                  -> tools/limits.py    (per-tool output caps + spill)
@@ -54,7 +59,7 @@ Module map:
 | `yaicli/cli.py` | `CLI` orchestrator: runtime mode dispatch (`TEMP_MODE`/`CHAT_MODE`/`EXEC_MODE`), REPL loop, role/session/history wiring, tool-call confirmation `generator.send()` plumbing, headless/JSON/NDJSON output contract and CLI state (`interactive`, `exit_code`, `had_error`, `interrupted`, `depth_limit_reached`, `tool_denied`, `yes`, `allowed_tools`). |
 | `yaicli/chat.py` | `Chat` message model + `FileChatManager` (per-project session store under `~/.yaicli/sessions/<sha256(cwd)[:16]>/` with 0700/0600, session metadata model/provider/role/cwd/created/updated, legacy flat `CHAT_HISTORY_DIR` override, save/load/list/delete; dir created lazily on first save). |
 | `yaicli/checkpoints.py` / `checkpoint_lock.py` | Lazy persistent interactive checkpoint store, guarded turn capture, rewind preflight/compensation and cross-process locks. See [checkpoints.md](./checkpoints.md). |
-| `yaicli/cmd_handler.py` | `CmdHandler` for slash commands (`/clear`, `/mode`, `/add`, `/context` (+`budget`), `/compact`, `/permissions`, `/save`, ...). |
+| `yaicli/commands/registry.py` / `cmd_handler.py` | Registry owns handler names, aliases, argument policy, help and completion metadata; `CmdHandler` binds and implements the command methods, preserving previous exports. |
 | `yaicli/completer.py` | prompt_toolkit completer for `/` commands and `@` paths. |
 | `yaicli/config.py` | `Config(dict)` singleton `cfg`: env `YAI_*` > config file > `const.DEFAULT_CONFIG_MAP`. Import is write-free; `ensure_config_file()` creates the file lazily (0600/dir 0700, OSError-tolerant). |
 | `yaicli/const.py` | Config-dir/path resolution (`YAI_CONFIG_DIR`/XDG/APPDATA/`~/.config`, `get_config_dir()`, `get_history_file()`, `get_sessions_dir()`/`project_sessions_key()`/`get_project_sessions_dir()`), `CONFIG_PATH`/`FUNCTIONS_DIR`/`FUNCTIONS_MANIFEST_PATH`/`TOOL_PERMISSIONS_PATH`/`TOOL_AUDIT_PATH`/`TOOL_OUTPUT_DIR`, mode/command constants, `DEFAULT_CONFIG_MAP` + `DEFAULT_CONFIG_INI`. |
@@ -72,7 +77,7 @@ Module map:
 | `yaicli/function_schema.py` | Lightweight `OpenAISchema` replacing `instructor.OpenAISchema`. |
 | `yaicli/functions/` | Builtin function templates (`buildin/`) + install/reinstall/list callbacks and `functions_manifest.json` (version+sha256, stale-copy warning). |
 | `yaicli/llms/` | `LLMClient` (tool loop, budget, retry, depth limit), `Provider` ABC/`ProviderFactory`, one module per provider in `providers/`. |
-| `yaicli/tools/` | Function schema aggregation/caching, builtin function direct-loading + user overrides, MCP integration, approval store (rules v2 + audit), `risk.py`, `limits.py`, `workspace.py` (write guard/backups/undo), `execute_tool_call` (arg repair, truncation, workspace guard, stderr-aware console). |
+| `yaicli/tools/` | Thin public entry points; `schemas.py` owns declarations/selection/mode/cache, `policy.py` permission decisions, `executor.py` dispatch/guard/capture/results and `display.py` presentation. Existing function/MCP/approval/risk/limits/workspace modules retain their contracts. |
 | `yaicli/utils.py` | Shell/OS detection, `str2bool`, result-option callbacks, event-loop helper. |
 
 `yaicli/__init__.py` holds the static `__version__` (kept in sync with `pyproject.toml` by
@@ -102,8 +107,9 @@ some filesystems). `entry.version_callback` prints the same constant.
 - Use `get_console()` from `yaicli/console.py` for normal output and `get_error_console()` (stderr) for
   warnings/errors/progress that must not pollute scripted stdout; use `Printer`/`render.py` for streaming
   and Live output. Do not create bare `rich.console.Console()` instances in new code.
-- Tool results are JSON strings (in-band errors) under `yaicli/functions/buildin/`; the executor in
-  `tools/__init__.py` is the single place that parses arguments, truncates output and surfaces failures.
+- Tool results are JSON strings (in-band errors) under `yaicli/functions/buildin/`; `tools/executor.py`
+  owns argument repair, one truncation/history pass and execution failures. `tools/__init__.py` keeps
+  the public `execute_tool_call` entry; display code must not truncate the model result again.
 - `errors.py`, `tokens.py`, `tools/risk.py`, `tools/limits.py` and `tools/workspace.py` are stdlib-only leaf modules: they may
   be imported by `cli.py`, `llms/` and `tools/` without pulling a provider SDK or the Typer app.
 
@@ -112,7 +118,7 @@ some filesystems). `entry.version_callback` prints the same constant.
 | Change | Files |
 | --- | --- |
 | New CLI flag / option | `yaicli/entry.py` (Typer option) -> `yaicli/cli.py`; config key -> `const.DEFAULT_CONFIG_MAP` + `docs/usage/configuration.md` |
-| New slash command | `const.CMD_*` -> `cmd_handler.py` dispatch -> docs `usage/commands.md` |
+| New slash command | `commands/registry.py` metadata + `cmd_handler.py` handler -> docs `usage/commands.md`; dispatch/help/completion derive from the registry |
 | New provider | `llms/providers/<name>_provider.py` -> `ProviderFactory.providers_map` -> `tests/llms/` -> `docs/providers/` -> optional extra in `pyproject.toml` |
 | New builtin function | `functions/buildin/<name>.py` -> `tests/tools/test_<name>.py` -> mention in README/docs |
 | Provider-agnostic tool policy / approval change | `tools/approval.py` + `llms/client.py` gate; update `openspec/specs/` when behavior is specified |

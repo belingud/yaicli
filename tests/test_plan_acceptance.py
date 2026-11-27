@@ -225,7 +225,7 @@ class TestAC1SchemaZeroWrite:
         assert set(schema_names(tools.get_anthropic_schemas())) == expected
 
         # MCP tools are not even discovered while planning (no server connection).
-        with patch("yaicli.tools.get_mcp_manager") as manager:
+        with patch("yaicli.tools.schemas.get_mcp_manager") as manager:
             assert tools.get_openai_mcp_tools() == []
             assert tools.get_anthropic_mcp_tools() == []
             manager.assert_not_called()

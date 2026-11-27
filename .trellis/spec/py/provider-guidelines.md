@@ -6,6 +6,8 @@ adding one, or touching the tool-call loop:
 - `yaicli/llms/provider.py` — the `Provider` ABC and `ProviderFactory` (39 registry keys today).
 - `yaicli/llms/providers/` — 39 provider classes across 32 modules; most providers are thin.
 - `yaicli/llms/client.py` — `LLMClient`, the provider-agnostic tool loop, confirmation gate.
+- `yaicli/tools/policy.py` — internal permission decisions consumed by the client; providers do not
+  prompt, persist grants, execute tools or serialize `ToolDecision` onto their wire format.
 - `yaicli/schemas.py` — `LLMResponse`, `ToolCall`, `ChatMessage`, `ToolPolicy`; the only types
   that cross the provider/client boundary.
 
@@ -29,6 +31,12 @@ enforced by tests and by `LLMClient`.
 working, but new code should emit/read `tool_calls`. `LLMClient` never inspects `finish_reason`; it
 collects every call from every response, dedups repeated snapshots by `tool_call.id`, filters by tool
 policy and executes each call once (`tool_calls: dict[str, ToolCall]`, `yaicli/llms/client.py`).
+
+The client delegates risk/policy evaluation to `tools.policy.evaluate_tool_call`, retaining
+`ConfirmToolCall`/`send`, grant-write fallback, audit, paired result messages and the next provider
+request. Public schema helpers remain exported from `yaicli.tools`, backed by `tools.schemas`.
+Preserve each provider's actual declarations: Gemini's callable filtering/direct MCP aggregation
+currently differs from OpenAI/Anthropic; a module move is not permission to change that behavior.
 
 ## Provider Families
 

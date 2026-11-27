@@ -1,6 +1,6 @@
 # CLI & Rendering Guidelines
 
-> Scope: before touching `yaicli/entry.py`, `cli.py`, `chat.py`, `cmd_handler.py`, `completer.py`,
+> Scope: before touching `yaicli/entry.py`, `cli.py`, `chat.py`, `cmd_handler.py`, `commands/`, `completer.py`,
 > `printer.py`, `render.py`, `image.py`, `exceptions.py`, or their tests. Config/context internals:
 > [config-and-context.md](./config-and-context.md). Cross-layer data flow: [cross-layer guide](../guides/cross-layer-thinking-guide.md).
 
@@ -231,9 +231,14 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
 
 ## Slash Commands & Completion
 
-- `CmdHandler.commands` maps `const.CMD_*` constants to handlers; exact matches first, then prefix match for
-  argument-taking commands (`/save`, `/load`, `/del`, `/mode`, `/add`, `/context`, `/compact`,
-  `/permissions`, `/undo`). Aliases: `/ctx`, `/chats`, `?`, and `!`/`！` → `subprocess.call(shell=True)`.
+- `commands/registry.py::COMMAND_INFO` is the authority for spelling, handler method name, aliases,
+  help text and `accepts_arguments`. `COMMAND_BY_NAME` and `command_completions()` derive from it;
+  `CmdHandler` binds handlers on its own instance. `cmd_handler.py` preserves the existing metadata,
+  helper and constant exports without a second registry. Exact whole-input matches run first, then
+  exact whitespace-delimited command tokens for argument-taking entries; never use string prefixes.
+  Normalize only for matching and pass argument-taking handlers the unchanged input. Aliases include
+  `/ctx`, `/chats`, `/delete`, `?`; `?` executes but is excluded from slash completion.
+  `!`/`！` retain their direct `subprocess.call(shell=True)` path.
   `handle_command()` returns `True` (continue), `False` (exit) or the original input; handlers return
   `bool` and print via `self.cli.console`.
 - `/add`, `/context` use `shlex.split` (quoted paths work) and strip one leading `@`; bad quoting prints
@@ -247,13 +252,17 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
   lists session/persisted/rules and revokes persisted entries.
 - `/undo` (v0.21 K11) restores the most recent builtin-filesystem mutation the agent made in this
   process (backup restore, or delete a path the agent created) and prints what was restored/deleted;
-  with an empty stack it prints a friendly message. `CMD_UNDO` is cmd_handler-local; the undo stack
+  with an empty stack it prints a friendly message. `CMD_UNDO` is defined in the command registry and
+  re-exported by `cmd_handler`; the undo stack
   lives in `yaicli/tools/workspace.py` and is populated by `execute_tool_call`, not by the handler.
   See [function-tool-guidelines.md](./function-tool-guidelines.md) for the guard/backup contract.
-- New command checklist: constant in `const.py` (or cmd_handler-local like `CMD_COMPACT`/`CMD_UNDO`) → register in
-  `CmdHandler.commands` → usage line in `cli.print_help()` → path prefix in `completer.py`
-  (`_is_context_command`) if it takes a path (`tests/test_command_handler.py` covers shlex errors,
-  missing args, aliases, tri-state return).
+- New command checklist: handler in `CmdHandler` plus one `CommandInfo(command, description, usage,
+  aliases, handler, accepts_arguments)` entry in `commands/registry.py`; dispatch, help and completion
+  follow it. Existing `const.CMD_*` values stay compatible; command-local constants now live in the
+  registry. Add a path prefix in `completer.py::_is_context_command` only when path completion is needed.
+  Preserve `/help extra` as ordinary input, while `/checkpoints extra` reaches its handler and prints
+  Usage. Tests must freeze expected command/alias/argument behavior independently of `COMMAND_INFO`,
+  so deleting one registry entry cannot make all consistency checks pass together.
 - `AtPathCompleter(base_dir=Path.cwd())` fires only on `@` in `document.text_before_cursor` or the `/add`,
   `/context add`, `/context remove` prefixes. Completions are relative to `base_dir`, directories get `/`,
   spaces are quoted, hidden files are listed, `display_meta` is `[DIR]` or the suffix, and

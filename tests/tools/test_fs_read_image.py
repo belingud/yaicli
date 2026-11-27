@@ -9,7 +9,8 @@ import pytest
 from yaicli.functions.buildin.fs_read_image import Function
 from yaicli.schemas import ToolCall
 from yaicli.tools import execute_tool_call
-from yaicli.tools.function import Function as ToolFunction, wrap_gemini_function
+from yaicli.tools.function import Function as ToolFunction
+from yaicli.tools.function import wrap_gemini_function
 
 FAKE_CFG = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False}
 # fs_read_image only inspects the extension and file bytes, so the PNG magic is enough
@@ -307,7 +308,7 @@ class TestFSReadImageToolCall:
         )
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", MagicMock()),
         ):
             result, ok = execute_tool_call(tool_call)
@@ -337,7 +338,7 @@ class TestFSReadImageToolCall:
         )
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", MagicMock()),
         ):
             result, ok = execute_tool_call(tool_call)
@@ -354,7 +355,7 @@ class TestFSReadImageToolCall:
         tool_call = ToolCall(id="1", name="fs_read_image", arguments=json.dumps({"image_paths": 123}))
         with (
             patch("yaicli.tools.cfg", FAKE_CFG),
-            patch("yaicli.tools.get_function", return_value=tool),
+            patch("yaicli.tools.executor.get_function", return_value=tool),
             patch("yaicli.tools.console", MagicMock()),
         ):
             result, ok = execute_tool_call(tool_call)

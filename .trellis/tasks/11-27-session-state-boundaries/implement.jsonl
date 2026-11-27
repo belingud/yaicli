@@ -1,0 +1,12 @@
+{"file": ".trellis/spec/py/index.md", "reason": "确认源码分层、依赖方向和懒加载约束"}
+{"file": ".trellis/spec/repo/index.md", "reason": "遵守分支 PR、文档与任务规范"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "执行隔离测试、lint、格式及完整质量门禁；历史差异参考研究笔记"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查命令、客户端、工具与存储的端到端数据流"}
+{"file": ".trellis/tasks/11-27-core-organization-refactor/research/organization-review.md", "reason": "读取本次实际代码证据、行为测试映射、兼容限制和旧规范差异"}
+{"file": ".trellis/spec/py/config-and-context.md", "reason": "只改变运行时依赖获取方式，保持加载优先级、路径及覆盖契约"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "保持 CLI 组装、惰性初始化、生成线程和模型角色切换"}
+{"file": ".trellis/spec/py/function-tool-guidelines.md", "reason": "保留独立工具环境桥接、缓存、执行和权限行为"}
+{"file": ".trellis/spec/py/provider-guidelines.md", "reason": "显式配置及会话绑定不得改变 provider 调用协议"}
+{"file": ".trellis/spec/py/checkpoints.md", "reason": "验证配置 root 首次生效、捕获上下文、取消和跨进程回退"}
+{"file": ".trellis/spec/py/context-window-limits.md", "reason": "会话配置贯穿预算与 provider 限制解析，保持窗口优先级"}
+{"file": ".trellis/tasks/11-27-core-organization-refactor/research/test-safety-review.md", "reason": "按行为证据补齐重构前的关键回归，保留 provider 差异并识别测试隔离和基线限制"}

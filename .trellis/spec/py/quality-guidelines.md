@@ -1,8 +1,9 @@
 # Python Quality Guidelines
 
 Applies to changes under `yaicli/` and `tests/`. The bar is modest: `ruff check` clean, `just format`
-applied, relevant pytest files green. Ruff runs only pyflakes (`F`); there is no mypy/pyright, no
-coverage threshold, and no test job in CI — the remaining rules here are conventions, not lint failures.
+applied, relevant pytest files green. Ruff runs only pyflakes (`F`); there is no mypy/pyright or
+coverage threshold. CI runs the test suite, lint, strict docs and startup gate; conventions beyond
+those checks still require review.
 
 ## Toolchain and Commands
 
@@ -12,7 +13,7 @@ coverage threshold, and no test job in CI — the remaining rules here are conve
 | Format | `just format` | `ruff format` + `ruff check --fix` on `yaicli` and `tests`, then `isort yaicli yaicli` / `isort yaicli tests` (`Justfile`) |
 | Lint | `ruff check --no-fix yaicli tests` | plain `ruff check yaicli tests` applies fixes because `fix = true`; only `F401` is fixable |
 | One file / subset | `uv run pytest tests/tools/test_fs_read_file.py -q`, `uv run pytest -k "streaming"` | |
-| Full suite | `uv run pytest` | 60 `test_*.py` files; `testpaths = ["tests"]` |
+| Full suite | `uv run pytest` | `testpaths = ["tests"]`; run in an isolated HOME/config directory |
 | Coverage (opt-in) | `uv run pytest --cov=yaicli` | `pytest-cov` is in the `dev` dependency-group; no addopts, no threshold |
 | Multi-version | `tox`, `tox -e py312`, `tox -e lint` | `tox.ini`: `env_list = py310, py311, py312, py313`, testenv `extras = all` |
 | Build | `uv build` | hatchling |
@@ -99,7 +100,7 @@ there is no `just check`; lint is bare `ruff check` or `tox -e lint`. `CLAUDE.md
   `@patch("yaicli.llms.providers.openai_provider.get_openai_schemas", return_value=[])`. Exception:
   `anthropic_provider.py` imports `get_anthropic_schemas` lazily inside `completion()`, so its tests
   correctly patch `yaicli.tools.get_anthropic_schemas`; check the import site before choosing a target.
-  Many existing test files (7 as of this writing) still carry the no-op decorator — their assertions do
+  Some existing test files still carry the no-op decorator — their assertions do
   not depend on the patched value, but the real `FUNCTIONS_DIR` may still be read; do not copy it.
   For streaming, return a list of chunk mocks with `.choices[0].delta`.
 - `tests/llms/test_simple_providers.py` is the compact variant for OpenAI-compatible providers; legacy
@@ -112,8 +113,12 @@ there is no `just check`; lint is bare `ruff check` or `tox -e lint`. `CLAUDE.md
 - Add schema-contract tests against `Function.openai_schema["parameters"]` and
   `Function.anthropic_schema["input_schema"]` (types, `required`, absence of `anyOf`).
 - Cover the runtime path with `execute_tool_call(ToolCall(...))` under
-  `patch("yaicli.tools.cfg", FAKE_CFG)`, `patch("yaicli.tools.get_function", ...)`, and
+  `patch("yaicli.tools.cfg", FAKE_CFG)`, `patch("yaicli.tools.executor.get_function", ...)`, and
   `patch("yaicli.tools.console", ...)`.
+- Patch declaration caches/mode on `yaicli.tools.schemas`, where that state lives; patch argument
+  repair/dispatch helpers on `yaicli.tools.executor`. Keep facade cfg/console injection tests so
+  moving an internal binding does not bypass runtime console routing. Do not weaken the behavior
+  assertion merely because the old patch path became inactive.
 - Guard optional-dependency checks with `pytest.importorskip("google.genai")` inside a fixture (only
   `TestFSReadFileGeminiSchema` does this today); use `tmp_path` for all filesystem work. For MCP/lazy
   behavior, patch the package boundary (`patch("yaicli.tools.mcp.get_mcp_manager")`) and assert
@@ -172,6 +177,10 @@ Before reporting a Python change complete:
 
 ## CI Reality
 
-`.github/workflows/` contains only `publish.yml` (on `v*` tags: hatchling build + PyPI publish) and
-`deploy-docs.yml` (on branch `docs`: `mkdocs gh-deploy`). No workflow runs pytest, ruff, or tox, so the
-checks above are the only gate. See [guides/index.md](../guides/index.md) for the project thinking guides.
+`.github/workflows/test.yml` runs pytest on Python 3.10, 3.12 and 3.13, plus Ruff with `--no-fix`
+and a strict MkDocs build on pull requests and master. `bench.yml` runs the existing startup gate;
+pair timing results with startup/runtime-bootstrap functional tests, since timing alone does not
+prove each measured subprocess succeeded. `publish.yml` builds/publishes `v*` tags, and
+`deploy-docs.yml` deploys the `docs` branch. Local cross-cutting changes still require the full suite
+with an isolated HOME/config; CI success does not replace contract tests for the changed boundary.
+See [guides/index.md](../guides/index.md) for the project thinking guides.

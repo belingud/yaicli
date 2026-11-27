@@ -2,160 +2,51 @@
 
 import shlex
 import subprocess
-from dataclasses import dataclass
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 from rich.markdown import Markdown
 from rich.padding import Padding
 from rich.prompt import Prompt
 from rich.table import Table
 
+from .commands.registry import (
+    CMD_CHECKPOINTS,
+    CMD_COMPACT,
+)
+from .commands.registry import CMD_COST as CMD_COST
+from .commands.registry import CMD_FORK, CMD_MODEL, CMD_PERMISSIONS
+from .commands.registry import CMD_RETRY as CMD_RETRY
+from .commands.registry import CMD_REWIND, CMD_ROLE
+from .commands.registry import CMD_SHOW_OUTPUT as CMD_SHOW_OUTPUT
+from .commands.registry import CMD_UNDO as CMD_UNDO
+from .commands.registry import COMMAND_BY_NAME
+from .commands.registry import COMMAND_INFO as COMMAND_INFO
+from .commands.registry import DEFAULT_COMPACT_KEEP_ROUNDS
+from .commands.registry import CommandInfo as CommandInfo
+from .commands.registry import command_completions as command_completions
 from .config import cfg
 from .console import safe_text, strip_control_chars
 from .const import (
     CHAT_MODE,
     CMD_ADD,
-    CMD_CLEAR,
-    CMD_CONTEXT,
-    CMD_DELETE_CHAT,
-    CMD_EXIT,
-    CMD_HELP,
-    CMD_HISTORY,
-    CMD_LIST_CHATS,
-    CMD_LOAD_CHAT,
-    CMD_MODE,
-    CMD_PLAN,
-    CMD_SAVE_CHAT,
-    CMD_TODO,
-    EXEC_MODE,
-    DefaultRoleNames,
 )
+from .const import CMD_CLEAR as CMD_CLEAR
+from .const import CMD_CONTEXT as CMD_CONTEXT
+from .const import CMD_DELETE_CHAT
+from .const import CMD_EXIT as CMD_EXIT
+from .const import CMD_HELP as CMD_HELP
+from .const import CMD_HISTORY as CMD_HISTORY
+from .const import CMD_LIST_CHATS as CMD_LIST_CHATS
+from .const import CMD_LOAD_CHAT, CMD_MODE, CMD_PLAN
+from .const import CMD_SAVE_CHAT as CMD_SAVE_CHAT
+from .const import CMD_TODO as CMD_TODO
+from .const import EXEC_MODE, DefaultRoleNames
 from .tokens import ContextUsage, estimate_context_usage, trim_messages_to_budget
 from .tools import workspace
 from .tools.approval import PermissionRule
 
-#: Slash command to manually compact the conversation (v0.19 K02).
-#: Defined here (not in const.py) because the context-economy commands are owned by
-#: this module; ``cli.print_help`` imports it from here.
-CMD_COMPACT = "/compact"
-#: Slash command to list/revoke tool permissions (v0.19 K06).
-#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
-CMD_PERMISSIONS = "/permissions"
-#: Slash command to re-print the last tool result in full (same as ``Ctrl+O``).
-CMD_SHOW_OUTPUT = "/show-output"
-#: Slash command to restore the last file mutation made by the agent (v0.21 K11).
-#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
-CMD_UNDO = "/undo"
-#: Slash command to show session token usage and estimated cost (v0.22 K17).
-#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
-CMD_COST = "/cost"
-#: Slash command to show or switch the model for the current session.
-#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
-CMD_MODEL = "/model"
-#: Slash command to show or switch the assistant role.
-#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
-CMD_ROLE = "/role"
-#: Slash command to re-run the last user turn from its pre-turn snapshot.
-#: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
-CMD_RETRY = "/retry"
-CMD_CHECKPOINTS = "/checkpoints"
-CMD_REWIND = "/rewind"
-CMD_FORK = "/fork"
-#: Turn groups kept by ``/compact`` when no argument is given.
-DEFAULT_COMPACT_KEEP_ROUNDS = 5
 #: ``/context`` subcommands that print the estimated usage breakdown.
 CONTEXT_BUDGET_SUBCOMMANDS = ("budget", "stats", "usage")
-
-
-@dataclass(frozen=True)
-class CommandInfo:
-    """One slash command's help/completion metadata.
-
-    ``command`` is the token inserted by the REPL completion menu and
-    ``description`` its one-line explanation. ``usage`` is the spelling shown in
-    the help table (defaults to ``command``) and ``aliases`` are alternate
-    registered slash spellings offered by completion with the same description.
-    """
-
-    command: str
-    description: str
-    usage: Optional[str] = None
-    aliases: Tuple[str, ...] = ()
-
-    @property
-    def help_text(self) -> str:
-        """The usage column shown by ``CLI.print_help``."""
-        return self.usage or self.command
-
-
-#: Single source of truth for the REPL help table *and* the slash-command
-#: completion menu: ``CLI.print_help`` renders it and :class:`SlashCommandCompleter`
-#: offers it, so the two can never diverge. Keep it in sync with
-#: ``CmdHandler.commands`` (tests/test_command_handler.py asserts the parity).
-COMMAND_INFO: Tuple[CommandInfo, ...] = (
-    CommandInfo(CMD_HELP[0], "Show help message", usage="|".join(CMD_HELP)),
-    CommandInfo(CMD_CLEAR, "Clear chat history"),
-    CommandInfo(CMD_HISTORY, "Show chat history"),
-    CommandInfo(CMD_LIST_CHATS, "List saved chats", usage=f"{CMD_LIST_CHATS}|/chats", aliases=("/chats",)),
-    CommandInfo(CMD_SAVE_CHAT, "Save current chat", usage=f"{CMD_SAVE_CHAT} <title>"),
-    CommandInfo(CMD_LOAD_CHAT, "Load a saved chat", usage=f"{CMD_LOAD_CHAT} <index>"),
-    CommandInfo(
-        CMD_DELETE_CHAT,
-        "Delete a saved chat",
-        usage=f"{CMD_DELETE_CHAT}|/delete <index>",
-        aliases=("/delete",),
-    ),
-    CommandInfo(CMD_ADD, "Add @file/dir to context", usage=f"{CMD_ADD} <path>"),
-    CommandInfo(
-        CMD_CONTEXT[0],
-        "Show context/token usage; manage context (list, add, remove, clear, budget)",
-        usage="/context, /ctx",
-        aliases=("/ctx",),
-    ),
-    CommandInfo(
-        CMD_PLAN,
-        "Plan mode: toggle, or plan a task; list/show/edit/review/resume/clear/abort",
-        usage=f"{CMD_PLAN} [task|list [--all]|show [id]|edit|review [id]|resume [id]|clear [--done|--all]|abort]",
-    ),
-    CommandInfo(CMD_TODO, "Show the current plan todos"),
-    CommandInfo(CMD_COST, "Show session token usage and estimated cost"),
-    CommandInfo(
-        CMD_COMPACT,
-        f"Compact history, keeping the last N turn groups (default {DEFAULT_COMPACT_KEEP_ROUNDS})",
-        usage=f"{CMD_COMPACT} [keep_rounds]",
-    ),
-    CommandInfo(
-        CMD_PERMISSIONS,
-        "List/revoke tool permissions and session grants",
-        usage=f"{CMD_PERMISSIONS} [revoke <tool-or-index>]",
-    ),
-    CommandInfo(CMD_SHOW_OUTPUT, "View this turn's tool outputs (same as Ctrl+O)"),
-    CommandInfo(CMD_UNDO, "Undo the last file change made by a tool"),
-    CommandInfo(CMD_CHECKPOINTS, "List saved conversation checkpoints"),
-    CommandInfo(CMD_REWIND, "Restore a previous conversation checkpoint", usage="/rewind [id]"),
-    CommandInfo(CMD_FORK, "Save the current conversation and rewind", usage="/fork [id] [title]"),
-    CommandInfo(CMD_MODEL, "Show or switch the model for this session", usage=f"{CMD_MODEL} [name]"),
-    CommandInfo(CMD_ROLE, "Show or switch the assistant role", usage=f"{CMD_ROLE} [name]"),
-    CommandInfo(CMD_RETRY, "Re-run the last user turn (e.g. after an API error)"),
-    CommandInfo(CMD_EXIT, "Exit (Ctrl+D also exits)", usage=f"{CMD_EXIT}|Ctrl+D"),
-    CommandInfo(CMD_MODE, "Switch mode (Case insensitive)", usage=f"{CMD_MODE} {CHAT_MODE}|{EXEC_MODE}"),
-)
-
-
-def command_completions() -> Tuple[Tuple[str, str], ...]:
-    """Return ``(command, description)`` pairs for the REPL completion menu.
-
-    Canonical commands come first, then every slash alias with the same
-    description. Non-slash aliases (``?``) are not offered: completion only fires
-    on a leading ``/``.
-    """
-    entries = []
-    for info in COMMAND_INFO:
-        entries.append((info.command, info.description))
-        for alias in info.aliases:
-            if alias.startswith("/"):
-                entries.append((alias, info.description))
-    return tuple(entries)
 
 
 class CmdHandler:
@@ -168,37 +59,7 @@ class CmdHandler:
             cli: CLI instance to access methods and properties
         """
         self.cli = cli
-        self.commands = {
-            # Register special commands with their handlers
-            CMD_HELP[0] if isinstance(CMD_HELP, tuple) else CMD_HELP: self.handle_help,
-            "?": self.handle_help,  # support ? as help command
-            CMD_EXIT: self.handle_exit,
-            CMD_CLEAR: self.handle_clear,
-            CMD_HISTORY: self.handle_history,
-            CMD_LIST_CHATS: self.handle_list,
-            "/chats": self.handle_list,  # support /chats as alias for list command
-            CMD_SAVE_CHAT: self.handle_save,
-            CMD_LOAD_CHAT: self.handle_load,
-            CMD_DELETE_CHAT: self.handle_delete,
-            "/delete": self.handle_delete,  # long-form alias (accepted since prefixes matched)
-            CMD_MODE: self.handle_mode,
-            CMD_ADD: self.handle_add_context,
-            CMD_CONTEXT[0] if isinstance(CMD_CONTEXT, tuple) else CMD_CONTEXT: self.handle_context,
-            "/ctx": self.handle_context,
-            CMD_PLAN: self.handle_plan,
-            CMD_TODO: self.handle_todo,
-            CMD_COMPACT: self.handle_compact,
-            CMD_PERMISSIONS: self.handle_permissions,
-            CMD_SHOW_OUTPUT: self.handle_show_output,
-            CMD_UNDO: self.handle_undo,
-            CMD_CHECKPOINTS: self.handle_checkpoints,
-            CMD_REWIND: self.handle_rewind,
-            CMD_FORK: self.handle_fork,
-            CMD_COST: self.handle_cost,
-            CMD_MODEL: self.handle_model,
-            CMD_ROLE: self.handle_role,
-            CMD_RETRY: self.handle_retry,
-        }
+        self.commands = {name: getattr(self, info.handler) for name, info in COMMAND_BY_NAME.items()}
 
     def handle_add_context(self, command_input: str = "") -> bool:
         """Handle /add command to add file/dir to context.
@@ -1337,24 +1198,8 @@ class CmdHandler:
         if len(parts) == 2:
             command_token = parts[0]
             handler = self.commands.get(command_token)
-            if handler is not None and command_token in (
-                CMD_SAVE_CHAT,
-                CMD_LOAD_CHAT,
-                CMD_DELETE_CHAT,
-                "/delete",  # long-form alias of /del
-                CMD_MODE,
-                CMD_ADD,
-                CMD_CONTEXT[0] if isinstance(CMD_CONTEXT, tuple) else CMD_CONTEXT,
-                "/ctx",  # Also handle the /ctx alias
-                CMD_PLAN,
-                CMD_COMPACT,
-                CMD_PERMISSIONS,
-                CMD_MODEL,
-                CMD_ROLE,
-                CMD_CHECKPOINTS,
-                CMD_REWIND,
-                CMD_FORK,
-            ):
+            info = COMMAND_BY_NAME.get(command_token)
+            if handler is not None and info is not None and info.accepts_arguments:
                 return handler(user_input)
 
         # Not a special command
