@@ -119,7 +119,7 @@ def test_fork_title_collision_preserves_both_sessions(cli, monkeypatch, capsys):
 @pytest.mark.parametrize("command", ["/rewind 0", "/fork 0 Weekend"])
 def test_readonly_refusal(cli, monkeypatch, capsys, command):
     path = record_turn(cli)
-    monkeypatch.setitem(cfg, "TOOL_POLICY", "readonly")
+    monkeypatch.setitem(cli.config, "TOOL_POLICY", "readonly")
     monkeypatch.setattr(cli.console, "input", lambda prompt: pytest.fail("must not confirm"))
     cli.cmd_handler.handle_command(command)
     assert path.exists()
@@ -318,7 +318,7 @@ def test_delete_preserves_recovery_and_reports_location(cli, capsys):
 
 def test_disabled_detachment_still_cleans_store_on_deletion(cli, monkeypatch):
     store = cli._checkpoint_store()
-    monkeypatch.setitem(cfg, "CHECKPOINT_ENABLED", False)
+    monkeypatch.setitem(cli.config, "CHECKPOINT_ENABLED", False)
     cli._save_chat()
     assert cli.chat.checkpoint_head == -1
     cli.chat_manager.delete_chat(cli.chat.path)

@@ -75,7 +75,7 @@ bound saved-chat path, including chains whose identity is no longer in the lates
 ### Identity and disk format
 
 - Resolve the workspace from the effective configuration on the first checkpoint access:
-  `resolve_workspace_root(cfg.get("WORKSPACE_ROOT") or Path.cwd())`. A config-file-only root
+  `resolve_workspace_root(session_config.get("WORKSPACE_ROOT") or Path.cwd())`. A config-file-only root
   must work before any tool synchronizes guardrail environment variables. Keep that root stable
   across capture, listing and restart; the project/session key still follows the invocation cwd.
 - Chat JSON adds optional `checkpoint_session_id` (UUID encoded as 32 lowercase hex characters)
@@ -106,6 +106,10 @@ bound saved-chat path, including chains whose identity is no longer in the lates
 - Capture the pre-mutation state at the guarded executor, before a supported builtin actually
   writes. Record completion and post-state after it returns. Carry capture context into the
   streaming worker; never let an abandoned worker contribute to a different turn or session.
+- The scoped tool environment lock is taken before the workspace mutation lock and only around actual
+  execution or undo. Checkpoint rewind already holds its explicit-root workspace lock; its chat-save
+  callback binds the effective redaction mapping without acquiring the environment lock. Never reverse
+  that order or hold the environment lock while waiting for generation/confirmation/worker completion.
 - Support ordinary file create/edit/delete/copy/move and identifiable newly created empty parents.
   Guarded tools, rewind and `/undo` use the same workspace mutation lock.
 - Directory trees, symlinks, shell execution, MCP, custom tools (including overrides of builtin
@@ -189,7 +193,7 @@ Wrong: call `resolve_workspace_root()` without passing effective configuration a
 later tool call to populate `YAI_WORKSPACE_ROOT`. A config-only root can then change mid-session,
 invalidate the manifest and make `/checkpoints` appear empty.
 
-Correct: resolve `cfg.get("WORKSPACE_ROOT") or Path.cwd()` explicitly before beginning the first turn.
+Correct: resolve `session_config.get("WORKSPACE_ROOT") or Path.cwd()` explicitly before beginning the first turn.
 
 Wrong: infer support from `tool_call.name == "fs_write_file"`, restore all paths with a backup,
 then save the chat without checking its current version. A same-name override can have unknown

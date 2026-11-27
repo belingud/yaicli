@@ -246,8 +246,10 @@ def is_redaction_enabled() -> bool:
     """
     try:
         from .config import cfg  # local import: avoids an import cycle at module load
+        from .runtime import current_config
 
-        raw = cfg.get("REDACT_SECRETS") if hasattr(cfg, "get") else None
+        config = current_config(cfg)
+        raw = config.get("REDACT_SECRETS") if hasattr(config, "get") else None
     except Exception:  # pragma: no cover - a broken config must not disable redaction
         return True
     if raw is None:

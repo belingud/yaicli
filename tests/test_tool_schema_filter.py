@@ -248,6 +248,7 @@ class TestGateRejectsDisabledTools:
             "MODEL": "gpt-4o",
             "PROVIDER": "openai",
             "TOOL_AUDIT": False,
+            "ENABLED_TOOLS": cfg.get("ENABLED_TOOLS", ""),
         }
 
     def _run(self, provider, monkeypatch):

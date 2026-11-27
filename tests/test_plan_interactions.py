@@ -75,7 +75,9 @@ def _submit(cli, goal: str = "Interaction plan"):
     session = cli._get_plan_session()
     if not session.is_plan_mode:
         session.enter_researching()
-    result = plan_mode.handle_submit_plan({"goal": goal, "steps": [dict(step) for step in STEPS]})
+    result = plan_mode.handle_submit_plan(
+        {"goal": goal, "steps": [dict(step) for step in STEPS]}, session=cli.plan_session
+    )
     assert result.get("success") is True, result
     assert cli.plan_session.draft_plan is not None
     return cli.plan_session.draft_plan

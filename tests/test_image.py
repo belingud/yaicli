@@ -416,7 +416,7 @@ class TestGracefulDegradation:
         img = ImageData(data="abc", media_type="image/jpeg", is_url=False)
 
         monkeypatch.setattr(cli, "console", MagicMock())
-        with patch("yaicli.cli.cfg", {**cfg, "PROVIDER": "cohere"}):
+        with patch.dict(cli.config, {"PROVIDER": "cohere"}):
             messages = cli._build_messages("test", images=[img])
 
         # The user message should have no images

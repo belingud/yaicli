@@ -127,7 +127,7 @@ class CohereProvider(Provider):
         if not effective_tool_policy.enable_functions:
             return None
 
-        tools = get_openai_schemas()
+        tools = get_openai_schemas(runtime=getattr(self, "runtime", None))
         if not tools and self.verbose:
             self.console.print("No tools available", style="yellow")
         return tools

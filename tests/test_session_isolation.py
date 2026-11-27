@@ -299,8 +299,8 @@ class TestSessionMetadata:
         cli.chat = Chat(title="From CLI")
         cli.chat.add_message("user", "hi")
         cli.role_name = DefaultRoleNames.DEFAULT.value
-        monkeypatch.setitem(cfg, "MODEL", "cli-model")
-        monkeypatch.setitem(cfg, "PROVIDER", "cli-provider")
+        monkeypatch.setitem(cli.config, "MODEL", "cli-model")
+        monkeypatch.setitem(cli.config, "PROVIDER", "cli-provider")
 
         cli._save_chat("From CLI")
 

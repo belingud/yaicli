@@ -42,9 +42,10 @@ entry.py (Typer app)  ->  cli.py (CLI: assembly, mode dispatch, REPL, generation
                           -> llms/provider.py (ProviderFactory -> Provider)
                           -> commands/registry.py (dispatch/help/completion definitions)
                           -> tools/__init__.py (compatible public entry points)
-                                 -> tools/schemas.py   (selection/mode/cache)
+                                 -> tools/schemas.py   (selection/declarations/mode-aware cache)
                                  -> tools/policy.py    (permission decisions)
                                  -> tools/executor.py  (guard/capture/dispatch/results)
+                                 -> tools/environment.py (scoped env bridge + lock)
                                  -> tools/display.py   (tool presentation)
                                  -> tools/function.py  (builtin direct-load + user overrides)
                                  -> tools/risk.py      (risk classes / shell danger classification)
@@ -62,6 +63,7 @@ Module map:
 | `yaicli/_faststart.py` | Console entry (`ai`/`yaicli`/`python -m yaicli`): answers `-v/--version` with only `sys` + the static `yaicli.__version__` (no config/role import, zero writes), then delegates to `entry.app`. Handles a closed stdout/pipe quietly. |
 | `yaicli/entry.py` | Typer app (`YaiApp` restores POSIX SIGPIPE default), CLI options incl. headless (`-p`, `--output-format`, `--json`, `-q`, `--max-turns`, `-y`, `--allowed-tools`, `--cwd`, `--fail-on-tool-denied`) and chat session flags (`--chat`, `--resume`), `--list-*`/`--install-functions` callbacks, exit-code mapping, top-level error→stderr rendering. Imports `CLI` lazily inside `main()`. |
 | `yaicli/cli.py` | Application assembly, runtime modes, REPL, generation threads and confirmation `generator.send()` plumbing. Public state properties delegate to the single underlying run/session/result state. |
+| `yaicli/runtime.py` | `SessionContext` owns the effective mapping and lazy plan reference; mode derives from that reference. ContextVar config binding is lock-free and does not load config/planning on import. |
 | `yaicli/application/` | `SessionController` owns chat/save/load/resume/checkpoint coordination; `MachineOutput` owns result/event/exit state; `RunState` carries shared run options. None receives the whole CLI. |
 | `yaicli/planning/` | Model, validation, store, service, prompt, editor and application coordinator. Core model/validation/storage have no CLI or terminal dependency; coordinator uses named session/output services and narrow terminal operations. |
 | `yaicli/plan_mode.py` / `plan_store.py` | Explicit compatibility exports backed by `planning/`; preserve class identity and existing data formats without copying mutable state. |
@@ -86,7 +88,7 @@ Module map:
 | `yaicli/function_schema.py` | Lightweight `OpenAISchema` replacing `instructor.OpenAISchema`. |
 | `yaicli/functions/` | Builtin function templates (`buildin/`) + install/reinstall/list callbacks and `functions_manifest.json` (version+sha256, stale-copy warning). |
 | `yaicli/llms/` | `LLMClient` (tool loop, budget, retry, depth limit), `Provider` ABC/`ProviderFactory`, one module per provider in `providers/`. |
-| `yaicli/tools/` | Thin public entry points; `schemas.py` owns declarations/selection/mode/cache, `policy.py` permission decisions, `executor.py` dispatch/guard/capture/results and `display.py` presentation. Existing function/MCP/approval/risk/limits/workspace modules retain their contracts. |
+| `yaicli/tools/` | Thin public entry points; `schemas.py` owns declarations/selection/mode-aware cache, `policy.py` permission decisions, `executor.py` dispatch/guard/capture/results and `display.py` presentation. Existing function/MCP/approval/risk/limits/workspace modules retain their contracts. |
 | `yaicli/utils.py` | Shell/OS detection, `str2bool`, result-option callbacks, event-loop helper. |
 
 `yaicli/__init__.py` holds the static `__version__` (kept in sync with `pyproject.toml` by
@@ -102,6 +104,10 @@ some filesystems). `entry.version_callback` prints the same constant.
 - Session and planning application services take concrete data/services and a small number of named
   lifecycle operations, not the CLI or a generic attribute-forwarding proxy. Chat, result and plan
   state have one owner; CLI compatibility properties delegate instead of maintaining copies.
+- Assembly deep-copies parsed configuration once; services/client/provider/tool adapters reference that
+  same runtime mapping. Runtime updates never synchronize through the loader singleton or a global mode
+  copy. Default compatibility helpers remain separate. Standalone tool environment adaptation is scoped
+  to actual execution with environment-lock -> workspace-lock ordering; save bindings take no such lock.
 - New product imports of plan implementation use `planning/`; root `plan_mode.py`/`plan_store.py`
   remain explicit compatibility exports. Models/validation/storage stay independent of Rich and
   terminal interaction, and editor/process dependencies remain confined to their adapter.

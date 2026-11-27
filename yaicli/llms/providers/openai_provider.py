@@ -115,12 +115,12 @@ class OpenAIProvider(Provider):
         effective_tool_policy = self.resolve_tool_policy(tool_policy)
         tools = []
         if effective_tool_policy.enable_functions:
-            tools.extend(get_openai_schemas())
+            tools.extend(get_openai_schemas(runtime=getattr(self, "runtime", None)))
 
         # Add MCP tools if enabled
         if effective_tool_policy.enable_mcp:
             try:
-                mcp_tools = get_openai_mcp_tools()
+                mcp_tools = get_openai_mcp_tools(runtime=getattr(self, "runtime", None))
             except (ValueError, FileNotFoundError, MCPToolsError) as e:
                 self.console.print(f"Failed to load MCP tools: {e}", style="red")
                 mcp_tools = []

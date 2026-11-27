@@ -157,7 +157,7 @@ class OllamaProvider(Provider):
 
         # Add tools if enabled
         if effective_tool_policy.enable_functions:
-            params["tools"] = get_openai_schemas()
+            params["tools"] = get_openai_schemas(runtime=getattr(self, "runtime", None))
 
         if self.verbose:
             self.console.print("Ollama API params:")

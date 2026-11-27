@@ -5,6 +5,7 @@ from typing import Tuple
 
 from ..config import cfg
 from ..console import get_console, get_error_console
+from ..runtime import current_config
 from ..schemas import ToolCall
 from . import executor
 from .display import get_last_tool_output as get_last_tool_output
@@ -40,6 +41,7 @@ def _stdout_is_tty() -> bool:
 console = get_console() if _stdout_is_tty() else get_error_console()
 
 
-def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, bool]:
+def execute_tool_call(tool_call: ToolCall, announce: bool = True, *, runtime=None) -> Tuple[str, bool]:
     """Execute through the guarded dispatcher with the current runtime dependencies."""
-    return executor.execute_tool_call(tool_call, announce, config=cfg, console=console)
+    config = runtime.config if runtime is not None else current_config(cfg)
+    return executor.execute_tool_call(tool_call, announce, config=config, console=console, runtime=runtime)

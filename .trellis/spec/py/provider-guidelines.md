@@ -38,6 +38,20 @@ request. Public schema helpers remain exported from `yaicli.tools`, backed by `t
 Preserve each provider's actual declarations: Gemini's callable filtering/direct MCP aggregation
 currently differs from OpenAI/Anthropic; a module move is not permission to change that behavior.
 
+## Runtime dependencies
+
+The built-in client/provider path shares the application SessionContext and its effective mapping.
+Consume the explicit internal runtime argument at the factory/base boundary; never forward it through
+SDK kwargs. Direct LLMClient construction retains the supplied config object and compatible write-back
+semantics. Ready-client injection must not cause replacement or eager SDK construction.
+
+Declarations, tool selection, permission and execution use the same owner's plan/config dependencies.
+Provider protocol differences stay local: Gemini keeps its existing ENABLED_TOOLS and direct MCP behavior.
+Its delayed callable adapters retain the owner's configuration/session without exposing runtime, config
+or session as model parameters, and keep names/docs/signatures expected by the SDK. Context scopes must
+cover actual generator/callback consumption and restore correctly on errors and close; environment locks
+belong only to the actual tool execution boundary, never the provider generator.
+
 ## Provider Families
 
 Inherit the narrowest family and override only what its protocol changes.

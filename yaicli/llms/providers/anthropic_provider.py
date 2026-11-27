@@ -159,7 +159,7 @@ class AnthropicProvider(Provider):
             try:
                 from ...tools import get_anthropic_schemas
 
-                tools.extend(get_anthropic_schemas())
+                tools.extend(get_anthropic_schemas(runtime=getattr(self, "runtime", None)))
             except ImportError:
                 self.console.print("Function tools not available for Anthropic", style="yellow")
 
@@ -167,7 +167,7 @@ class AnthropicProvider(Provider):
             try:
                 from ...tools import get_anthropic_mcp_tools
 
-                mcp_tools = get_anthropic_mcp_tools()
+                mcp_tools = get_anthropic_mcp_tools(runtime=getattr(self, "runtime", None))
                 tools.extend(mcp_tools)
             except (ValueError, FileNotFoundError, MCPToolsError, ImportError) as e:
                 self.console.print(f"Failed to load MCP tools: {e}", style="red")
@@ -448,6 +448,7 @@ class AnthropicBedrockProvider(AnthropicProvider):
     def __init__(self, *args, **kwargs):
         _require_optional_dependency("boto3", "bedrock")
         super().__init__(*args, **kwargs)
+
     CLIENT_PARAMS_KEY_ENV_MAP = {
         "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
         "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
@@ -498,6 +499,7 @@ class AnthropicVertexProvider(AnthropicProvider):
     def __init__(self, *args, **kwargs):
         _require_optional_dependency("google.auth", "vertex")
         super().__init__(*args, **kwargs)
+
     CLIENT_PARAMS_KEY_ENV_MAP = {
         "PROJECT_ID": "PROJECT_ID",
         "CLOUD_ML_REGION": "CLOUD_ML_REGION",

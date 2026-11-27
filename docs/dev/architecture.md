@@ -10,6 +10,7 @@ behaviour is documented under `docs/usage/`; coding conventions live in `CLAUDE.
 _faststart.py (thin console entry; -v/--version fast path, EPIPE-safe)
   └─ entry.py (Typer CLI; headless flags -> CLI.configure_headless, exit-code mapping)
        └─ cli.py (CLI: assembly, mode dispatch, REPL, tool-confirmation pump)
+       ├─ runtime.py (owned effective config + lazy plan state; scoped config binding)
        ├─ llms/client.py (LLMClient: provider call + tool loop + streaming)
        │    └─ llms/provider.py (ProviderFactory -> Provider)
        │         └─ llms/providers/<name>_provider.py
@@ -23,9 +24,10 @@ _faststart.py (thin console entry; -v/--version fast path, EPIPE-safe)
        │    ├─ planning/service.py / store.py (state transitions and persistence)
        │    └─ planning/prompt.py / editor.py (context text and editor adapter)
        ├─ tools/__init__.py (compatible public schema/execution entry points)
-       │    ├─ tools/schemas.py (selection, declarations, mode and caches)
+       │    ├─ tools/schemas.py (selection, declarations and mode-aware caches)
        │    ├─ tools/policy.py (permission decisions; no confirmation IO)
        │    ├─ tools/executor.py (dispatch, guard/capture/undo and result processing)
+       │    ├─ tools/environment.py (scoped standalone-tool guardrail environment)
        │    ├─ tools/display.py (tool announcements, previews and panels)
        │    ├─ tools/function.py (package builtins, overridden by same-name user functions)
        │    └─ tools/mcp.py (MCP tools, lazy fastmcp import)
@@ -52,6 +54,7 @@ with the tool results.
 | `application/session.py` | `SessionController`: one chat state, save/load/resume and checkpoint storage coordination, using the actual injected chat manager's directory. |
 | `application/output.py` | `MachineOutput`/`ResultState`: result payloads, tool events, usage, errors and exit mapping; serialization does not eagerly construct a provider. |
 | `application/state.py` | `RunState`: shared interaction/mode options, without a reference back to the CLI. |
+| `runtime.py` | `SessionContext`: one effective configuration mapping and lazy plan session, with a scoped configuration binding for lower-level helpers. |
 | `planning/` | Models, validation, persistence, state operations, prompt formatting and editor adapter; `PlanCoordinator` connects them to session/output services and a small set of terminal lifecycle operations. |
 | `plan_mode.py` / `plan_store.py` | Explicit compatibility exports for the planning implementation; no duplicate model classes or plan state. Product imports use `planning/`. |
 | `errors.py` | `ErrorKind`/`AgentError`, exception classification, retry helpers, `EXIT_*` constants. |
@@ -72,8 +75,27 @@ with the tool results.
 | `function_schema.py` | `OpenAISchema`: pydantic model → OpenAI/Anthropic tool schemas. |
 | `functions/` | Built-in function templates (`buildin/`) and install/reinstall/list callbacks. |
 | `llms/` | `LLMClient`, provider ABC/registry, one module per provider. |
-| `tools/` | Public entry points delegate to `schemas.py`, `policy.py`, `executor.py` and `display.py`; `function.py` loads functions, `mcp.py` adapts MCP, `approval.py` stores grants/rules, `risk.py` classifies risk. |
+| `tools/` | Public entry points delegate to `schemas.py`, `policy.py`, `executor.py` and `display.py`; `environment.py` scopes standalone guardrail propagation; `function.py` loads functions, `mcp.py` adapts MCP, `approval.py` stores grants/rules, `risk.py` classifies risk. |
 | `utils.py` | Shell/OS detection, `str2bool`, option callbacks, event-loop helper. |
+
+## Session dependencies
+
+CLI assembly takes one deep snapshot of the parsed configuration. Session/output/planning services and
+the built-in client/provider/tool path share that mapping and the same lazy plan context. Runtime model,
+role and limit changes affect subsequent requests in that session; constructing a second application must
+not change the first application's plan state, tool visibility or default chat directory. Injected ready
+clients and chat managers retain their existing ownership and lifecycle.
+
+Tool mode is derived from the owning plan session. Public no-context helpers retain their compatible
+default behavior; normal application calls carry explicit dependencies. Immutable function metadata and
+base declarations may be shared, while mode/selection caches and delayed Gemini callbacks must preserve
+the owning session. Gemini retains its existing tool-selection and direct MCP declaration differences.
+
+Standalone tools still receive guardrail configuration through four managed environment keys. The adapter
+saves, applies and restores those keys only around actual tool/undo execution, using a reentrant lock before
+the existing workspace mutation lock. It must not hold that lock across provider generation, confirmation
+or worker waits. Configuration binding for saves and checkpoint callbacks uses a separate lock-free scope.
+This supports serial/alternating applications; it does not add concurrent application or cwd isolation.
 
 ## State on disk
 

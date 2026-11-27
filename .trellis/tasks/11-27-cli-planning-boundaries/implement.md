@@ -34,8 +34,8 @@ uv run --no-sync pytest tests/test_stream_bridge.py tests/test_generation_keys.p
 - [x] 完整 pytest、Ruff --no-fix、改动文件格式/isort、strict docs、启动门禁和 git diff --check 通过。
 - [x] verification.md 记录旧数据恢复、文件字节、错误/取消场景、测试基线和性能。
 - [x] 检查迁移未改变用户文案、权限、持久化格式或加入新配置/依赖。
-- [ ] 独立提交本阶段并记录父任务进度；最终统一 PR，CI 通过后等待用户明确授权合并。
-- [ ] 验收提交后重核第三阶段规划，再按用户授权串行推进。
+- [x] 独立提交本阶段 66db062 并记录父任务进度；最终统一 PR/CI/合并仍待完成。
+- [x] 验收提交后重核第三阶段规划和14项上下文，按用户授权串行推进。
 
 ## Rollback points
 

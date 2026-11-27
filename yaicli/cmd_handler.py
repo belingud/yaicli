@@ -22,7 +22,6 @@ from .commands.registry import COMMAND_INFO as COMMAND_INFO
 from .commands.registry import DEFAULT_COMPACT_KEEP_ROUNDS
 from .commands.registry import CommandInfo as CommandInfo
 from .commands.registry import command_completions as command_completions
-from .config import cfg
 from .console import safe_text
 from .const import (
     CHAT_MODE,
@@ -65,20 +64,20 @@ class CmdHandler:
     def session_commands(self):
         from .commands.session import SessionCommands
 
-        return SessionCommands(self.cli.sessions, self.cli.console, cfg)
+        return SessionCommands(self.cli.sessions, self.cli.console, self.cli.config)
 
     @property
     def plan_commands(self):
         from .commands.planning import PlanCommands
 
-        return PlanCommands(self.cli.planning, self.cli.console, cfg)
+        return PlanCommands(self.cli.planning, self.cli.console, self.cli.config)
 
     @property
     def runtime_commands(self):
         from .commands.runtime import RuntimeCommands
 
         return RuntimeCommands(
-            cfg,
+            self.cli.config,
             getattr(self.cli, "run_state", None),
             getattr(self.cli, "role_manager", None),
             self.cli.console,
@@ -158,7 +157,7 @@ class CmdHandler:
         (project instructions block + persistent ``/add`` context) so the shown
         total matches what the provider will actually receive.
         """
-        config = cfg if hasattr(cfg, "get") else None
+        config = self.cli.config if hasattr(self.cli.config, "get") else None
         provider = str(config.get("PROVIDER", "") or "") if config is not None else ""
         return estimate_context_usage(
             self._history(),
@@ -169,10 +168,9 @@ class CmdHandler:
             extra_messages=self._persistent_context(),
         )
 
-    @staticmethod
-    def _cfg_int(key: str, default: int = 0) -> int:
+    def _cfg_int(self, key: str, default: int = 0) -> int:
         """Read an integer config value, tolerating mocks/legacy strings."""
-        config = cfg if hasattr(cfg, "get") else None
+        config = self.cli.config if hasattr(self.cli.config, "get") else None
         if config is None:
             return default
         try:
@@ -398,7 +396,10 @@ class CmdHandler:
         Returns:
             True to continue the REPL loop
         """
-        outcome = workspace.undo_last()
+        from .tools.environment import tool_environment
+
+        with tool_environment(self.cli.config):
+            outcome = workspace.undo_last()
         if outcome is not None:
             self.cli.sessions.checkpoint_reset()
         if outcome is None:
@@ -551,22 +552,20 @@ class CmdHandler:
         return True
 
     # ------------------- model / role / retry commands -------------------
-    @staticmethod
-    def _cfg_value(key: str, default=""):
+    def _cfg_value(self, key: str, default=""):
         """Read a config value defensively (never raise on mock/legacy config)."""
         try:
-            if hasattr(cfg, "get"):
-                value = cfg.get(key, default)
+            if hasattr(self.cli.config, "get"):
+                value = self.cli.config.get(key, default)
                 return value if value is not None else default
         except Exception:  # pragma: no cover - config lookups must never break a command
             return default
         return default
 
-    @staticmethod
-    def _set_cfg_value(key: str, value) -> bool:
+    def _set_cfg_value(self, key: str, value) -> bool:
         """Write one config value for this session (returns False when unsupported)."""
         try:
-            cfg[key] = value
+            self.cli.config[key] = value
             return True
         except Exception:  # pragma: no cover - read-only/legacy config objects
             return False
@@ -712,11 +711,10 @@ class CmdHandler:
         return True
 
     # ------------------- plan mode commands (v0.24 K23) -------------------
-    @staticmethod
-    def _plan_enabled() -> bool:
+    def _plan_enabled(self) -> bool:
         """Whether persistent plan mode is enabled (``PLAN_ENABLED``; defaults on)."""
         try:
-            return bool(cfg.get("PLAN_ENABLED", True))
+            return bool(self.cli.config.get("PLAN_ENABLED", True))
         except Exception:  # pragma: no cover - config lookups must never break a command
             return True
 

@@ -27,6 +27,7 @@ import yaicli.tools as tools_module
 import yaicli.tools.limits as limits_module
 from yaicli import model_limits as ml
 from yaicli.cmd_handler import CMD_COMPACT, CmdHandler
+from yaicli.config import cfg
 from yaicli.errors import AgentError, ErrorKind
 from yaicli.llms.client import LLMClient
 from yaicli.llms.provider import ProviderFactory
@@ -59,6 +60,8 @@ def make_config(**overrides):
     config = {
         "ENABLE_FUNCTIONS": True,
         "ENABLE_MCP": False,
+        "SHOW_FUNCTION_OUTPUT": False,
+        "SHOW_MCP_OUTPUT": False,
         "MAX_TOOL_CALL_DEPTH": 4,
         "TOOL_CONFIRM": False,
         "MODEL": "gpt-4o",
@@ -206,6 +209,7 @@ def assistant_tool_turn(group_index, tool_contents=None, answer="done"):
 def make_cmd_cli(history=None):
     """A lightweight CLI stand-in for CmdHandler tests (no REPL/prompt_toolkit)."""
     cli = SimpleNamespace(
+        config=dict(cfg),
         console=MagicMock(),
         chat=SimpleNamespace(history=list(history or [])),
         role=SimpleNamespace(prompt="You are YAICLI, a terminal agent."),
@@ -707,7 +711,12 @@ class TestClientContextBudget:
             )
         ]
         provider = ScriptedProvider([tool_turn, [LLMResponse(content="done", finish_reason="stop")]])
-        config = make_config(ENABLE_FUNCTIONS=True, MAX_TOOL_CALL_DEPTH=3, CONTEXT_BUDGET_TOKENS=100000)
+        config = make_config(
+            ENABLE_FUNCTIONS=True,
+            MAX_TOOL_CALL_DEPTH=3,
+            CONTEXT_BUDGET_TOKENS=100000,
+            TOOL_OUTPUT_DIR=str(tool_output_config),
+        )
         client = make_client(provider, config)
 
         messages = [ChatMessage(role="user", content="cat the big log")]
@@ -907,7 +916,8 @@ class TestClientDepthLimit:
 class TestShellGuardrailPropagation:
     def test_config_values_are_exported_for_the_shell_tool(self, clean_shell_env):
         tool = MagicMock()
-        tool.execute.return_value = "ok"
+        observed = {}
+        tool.execute.side_effect = lambda **kwargs: observed.update(os.environ) or "ok"
         tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "ls"}')
         fake_cfg = {
             "SHOW_FUNCTION_OUTPUT": False,
@@ -924,16 +934,21 @@ class TestShellGuardrailPropagation:
             result, ok = execute_tool_call(tool_call)
 
         assert ok is True
-        assert os.environ["YAI_TOOL_TIMEOUT"] == "7"
-        assert os.environ["YAI_TOOL_ENV_INHERIT"] == "true"
-        assert os.environ["YAI_WORKSPACE_ROOT"] == "/tmp/workspace"
-        assert os.environ["YAI_TOOL_OUTPUT_MAX_CHARS"] == "1234"
+        assert observed["YAI_TOOL_TIMEOUT"] == "7"
+        assert observed["YAI_TOOL_ENV_INHERIT"] == "true"
+        assert observed["YAI_WORKSPACE_ROOT"] == "/tmp/workspace"
+        assert observed["YAI_TOOL_OUTPUT_MAX_CHARS"] == "1234"
+        assert all(
+            key not in os.environ
+            for key in ("YAI_TOOL_TIMEOUT", "YAI_TOOL_ENV_INHERIT", "YAI_WORKSPACE_ROOT", "YAI_TOOL_OUTPUT_MAX_CHARS")
+        )
 
     def test_exported_env_value_is_consistent_with_config(self, clean_shell_env):
         """cfg is env-first, so an exported value is written back unchanged."""
         clean_shell_env.setenv("YAI_TOOL_TIMEOUT", "99")
         tool = MagicMock()
-        tool.execute.return_value = "ok"
+        observed = {}
+        tool.execute.side_effect = lambda **kwargs: observed.update(os.environ) or "ok"
         tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "ls"}')
         fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "TOOL_TIMEOUT": 99}
         with (
@@ -942,6 +957,7 @@ class TestShellGuardrailPropagation:
         ):
             execute_tool_call(tool_call)
 
+        assert observed["YAI_TOOL_TIMEOUT"] == "99"
         assert os.environ["YAI_TOOL_TIMEOUT"] == "99"
 
     def test_config_wins_over_stale_env_workspace_root(self, clean_shell_env):
@@ -954,7 +970,8 @@ class TestShellGuardrailPropagation:
         clean_shell_env.setenv("YAI_WORKSPACE_ROOT", "/old/exported/root")
         clean_shell_env.setenv("YAI_TOOL_TIMEOUT", "99")
         tool = MagicMock()
-        tool.execute.return_value = "ok"
+        observed = {}
+        tool.execute.side_effect = lambda **kwargs: observed.update(os.environ) or "ok"
         tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "ls"}')
         fake_cfg = {
             "SHOW_FUNCTION_OUTPUT": False,
@@ -969,13 +986,16 @@ class TestShellGuardrailPropagation:
         ):
             execute_tool_call(tool_call)
 
-        assert os.environ["YAI_WORKSPACE_ROOT"] == "/tmp/new-cwd-root"
-        assert os.environ["YAI_TOOL_TIMEOUT"] == "7"
+        assert observed["YAI_WORKSPACE_ROOT"] == "/tmp/new-cwd-root"
+        assert observed["YAI_TOOL_TIMEOUT"] == "7"
+        assert os.environ["YAI_WORKSPACE_ROOT"] == "/old/exported/root"
+        assert os.environ["YAI_TOOL_TIMEOUT"] == "99"
 
     def test_empty_config_values_are_not_exported(self, clean_shell_env):
         """Unset/empty config values keep the tool's built-in defaults."""
         tool = MagicMock()
-        tool.execute.return_value = "ok"
+        observed = {}
+        tool.execute.side_effect = lambda **kwargs: observed.update(os.environ) or "ok"
         tool_call = ToolCall(id="c1", name="execute_shell_command", arguments='{"command": "ls"}')
         fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "WORKSPACE_ROOT": ""}
         with (
@@ -984,11 +1004,13 @@ class TestShellGuardrailPropagation:
         ):
             execute_tool_call(tool_call)
 
+        assert "YAI_WORKSPACE_ROOT" not in observed
         assert "YAI_WORKSPACE_ROOT" not in os.environ
 
     def test_non_shell_tools_do_not_touch_the_env(self, clean_shell_env):
         tool = MagicMock()
-        tool.execute.return_value = "ok"
+        observed = {}
+        tool.execute.side_effect = lambda **kwargs: observed.update(os.environ) or "ok"
         tool_call = ToolCall(id="c1", name="get_weather", arguments='{"city": "NYC"}')
         fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False, "TOOL_TIMEOUT": 7}
         with (
@@ -997,6 +1019,7 @@ class TestShellGuardrailPropagation:
         ):
             execute_tool_call(tool_call)
 
+        assert observed["YAI_TOOL_TIMEOUT"] == "7"
         assert "YAI_TOOL_TIMEOUT" not in os.environ
 
 

@@ -28,7 +28,7 @@ def isolate_undo_and_env(monkeypatch):
     monkeypatch.delenv(workspace.WORKSPACE_ENV_KEY, raising=False)
     yield
     workspace.reset_undo()
-    # ``_sync_shell_guardrail_env`` writes os.environ directly (not via monkeypatch).
+    # Standalone calls outside the scoped dispatcher also use this test environment.
     os.environ.pop(workspace.WORKSPACE_ENV_KEY, None)
 
 
@@ -44,23 +44,22 @@ def _load_builtin_function(name: str):
     return module.Function
 
 
-def _run_tool(monkeypatch, tool_name, arguments, workspace_root=None, patch_sync=True):
+def _run_tool(monkeypatch, tool_name, arguments, workspace_root=None):
     """Run the real ``execute_tool_call`` against a real builtin function.
 
     Returns ``(result_text, ok, console_mock)``. ``workspace_root`` is exported via
-    the env key the production path uses; the announce/panel output is silenced.
+    the effective configuration and env key; the announce/panel output is silenced.
     """
     if workspace_root is not None:
         monkeypatch.setenv(workspace.WORKSPACE_ENV_KEY, str(workspace_root))
+    config = {**_FAKE_CFG, "WORKSPACE_ROOT": str(workspace_root) if workspace_root is not None else ""}
     function = _load_builtin_function(tool_name)
     console = MagicMock()
     patches = [
         patch("yaicli.tools.executor.get_function", return_value=function),
-        patch("yaicli.tools.cfg", _FAKE_CFG),
+        patch("yaicli.tools.cfg", config),
         patch("yaicli.tools.console", console),
     ]
-    if patch_sync:
-        patches.append(patch("yaicli.tools.executor._sync_shell_guardrail_env"))
     for item in patches:
         item.start()
     try:
@@ -527,9 +526,7 @@ class TestExecuteToolCallGuard:
 
     def test_default_workspace_is_cwd(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        result, ok, _ = _run_tool(
-            monkeypatch, "fs_write_file", {"file_path": "rel.txt", "content": "x"}, patch_sync=False
-        )
+        result, ok, _ = _run_tool(monkeypatch, "fs_write_file", {"file_path": "rel.txt", "content": "x"})
         assert ok is True
         assert json.loads(result)["success"] is True
         assert (tmp_path / "rel.txt").exists()

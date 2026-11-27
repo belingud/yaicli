@@ -9,6 +9,7 @@ from ..chat import Chat, resolve_default_chat_dir
 from ..console import get_error_console, safe_text
 from ..const import TEMP_MODE
 from ..exceptions import ChatLoadError, ChatSaveError
+from ..runtime import bind_config
 from ..schemas import ImageData
 from .state import RunState
 
@@ -26,7 +27,9 @@ class SessionController:
         self.is_temp_session = True
         self.chat_start_time = None
         directory = getattr(manager, "chat_dir", None)
-        self.chat_history_dir = Path(directory) if isinstance(directory, (str, Path)) else resolve_default_chat_dir()
+        self.chat_history_dir = (
+            Path(directory) if isinstance(directory, (str, Path)) else resolve_default_chat_dir(self.config)
+        )
         self.retry_snapshot = None
         self.capture = None
         self.worker = None
@@ -36,64 +39,66 @@ class SessionController:
 
     def save_chat(self, title: Union[str, None] = None) -> None:
         """Serialize a saved checkpoint identity before replacing its chat file."""
-        lock = None
-        try:
-            store = self.checkpoint_store() if self.chat.checkpoint_session_id else None
-            if store is not None:
-                lock = store.session_lock()
-                if not lock.acquire():
-                    raise OSError("Workspace is busy. Try again when its file operations finish.")
-                store._fresh(store._load())
-            old_path = self.chat.path
-            if store is not None and title and title != self.chat.title:
-                self.chat.path = None
-            self.save_chat_inner(title)
-            if store is not None and self.chat.path != old_path:
-                data = store._load()
-                data["session_path"] = str(self.chat.path.resolve())
-                store._save(data)
-                if old_path is not None:
-                    old_path.unlink(missing_ok=True)
-        except Exception as exc:
-            get_error_console().print(safe_text(f"Failed to save chat: {exc}"), markup=False)
-            return
-        finally:
-            if lock is not None:
-                lock.release()
-        self.checkpoint_reset(only_if_new=True)
+        with bind_config(self.config):
+            lock = None
+            try:
+                store = self.checkpoint_store() if self.chat.checkpoint_session_id else None
+                if store is not None:
+                    lock = store.session_lock()
+                    if not lock.acquire():
+                        raise OSError("Workspace is busy. Try again when its file operations finish.")
+                    store._fresh(store._load())
+                old_path = self.chat.path
+                if store is not None and title and title != self.chat.title:
+                    self.chat.path = None
+                self.save_chat_inner(title)
+                if store is not None and self.chat.path != old_path:
+                    data = store._load()
+                    data["session_path"] = str(self.chat.path.resolve())
+                    store._save(data)
+                    if old_path is not None:
+                        old_path.unlink(missing_ok=True)
+            except Exception as exc:
+                get_error_console().print(safe_text(f"Failed to save chat: {exc}"), markup=False)
+                return
+            finally:
+                if lock is not None:
+                    lock.release()
+            self.checkpoint_reset(only_if_new=True)
 
     def save_chat_inner(self, title: Union[str, None] = None) -> None:
         """Save current chat history to a file using session manager."""
-        # Update title if provided
-        if title:
-            self.chat.title = title
-        if not self.config.get("CHECKPOINT_ENABLED", True):
-            self.chat.checkpoint_head = -1
+        with bind_config(self.config):
+            # Update title if provided
+            if title:
+                self.chat.title = title
+            if not self.config.get("CHECKPOINT_ENABLED", True):
+                self.chat.checkpoint_head = -1
 
-        # v0.21 K13: persist model/provider/role/cwd/created_at/updated_at.
-        try:
-            self.apply_session_metadata(self.chat)
-        except AttributeError:
-            # Legacy/bare Chat-like object (tests/integrations): keep saving it.
-            pass
+            # v0.21 K13: persist model/provider/role/cwd/created_at/updated_at.
+            try:
+                self.apply_session_metadata(self.chat)
+            except AttributeError:
+                # Legacy/bare Chat-like object (tests/integrations): keep saving it.
+                pass
 
-        # Save chat and get the saved title back
-        try:
-            saved_title = self.chat_manager.save_chat(self.chat)
-        except ChatSaveError as e:
-            self.console.print(f"Failed to save chat: {safe_text(e)}", style="red")
-            return
+            # Save chat and get the saved title back
+            try:
+                saved_title = self.chat_manager.save_chat(self.chat)
+            except ChatSaveError as e:
+                self.console.print(f"Failed to save chat: {safe_text(e)}", style="red")
+                return
 
-        # Session list will be refreshed automatically by the save method
-        self.console.print(f"Chat saved as: {safe_text(saved_title)}", style="bold green")
+            # Session list will be refreshed automatically by the save method
+            self.console.print(f"Chat saved as: {safe_text(saved_title)}", style="bold green")
 
-        # Mark session as persistent if it was temporary
-        if self.is_temp_session:
-            self.is_temp_session = False
-            self.chat_start_time = int(time.time())
-            self.console.print(
-                "Session is now marked as persistent and will be auto-saved on exit.", style="bold green"
-            )
+            # Mark session as persistent if it was temporary
+            if self.is_temp_session:
+                self.is_temp_session = False
+                self.chat_start_time = int(time.time())
+                self.console.print(
+                    "Session is now marked as persistent and will be auto-saved on exit.", style="bold green"
+                )
 
     def list_chats(self) -> None:
         """List all saved chat sessions using session manager."""
@@ -255,95 +260,97 @@ class SessionController:
 
     def checkpoint_store(self):
         """Resolve the current saved-chat store only for a real interactive REPL."""
-        if (
-            not self.state.interactive
-            or self.state.machine_output
-            or self.state.quiet
-            or self.is_temp_session
-            or self.state.current_mode == TEMP_MODE
-            or not self.config.get("CHECKPOINT_ENABLED", True)
-        ):
-            return None
-        import uuid
-
-        from ..checkpoints import CheckpointError, CheckpointStore
-        from ..const import project_sessions_key
-        from ..tools.workspace import resolve_workspace_root
-
-        worker = self.worker
-        if worker is not None:
-            if worker.alive:
-                raise CheckpointError("Workspace is busy. Try again when its file operations finish.")
-            capture = self.capture
-            if capture is not None:
-                capture.store.abandon_turn(capture)
-            self.worker = None
-            self.capture = None
-        chat = self.chat
-        if (
-            not chat.checkpoint_session_id
-            or len(chat.checkpoint_session_id) != 32
-            or any(char not in "0123456789abcdef" for char in chat.checkpoint_session_id)
-        ):
-            chat.checkpoint_session_id = uuid.uuid4().hex
-            chat.checkpoint_head = -1
-        root = resolve_workspace_root(self.config.get("WORKSPACE_ROOT") or Path.cwd())
-        if chat.path is None:
-            self.chat_manager.save_chat(chat)
-        directory = (
-            self.chat_history_dir.resolve() / "checkpoints" / project_sessions_key() / chat.checkpoint_session_id
-        )
-        store = CheckpointStore(
-            directory,
-            root,
-            chat.checkpoint_session_id,
-            self.config.get("CHECKPOINT_KEEP", 20),
-            self.config.get("CHECKPOINT_MAX_MB", 50),
-            session_path=chat.path.resolve(),
-            expected_head=chat.checkpoint_head,
-        )
-        if not store.belongs_to_path():
-            # A copied session shares its conversation, never another file's journal.
-            chat.checkpoint_session_id = uuid.uuid4().hex
-            chat.checkpoint_head = -1
-            return self.checkpoint_store()
-        try:
-            data = store._load()
-            if chat.checkpoint_head < 0 and data["head"] >= 0 and not store.pending_path.exists():
-                chat.checkpoint_session_id = uuid.uuid4().hex
-                return self.checkpoint_store()
-        except CheckpointError as exc:
+        with bind_config(self.config):
             if (
-                str(exc)
-                not in ("Checkpoint data is corrupt.", "Checkpoint data does not match this session or workspace.")
-                or store.has_recovery()
+                not self.state.interactive
+                or self.state.machine_output
+                or self.state.quiet
+                or self.is_temp_session
+                or self.state.current_mode == TEMP_MODE
+                or not self.config.get("CHECKPOINT_ENABLED", True)
             ):
-                raise
-            get_error_console().print(safe_text(f"Checkpoint unavailable: {exc}"), markup=False)
-            chat.checkpoint_session_id = uuid.uuid4().hex
-            chat.checkpoint_head = -1
-            return self.checkpoint_store()
-        store.reconcile()
-        return store
+                return None
+            import uuid
+
+            from ..checkpoints import CheckpointError, CheckpointStore
+            from ..const import project_sessions_key
+            from ..tools.workspace import resolve_workspace_root
+
+            worker = self.worker
+            if worker is not None:
+                if worker.alive:
+                    raise CheckpointError("Workspace is busy. Try again when its file operations finish.")
+                capture = self.capture
+                if capture is not None:
+                    capture.store.abandon_turn(capture)
+                self.worker = None
+                self.capture = None
+            chat = self.chat
+            if (
+                not chat.checkpoint_session_id
+                or len(chat.checkpoint_session_id) != 32
+                or any(char not in "0123456789abcdef" for char in chat.checkpoint_session_id)
+            ):
+                chat.checkpoint_session_id = uuid.uuid4().hex
+                chat.checkpoint_head = -1
+            root = resolve_workspace_root(self.config.get("WORKSPACE_ROOT") or Path.cwd())
+            if chat.path is None:
+                self.chat_manager.save_chat(chat)
+            directory = (
+                self.chat_history_dir.resolve() / "checkpoints" / project_sessions_key() / chat.checkpoint_session_id
+            )
+            store = CheckpointStore(
+                directory,
+                root,
+                chat.checkpoint_session_id,
+                self.config.get("CHECKPOINT_KEEP", 20),
+                self.config.get("CHECKPOINT_MAX_MB", 50),
+                session_path=chat.path.resolve(),
+                expected_head=chat.checkpoint_head,
+            )
+            if not store.belongs_to_path():
+                # A copied session shares its conversation, never another file's journal.
+                chat.checkpoint_session_id = uuid.uuid4().hex
+                chat.checkpoint_head = -1
+                return self.checkpoint_store()
+            try:
+                data = store._load()
+                if chat.checkpoint_head < 0 and data["head"] >= 0 and not store.pending_path.exists():
+                    chat.checkpoint_session_id = uuid.uuid4().hex
+                    return self.checkpoint_store()
+            except CheckpointError as exc:
+                if (
+                    str(exc)
+                    not in ("Checkpoint data is corrupt.", "Checkpoint data does not match this session or workspace.")
+                    or store.has_recovery()
+                ):
+                    raise
+                get_error_console().print(safe_text(f"Checkpoint unavailable: {exc}"), markup=False)
+                chat.checkpoint_session_id = uuid.uuid4().hex
+                chat.checkpoint_head = -1
+                return self.checkpoint_store()
+            store.reconcile()
+            return store
 
     def checkpoint_reset(self, only_if_new: bool = False) -> None:
-        capture = self.capture
-        if capture is not None and not capture.finished:
-            capture.barrier = True
-            return
-        try:
-            store = self.checkpoint_store()
-            if store is None:
+        with bind_config(self.config):
+            capture = self.capture
+            if capture is not None and not capture.finished:
+                capture.barrier = True
                 return
-            if only_if_new:
-                self.chat.checkpoint_head = store.ensure_base(self.chat.to_dict())
-            else:
-                self.chat.checkpoint_head = store.reset(self.chat.to_dict())
-            self.chat.save(self.chat_history_dir)
-            if store.warning:
-                get_error_console().print(store.warning, markup=False)
-        except Exception as exc:
-            get_error_console().print(safe_text(f"Checkpoint unavailable: {exc}"), markup=False)
+            try:
+                store = self.checkpoint_store()
+                if store is None:
+                    return
+                if only_if_new:
+                    self.chat.checkpoint_head = store.ensure_base(self.chat.to_dict())
+                else:
+                    self.chat.checkpoint_head = store.reset(self.chat.to_dict())
+                self.chat.save(self.chat_history_dir)
+                if store.warning:
+                    get_error_console().print(store.warning, markup=False)
+            except Exception as exc:
+                get_error_console().print(safe_text(f"Checkpoint unavailable: {exc}"), markup=False)
 
     def remember_turn_for_retry(self, user_input: str, images: Optional[List[ImageData]] = None) -> None:
         """Snapshot the conversation + input *before* a turn so ``/retry`` can replay it.

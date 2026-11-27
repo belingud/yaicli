@@ -155,15 +155,19 @@ def test_persist_failure_still_executes_and_only_grants_current_session(runtime)
 
 def test_dispatch_truncates_once_and_keeps_original_spill_and_single_history_entry(tmp_path, monkeypatch):
     original = "a complete output line\n" * 500
-    config = {"TOOL_OUTPUT_DIR": str(tmp_path), "TOOL_OUTPUT_MAX_CHARS": 400}
+    config = {
+        "TOOL_OUTPUT_DIR": str(tmp_path),
+        "TOOL_OUTPUT_MAX_CHARS": 400,
+        "SHOW_FUNCTION_OUTPUT": False,
+        "SHOW_MCP_OUTPUT": False,
+    }
     tool = MagicMock()
     tool.execute.return_value = original
     output_history.reset()
     try:
         with (
             patch("yaicli.tools.executor.get_function", return_value=tool),
-            patch("yaicli.tools.cfg", {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False}),
-            patch("yaicli.tools.limits.cfg", config),
+            patch("yaicli.tools.cfg", config),
             patch("yaicli.tools.console", MagicMock()),
         ):
             model_text, ok = execute_tool_call(ToolCall(id="large", name="large_output", arguments="{}"))

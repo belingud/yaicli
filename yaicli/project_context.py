@@ -33,6 +33,7 @@ from typing import List, Optional
 from .config import cfg
 from .console import get_error_console
 from .const import DEFAULT_PROJECT_CONTEXT_MAX_CHARS
+from .runtime import current_config
 
 #: Instruction-file names checked in every directory, in priority order.
 PROJECT_CONTEXT_FILENAMES = (".yaicli.md", "AGENTS.md", "CLAUDE.md")
@@ -242,7 +243,7 @@ def collect_project_context(start: Optional[Path] = None, limit: Optional[int] =
 
 def _config_enabled() -> bool:
     """Read ``ENABLE_PROJECT_CONTEXT`` (default enabled) from the global config."""
-    value = cfg.get("ENABLE_PROJECT_CONTEXT", True)
+    value = current_config(cfg).get("ENABLE_PROJECT_CONTEXT", True)
     if isinstance(value, str):
         return value.strip().lower() not in ("false", "0", "no", "off", "n")
     return bool(value)
@@ -251,7 +252,7 @@ def _config_enabled() -> bool:
 def _config_limit() -> int:
     """Read ``PROJECT_CONTEXT_MAX_CHARS`` (default 20000) from the global config."""
     try:
-        return max(int(cfg.get("PROJECT_CONTEXT_MAX_CHARS", DEFAULT_PROJECT_CONTEXT_MAX_CHARS)), 0)
+        return max(int(current_config(cfg).get("PROJECT_CONTEXT_MAX_CHARS", DEFAULT_PROJECT_CONTEXT_MAX_CHARS)), 0)
     except (TypeError, ValueError):
         return DEFAULT_PROJECT_CONTEXT_MAX_CHARS
 

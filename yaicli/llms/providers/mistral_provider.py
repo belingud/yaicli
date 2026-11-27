@@ -83,10 +83,10 @@ class MistralProvider(Provider):
         effective_tool_policy = self.resolve_tool_policy(tool_policy)
         tools = []
         if effective_tool_policy.enable_functions:
-            tools.extend(get_openai_schemas())
+            tools.extend(get_openai_schemas(runtime=getattr(self, "runtime", None)))
         if effective_tool_policy.enable_mcp:
             try:
-                tools.extend(get_openai_mcp_tools())
+                tools.extend(get_openai_mcp_tools(runtime=getattr(self, "runtime", None)))
             except MCPToolsError as e:
                 self.console.print(e, style="red")
         if tools:

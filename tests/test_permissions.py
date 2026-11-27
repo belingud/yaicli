@@ -205,7 +205,6 @@ def execute_and_capture(name, raw_arguments):
     with (
         patch("yaicli.tools.executor.get_function", return_value=tool),
         patch("yaicli.tools.cfg", fake_cfg),
-        patch("yaicli.tools.executor._sync_shell_guardrail_env"),
     ):
         result, ok = execute_tool_call(ToolCall(id="c1", name=name, arguments=raw_arguments), announce=False)
     assert ok is True, result

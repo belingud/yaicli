@@ -46,7 +46,7 @@ SourceGuard 在 pytest_sessionfinish 验证实际 yaicli.cli.__file__ 位于 /tm
 - [x] 独立 Trellis check 全范围审查 S2-A1—S2-A5，无阻塞问题。
 - [x] 源码冻结后完整 pytest、Ruff --no-fix、全部重构改动文件的 format/isort/Python 3.10 语法、strict docs、构建和原启动门禁通过。
 - [x] 核对旧聊天/计划/检查点格式、事件/退出码、文件回退、取消/锁顺序和懒加载未变。
-- [ ] 记录实际结果、剩余限制及本阶段提交，再重核第三阶段接口与上下文。
+- [x] 记录实际结果、剩余限制及本阶段提交，再重核第三阶段接口与上下文。
 
 ## 首轮完整验收与接续
 
@@ -71,3 +71,5 @@ SourceGuard 在 pytest_sessionfinish 验证实际 yaicli.cli.__file__ 位于 /tm
 S2-A1—S2-A5 全部通过，无未解决阻塞问题，允许提交并进入第三阶段。唯一状态分别属于 SessionController、MachineOutput/ResultState、PlanCoordinator；命令服务通过明确依赖工作，planning 不依赖 CLI，旧入口显式兼容。旧格式、事件、退出码、实际文件回退及取消/锁顺序均由保留的行为断言和新集成测试覆盖。源码/测试最终 229 文件指纹一致；完整汇总 /tmp/yaicli-s2-recovery-result.json。
 
 恢复过程曾因遗漏 MagicMock 导入出现 150 passed/1 failed，随后修正为最终 151 passed；第一次静态检查的一处空行也已修正。中间失败全部保留，不冒充通过。Python 3.10/3.13 完整执行及父任务最终集成审查留待第三阶段，远端统一 PR/CI/合并尚未完成。
+
+第二阶段提交：66db0625e6b559f97509760c06e842f774eb8b9c。提交后仅保留预先存在的 .trellis/.template-hashes.json、.agents 和 .codex 无关改动；未推送、合并或归档。第三阶段以此提交为基线。

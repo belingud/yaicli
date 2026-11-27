@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from ..config import cfg
 from ..console import get_error_console
 from ..exceptions import MCPToolsError
+from ..runtime import bind_config, current_config
 from .function import list_functions
 from .mcp import MCP_TOOL_NAME_PREFIX
 
@@ -48,10 +49,10 @@ def get_plan_tool_mode() -> Optional[str]:
     return _plan_mode
 
 
-def plan_allows_readonly_shell(config: Any = cfg) -> bool:
+def plan_allows_readonly_shell(config: Any = None) -> bool:
     """Read ``PLAN_ALLOW_READONLY_SHELL`` defensively (default: enabled)."""
     try:
-        return bool(config.get("PLAN_ALLOW_READONLY_SHELL", True))
+        return bool((current_config(cfg) if config is None else config).get("PLAN_ALLOW_READONLY_SHELL", True))
     except (AttributeError, TypeError):  # pragma: no cover - exotic config mappings
         return True
 
@@ -79,10 +80,11 @@ def parse_enabled_tools(value: Any) -> Tuple[str, ...]:
     return tuple(patterns)
 
 
-def enabled_tool_patterns() -> Tuple[str, ...]:
+def enabled_tool_patterns(*, runtime=None) -> Tuple[str, ...]:
     """Return the pattern tuple configured for this process (``()`` = all tools)."""
     try:
-        raw = cfg.get("ENABLED_TOOLS", "")
+        config = runtime.config if runtime is not None else current_config(cfg)
+        raw = config.get("ENABLED_TOOLS", "")
     except (AttributeError, TypeError):  # pragma: no cover - exotic config mappings
         return ()
     return parse_enabled_tools(raw)
@@ -99,13 +101,13 @@ def tool_name_matches(name: str, pattern: str) -> bool:
     return False
 
 
-def tool_enabled(name: str, patterns: Sequence[str] | None = None) -> bool:
+def tool_enabled(name: str, patterns: Sequence[str] | None = None, *, runtime=None) -> bool:
     """True when ``name`` is offered by the current ``ENABLED_TOOLS`` selection.
 
     ``patterns=None`` resolves the process configuration; pass an explicit tuple
     for tests or embedders. An empty selection always returns ``True``.
     """
-    selection = enabled_tool_patterns() if patterns is None else tuple(patterns)
+    selection = enabled_tool_patterns(runtime=runtime) if patterns is None else tuple(patterns)
     if not selection:
         return True
     return any(tool_name_matches(name, pattern) for pattern in selection)
@@ -178,7 +180,7 @@ def _build_anthropic_schemas() -> List[Dict[str, Any]]:
 
 
 def _mode_schema_list(
-    schemas: Sequence[Dict[str, Any]], mode: Optional[str], *, anthropic: bool
+    schemas: Sequence[Dict[str, Any]], mode: Optional[str], *, anthropic: bool, config=None
 ) -> List[Dict[str, Any]]:
     """Apply the plan tool mode to a full builtin schema list.
 
@@ -194,7 +196,7 @@ def _mode_schema_list(
     if mode == "plan":
         from ..planning.model import plan_tool_allowlist
 
-        allowed = plan_tool_allowlist(plan_allows_readonly_shell())
+        allowed = plan_tool_allowlist(plan_allows_readonly_shell(config))
         name_getter = _anthropic_schema_name if anthropic else _openai_schema_name
         base = [schema for schema in base if name_getter(schema) in allowed]
         extra = session_tools.anthropic_schemas("plan") if anthropic else session_tools.openai_schemas("plan")
@@ -203,7 +205,7 @@ def _mode_schema_list(
     return base + list(extra)
 
 
-def get_openai_schemas() -> List[Dict[str, Any]]:
+def get_openai_schemas(*, runtime=None) -> List[Dict[str, Any]]:
     """Get OpenAI-compatible function schemas (optionally narrowed).
 
     The unfiltered list keeps the v0.19 cache identity; filtered/mode variants are
@@ -216,24 +218,27 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
         List of function schemas in OpenAI format
     """
     global _openai_schemas_cache
-    patterns = enabled_tool_patterns()
-    mode = _plan_mode
-    if mode is None and not patterns:
-        if _openai_schemas_cache is not None:
-            return _openai_schemas_cache
-        _openai_schemas_cache = _build_openai_schemas()
-        return _openai_schemas_cache
-
-    cache_key: Tuple[Any, ...] = ("openai", mode, plan_allows_readonly_shell() if mode == "plan" else None, patterns)
-    cached = _filtered_schemas_cache.get(cache_key)
-    if cached is not None:
-        return cached
-
+    config = runtime.config if runtime is not None else current_config(cfg)
+    patterns = enabled_tool_patterns(runtime=runtime)
+    mode = runtime.tool_mode if runtime is not None else _plan_mode
     full = _openai_schemas_cache
     if full is None:
         full = _build_openai_schemas()
         _openai_schemas_cache = full
-    schemas = _mode_schema_list(full, mode, anthropic=False)
+    if mode is None and not patterns:
+        return full
+    cache_key: Tuple[Any, ...] = (
+        "openai",
+        id(full),
+        mode,
+        plan_allows_readonly_shell(config) if mode == "plan" else None,
+        patterns,
+    )
+    cached = _filtered_schemas_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    schemas = _mode_schema_list(full, mode, anthropic=False, config=config)
     known_names = [_openai_schema_name(schema) for schema in schemas]
     _warn_unknown_tool_patterns(patterns, known_names)
     filtered = filter_schemas(schemas, patterns, name_getter=_openai_schema_name)
@@ -241,7 +246,7 @@ def get_openai_schemas() -> List[Dict[str, Any]]:
     return filtered
 
 
-def get_anthropic_schemas() -> List[Dict[str, Any]]:
+def get_anthropic_schemas(*, runtime=None) -> List[Dict[str, Any]]:
     """Get Anthropic-compatible function schemas (optionally narrowed).
 
     Mirrors :func:`get_openai_schemas`, including the plan-mode filtering and the
@@ -251,29 +256,27 @@ def get_anthropic_schemas() -> List[Dict[str, Any]]:
         List of function schemas in Anthropic format
     """
     global _anthropic_schemas_cache
-    patterns = enabled_tool_patterns()
-    mode = _plan_mode
+    config = runtime.config if runtime is not None else current_config(cfg)
+    patterns = enabled_tool_patterns(runtime=runtime)
+    mode = runtime.tool_mode if runtime is not None else _plan_mode
+    full = _anthropic_schemas_cache
+    if full is None:
+        full = _build_anthropic_schemas()
+        _anthropic_schemas_cache = full
     if mode is None and not patterns:
-        if _anthropic_schemas_cache is not None:
-            return _anthropic_schemas_cache
-        _anthropic_schemas_cache = _build_anthropic_schemas()
-        return _anthropic_schemas_cache
-
+        return full
     cache_key: Tuple[Any, ...] = (
         "anthropic",
+        id(full),
         mode,
-        plan_allows_readonly_shell() if mode == "plan" else None,
+        plan_allows_readonly_shell(config) if mode == "plan" else None,
         patterns,
     )
     cached = _filtered_schemas_cache.get(cache_key)
     if cached is not None:
         return cached
 
-    full = _anthropic_schemas_cache
-    if full is None:
-        full = _build_anthropic_schemas()
-        _anthropic_schemas_cache = full
-    schemas = _mode_schema_list(full, mode, anthropic=True)
+    schemas = _mode_schema_list(full, mode, anthropic=True, config=config)
     known_names = [_anthropic_schema_name(schema) for schema in schemas]
     _warn_unknown_tool_patterns(patterns, known_names)
     filtered = filter_schemas(schemas, patterns, name_getter=_anthropic_schema_name)
@@ -281,12 +284,12 @@ def get_anthropic_schemas() -> List[Dict[str, Any]]:
     return filtered
 
 
-def _filter_mcp_tools(tools: List[Dict[str, Any]], name_getter) -> List[Dict[str, Any]]:
+def _filter_mcp_tools(tools: List[Dict[str, Any]], name_getter, *, runtime=None) -> List[Dict[str, Any]]:
     """Apply ``ENABLED_TOOLS`` to MCP tool schemas (empty selection = all)."""
-    return filter_schemas(tools, enabled_tool_patterns(), name_getter=name_getter)
+    return filter_schemas(tools, enabled_tool_patterns(runtime=runtime), name_getter=name_getter)
 
 
-def get_openai_mcp_tools() -> list[dict[str, Any]]:
+def get_openai_mcp_tools(*, runtime=None) -> list[dict[str, Any]]:
     """Get OpenAI-compatible MCP tool schemas (narrowed by ENABLED_TOOLS).
 
     Returns:
@@ -296,18 +299,19 @@ def get_openai_mcp_tools() -> list[dict[str, Any]]:
         ValueError: If error getting MCP tools
         FileNotFoundError: If MCP config file not found
     """
-    if _plan_mode == "plan":
+    if (runtime.tool_mode if runtime is not None else _plan_mode) == "plan":
         # Plan mode offers no MCP tools (v1): never connect to an MCP server while
         # planning just to build a schema list.
         return []
     try:
-        tools = get_mcp_manager().to_openai_tools()
+        with bind_config(runtime.config if runtime is not None else current_config(cfg)):
+            tools = get_mcp_manager().to_openai_tools()
     except Exception as e:
         raise MCPToolsError(f"Error getting MCP tools: {e}") from e
-    return _filter_mcp_tools(tools, _openai_schema_name)
+    return _filter_mcp_tools(tools, _openai_schema_name, runtime=runtime)
 
 
-def get_anthropic_mcp_tools() -> list[dict[str, Any]]:
+def get_anthropic_mcp_tools(*, runtime=None) -> list[dict[str, Any]]:
     """Get Anthropic-compatible MCP tool schemas (narrowed by ENABLED_TOOLS).
 
     Returns:
@@ -317,10 +321,11 @@ def get_anthropic_mcp_tools() -> list[dict[str, Any]]:
         ValueError: If error getting MCP tools
         FileNotFoundError: If MCP config file not found
     """
-    if _plan_mode == "plan":
+    if (runtime.tool_mode if runtime is not None else _plan_mode) == "plan":
         return []
     try:
-        tools = get_mcp_manager().to_anthropic_tools()
+        with bind_config(runtime.config if runtime is not None else current_config(cfg)):
+            tools = get_mcp_manager().to_anthropic_tools()
     except Exception as e:
         raise MCPToolsError(f"Error getting MCP tools for Anthropic: {e}") from e
-    return _filter_mcp_tools(tools, _anthropic_schema_name)
+    return _filter_mcp_tools(tools, _anthropic_schema_name, runtime=runtime)

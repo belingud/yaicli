@@ -562,12 +562,7 @@ class TestAPIInteraction:
         mock_build_messages.return_value = []
         mock_display_stream.return_value = ("Test response", None)
 
-        with patch("yaicli.cli.cfg") as mock_cfg:
-            mock_cfg.__getitem__.side_effect = lambda key: {
-                "STREAM": False,
-                "ENABLE_FUNCTIONS": False,
-                "ENABLE_MCP": True,
-            }[key]
+        with patch.dict(cli.config, {"STREAM": False, "ENABLE_FUNCTIONS": False, "ENABLE_MCP": True}):
             mock_response = MagicMock()
             mock_response.__iter__.return_value = [MagicMock(content="Test response", tool_call=None)]
             cli.client.completion_with_tools.return_value = mock_response
@@ -1002,7 +997,7 @@ class TestKeyBindingsAndSetup:
         history_file = tmp_path / "history"
         with (
             patch("yaicli.cli.CLI._setup_key_bindings"),
-            patch("yaicli.cli.cfg", {**cfg, "MAX_HISTORY": 17}),
+            patch.dict(cli.config, {"MAX_HISTORY": 17}),
             patch("yaicli.cli.HISTORY_FILE", history_file),
             patch("yaicli.cli.PromptSession"),
             patch("yaicli.cli.LimitedFileHistory") as mock_limited_history,
@@ -1305,9 +1300,8 @@ class TestCLICoverage:
         from unittest.mock import MagicMock
 
         from yaicli import plan_mode, tools
-        from yaicli.config import cfg
 
-        monkeypatch.setitem(cfg, "PLAN_DIR", str(tmp_path / "plans"))
+        monkeypatch.setitem(cli_with_mocks.config, "PLAN_DIR", str(tmp_path / "plans"))
         plan_mode.reset_plan_session()
         tools.set_plan_tool_mode(None)
 
@@ -1322,12 +1316,12 @@ class TestCLICoverage:
         session = cli.plan_session
         assert session is not None
         assert session.mode == "researching"
-        assert tools.get_plan_tool_mode() == "plan"
+        assert cli.runtime.tool_mode == "plan"
         assert cli.get_prompt_tokens() == [("class:qmark", " [plan] 💬 "), ("class:prompt", "> ")]
 
         binding.handler(MagicMock())
         assert session.mode == "normal"
-        assert tools.get_plan_tool_mode() is None
+        assert cli.runtime.tool_mode is None
         assert cli.get_prompt_tokens()[0] == ("class:qmark", " 💬 ")
 
         plan_mode.reset_plan_session()
@@ -1343,7 +1337,7 @@ class TestCLICoverage:
     def test_print_welcome_shows_model_status(self, cli_with_mocks):
         cli_with_mocks.is_temp_session = True
         cli_with_mocks._context_percent = 12.6
-        with patch("yaicli.cli.cfg", {"MODEL": "openai/gpt-4o"}):
+        with patch.dict(cli_with_mocks.config, {"MODEL": "openai/gpt-4o"}):
             cli_with_mocks._print_welcome_message()
         printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
         assert any("Model:" in text and "gpt-4o" in text for text in printed)
@@ -1500,8 +1494,7 @@ class TestCLICoverage:
         cli_with_mocks.context_manager.parse_at_references.return_value = ("", "hi", [])
         no_vision = next(iter(NO_VISION_PROVIDERS))
         img = ImageData(data="x", media_type="image/png", is_url=False)
-        with patch("yaicli.cli.cfg") as mock_cfg:
-            mock_cfg.get.side_effect = lambda k, d=None: no_vision if k == "PROVIDER" else d
+        with patch.dict(cli_with_mocks.config, {"PROVIDER": no_vision}):
             messages = cli_with_mocks._build_messages("hi", images=[img])
 
         printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]

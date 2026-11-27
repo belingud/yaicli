@@ -179,6 +179,7 @@ class _FakeClient:
     """Minimal LLM client stand-in (only the boundary is faked)."""
 
     def __init__(self, **kwargs):
+        type(self).last_instance = self
         self.init_kwargs = kwargs
         self.plan_session = None
         self.console = None
@@ -194,7 +195,7 @@ class _SubmittingPlanClient(_FakeClient):
     """Fake provider turn: submits a plan through the real session-tool handler."""
 
     def completion_with_tools(self, messages, stream=None, tool_policy=None):
-        self.submitted = plan_mode.handle_submit_plan(plan_payload())
+        self.submitted = plan_mode.handle_submit_plan(plan_payload(), session=self.plan_session)
         yield LLMResponse(content="Plan submitted for approval.", finish_reason="stop")
 
 
@@ -566,7 +567,7 @@ class TestAC9HeadlessPlan:
         assert payload["tool_calls"] == []
         assert payload["error"] is None
         # The plan is saved as draft and the run never approves/executes it.
-        assert plan_mode.get_plan_session().mode == "normal"
+        assert _SubmittingPlanClient.last_instance.plan_session.mode == "normal"
 
     def test_not_submitted_exits_one_with_plan_not_submitted(self, plan_env, monkeypatch):
         monkeypatch.chdir(plan_env.cwd)

@@ -1,7 +1,6 @@
 """Tool dispatch and its guarded side effects, output capture and result channel."""
 
 import json
-import os
 from typing import Any, Dict, Optional, Tuple, cast
 
 from json_repair import repair_json
@@ -10,6 +9,7 @@ from ..console import safe_text, strip_control_chars
 from ..schemas import ToolCall
 from . import output_history, workspace
 from .display import _tool_call_caption, announce_tool_call, display_tool_result
+from .environment import tool_environment
 from .function import get_function
 from .limits import (
     format_arguments_text,
@@ -20,13 +20,6 @@ from .schemas import (
     MCP_TOOL_NAME_PREFIX,
     get_plan_tool_mode,
     plan_allows_readonly_shell,
-)
-
-_SHELL_GUARDRAIL_ENV = (
-    ("TOOL_TIMEOUT", "YAI_TOOL_TIMEOUT"),
-    ("TOOL_ENV_INHERIT", "YAI_TOOL_ENV_INHERIT"),
-    ("WORKSPACE_ROOT", "YAI_WORKSPACE_ROOT"),
-    ("TOOL_OUTPUT_MAX_CHARS", "YAI_TOOL_OUTPUT_MAX_CHARS"),
 )
 
 
@@ -40,37 +33,6 @@ def get_mcp(name: str):
     from .mcp import get_mcp as _get_mcp
 
     return _get_mcp(name)
-
-
-def _sync_shell_guardrail_env(config: Any) -> None:
-    """Best-effort: expose config tool guardrails via environment variables.
-
-    The shell tool and the workspace write guard (``tools/workspace.py``) run as
-    standalone code that cannot import ``cfg``; the only way to pass configuration
-    is the environment. ``cfg`` is env-first (``YAI_*`` > config.ini > defaults):
-    for a user-exported variable the value written back is the same one that was
-    loaded from the environment. When the CLI overrides configuration at runtime —
-    notably ``--cwd``, which writes the resolved directory to
-    ``cfg["WORKSPACE_ROOT"]`` — the config value deliberately wins over a stale
-    environment variable. Empty/unset values are skipped so the tool's own defaults
-    apply.
-    """
-    try:
-        for config_key, env_key in _SHELL_GUARDRAIL_ENV:
-            try:
-                value = config.get(config_key)
-            except Exception:  # pragma: no cover - mocked/broken config mapping
-                continue
-            if value is None or value == "":
-                continue
-            if isinstance(value, bool):
-                value = "true" if value else "false"
-            try:
-                os.environ[env_key] = str(value)
-            except (OSError, ValueError):  # pragma: no cover - exotic environments
-                continue
-    except Exception:  # pragma: no cover - env propagation must never block tool calls
-        pass
 
 
 def _emit_tool_result(
@@ -128,6 +90,7 @@ def _execute_plan_mode_call(
     full_arguments: str = "",
     caption: str,
     show_output: bool,
+    runtime=None,
 ) -> Optional[Tuple[str, bool]]:
     """Run one plan-mode-only tool call, or return ``None`` for the normal path.
 
@@ -152,7 +115,9 @@ def _execute_plan_mode_call(
         from . import session_tools
 
         try:
-            text = session_tools.execute_session_tool(name, arguments)
+            text = session_tools.execute_session_tool(
+                name, arguments, session=runtime.get_plan_session() if runtime is not None else None
+            )
         except BaseException:
             import sys
 
@@ -177,7 +142,7 @@ def _execute_plan_mode_call(
 
     if name != plan_mode.PLAN_SHELL_TOOL:
         return None
-    session = plan_mode.get_plan_session()
+    session = runtime.get_plan_session() if runtime is not None else plan_mode.get_plan_session()
     if not session.is_plan_mode:
         return None
     if not plan_allows_readonly_shell(config):
@@ -252,7 +217,17 @@ def _execute_plan_mode_call(
     return result, True
 
 
-def execute_tool_call(tool_call: ToolCall, announce: bool = True, *, config: Any, console: Any) -> Tuple[str, bool]:
+def execute_tool_call(
+    tool_call: ToolCall, announce: bool = True, *, config: Any, console: Any, runtime=None
+) -> Tuple[str, bool]:
+    """Execute in the owning configuration, restoring standalone-tool environment."""
+    with tool_environment(config):
+        return _execute_tool_call(tool_call, announce, config=config, console=console, runtime=runtime)
+
+
+def _execute_tool_call(
+    tool_call: ToolCall, announce: bool = True, *, config: Any, console: Any, runtime=None
+) -> Tuple[str, bool]:
     """Execute a tool call and return the result
 
     Args:
@@ -291,7 +266,7 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True, *, config: Any
     # Complete argument text for the Ctrl+O detail pane; the announce line keeps
     # using the compact ``preview_arguments`` summary above.
     full_arguments = ""
-    if is_function_call and get_plan_tool_mode() is not None:
+    if is_function_call and (runtime.tool_mode if runtime is not None else get_plan_tool_mode()) is not None:
         try:
             parsed_arguments = repair_json(tool_call.arguments, return_objects=True)
             if not isinstance(parsed_arguments, dict):
@@ -315,6 +290,7 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True, *, config: Any
             full_arguments=full_arguments,
             caption=caption,
             show_output=show_output,
+            runtime=runtime,
         )
         if plan_result is not None:
             return plan_result
@@ -345,14 +321,6 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True, *, config: Any
 
     # 3. Execute the tool
     try:
-        # K03/K11 integration: the standalone shell tool and the workspace write
-        # guard both read their configuration from the environment. Propagate the
-        # (env-first) config values right before a shell call or a filesystem
-        # mutation so config.ini / ``--cwd`` control them.
-        if is_function_call and (
-            tool_call.name == "execute_shell_command" or tool_call.name in workspace.MUTATING_TOOL_NAMES
-        ):
-            _sync_shell_guardrail_env(config)
         guard_plan = None
         if is_function_call and tool_call.name in workspace.MUTATING_TOOL_NAMES:
             # K11: workspace confinement + protected paths + pre-mutation backups.

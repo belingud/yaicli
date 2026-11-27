@@ -16,6 +16,7 @@ from yaicli.cmd_handler import (
     CmdHandler,
     command_completions,
 )
+from yaicli.config import cfg
 from yaicli.const import (
     CHAT_MODE,
     EXEC_MODE,
@@ -25,6 +26,7 @@ from yaicli.const import (
 
 def _command_ports(cli):
     """Provide the explicit data/service ports consumed by command presentation."""
+    cli.config = dict(cfg)
     cli.run_state = cli
     if hasattr(cli, "sessions"):
         cli.sessions.state = cli
@@ -328,7 +330,7 @@ class TestHandleHistoryToolCalls:
         assistant_msg = MagicMock(role="assistant", content="Let me check", tool_calls=[tool_call])
         cmd_handler.cli.chat.history = [assistant_msg]
 
-        with patch("yaicli.cmd_handler.cfg", {"CODE_THEME": "monokai"}):
+        with patch.object(cmd_handler.cli, "config", {"CODE_THEME": "monokai"}):
             result = cmd_handler.handle_history()
 
         assert result is True
@@ -382,8 +384,9 @@ class TestContextUsageOutput:
         cli, handler = self._handler()
 
         with (
-            patch(
-                "yaicli.cmd_handler.cfg",
+            patch.object(
+                cli,
+                "config",
                 {"PROVIDER": "openrouter", "MAX_TOKENS": 1024, "CONTEXT_SAFETY_TOKENS": 1024},
             ),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=self._usage()),
@@ -428,7 +431,7 @@ class TestContextUsageOutput:
         )
 
         with (
-            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openai", "MAX_TOKENS": 1024}),
+            patch.object(cli, "config", {"PROVIDER": "openai", "MAX_TOKENS": 1024}),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=usage),
         ):
             handler._print_context_usage()
@@ -454,7 +457,7 @@ class TestContextUsageOutput:
         fake_usage = self._usage()
 
         with (
-            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openrouter"}),
+            patch.object(cli, "config", {"PROVIDER": "openrouter"}),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=fake_usage) as estimator,
         ):
             assert handler._context_usage() is fake_usage
@@ -476,7 +479,7 @@ class TestContextUsageOutput:
         fake_usage = self._usage()
 
         with (
-            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openai"}),
+            patch.object(cli, "config", {"PROVIDER": "openai"}),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=fake_usage) as estimator,
         ):
             assert handler._context_usage() is fake_usage
@@ -491,7 +494,7 @@ class TestContextUsageOutput:
         cli.context_manager.list_items = MagicMock()
 
         with (
-            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openai"}),
+            patch.object(cli, "config", {"PROVIDER": "openai"}),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=self._usage()),
         ):
             assert handler.handle_context("/context budget") is True
@@ -629,7 +632,7 @@ class TestHandleModel:
 
     def test_show_current_model_and_provider(self):
         cli, handler = _model_handler()
-        with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)):
+        with patch.object(cli, "config", dict(_FAKE_MODEL_CFG)):
             assert handler.handle_command(CMD_MODEL) is True
 
         printed = _printed_text(cli.console)
@@ -639,7 +642,7 @@ class TestHandleModel:
     def test_switch_model_updates_config_and_invalidates_client(self):
         cli, handler = _model_handler()
         old_client = cli.active_client
-        with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)) as fake_cfg:
+        with patch.object(cli, "config", dict(_FAKE_MODEL_CFG)) as fake_cfg:
             assert handler.handle_command(f"{CMD_MODEL} gpt-4o") is True
             assert fake_cfg["MODEL"] == "gpt-4o"
 
@@ -653,7 +656,7 @@ class TestHandleModel:
     def test_switch_to_same_model_is_a_noop(self):
         cli, handler = _model_handler()
         old_client = cli.active_client
-        with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)):
+        with patch.object(cli, "config", dict(_FAKE_MODEL_CFG)):
             handler.handle_command(f"{CMD_MODEL} gpt-4o-mini")
 
         assert cli.active_client is old_client
@@ -662,7 +665,7 @@ class TestHandleModel:
     def test_switch_without_writable_config_prints_error(self):
         cli, handler = _model_handler()
         # A mapping without __setitem__ models a read-only config object.
-        with patch("yaicli.cmd_handler.cfg", MappingProxyType(dict(_FAKE_MODEL_CFG))):
+        with patch.object(cli, "config", MappingProxyType(dict(_FAKE_MODEL_CFG))):
             assert handler.handle_command(f"{CMD_MODEL} other-model") is True
 
         assert "Could not update the session model" in _printed_text(cli.console)
@@ -987,7 +990,8 @@ class TestRealCommandServiceState:
 
         assert cli.cmd_handler.handle_model("/model after-model") is True
 
-        assert cfg["MODEL"] == "after-model"
+        assert cli.config["MODEL"] == "after-model"
+        assert cfg["MODEL"] == "before-model"
         assert cli.active_client is None
         assert cli.chat.history is history
         assert cli.chat.history[0].content == "keep this history"

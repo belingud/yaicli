@@ -17,10 +17,11 @@ specs and tests together.
 | --- | --- | --- |
 | Schema generation | `yaicli/function_schema.py` | `OpenAISchema.openai_schema` / `.anthropic_schema`, cached per class. |
 | Loading / dispatch | `yaicli/tools/function.py`, `yaicli/tools/executor.py` | Package builtins + `FUNCTIONS_DIR` overrides, per-file robustness, `Function` metadata (`source`/`file_path`/`risk`); guarded execution and one result-processing pass behind the public `execute_tool_call()` entry. |
-| Declarations / presentation | `yaicli/tools/schemas.py`, `yaicli/tools/display.py` | Schemas owns selection/mode/cache; display owns announcements/previews/panels and never changes model-visible results. |
+| Declarations / presentation | `yaicli/tools/schemas.py`, `yaicli/tools/display.py` | Schemas owns declarations/selection/mode-aware cache; display owns announcements/previews/panels and never changes model-visible results. |
 | Built-ins | `yaicli/functions/buildin/`, `yaicli/functions/__init__.py` | Builtins load from the installed package (zero setup); `--install-functions` exports editable copies; `functions_manifest.json` version+sha256 drives the stale-copy warning. |
 | Risk / limit helpers | `yaicli/tools/risk.py`, `yaicli/tools/limits.py` | Risk classes + shlex shell-danger classifier; per-tool output caps and spill-to-disk. |
 | Policy / confirmation | `yaicli/tools/policy.py`, `yaicli/llms/client.py`, `yaicli/tools/approval.py` | Pure gate decisions live in policy; client retains generator/send, grant persistence, audit, paired messages and next request; approval stores rules/grants. |
+| Runtime environment | `yaicli/tools/environment.py` | `tool_environment(config)`: scoped four-key guardrail save/apply/restore; environment lock precedes workspace mutation lock. |
 | MCP | `yaicli/tools/mcp.py` | Lazy `fastmcp`, `_mcp__` prefix, MCP→provider schema conversion; MCP tools default to `exec` risk. |
 
 ## Schema Generation (`OpenAISchema`)
@@ -124,10 +125,11 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
 - Per-file robustness (K15): a syntax/import error, missing `Function`, missing
   `openai_schema`/`anthropic_schema`/`execute`, or a bad `risk` import skips **that file** with one
   warning; all other tools keep working. `list_functions()` never creates `FUNCTIONS_DIR`.
-- Loader/callable caches remain in `tools/function.py`; OpenAI/Anthropic schema, filtered-selection
-  caches, warned-pattern state and plan tool mode belong to `tools/schemas.py`. Mode changes invalidate
-  the relevant declarations, including Gemini callables. Tests replacing `FUNCTIONS_DIR` must reset
-  the actual owning caches; do not create a second cache on the public facade just to preserve a mock.
+- Loader/base callable caches remain in `tools/function.py`; OpenAI/Anthropic declarations and filtered
+  caches belong to `tools/schemas.py`. Explicit runtime mode derives from its PlanSession, not the legacy
+  default mode setter. Cache keys must include all relevant declaration source, format, mode, selection
+  and readonly-shell values; never share session-bound callback closures by mode alone. Tests replacing
+  `FUNCTIONS_DIR` reset the actual owning caches, without facade copies to preserve old mocks.
 - `Function` exposes `name`/`description`/`parameters`/`execute`/`func_cls` plus `source`
   (`builtin`/`user`), `file_path` and `risk` (from `tools/risk.py`, `ImportError`-tolerant). Add a
   builtin by adding the `buildin/` file + schema-contract/execute/end-to-end tests; no install step.
@@ -139,8 +141,9 @@ Each file defines one public `class Function(OpenAISchema)` plus `class Config: 
 `_mcp__` prefix selects MCP (`SHOW_MCP_OUTPUT`) vs built-in (`SHOW_FUNCTION_OUTPUT`); arguments
 are parsed with `json_repair.repair_json(..., return_objects=True)` and must be a `dict` (never
 `json.loads`), then the tool runs and its output prints in a `Panel` when the flag is on.
-The public entry passes its current `cfg` and `console` explicitly to `tools/executor.py`; CLI and
-worker routing still set `tools.console`. Internal argument repair/dispatch patches target executor,
+The public compatibility entry retains default config/console routing; explicit application calls use
+the owning SessionContext through selection and execution. CLI and worker routing still set `tools.console`.
+Internal argument repair/dispatch patches target executor,
 while declaration/cache patches target schemas. Re-exporting a name does not rebind its dependencies.
 
 Terminal rendering is a separate, much tighter display layer (`yaicli/tools/limits.py`):
@@ -192,10 +195,11 @@ are written 0600 (best effort) because they may contain secrets. A spill failure
 truncation. Keep this the single truncation point — do not truncate again in `client.py`/`printer.py`.
 `fs_read_file` implements the paging the marker promises (`offset`/`limit` characters, `0` = start /
 to end) and reports `total_chars`/`returned_chars`/`truncated`; keep marker, docs and signature in
-sync. The standalone shell tool reads its guardrails from `YAI_*` env; `execute_tool_call` exports the
-effective `cfg` values (TOOL_TIMEOUT/TOOL_ENV_INHERIT/WORKSPACE_ROOT/TOOL_OUTPUT_MAX_CHARS)
-unconditionally (empty skipped), so `--cwd`/config.ini win over a stale exported value. Tool announce/output panels use `get_error_console()` when stdout is not
-a TTY (headless JSON purity), the Rich console otherwise.
+sync. Standalone tools read four managed `YAI_*` guardrail keys: TOOL_TIMEOUT, TOOL_ENV_INHERIT,
+WORKSPACE_ROOT and TOOL_OUTPUT_MAX_CHARS. The scoped execution adapter saves prior presence/value,
+applies the effective mapping (including removing empty/unset values), and restores in finally. It does
+not modify unrelated environment keys. Tool panels use `get_error_console()` when stdout is not a TTY
+(headless JSON purity), the Rich console otherwise.
 
 `ok=True` means the call reached the tool, including in-band errors such as
 `{"error": "file_paths must be a list ..."}`. `ok=False` covers an unknown tool, bad arguments, or
@@ -213,9 +217,9 @@ an exception from `execute`; the returned text is the error report. Do not raise
 
 `execute_tool_call` runs `yaicli/tools/workspace.py::prepare_mutation(name, arguments)` before
 dispatching `fs_write_file` / `fs_edit_file` / `fs_file_operations`. Builtins stay standalone, so the
-guard is a stdlib-only execution-layer module and never imports `cfg`: `execute_tool_call` first
-propagates the effective `WORKSPACE_ROOT` (and other guardrail keys) through
-`tools/executor.py::_sync_shell_guardrail_env(config)`. The guard enforces, in order: workspace containment (resolved target
+guard retains standalone-compatible environment inputs. The executor applies the owning effective
+WORKSPACE_ROOT and other managed guardrails inside the scoped environment adapter before taking the
+workspace mutation lock. The guard enforces, in order: workspace containment (resolved target
 strictly inside `WORKSPACE_ROOT`, default cwd; symlink escapes and `..` traversal refused), protected
 path components/basenames (`.git`/`.ssh`/`.aws`/`.gnupg`, `.env*`, `*.pem`, `*.key`), and
 backup-before-mutation under `<workspace>/.yaicli-backups/<UTC stamp>/<workspace-relative path>`
@@ -357,8 +361,9 @@ entry points stay compatible; this stage keeps the existing default runtime and 
 
 ### 3. Contracts
 
-Schema/mode/cache state has one owner in schemas. The facade forwards the live runtime console and
-configuration to executor, preserving background-worker output routing. Executor keeps the existing
+Declaration/cache state has one owner in schemas; explicit mode derives from the owning plan session.
+The facade forwards runtime dependencies and the live console to executor, preserving worker routing.
+Executor keeps the existing
 workspace lock/guard/capture/undo order, records one truncated model result and delegates only its
 presentation to display. A decision with `error` becomes the existing structured refusal; `DENY`
 refuses execution and a missing decision requests confirmation through the client generator. Client
@@ -366,6 +371,23 @@ still remembers grants, audits, appends paired results and continues provider re
 
 Gemini currently retains its callable builder's ENABLED_TOOLS difference and direct MCP aggregation;
 freezing each provider's before/after behavior does not authorize unifying their semantics.
+
+### Runtime binding and lock order
+
+Explicit clients/providers pass the same SessionContext to declaration, selection and execution. Session
+tools bind that context's PlanSession through the existing service core; their model fields and standalone
+execute signatures do not change. Delayed Gemini ordinary/session/MCP callables must retain the owning
+configuration after declaration scope ends. Preserve wraps/name/doc/signature metadata. MCP caches its
+complete list/map; quantity caps are evaluated per access and timeout per actual operation using that
+owner. Do not freeze one session's limits into the shared connection manager.
+
+Lower-level output limits, spill/save redaction, approval workspace checks, plan-path protection and
+checkpoint audit consume the bound effective mapping, with old cfg fallback only for unbound callers.
+Configuration scopes are lock-free and restored in finally. The environment adapter's reentrant lock is
+acquired before the workspace mutation lock and covers actual tool/undo execution only. Never hold it
+across provider generation, confirmation, or worker join; checkpoint save callbacks that already hold a
+workspace lock must not acquire it. Cancellation keeps the execution thread's scope until the real call
+returns and preserves the existing pending/barrier safety rules.
 
 ### 4. Validation & Error Matrix
 

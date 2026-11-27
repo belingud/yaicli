@@ -23,6 +23,7 @@ from ..model_limits import (
     get_context_limits,
     record_learned_limit,
 )
+from ..runtime import SessionContext, bind_config
 from ..schemas import (
     ChatMessage,
     ConfirmToolCall,
@@ -122,11 +123,8 @@ class LLMClient:
         #: Set after an oversized MAX_TOKENS was clamped to fit the context window
         #: (one stderr warning per client; the clamped value is written back to config).
         "_max_tokens_clamped",
-        # ---- v0.24 K23 persistent plan mode ----
-        #: Plan session injected by the CLI (``None`` = normal tool gating). Typed as
-        #: ``Any`` because the client must not import ``yaicli.plan_mode`` at module
-        #: level; only ``.mode`` (a string) is read here.
-        "plan_session",
+        # Session-owned configuration and lazily constructed plan state.
+        "runtime",
     )
 
     def __init__(
@@ -136,6 +134,7 @@ class LLMClient:
         verbose: bool = False,
         approval: Optional[ToolApprovalManager] = None,
         interactive: bool = True,
+        runtime=None,
         **kwargs,
     ):
         """
@@ -148,7 +147,8 @@ class LLMClient:
             approval: Tool approval manager (created if not provided)
             interactive: Whether the session can prompt the user (TTY available)
         """
-        self.config = config
+        self.runtime = runtime if runtime is not None else SessionContext(config)
+        self.config = self.runtime.config
         self.verbose = verbose
         self.console = get_console()
         self.enable_function = self.config["ENABLE_FUNCTIONS"]
@@ -167,7 +167,9 @@ class LLMClient:
             self.console.print(f"Provider {provider_key} not found, using openai as default", style="yellow")
             provider_key = "openai"
         self.provider_key: str = provider_key
-        self.provider = ProviderFactory.create_provider(provider_key, config=config, verbose=verbose, **kwargs)
+        self.provider = ProviderFactory.create_provider(
+            provider_key, config=self.config, verbose=verbose, runtime=self.runtime, **kwargs
+        )
 
         self.max_tool_call_depth = self.config["MAX_TOOL_CALL_DEPTH"]
 
@@ -190,10 +192,13 @@ class LLMClient:
         self.output_truncated: bool = False
         self._max_tokens_clamped: bool = False
 
-        # ---- v0.24 K23 persistent plan mode ----
-        #: Set by the CLI (``cli._get_plan_session``); the plan-mode gate reads
-        #: ``.mode`` from it. ``None`` keeps the pre-K23 permission gate unchanged.
-        self.plan_session: Any = None
+    @property
+    def plan_session(self):
+        return self.runtime.peek_plan_session()
+
+    @plan_session.setter
+    def plan_session(self, value):
+        self.runtime.set_plan_session(value)
 
     # ------------------- usage / cost (v0.22 K17) -------------------
     @property
@@ -809,17 +814,18 @@ class LLMClient:
             # but execute_tool_call strips it in place at execution time.
             gate_name = getattr(tool_call, "name", "") or ""
             raw_arguments = getattr(tool_call, "arguments", "")
-            outcome = evaluate_tool_call(
-                gate_name,
-                raw_arguments,
-                config=self.config,
-                policy_mode=policy_mode,
-                confirm_enabled=confirm_enabled,
-                interactive=self.interactive,
-                approval=self.approval,
-                plan_state=getattr(self.plan_session, "mode", None) if self.plan_session is not None else None,
-                selected=tool_enabled(gate_name),
-            )
+            with bind_config(self.config):
+                outcome = evaluate_tool_call(
+                    gate_name,
+                    raw_arguments,
+                    config=self.config,
+                    policy_mode=policy_mode,
+                    confirm_enabled=confirm_enabled,
+                    interactive=self.interactive,
+                    approval=self.approval,
+                    plan_state=getattr(self.plan_session, "mode", None) if self.plan_session is not None else None,
+                    selected=tool_enabled(gate_name, runtime=self.runtime),
+                )
             audit_risk = outcome.risk
             if outcome.error is not None:
                 messages.append(
@@ -885,7 +891,7 @@ class LLMClient:
 
             # Avoid double-printing the call: the prompt already showed it when we prompted.
             started_at = time.perf_counter()
-            function_result, ok = execute_tool_call(tool_call, announce=not prompted)
+            function_result, ok = execute_tool_call(tool_call, announce=not prompted, runtime=self.runtime)
             duration_ms = (time.perf_counter() - started_at) * 1000.0
             # K17 tool metrics: executed calls only (denied calls never ran), with
             # the real wall-clock duration and the size of the result as the model sees it.

@@ -11,6 +11,7 @@ from rich.prompt import Prompt
 from ..console import get_error_console, safe_text
 from ..const import CHAT_MODE, EXEC_MODE
 from ..errors import ErrorKind
+from ..runtime import SessionContext, bind_config
 
 
 def _plan_mode_module():
@@ -47,7 +48,7 @@ PLAN_CONTINUE_INSTRUCTION = "Continue executing the approved plan from the curre
 class PlanCoordinator:
     """Keep plan business out of the REPL while accepting only its required ports."""
 
-    def __init__(self, config, sessions, state, output, console, printer, turns: PlanTurns):
+    def __init__(self, config, sessions, state, output, console, printer, turns: PlanTurns, *, runtime=None):
         self.config = config
         self.sessions = sessions
         self.state = state
@@ -55,7 +56,15 @@ class PlanCoordinator:
         self.console = console
         self.get_printer = printer
         self.turns = turns
-        self.plan_session = None
+        self.runtime = SessionContext(config) if runtime is None else runtime
+
+    @property
+    def plan_session(self):
+        return self.runtime.peek_plan_session()
+
+    @plan_session.setter
+    def plan_session(self, value):
+        self.runtime.set_plan_session(value)
 
     def plan_enabled(self) -> bool:
         """Whether persistent plan mode is enabled (``PLAN_ENABLED``; defaults on)."""
@@ -67,18 +76,16 @@ class PlanCoordinator:
     def get_plan_session(self) -> Any:
         """Return the shared :class:`PlanSession`, configuring it on first use.
 
-        Imports plan_mode/plan_store lazily so a normal (non-plan) run never pays
-        those imports, and mirrors the session's mode into the tool schema filter
-        and the (lazily created) LLM client.
+        Imports planning dependencies lazily so a normal run never pays those
+        imports. The shared runtime is the sole owner of state and tool mode.
         """
         session = getattr(self, "plan_session", None)
         if session is not None:
             return session
-        plan_mode = _plan_mode_module()
         plan_store = _plan_store_module()
         from ..const import get_config_dir
 
-        session = plan_mode.get_plan_session()
+        session = self.runtime.get_plan_session()
         session.configure(
             plans_root=plan_store.plans_root(str(self.config.get("PLAN_DIR") or ""), get_config_dir()),
             cwd=Path.cwd(),
@@ -93,23 +100,7 @@ class PlanCoordinator:
         return session
 
     def sync_plan_tool_mode(self) -> None:
-        """Mirror the plan-session mode into the global tool schema filter."""
-        session = getattr(self, "plan_session", None)
-        state = getattr(session, "mode", None) if session is not None else None
-        if state in ("researching", "revising"):
-            target = "plan"
-        elif state == "executing":
-            target = "execution"
-        else:
-            target = None
-        try:
-            from .. import tools as _tools
-
-            setter = getattr(_tools, "set_plan_tool_mode", None)
-            if callable(setter):
-                setter(target)
-        except Exception:  # pragma: no cover - tool plumbing must never break a turn
-            pass
+        """Keep compatibility with terminal ports; tool mode derives from runtime."""
         self.turns.sync_client()
 
     def plan_files_location(self) -> str:
@@ -133,20 +124,21 @@ class PlanCoordinator:
 
     def persist_chat_plan(self, data: Any) -> None:
         """Store one session-plan payload on the chat and save it best-effort (K23)."""
-        try:
-            changed = self.sessions.chat.plan != (data if isinstance(data, dict) else {})
-            self.sessions.chat.plan = dict(data) if isinstance(data, dict) else {}
-        except Exception:  # pragma: no cover - legacy chat objects
-            return
-        if self.sessions.is_temp_session:
-            return
-        try:
-            if getattr(self.sessions.chat, "path", None):
-                self.sessions.chat.save(self.sessions.chat_history_dir)
-        except Exception:  # pragma: no cover - best-effort persistence only
-            pass
-        if changed:
-            self.sessions.checkpoint_reset()
+        with bind_config(self.config):
+            try:
+                changed = self.sessions.chat.plan != (data if isinstance(data, dict) else {})
+                self.sessions.chat.plan = dict(data) if isinstance(data, dict) else {}
+            except Exception:  # pragma: no cover - legacy chat objects
+                return
+            if self.sessions.is_temp_session:
+                return
+            try:
+                if getattr(self.sessions.chat, "path", None):
+                    self.sessions.chat.save(self.sessions.chat_history_dir)
+            except Exception:  # pragma: no cover - best-effort persistence only
+                pass
+            if changed:
+                self.sessions.checkpoint_reset()
 
     def sync_chat_plan(self, session: Any = None) -> None:
         """Store the plan pointer/todos in the chat and save it best-effort (K23)."""
@@ -167,31 +159,32 @@ class PlanCoordinator:
         mode; a session with an in-progress plan enters revising, otherwise
         exploring. ``PLAN_ENABLED=false`` only prints a one-line notice.
         """
-        if not self.plan_enabled():
-            self.console.print("plan mode is disabled (PLAN_ENABLED=false)", style="dim")
-            return
-        session = self.get_plan_session()
-        if self.state.current_mode == EXEC_MODE:
-            self.state.current_mode = CHAT_MODE
-            self.turns.set_role(self.state.init_role)
-        if getattr(session, "is_reviewing", False):
-            self.cancel_plan_review()
-            return
-        if getattr(session, "is_plan_mode", False):
-            session.cancel_draft()
+        with bind_config(self.config):
+            if not self.plan_enabled():
+                self.console.print("plan mode is disabled (PLAN_ENABLED=false)", style="dim")
+                return
+            session = self.get_plan_session()
+            if self.state.current_mode == EXEC_MODE:
+                self.state.current_mode = CHAT_MODE
+                self.turns.set_role(self.state.init_role)
+            if getattr(session, "is_reviewing", False):
+                self.cancel_plan_review()
+                return
+            if getattr(session, "is_plan_mode", False):
+                session.cancel_draft()
+                self.sync_plan_tool_mode()
+                self.sync_chat_plan(session)
+                self.console.print("plan mode off", style="dim")
+                return
+            if getattr(session, "active_plan", None) is not None:
+                session.enter_revising()
+                self.console.print("[plan] revising (read-only) …", style="dim")
+            else:
+                session.enter_researching()
+                self.console.print("[plan] exploring (read-only) …", style="dim")
+            self.console.print("plan mode · read-only", style="dim")
             self.sync_plan_tool_mode()
             self.sync_chat_plan(session)
-            self.console.print("plan mode off", style="dim")
-            return
-        if getattr(session, "active_plan", None) is not None:
-            session.enter_revising()
-            self.console.print("[plan] revising (read-only) …", style="dim")
-        else:
-            session.enter_researching()
-            self.console.print("[plan] exploring (read-only) …", style="dim")
-        self.console.print("plan mode · read-only", style="dim")
-        self.sync_plan_tool_mode()
-        self.sync_chat_plan(session)
 
     @staticmethod
     def discard_revision(session: Any) -> None:
@@ -206,30 +199,33 @@ class PlanCoordinator:
 
     def cancel_plan_review(self) -> None:
         """Cancel a pending plan submission without approving it."""
-        session = getattr(self, "plan_session", None)
-        if session is None:  # pragma: no cover - defensive
-            return
-        if getattr(session, "revision_base", None) is not None:
-            self.discard_revision(session)
+        with bind_config(self.config):
+            session = getattr(self, "plan_session", None)
+            if session is None:  # pragma: no cover - defensive
+                return
+            if getattr(session, "revision_base", None) is not None:
+                self.discard_revision(session)
+                self.sync_plan_tool_mode()
+                self.sync_chat_plan(session)
+                self.console.print("revision discarded", style="dim")
+                return
+            plan = getattr(session, "draft_plan", None)
+            path = getattr(plan, "path", None) if plan is not None else None
+            # Capture the draft pointer before cancel_draft() clears it: a saved draft
+            # is still an unfinished plan, so --resume must be able to advertise it.
+            try:
+                snapshot = session.to_session_dict()
+            except Exception:  # pragma: no cover - serialization must never break exit
+                snapshot = {}
+            session.cancel_draft()
             self.sync_plan_tool_mode()
-            self.sync_chat_plan(session)
-            self.console.print("revision discarded", style="dim")
-            return
-        plan = getattr(session, "draft_plan", None)
-        path = getattr(plan, "path", None) if plan is not None else None
-        # Capture the draft pointer before cancel_draft() clears it: a saved draft
-        # is still an unfinished plan, so --resume must be able to advertise it.
-        try:
-            snapshot = session.to_session_dict()
-        except Exception:  # pragma: no cover - serialization must never break exit
-            snapshot = {}
-        session.cancel_draft()
-        self.sync_plan_tool_mode()
-        self.persist_chat_plan(snapshot)
-        if path:
-            self.console.print(f"plan cancelled; draft saved at {safe_text(self.shorten_plan_path(path))}", style="dim")
-        else:  # pragma: no cover - a submitted plan always has a path
-            self.console.print("plan cancelled", style="dim")
+            self.persist_chat_plan(snapshot)
+            if path:
+                self.console.print(
+                    f"plan cancelled; draft saved at {safe_text(self.shorten_plan_path(path))}", style="dim"
+                )
+            else:  # pragma: no cover - a submitted plan always has a path
+                self.console.print("plan cancelled", style="dim")
 
     def warn_plan_reply_without_plan(self) -> None:
         """One-line hint when a plan-mode turn answered in text without using tools.
@@ -263,17 +259,18 @@ class PlanCoordinator:
         Headless ``--plan`` runs also call this to persist the submitted plan, but
         they never open the approval panel (the caller only saves the draft).
         """
-        session = getattr(self, "plan_session", None)
-        if session is None:
-            return
-        self.sync_chat_plan(session)
-        if getattr(session, "mode", None) != "reviewing":
-            return
-        if self.state.plan_requested:
-            return
-        if not self.state.interactive:
-            return
-        self.handle_plan_review_panel()
+        with bind_config(self.config):
+            session = getattr(self, "plan_session", None)
+            if session is None:
+                return
+            self.sync_chat_plan(session)
+            if getattr(session, "mode", None) != "reviewing":
+                return
+            if self.state.plan_requested:
+                return
+            if not self.state.interactive:
+                return
+            self.handle_plan_review_panel()
 
     @staticmethod
     def next_todo_id(session: Any) -> str:
@@ -361,120 +358,122 @@ class PlanCoordinator:
 
     def handle_plan_review_panel(self) -> None:
         """Show the plan/approval panel and act on the user's decision (K23)."""
-        session = self.get_plan_session()
-        plan_mode = _plan_mode_module()
-        while True:
-            plan = getattr(session, "draft_plan", None)
-            if plan is None:  # pragma: no cover - defensive
-                session.cancel_draft()
-                self.sync_plan_tool_mode()
-                return
-            is_revision = getattr(session, "revision_base", None) is not None
-            self.attach_todo_impact(session)
-            try:
-                self.get_printer().show_plan_panel(plan, revision=is_revision, diff=getattr(session, "diff", None))
-            except Exception:  # pragma: no cover - display must never block approval
-                pass
-            decision = self.get_printer().ask_plan_decision(revision=is_revision)
-
-            if decision == "edit":
-                self.edit_plan_from_panel(session, plan)
-                continue
-            if decision == "redo":
-                session.cancel_draft()
-                if getattr(session, "active_plan", None) is not None:
-                    session.enter_revising()
-                else:
-                    session.enter_researching()
-                self.sync_plan_tool_mode()
-                self.sync_chat_plan(session)
-                self.console.print("[plan] keep planning — send a new message to revise the plan.", style="dim")
-                return
-            if decision == "approve":
-                if not self.confirm_plan_approval_policy(session):
-                    continue  # stay in REVIEWING
-                if is_revision:
-                    result = plan_mode.apply_revision(session)
-                    revision = result.get("revision") if isinstance(result, dict) else None
-                    if revision is None:
-                        active = getattr(session, "active_plan", None)
-                        revision = getattr(active, "revision", getattr(plan, "revision", 0))
-                    resume_at = result.get("resuming_at", "") if isinstance(result, dict) else ""
-                    if not resume_at:
-                        resume_at = self.next_todo_id(session)
-                    self.console.print(
-                        f"✓ revision {safe_text(revision)} applied · plan.md updated in place · "
-                        f"resuming execution at {safe_text(resume_at)}",
-                        style="green",
-                    )
-                else:
-                    plan_mode.approve_new_plan(session)
-                    step_count = len(getattr(plan, "steps", None) or [])
-                    self.console.print(
-                        f"✓ plan approved · exiting plan mode · todo seeded ({step_count} steps)",
-                        style="green",
-                    )
-                self.sync_chat_plan(session)
-                self.sync_plan_tool_mode()
+        with bind_config(self.config):
+            session = self.get_plan_session()
+            plan_mode = _plan_mode_module()
+            while True:
+                plan = getattr(session, "draft_plan", None)
+                if plan is None:  # pragma: no cover - defensive
+                    session.cancel_draft()
+                    self.sync_plan_tool_mode()
+                    return
+                is_revision = getattr(session, "revision_base", None) is not None
+                self.attach_todo_impact(session)
                 try:
-                    step_count = len(getattr(session, "todos", None) or [])
-                except Exception:  # pragma: no cover - defensive
-                    step_count = 0
-                self.console.print(
-                    f"[plan] executing approved plan ({step_count} steps)… todo progress below; Ctrl-C pauses.",
-                    style="dim",
-                )
-                self.execute_plan()
-                return
+                    self.get_printer().show_plan_panel(plan, revision=is_revision, diff=getattr(session, "diff", None))
+                except Exception:  # pragma: no cover - display must never block approval
+                    pass
+                decision = self.get_printer().ask_plan_decision(revision=is_revision)
 
-            # save / cancel (and any unknown decision)
-            path = getattr(plan, "path", None)
-            if is_revision:
-                self.discard_revision(session)
+                if decision == "edit":
+                    self.edit_plan_from_panel(session, plan)
+                    continue
+                if decision == "redo":
+                    session.cancel_draft()
+                    if getattr(session, "active_plan", None) is not None:
+                        session.enter_revising()
+                    else:
+                        session.enter_researching()
+                    self.sync_plan_tool_mode()
+                    self.sync_chat_plan(session)
+                    self.console.print("[plan] keep planning — send a new message to revise the plan.", style="dim")
+                    return
+                if decision == "approve":
+                    if not self.confirm_plan_approval_policy(session):
+                        continue  # stay in REVIEWING
+                    if is_revision:
+                        result = plan_mode.apply_revision(session)
+                        revision = result.get("revision") if isinstance(result, dict) else None
+                        if revision is None:
+                            active = getattr(session, "active_plan", None)
+                            revision = getattr(active, "revision", getattr(plan, "revision", 0))
+                        resume_at = result.get("resuming_at", "") if isinstance(result, dict) else ""
+                        if not resume_at:
+                            resume_at = self.next_todo_id(session)
+                        self.console.print(
+                            f"✓ revision {safe_text(revision)} applied · plan.md updated in place · "
+                            f"resuming execution at {safe_text(resume_at)}",
+                            style="green",
+                        )
+                    else:
+                        plan_mode.approve_new_plan(session)
+                        step_count = len(getattr(plan, "steps", None) or [])
+                        self.console.print(
+                            f"✓ plan approved · exiting plan mode · todo seeded ({step_count} steps)",
+                            style="green",
+                        )
+                    self.sync_chat_plan(session)
+                    self.sync_plan_tool_mode()
+                    try:
+                        step_count = len(getattr(session, "todos", None) or [])
+                    except Exception:  # pragma: no cover - defensive
+                        step_count = 0
+                    self.console.print(
+                        f"[plan] executing approved plan ({step_count} steps)… todo progress below; Ctrl-C pauses.",
+                        style="dim",
+                    )
+                    self.execute_plan()
+                    return
+
+                # save / cancel (and any unknown decision)
+                path = getattr(plan, "path", None)
+                if is_revision:
+                    self.discard_revision(session)
+                    self.sync_plan_tool_mode()
+                    self.sync_chat_plan(session)
+                    self.console.print("revision discarded", style="dim")
+                    return
+                # A saved (or cancelled) first plan keeps its draft file: capture the
+                # pointer before cancel_draft() clears it so --resume can hint it.
+                try:
+                    snapshot = session.to_session_dict()
+                except Exception:  # pragma: no cover - serialization must never break exit
+                    snapshot = {}
+                session.cancel_draft()
                 self.sync_plan_tool_mode()
-                self.sync_chat_plan(session)
-                self.console.print("revision discarded", style="dim")
+                self.persist_chat_plan(snapshot)
+                path_text = safe_text(self.shorten_plan_path(path)) if path else "(unknown path)"
+                if decision == "save":
+                    self.console.print(f"✓ saved as draft ({path_text}) · exit plan mode", style="dim")
+                    self.console.print(
+                        "Use /plan resume to review and execute this plan later.",
+                        style="dim",
+                    )
+                else:
+                    self.console.print(f"plan cancelled; draft saved at {path_text}", style="dim")
+                    self.console.print(
+                        "Use /plan resume to review and execute this plan later.",
+                        style="dim",
+                    )
                 return
-            # A saved (or cancelled) first plan keeps its draft file: capture the
-            # pointer before cancel_draft() clears it so --resume can hint it.
-            try:
-                snapshot = session.to_session_dict()
-            except Exception:  # pragma: no cover - serialization must never break exit
-                snapshot = {}
-            session.cancel_draft()
-            self.sync_plan_tool_mode()
-            self.persist_chat_plan(snapshot)
-            path_text = safe_text(self.shorten_plan_path(path)) if path else "(unknown path)"
-            if decision == "save":
-                self.console.print(f"✓ saved as draft ({path_text}) · exit plan mode", style="dim")
-                self.console.print(
-                    "Use /plan resume to review and execute this plan later.",
-                    style="dim",
-                )
-            else:
-                self.console.print(f"plan cancelled; draft saved at {path_text}", style="dim")
-                self.console.print(
-                    "Use /plan resume to review and execute this plan later.",
-                    style="dim",
-                )
-            return
 
     def pause_plan_execution(self, plan_mode: Any, session: Any) -> None:
         """Pause the execution loop, keep the todos and print the resume hint."""
-        try:
-            plan_mode.pause_plan(session)
-        except Exception:  # pragma: no cover - state machine handles this
-            pass
-        self.sync_plan_tool_mode()
-        self.sync_chat_plan(session)
-        try:
-            completed, total = session.todo_progress()
-        except Exception:  # pragma: no cover
-            completed = total = 0
-        self.console.print(
-            f"[plan] execution paused at {completed}/{total} steps · /plan resume to continue · /plan abort to abandon",
-            style="dim",
-        )
+        with bind_config(self.config):
+            try:
+                plan_mode.pause_plan(session)
+            except Exception:  # pragma: no cover - state machine handles this
+                pass
+            self.sync_plan_tool_mode()
+            self.sync_chat_plan(session)
+            try:
+                completed, total = session.todo_progress()
+            except Exception:  # pragma: no cover
+                completed = total = 0
+            self.console.print(
+                f"[plan] execution paused at {completed}/{total} steps · /plan resume to continue · /plan abort to abandon",
+                style="dim",
+            )
 
     def execute_plan(self) -> None:
         """Run the approved plan with bounded synthetic turns until all todos are done.
@@ -483,39 +482,40 @@ class PlanCoordinator:
         progress via ``todo_write``. Ctrl-C pauses (todos kept); two turns without
         todo progress also pause instead of burning the whole turn budget.
         """
-        session = getattr(self, "plan_session", None)
-        if session is None:  # pragma: no cover - defensive
-            return
-        plan_mode = _plan_mode_module()
-        turns = no_progress = 0
-        try:
-            while turns < PLAN_MAX_EXECUTION_TURNS and not session.all_todos_completed():
-                before = session.todo_snapshot()
-                instruction = PLAN_KICKOFF_INSTRUCTION if turns == 0 else PLAN_CONTINUE_INSTRUCTION
-                try:
-                    self.turns.process(instruction)
-                except KeyboardInterrupt:
-                    raise
-                turns += 1
-                if session.todo_snapshot() == before and not session.all_todos_completed():
-                    no_progress += 1
+        with bind_config(self.config):
+            session = getattr(self, "plan_session", None)
+            if session is None:  # pragma: no cover - defensive
+                return
+            plan_mode = _plan_mode_module()
+            turns = no_progress = 0
+            try:
+                while turns < PLAN_MAX_EXECUTION_TURNS and not session.all_todos_completed():
+                    before = session.todo_snapshot()
+                    instruction = PLAN_KICKOFF_INSTRUCTION if turns == 0 else PLAN_CONTINUE_INSTRUCTION
+                    try:
+                        self.turns.process(instruction)
+                    except KeyboardInterrupt:
+                        raise
+                    turns += 1
+                    if session.todo_snapshot() == before and not session.all_todos_completed():
+                        no_progress += 1
+                    else:
+                        no_progress = 0
+                    if no_progress >= 2:
+                        break
+                if session.all_todos_completed():
+                    try:
+                        completed, total = session.todo_progress()
+                    except Exception:  # pragma: no cover
+                        completed = total = 0
+                    plan_mode.finish_plan(session)
+                    self.sync_plan_tool_mode()
+                    self.console.print(f"✓ plan done · {completed}/{total} steps", style="green")
+                    self.sync_chat_plan(session)
                 else:
-                    no_progress = 0
-                if no_progress >= 2:
-                    break
-            if session.all_todos_completed():
-                try:
-                    completed, total = session.todo_progress()
-                except Exception:  # pragma: no cover
-                    completed = total = 0
-                plan_mode.finish_plan(session)
-                self.sync_plan_tool_mode()
-                self.console.print(f"✓ plan done · {completed}/{total} steps", style="green")
-                self.sync_chat_plan(session)
-            else:
+                    self.pause_plan_execution(plan_mode, session)
+            except KeyboardInterrupt:
                 self.pause_plan_execution(plan_mode, session)
-        except KeyboardInterrupt:
-            self.pause_plan_execution(plan_mode, session)
 
     def run_headless_plan(self, user_input: str) -> None:
         """One-shot ``--plan`` run: explore read-only, save the submitted plan, exit.
@@ -524,46 +524,47 @@ class PlanCoordinator:
         JSON/text output describes it. A model that never calls ``submit_plan``
         ends with ``plan_not_submitted`` (exit 1).
         """
-        plan_mode = _plan_mode_module()
-        session = self.get_plan_session()
-        session.enter_researching()
-        self.sync_plan_tool_mode()
-        self.output.emit_event({"type": "plan_start"})
-        try:
-            self.turns.once(user_input)
-        finally:
-            self.after_plan_turn()
-        plan = getattr(session, "draft_plan", None)
-        if plan is None:
-            self.output.result.had_error = True
-            self.output.result.error_kind = ErrorKind.PLAN_NOT_SUBMITTED
-            self.output.result.error_message = "plan mode ended: model did not submit a plan"
-            get_error_console().print(self.output.result.error_message, style="red")
-        else:
-            self.output.plan_output = plan
+        with bind_config(self.config):
+            plan_mode = _plan_mode_module()
+            session = self.get_plan_session()
+            session.enter_researching()
+            self.sync_plan_tool_mode()
+            self.output.emit_event({"type": "plan_start"})
             try:
-                plan_mode.plan_audit("headless_saved", plan_id=plan.id, revision=plan.revision)
-            except Exception:  # pragma: no cover - audit is best-effort
-                pass
-            self.output.emit_event(
-                {
-                    "type": "plan_ready",
-                    "steps": len(getattr(plan, "steps", None) or []),
-                    "path": str(getattr(plan, "path", "") or ""),
-                    "revision": getattr(plan, "revision", 1),
-                }
-            )
-            if self.state.output_format == "text" and not self.state.quiet:
+                self.turns.once(user_input)
+            finally:
+                self.after_plan_turn()
+            plan = getattr(session, "draft_plan", None)
+            if plan is None:
+                self.output.result.had_error = True
+                self.output.result.error_kind = ErrorKind.PLAN_NOT_SUBMITTED
+                self.output.result.error_message = "plan mode ended: model did not submit a plan"
+                get_error_console().print(self.output.result.error_message, style="red")
+            else:
+                self.output.plan_output = plan
                 try:
-                    markdown = plan.to_markdown()
-                except Exception:  # pragma: no cover - rendering must never break the run
-                    markdown = ""
-                if markdown:
-                    sys.stdout.write(markdown.rstrip("\n") + "\n")
-                    sys.stdout.flush()
-        session.cancel_draft()
-        self.sync_plan_tool_mode()
-        self.output.finalize_headless()
+                    plan_mode.plan_audit("headless_saved", plan_id=plan.id, revision=plan.revision)
+                except Exception:  # pragma: no cover - audit is best-effort
+                    pass
+                self.output.emit_event(
+                    {
+                        "type": "plan_ready",
+                        "steps": len(getattr(plan, "steps", None) or []),
+                        "path": str(getattr(plan, "path", "") or ""),
+                        "revision": getattr(plan, "revision", 1),
+                    }
+                )
+                if self.state.output_format == "text" and not self.state.quiet:
+                    try:
+                        markdown = plan.to_markdown()
+                    except Exception:  # pragma: no cover - rendering must never break the run
+                        markdown = ""
+                    if markdown:
+                        sys.stdout.write(markdown.rstrip("\n") + "\n")
+                        sys.stdout.flush()
+            session.cancel_draft()
+            self.sync_plan_tool_mode()
+            self.output.finalize_headless()
 
     def plan_store_context(self) -> tuple:
         """Return ``(plan_store, plans_root, project_key, cwd)`` for disk access."""
@@ -605,82 +606,85 @@ class PlanCoordinator:
 
     def clear_plans_from_disk(self, done_only: bool = False) -> list:
         """Delete plan files of this project (terminal ones only when ``done_only``)."""
-        plan_store, root, project_key, _ = self.plan_store_context()
-        try:
-            return plan_store.clear_plans(root, project_key, done_only=done_only)
-        except Exception:  # pragma: no cover
-            return []
+        with bind_config(self.config):
+            plan_store, root, project_key, _ = self.plan_store_context()
+            try:
+                return plan_store.clear_plans(root, project_key, done_only=done_only)
+            except Exception:  # pragma: no cover
+                return []
 
     def review_plan_from_disk(self, plan_id: Optional[str] = None) -> bool:
         """Open a draft plan from disk in the approval panel (non-drafts are printed)."""
-        session = self.get_plan_session()
-        plan_mode = _plan_mode_module()
-        plan = self.find_plan_from_disk(plan_id)
-        if plan is None:
-            if plan_id:
-                self.console.print(f"plan not found: {safe_text(plan_id)}", style="yellow")
-            else:
-                self.console.print("no plan in this session", style="yellow")
-            return False
-        if getattr(plan, "status", None) != "draft":
-            self.console.print(Markdown(plan.to_markdown(), code_theme=self.config["CODE_THEME"]))
+        with bind_config(self.config):
+            session = self.get_plan_session()
+            plan_mode = _plan_mode_module()
+            plan = self.find_plan_from_disk(plan_id)
+            if plan is None:
+                if plan_id:
+                    self.console.print(f"plan not found: {safe_text(plan_id)}", style="yellow")
+                else:
+                    self.console.print("no plan in this session", style="yellow")
+                return False
+            if getattr(plan, "status", None) != "draft":
+                self.console.print(Markdown(plan.to_markdown(), code_theme=self.config["CODE_THEME"]))
+                return True
+            session.active_plan = None
+            session.todos = []
+            session.revision_base = None
+            session.diff = None
+            session.draft_plan = plan
+            try:
+                session.mode = plan_mode.PlanMode.REVIEWING
+            except Exception:  # pragma: no cover - mode is a plain string attribute too
+                session.mode = "reviewing"
+            self.sync_chat_plan(session)
+            self.handle_plan_review_panel()
             return True
-        session.active_plan = None
-        session.todos = []
-        session.revision_base = None
-        session.diff = None
-        session.draft_plan = plan
-        try:
-            session.mode = plan_mode.PlanMode.REVIEWING
-        except Exception:  # pragma: no cover - mode is a plain string attribute too
-            session.mode = "reviewing"
-        self.sync_chat_plan(session)
-        self.handle_plan_review_panel()
-        return True
 
     def resume_plan_from_disk(self, plan_id: Optional[str] = None) -> bool:
         """Resume a draft (panel) or in-progress (execution) plan from disk."""
-        session = self.get_plan_session()
-        plan_mode = _plan_mode_module()
-        plan = self.find_plan_from_disk(plan_id)
-        if plan is None:
-            if plan_id:
-                self.console.print(f"plan not found: {safe_text(plan_id)}", style="yellow")
-            else:
-                self.console.print("no plan in this session", style="yellow")
-            return False
-        status = str(getattr(plan, "status", "") or "")
-        if status == "draft":
-            return self.review_plan_from_disk(getattr(plan, "id", None))
-        if status != "in-progress":
-            self.console.print(
-                f"plan {safe_text(getattr(plan, 'id', ''))} is {safe_text(status)}; nothing to resume",
-                style="yellow",
-            )
-            return True
-        plan_session_id = str(getattr(plan, "session_id", "") or "")
-        chat_session_id = str(getattr(self.sessions.chat, "date", "") or "")
-        if plan_session_id and chat_session_id and plan_session_id != chat_session_id:
-            self.console.print("plan is already in progress in another session", style="yellow")
-            return False
-        current = getattr(session, "active_plan", None)
-        if current is None or getattr(current, "id", None) != getattr(plan, "id", None):
-            session.active_plan = plan
+        with bind_config(self.config):
+            session = self.get_plan_session()
+            plan_mode = _plan_mode_module()
+            plan = self.find_plan_from_disk(plan_id)
+            if plan is None:
+                if plan_id:
+                    self.console.print(f"plan not found: {safe_text(plan_id)}", style="yellow")
+                else:
+                    self.console.print("no plan in this session", style="yellow")
+                return False
+            status = str(getattr(plan, "status", "") or "")
+            if status == "draft":
+                return self.review_plan_from_disk(getattr(plan, "id", None))
+            if status != "in-progress":
+                self.console.print(
+                    f"plan {safe_text(getattr(plan, 'id', ''))} is {safe_text(status)}; nothing to resume",
+                    style="yellow",
+                )
+                return True
+            plan_session_id = str(getattr(plan, "session_id", "") or "")
+            chat_session_id = str(getattr(self.sessions.chat, "date", "") or "")
+            if plan_session_id and chat_session_id and plan_session_id != chat_session_id:
+                self.console.print("plan is already in progress in another session", style="yellow")
+                return False
+            current = getattr(session, "active_plan", None)
+            if current is None or getattr(current, "id", None) != getattr(plan, "id", None):
+                session.active_plan = plan
+                try:
+                    session.todos = plan_mode.seed_todos(plan)
+                except Exception:  # pragma: no cover - state machine handles todos
+                    session.todos = []
             try:
-                session.todos = plan_mode.seed_todos(plan)
-            except Exception:  # pragma: no cover - state machine handles todos
-                session.todos = []
-        try:
-            resumed = plan_mode.resume_plan(session)
-        except Exception:  # pragma: no cover
-            resumed = False
-        if not resumed:
-            self.console.print("plan is already in progress in another session", style="yellow")
-            return False
-        self.sync_plan_tool_mode()
-        self.sync_chat_plan(session)
-        self.execute_plan()
-        return True
+                resumed = plan_mode.resume_plan(session)
+            except Exception:  # pragma: no cover
+                resumed = False
+            if not resumed:
+                self.console.print("plan is already in progress in another session", style="yellow")
+                return False
+            self.sync_plan_tool_mode()
+            self.sync_chat_plan(session)
+            self.execute_plan()
+            return True
 
     def prepare_plan_task(self, task: str) -> Optional[str]:
         """Enter plan mode for ``/plan <task>`` and return the task as the next turn."""
@@ -697,51 +701,55 @@ class PlanCoordinator:
 
     def abort_current_plan(self) -> bool:
         """Abort the active plan (status aborted, todos cleared); False when none."""
-        session = getattr(self, "plan_session", None)
-        if session is None:
-            return False
-        if getattr(session, "active_plan", None) is None:
-            return False
-        plan_mode = _plan_mode_module()
-        try:
-            plan_mode.abort_plan(session)
-        except Exception as exc:  # pragma: no cover - state machine should not fail
-            self.console.print(f"failed to abort plan: {safe_text(exc)}", style="red")
-            return False
-        self.sync_plan_tool_mode()
-        self.sync_chat_plan(session)
-        self.console.print("plan aborted · todos cleared", style="green")
-        return True
+        with bind_config(self.config):
+            session = getattr(self, "plan_session", None)
+            if session is None:
+                return False
+            if getattr(session, "active_plan", None) is None:
+                return False
+            plan_mode = _plan_mode_module()
+            try:
+                plan_mode.abort_plan(session)
+            except Exception as exc:  # pragma: no cover - state machine should not fail
+                self.console.print(f"failed to abort plan: {safe_text(exc)}", style="red")
+                return False
+            self.sync_plan_tool_mode()
+            self.sync_chat_plan(session)
+            self.console.print("plan aborted · todos cleared", style="green")
+            return True
 
     def edit_current_plan(self) -> Optional[bool]:
         """Edit the current plan file in ``$EDITOR``; ``None`` = no plan in session."""
-        session = self.get_plan_session()
-        plan_mode = _plan_mode_module()
-        plan_store = _plan_store_module()
-        plan = (
-            getattr(session, "draft_plan", None) or getattr(session, "active_plan", None) or self.find_plan_from_disk()
-        )
-        if plan is None:
-            return None
-        path = getattr(plan, "path", None)
-        if path is None:  # pragma: no cover - a persisted plan always has a path
-            return False
-        try:
-            ok, error = plan_mode.edit_plan_file(path)
-        except Exception as exc:  # pragma: no cover - editor failures are best-effort
-            self.console.print(f"cannot open editor; plan unchanged: {safe_text(exc)}", style="yellow")
-            return False
-        if not ok:
-            self.console.print(f"invalid plan file: {safe_text(path)}: {safe_text(error)}", style="red")
-            return False
-        if getattr(session, "draft_plan", None) is not None:
-            try:
-                session.draft_plan = plan_store.read_plan(path)
-            except Exception as exc:
-                self.console.print(f"invalid plan file: {safe_text(path)}: {safe_text(exc)}", style="red")
+        with bind_config(self.config):
+            session = self.get_plan_session()
+            plan_mode = _plan_mode_module()
+            plan_store = _plan_store_module()
+            plan = (
+                getattr(session, "draft_plan", None)
+                or getattr(session, "active_plan", None)
+                or self.find_plan_from_disk()
+            )
+            if plan is None:
+                return None
+            path = getattr(plan, "path", None)
+            if path is None:  # pragma: no cover - a persisted plan always has a path
                 return False
-            self.sync_chat_plan(session)
-        return True
+            try:
+                ok, error = plan_mode.edit_plan_file(path)
+            except Exception as exc:  # pragma: no cover - editor failures are best-effort
+                self.console.print(f"cannot open editor; plan unchanged: {safe_text(exc)}", style="yellow")
+                return False
+            if not ok:
+                self.console.print(f"invalid plan file: {safe_text(path)}: {safe_text(error)}", style="red")
+                return False
+            if getattr(session, "draft_plan", None) is not None:
+                try:
+                    session.draft_plan = plan_store.read_plan(path)
+                except Exception as exc:
+                    self.console.print(f"invalid plan file: {safe_text(path)}: {safe_text(exc)}", style="red")
+                    return False
+                self.sync_chat_plan(session)
+            return True
 
     def restore_plan_from_session(self) -> None:
         """Restore the plan pointer of a resumed/loaded chat (always in NORMAL mode).
@@ -750,49 +758,50 @@ class PlanCoordinator:
         two-line hint telling the user which explicit command continues it. Broken
         or stale pointers are dropped with one stderr notice.
         """
-        plan_data = getattr(self.sessions.chat, "plan", None)
-        if not isinstance(plan_data, dict) or not plan_data:
-            return
-        session = self.get_plan_session()
-        plan_mode = _plan_mode_module()
-        _, root, _, cwd = self.plan_store_context()
-        try:
-            detail = session.restore_from_session(
-                plan_data,
-                session_id=str(getattr(self.sessions.chat, "date", "") or ""),
-                plans_root=root,
-                cwd=cwd,
-            )
-        except Exception:  # pragma: no cover - restore is defensive by contract
-            detail = "saved plan not found/inconsistent; starting in normal mode"
-        if detail is not None:
-            get_error_console().print(str(detail), style="yellow")
+        with bind_config(self.config):
+            plan_data = getattr(self.sessions.chat, "plan", None)
+            if not isinstance(plan_data, dict) or not plan_data:
+                return
+            session = self.get_plan_session()
+            plan_mode = _plan_mode_module()
+            _, root, _, cwd = self.plan_store_context()
             try:
-                self.sessions.chat.plan = {}
-            except Exception:  # pragma: no cover - legacy chat objects
-                pass
-            session.reset()
+                detail = session.restore_from_session(
+                    plan_data,
+                    session_id=str(getattr(self.sessions.chat, "date", "") or ""),
+                    plans_root=root,
+                    cwd=cwd,
+                )
+            except Exception:  # pragma: no cover - restore is defensive by contract
+                detail = "saved plan not found/inconsistent; starting in normal mode"
+            if detail is not None:
+                get_error_console().print(str(detail), style="yellow")
+                try:
+                    self.sessions.chat.plan = {}
+                except Exception:  # pragma: no cover - legacy chat objects
+                    pass
+                session.reset()
+                self.sync_plan_tool_mode()
+                return
+            plan = getattr(session, "active_plan", None) or getattr(session, "draft_plan", None)
+            # Restoring never enables plan mode; tool filtering stays in normal mode.
             self.sync_plan_tool_mode()
-            return
-        plan = getattr(session, "active_plan", None) or getattr(session, "draft_plan", None)
-        # Restoring never enables plan mode; tool filtering stays in normal mode.
-        self.sync_plan_tool_mode()
-        self.sync_chat_plan(session)
-        if plan is None:
-            return
-        try:
-            plan_mode.plan_audit("resume_hint", plan_id=plan.id, status=plan.status)
-        except Exception:  # pragma: no cover - audit is best-effort
-            pass
-        if getattr(plan, "status", "") == "draft":
-            self.console.print(
-                f"  ⚠ unfinished plan found: {safe_text(plan.id)} (draft, revision {plan.revision})",
-                style="yellow",
-            )
-            self.console.print("  Use /plan review to continue it, or /plan list to see all plans.", style="dim")
-        else:
-            self.console.print(
-                f"  ⚠ unfinished plan found: {safe_text(plan.id)} (in-progress, revision {plan.revision})",
-                style="yellow",
-            )
-            self.console.print("  Use /plan resume to continue it, or /plan list to see all plans.", style="dim")
+            self.sync_chat_plan(session)
+            if plan is None:
+                return
+            try:
+                plan_mode.plan_audit("resume_hint", plan_id=plan.id, status=plan.status)
+            except Exception:  # pragma: no cover - audit is best-effort
+                pass
+            if getattr(plan, "status", "") == "draft":
+                self.console.print(
+                    f"  ⚠ unfinished plan found: {safe_text(plan.id)} (draft, revision {plan.revision})",
+                    style="yellow",
+                )
+                self.console.print("  Use /plan review to continue it, or /plan list to see all plans.", style="dim")
+            else:
+                self.console.print(
+                    f"  ⚠ unfinished plan found: {safe_text(plan.id)} (in-progress, revision {plan.revision})",
+                    style="yellow",
+                )
+                self.console.print("  Use /plan resume to continue it, or /plan list to see all plans.", style="dim")

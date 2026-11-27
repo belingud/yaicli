@@ -110,10 +110,18 @@ state, events and exit mapping; `planning/coordinator.py` owns plan application 
 - `CLI.run()`: `chat=True` loads a session by `user_input` title then calls `_run_repl()`; otherwise
   `_run_once()` = `set_role(...)` + `_process_user_input()`. Empty `user_input` with `chat=False` raises
   `typer.Abort`; `entry.main` makes sure image-only calls pass a non-empty prompt.
-- DI seam: `CLI(verbose, role, chat_manager, role_manager, context_manager, client)`, defaulting to the
-  singletons `chat_mgr`/`role_mgr`/`ctx_mgr`; tests pass `MagicMock`s and overwrite `cli.console`/`cli.session`.
-  `__init__` resolves "auto" `OS_NAME`/`SHELL_NAME` via `detect_os`/`detect_shell`; `--verbose` masks `API_KEY`
-  and in machine mode writes to stderr.
+- DI seams preserve ready clients and injected managers; optional internal `config` supplies the parsed
+  assembly source. CLI deep-copies it once, exposes the same mapping through `self.config` and
+  `self.runtime.config`, and creates its own default FileChatManager directory. Shared role/context
+  managers remain compatible. Auto OS/shell detection and runtime commands update this session mapping.
+  Tests should construct a real CLI with fake boundary dependencies instead of bypassing initialization.
+  `--verbose` masks API_KEY and writes diagnostics to stderr in machine mode.
+
+The SessionContext owns the sole lazy plan reference shared by the coordinator and built-in client.
+CLI compatibility plan properties delegate to it; normal execution must not synchronize a global tool
+mode copy. Bind the owning effective config through message construction, actual generator consumption,
+worker start and save callbacks, restoring on exit. This binding carries no environment lock. Keep the
+actual tool environment adapter inside the execution thread and preserve cancellation/pending semantics.
 
 ## Message Assembly & Tool Policy
 
@@ -135,7 +143,7 @@ state, events and exit mapping; `planning/coordinator.py` owns plan application 
   Image-only invocations are handled in `entry.main`, which substitutes `Describe the image.` /
   `Describe these images.` so `CLI.run()` never receives an empty prompt.
 - `_get_tool_policy()` (`cli.py:308`) is the single `ToolPolicy` source: `EXEC_MODE` disables functions
-  **and** MCP; else pass `cfg["ENABLE_FUNCTIONS"]`/`cfg["ENABLE_MCP"]`. The client intersects it with the
+  **and** MCP; else pass the owned mapping's `ENABLE_FUNCTIONS`/`ENABLE_MCP`. The client intersects it with the
   provider default (`Provider.resolve_tool_policy`), so disable tools here, never ad hoc.
 - After each turn `_process_user_input()` rebuilds `chat.history` from the client-returned messages
   **filtering out every `role == "system"`**. Context economy (v0.19): `LLMClient` enforces the token
@@ -164,8 +172,8 @@ state, events and exit mapping; `planning/coordinator.py` owns plan application 
 - `prepare_chat_loop()` sets `CHAT_MODE`, installs Shift+Tab (`s-tab`) chat/exec toggling in
   `_setup_key_bindings()`, makes the `HISTORY_FILE` setup OSError-tolerant (read-only HOME / container:
   warn once, continue without history; never crash), then builds `PromptSession` with
-  `LimitedFileHistory(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"])` (a non-positive `MAX_HISTORY`
-  disables history saving), `AutoSuggestFromHistory()` when `cfg["AUTO_SUGGEST"]`, `AtPathCompleter()`,
+  `LimitedFileHistory(HISTORY_FILE, max_entries=self.config["MAX_HISTORY"])` (a non-positive `MAX_HISTORY`
+  disables history saving), `AutoSuggestFromHistory()` when `self.config["AUTO_SUGGEST"]`, `AtPathCompleter()`,
   `complete_while_typing=True`; on failure it falls back to `PromptSession(key_bindings=...)` and prints
   `Error initializing prompt session history: {e}`. `_setup_key_bindings()` also binds `c-o`:
   the handler calls `event.app.exit(exception=ToolOutputViewerRequested())` (never `raise` inside the

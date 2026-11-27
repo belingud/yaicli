@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .. import const
 from ..config import cfg
+from ..runtime import current_config
 from . import store as plan_store
 from .editor import edit_plan_file, write_plan_editor_draft
 from .model import (
@@ -80,9 +81,10 @@ def _utc_stamp() -> str:
 def _audit_enabled() -> bool:
     """True when the config asks for the audit log (absent key = opt out)."""
     try:
-        if "TOOL_AUDIT" not in cfg:
+        config = current_config(cfg)
+        if "TOOL_AUDIT" not in config:
             return False
-        return bool(cfg.get("TOOL_AUDIT"))
+        return bool(config.get("TOOL_AUDIT"))
     except (AttributeError, TypeError):  # pragma: no cover - exotic config mappings
         return False
 
@@ -136,14 +138,14 @@ def _revision_diff_payload(diff: RevisionDiff, todos: List[TodoItem]) -> Dict[st
     }
 
 
-def handle_submit_plan(arguments: Dict[str, Any]) -> Dict[str, Any]:
+def handle_submit_plan(arguments: Dict[str, Any], *, session: Optional[PlanSession] = None) -> Dict[str, Any]:
     """Handle one ``submit_plan`` tool call (first submission or a revision).
 
     Success (first submission) writes the draft plan file and moves the session
     to ``reviewing``; a revision only builds the in-memory draft + diff (the plan
     file is rewritten in place on approval). Returns JSON-ready data, never raises.
     """
-    session = get_plan_session()
+    session = get_plan_session() if session is None else session
     try:
         if session.mode == PlanMode.REVIEWING.value:
             return {
@@ -271,9 +273,9 @@ def _changed_todo(todos: List[TodoItem], previous: Dict[str, str]) -> Optional[D
     }
 
 
-def handle_todo_write(arguments: Dict[str, Any]) -> Dict[str, Any]:
+def handle_todo_write(arguments: Dict[str, Any], *, session: Optional[PlanSession] = None) -> Dict[str, Any]:
     """Handle one ``todo_write`` tool call during plan execution."""
-    session = get_plan_session()
+    session = get_plan_session() if session is None else session
     try:
         if not session.is_executing:
             return {

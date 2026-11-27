@@ -68,7 +68,7 @@ SPEC = [
 def _submit(cli, steps=None, goal="Execution plan"):
     from yaicli import plan_mode
 
-    result = plan_mode.handle_submit_plan({"goal": goal, "steps": list(steps or SPEC)})
+    result = plan_mode.handle_submit_plan({"goal": goal, "steps": list(steps or SPEC)}, session=cli.plan_session)
     assert result.get("success") is True, result
     plan = cli.plan_session.draft_plan
     assert plan is not None and plan.path is not None
@@ -186,7 +186,7 @@ class TestApprovalPanel:
 
     def test_readonly_policy_prompt_declined_stays_reviewing(self, plan_cli, monkeypatch):
         plan = _enter_reviewing(plan_cli)
-        monkeypatch.setitem(cfg, "TOOL_POLICY", "readonly")
+        monkeypatch.setitem(plan_cli.config, "TOOL_POLICY", "readonly")
         executed = _no_execute(monkeypatch)
         asked = []
 
@@ -205,18 +205,18 @@ class TestApprovalPanel:
         # picks another action (here: save only).
         assert plan_cli.plan_session.mode == "normal"
         assert read_plan(plan.path).status == PLAN_STATUS_DRAFT
-        assert cfg.get("TOOL_POLICY") == "readonly"
+        assert plan_cli.config.get("TOOL_POLICY") == "readonly"
 
     def test_readonly_policy_accepted_switches_to_standard(self, plan_cli, monkeypatch):
         _enter_reviewing(plan_cli)
-        monkeypatch.setitem(cfg, "TOOL_POLICY", "readonly")
+        monkeypatch.setitem(plan_cli.config, "TOOL_POLICY", "readonly")
         executed = _no_execute(monkeypatch)
         monkeypatch.setattr(coordinator_module.Prompt, "ask", lambda prompt, **kwargs: "y")
         plan_cli.printer.ask_plan_decision.return_value = "approve"
 
         plan_cli._handle_plan_review_panel()
 
-        assert cfg.get("TOOL_POLICY") == "standard"
+        assert plan_cli.config.get("TOOL_POLICY") == "standard"
         assert executed
         assert plan_cli.plan_session.mode == "executing"
 
@@ -253,7 +253,7 @@ class TestExecutionLoop:
                 items = _todo_items(plan_cli, ["completed", "in_progress"])
             else:
                 items = _todo_items(plan_cli, ["completed", "completed"])
-            result = plan_mode.handle_todo_write(items)
+            result = plan_mode.handle_todo_write(items, session=plan_cli.plan_session)
             assert result.get("success") is True, result
             return True
 
@@ -333,7 +333,9 @@ class TestReplanRevision:
 
         plan = _enter_reviewing(plan_cli)
         _approve(plan_cli)
-        result = plan_mode.handle_todo_write(_todo_items(plan_cli, ["completed", "in_progress"]))
+        result = plan_mode.handle_todo_write(
+            _todo_items(plan_cli, ["completed", "in_progress"]), session=plan_cli.plan_session
+        )
         assert result.get("success") is True, result
         return plan
 
@@ -352,7 +354,8 @@ class TestReplanRevision:
                 "revision": 2,
                 "change_summary": "add a third step",
                 "steps": steps,
-            }
+            },
+            session=plan_cli.plan_session,
         )
         assert result.get("success") is True, result
         return result
@@ -481,7 +484,9 @@ class TestEditPlanFromPanel:
     def test_edit_revision_reloads_diff(self, plan_cli, monkeypatch):
         plan = _enter_reviewing(plan_cli)
         _approve(plan_cli)
-        result = plan_mode.handle_todo_write(_todo_items(plan_cli, ["completed", "in_progress"]))
+        result = plan_mode.handle_todo_write(
+            _todo_items(plan_cli, ["completed", "in_progress"]), session=plan_cli.plan_session
+        )
         assert result.get("success") is True
         plan_cli._toggle_plan_mode()
         revision = {
@@ -494,7 +499,7 @@ class TestEditPlanFromPanel:
                 {"id": "S3", "title": "Third step", "acceptance": "third acceptance"},
             ],
         }
-        assert plan_mode.handle_submit_plan(revision).get("success") is True
+        assert plan_mode.handle_submit_plan(revision, session=plan_cli.plan_session).get("success") is True
         _no_execute(monkeypatch)
         plan_cli.printer.ask_plan_decision.side_effect = ["edit", "cancel"]
 

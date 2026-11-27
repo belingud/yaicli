@@ -2,6 +2,7 @@ import subprocess
 import sys
 import time
 import traceback
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -14,7 +15,7 @@ from .application.output import TOOL_DENIED_MARKERS as TOOL_DENIED_MARKERS
 from .application.output import MachineOutput
 from .application.session import SessionController
 from .application.state import RunState
-from .chat import Chat, FileChatManager, chat_mgr, resolve_default_chat_dir
+from .chat import Chat, FileChatManager, resolve_default_chat_dir
 from .cmd_handler import COMMAND_INFO, CmdHandler
 from .config import cfg
 from .console import get_console, get_error_console, safe_text, untrusted_text
@@ -41,6 +42,7 @@ from .exceptions import ChatSaveError, YaicliError
 from .printer import Printer
 from .project_context import load_project_context
 from .role import Role, RoleManager, role_mgr
+from .runtime import SessionContext, bind_config
 from .schemas import ChatMessage, ImageData, ToolPolicy
 from .tokens import (
     estimate_context_usage,
@@ -159,6 +161,7 @@ DOUBLE_CTRL_C_WINDOW_SECONDS = 2.0
 class CLI:
     __slots__ = (
         "verbose",
+        "runtime",
         # ----- v0.19 headless state contract (public; entry.py maps it) -----
         #: True when a human terminal UI is available (TTY stdin+stdout, not -p).
         #: Process exit code resolved by the CLI for a non-chat run.
@@ -215,9 +218,11 @@ class CLI:
         print_mode: bool = False,
         output_format: str = DEFAULT_OUTPUT_FORMAT,
         quiet: bool = False,
+        config=None,
     ):
+        self.runtime = SessionContext(deepcopy(dict(cfg if config is None else config)))
         self._run_state = RunState()
-        self._output = MachineOutput(cfg, self._run_state, lambda: getattr(self, "_client", None))
+        self._output = MachineOutput(self.config, self._run_state, lambda: getattr(self, "_client", None))
         self._planning = None
         self.verbose: bool = verbose
         # Set when a handled LLM/API failure occurs; single-shot mode turns it into
@@ -257,11 +262,13 @@ class CLI:
         # In machine/headless runs all diagnostics go to stderr; stdout is reserved
         # for the final result/events.
         self.console = get_console() if not self.machine_output else get_error_console()
-        manager = chat_manager or chat_mgr
-        if chat_manager is None and hasattr(manager, "chat_dir"):
-            # ``--cwd`` may have changed the process cwd after import: re-resolve
-            # the per-project session directory (v0.21 K13).
-            manager.chat_dir = resolve_default_chat_dir()
+        manager = (
+            chat_manager
+            if chat_manager is not None
+            else FileChatManager(
+                chat_dir=resolve_default_chat_dir(self.config), max_saved_chats=self.config["MAX_SAVED_CHATS"]
+            )
+        )
         self.role_manager = role_manager or role_mgr
         self.context_manager = context_manager or ctx_mgr
         self.role: Role = self.role_manager.get_role(self.role_name)
@@ -276,7 +283,7 @@ class CLI:
             # use stderr, so re-point the client *and* its provider console here.
             self._sync_client_console()
         self._sessions = SessionController(
-            cfg, manager, self._run_state, self.console, history_changed=self._update_context_percent
+            self.config, manager, self._run_state, self.console, history_changed=self._update_context_percent
         )
         self.cmd_handler = CmdHandler(self)
 
@@ -286,7 +293,7 @@ class CLI:
 
         self.current_mode: str = TEMP_MODE
 
-        self.interactive_round = cfg["INTERACTIVE_ROUND"]
+        self.interactive_round = self.config["INTERACTIVE_ROUND"]
         self._trim_notified = False
         # K12: project instruction files (AGENTS.md/CLAUDE.md/.yaicli.md) are loaded
         # lazily on the first request so CLI construction stays write/read-free.
@@ -307,24 +314,24 @@ class CLI:
         # Session directory actually used by the manager (per-project by default).
         manager_dir = getattr(self.chat_manager, "chat_dir", None)
         self.chat_history_dir = (
-            Path(manager_dir) if isinstance(manager_dir, (str, Path)) else resolve_default_chat_dir()
+            Path(manager_dir) if isinstance(manager_dir, (str, Path)) else resolve_default_chat_dir(self.config)
         )
 
         # Detect OS and Shell if set to auto
-        if cfg["OS_NAME"] == DEFAULT_OS_NAME:
-            cfg["OS_NAME"] = detect_os(cfg)
-        if cfg["SHELL_NAME"] == DEFAULT_SHELL_NAME:
-            cfg["SHELL_NAME"] = detect_shell(cfg)
+        if self.config["OS_NAME"] == DEFAULT_OS_NAME:
+            self.config["OS_NAME"] = detect_os(self.config)
+        if self.config["SHELL_NAME"] == DEFAULT_SHELL_NAME:
+            self.config["SHELL_NAME"] = detect_shell(self.config)
 
         if self.verbose:
             # Print verbose configuration (values can come from config/env files: never markup)
             self.console.print("Loading Configuration:", style="bold cyan")
             self.console.print(f"Config file path: {safe_text(CONFIG_PATH)}")
-            for key, value in cfg.items():
+            for key, value in self.config.items():
                 display_value = "****" if key == "API_KEY" and value else value
                 self.console.print(f"  {safe_text(key):<20}: {safe_text(display_value)}")
             self.console.print(f"Current role: {safe_text(self.role_name)}")
-            self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
+            self.console.print(Markdown("---", code_theme=self.config["CODE_THEME"]))
 
         # v0.19 K04/K21: one-shot/pipe runs never build a prompt_toolkit session; since
         # K08 the REPL builds the only session in prepare_chat_loop().
@@ -335,6 +342,10 @@ class CLI:
         self.plan_session = None
         self.plan_requested = False
         self._plan_output_plan = None
+
+    @property
+    def config(self):
+        return self.runtime.config
 
     @property
     def interactive(self):
@@ -644,7 +655,7 @@ class CLI:
             from .planning.coordinator import PlanCoordinator, PlanTurns
 
             self._planning = PlanCoordinator(
-                cfg,
+                self.config,
                 self.sessions,
                 self._run_state,
                 self.output,
@@ -656,18 +667,17 @@ class CLI:
                     self.set_role,
                     self._sync_client_plan_session,
                 ),
+                runtime=self.runtime,
             )
         return self._planning
 
     @property
     def plan_session(self):
-        coordinator = getattr(self, "_planning", None)
-        return coordinator.plan_session if coordinator is not None else None
+        return self.runtime.peek_plan_session()
 
     @plan_session.setter
     def plan_session(self, value):
-        if value is not None or self._planning is not None:
-            self.planning.plan_session = value
+        self.runtime.set_plan_session(value)
 
     @property
     def active_client(self):
@@ -757,8 +767,10 @@ class CLI:
         """Build the renderer for the current output mode."""
         events = self._emit_event if self.output_format == "stream-json" else None
         if self.machine_output:
-            return Printer(console=self.console, content_markdown=False, machine=True, events=events)
-        return Printer(console=self.console, content_markdown=content_markdown)
+            return Printer(
+                console=self.console, config=self.config, content_markdown=False, machine=True, events=events
+            )
+        return Printer(console=self.console, config=self.config, content_markdown=content_markdown)
 
     def configure_headless(
         self,
@@ -792,9 +804,9 @@ class CLI:
         self.fail_on_tool_denied = bool(fail_on_tool_denied)
         if max_turns is not None:
             self.max_turns = int(max_turns)
-            cfg["MAX_TOOL_CALL_DEPTH"] = self.max_turns
+            self.config["MAX_TOOL_CALL_DEPTH"] = self.max_turns
         else:
-            self.max_turns = cfg["MAX_TOOL_CALL_DEPTH"]
+            self.max_turns = self.config["MAX_TOOL_CALL_DEPTH"]
         self.cwd = cwd
         # v0.21 K13: --resume keeps the newest project session as the REPL target.
         self.resume = bool(resume)
@@ -1022,18 +1034,8 @@ class CLI:
         return DefaultRoleNames.DEFAULT
 
     # ------------------- prompt (model / context) -------------------
-    @staticmethod
-    def _prompt_model_name() -> str:
-        """Return the short model name for the REPL status line (``""`` when unknown)."""
-        try:
-            model = cfg.get("MODEL") if hasattr(cfg, "get") else ""
-        except Exception:  # pragma: no cover - config lookups must never break the prompt
-            return ""
-        if not isinstance(model, str):
-            return ""
-        # Provider-prefixed ids ("openai/gpt-4o") are shown without the prefix.
-        model = model.strip().rsplit("/", 1)[-1]
-        return model if len(model) <= 32 else model[:31] + "…"
+    def _prompt_model_name(self) -> str:
+        return self.output.prompt_model_name()
 
     def get_prompt_tokens(self) -> list[tuple[str, str]]:
         """Return the REPL prompt tokens: the mode icon and ``> ``.
@@ -1071,7 +1073,7 @@ class CLI:
             system_text = getattr(role, "prompt", "") if role is not None else ""
             usage = estimate_context_usage(
                 history,
-                config=cfg if hasattr(cfg, "get") else None,
+                config=self.config if hasattr(self.config, "get") else None,
                 system_text=system_text if isinstance(system_text, str) else "",
             )
             self._context_percent = float(usage.used_percent)
@@ -1094,7 +1096,7 @@ class CLI:
         history = self.chat.history
         if not history:
             return
-        budget = resolve_context_budget(cfg, cfg.get("MODEL", ""))
+        budget = resolve_context_budget(self.config, self.config.get("MODEL", ""))
         result = trim_messages_to_budget(history, budget=budget, max_messages=self.interactive_round * 2)
         if not result.removed_messages:
             return
@@ -1169,7 +1171,8 @@ class CLI:
         self._project_context_loaded = True
         text = ""
         try:
-            result = load_project_context()
+            with bind_config(self.config):
+                result = load_project_context()
         except Exception:  # pragma: no cover - defensive: never fail the request
             result = None
         if result is not None and result.has_content:
@@ -1195,59 +1198,60 @@ class CLI:
 
     def _build_messages(self, user_input: str, images: Optional[List[ImageData]] = None) -> list[ChatMessage]:
         """Build message list for LLM API with @ file references expanded."""
-        # Create the message list with system prompt. K12: the project instruction files
-        # are appended to the role prompt (after it, before persistent/@ context); with
-        # no files found the payload stays byte-identical to the pre-K12 behaviour.
-        system_prompt = self.role.prompt
-        project_context = self._get_project_context()
-        if project_context:
-            system_prompt = f"{system_prompt}\n\n{project_context}"
+        with bind_config(self.config):
+            # Create the message list with system prompt. K12: the project instruction files
+            # are appended to the role prompt (after it, before persistent/@ context); with
+            # no files found the payload stays byte-identical to the pre-K12 behaviour.
+            system_prompt = self.role.prompt
+            project_context = self._get_project_context()
+            if project_context:
+                system_prompt = f"{system_prompt}\n\n{project_context}"
 
-        # v0.24 K23: plan mode/execution appends a temporary bounded context block
-        # (mode rules + goal/steps or todo status) to the SAME first system message.
-        # It must not be a second system message: Anthropic only sends one system
-        # prompt and Gemini only reads messages[0] as system_instruction, so a
-        # separate message would silently disappear for those providers (and is an
-        # invalid message role for Anthropic). Normal runs are byte-identical: no
-        # plan session means an empty block.
-        plan_context = self._plan_context_block_text()
-        if plan_context:
-            system_prompt = f"{system_prompt}\n\n{plan_context}"
-        messages = [ChatMessage(role="system", content=system_prompt)]
+            # v0.24 K23: plan mode/execution appends a temporary bounded context block
+            # (mode rules + goal/steps or todo status) to the SAME first system message.
+            # It must not be a second system message: Anthropic only sends one system
+            # prompt and Gemini only reads messages[0] as system_instruction, so a
+            # separate message would silently disappear for those providers (and is an
+            # invalid message role for Anthropic). Normal runs are byte-identical: no
+            # plan session means an empty block.
+            plan_context = self._plan_context_block_text()
+            if plan_context:
+                system_prompt = f"{system_prompt}\n\n{plan_context}"
+            messages = [ChatMessage(role="system", content=system_prompt)]
 
-        # Add context messages if any
-        context_msgs = self.context_manager.get_context_messages()
-        if context_msgs:
-            messages.extend(context_msgs)
+            # Add context messages if any
+            context_msgs = self.context_manager.get_context_messages()
+            if context_msgs:
+                messages.extend(context_msgs)
 
-        # Parse and add temporary @ file references
-        at_refs_content, cleaned_input, at_images = self.context_manager.parse_at_references(user_input)
-        if at_refs_content:
-            messages.append(ChatMessage(role="system", content=at_refs_content))
+            # Parse and add temporary @ file references
+            at_refs_content, cleaned_input, at_images = self.context_manager.parse_at_references(user_input)
+            if at_refs_content:
+                messages.append(ChatMessage(role="system", content=at_refs_content))
 
-        # Add previous conversation if available
-        for msg in self.chat.history:
-            messages.append(msg)
+            # Add previous conversation if available
+            for msg in self.chat.history:
+                messages.append(msg)
 
-        # Add user input (with @ references cleaned up) and images
-        effective_images = list(images or []) + at_images
-        if effective_images:
-            provider = cfg.get("PROVIDER", "").lower()
-            if provider in NO_VISION_PROVIDERS:
-                self.console.print(
-                    f"Warning: Provider '{safe_text(provider)}' does not support image input. Images will be ignored.",
-                    style="yellow",
-                )
-                effective_images = []
-        user_msg = ChatMessage(role="user", content=cleaned_input, images=effective_images)
-        messages.append(user_msg)
-        return messages
+            # Add user input (with @ references cleaned up) and images
+            effective_images = list(images or []) + at_images
+            if effective_images:
+                provider = self.config.get("PROVIDER", "").lower()
+                if provider in NO_VISION_PROVIDERS:
+                    self.console.print(
+                        f"Warning: Provider '{safe_text(provider)}' does not support image input. Images will be ignored.",
+                        style="yellow",
+                    )
+                    effective_images = []
+            user_msg = ChatMessage(role="user", content=cleaned_input, images=effective_images)
+            messages.append(user_msg)
+            return messages
 
     def _get_tool_policy(self) -> ToolPolicy:
         """Resolve the effective tool policy for the current request."""
         if self.current_mode == EXEC_MODE:
             return ToolPolicy(enable_functions=False, enable_mcp=False)
-        return ToolPolicy(enable_functions=cfg["ENABLE_FUNCTIONS"], enable_mcp=cfg["ENABLE_MCP"])
+        return ToolPolicy(enable_functions=self.config["ENABLE_FUNCTIONS"], enable_mcp=self.config["ENABLE_MCP"])
 
     def _handle_llm_response(
         self, user_input: str, images: Optional[List[ImageData]] = None
@@ -1263,115 +1267,116 @@ class CLI:
             Optional[str]: The assistant's response content or None if an error occurred.
             list[ChatMessage]: The updated message history.
         """
-        from .debug_log import debug_log
+        with bind_config(self.config):
+            from .debug_log import debug_log
 
-        debug_log("generation.begin", interactive=getattr(self, "interactive", False))
-        messages = self._build_messages(user_input, images=images)
-        if not self.machine_output and self.role.name != DefaultRoleNames.CODER:
-            self.console.print("Assistant:", style="bold green")
-        # Generation-time Ctrl+O: while chunks stream there is no prompt reading the
-        # keyboard, so a small cbreak watcher captures Ctrl+O (and typed-ahead text).
-        # Interactive runs also move the generation pipeline to a worker thread so the
-        # viewer can open while the answer keeps streaming (T3).
-        watcher = self._start_generation_watcher()
-        bridge = None
-        routing = None
-        saved_worker_consoles: list = []
-        result_messages = messages
-        try:
-            # In background mode the worker mutates its own copy of the message list;
-            # it is adopted only when the turn completes, so an aborted or lingering
-            # worker can never corrupt the next turn's history.
-            request_messages = list(messages) if watcher is not None else messages
-            if watcher is not None:
-                result_messages = request_messages
-            response_iterator = self.client.completion_with_tools(
-                request_messages,
-                stream=cfg["STREAM"],
-                tool_policy=self._get_tool_policy(),
-            )
-            if self.output_format == "stream-json":
-                response_iterator = self._instrument_tool_events(response_iterator, request_messages)
-
-            display_iterator = response_iterator
-            if watcher is not None:
-                from .stream_bridge import ThreadedStream, set_active_bridge
-                from .worker_console import install_worker_console_routing
-
-                # Worker output must not touch the terminal directly: route it through
-                # the bridge so the UI thread replays it in order (T2). The bridge is
-                # registered as active before the worker starts (lazy start on first
-                # next()), so even the first tool announcement is marshalled.
-                routing = install_worker_console_routing(self.console, get_error_console())
-                saved_worker_consoles = self._swap_worker_consoles(routing.main)
-                bridge = ThreadedStream(response_iterator, on_console=self._console_replayer(routing))
-                set_active_bridge(bridge)
-                display_iterator = bridge
-
-            if watcher is not None:
-                content, _ = self.printer.display_stream(
-                    display_iterator,
-                    pause_requested=watcher.take_viewer_request,
-                    on_pause=lambda: self._open_viewer_while_generating(watcher),
-                )
-            else:
-                content, _ = self.printer.display_stream(display_iterator)
-
-            # Wave-2 coordination (K02/K06): the client reports depth/denial
-            # outcomes through its own flags; mirror them onto the CLI contract.
-            if getattr(self.client, "depth_limit_reached", False) is True:
-                self.depth_limit_reached = True
-            if getattr(self.client, "tool_denied", False) is True:
-                self.tool_denied = True
-
-            # The 'messages' list is modified by the client in-place
-            return content, result_messages
-        except Exception as e:
-            self.had_error = True
-            self._record_error(e)
-            self._recover_persisted_context_on_overflow(e)
-            # K05: print the *classified* message (kind + actionable hint, e.g.
-            # "auth (HTTP 401) ... Hint: Check API_KEY") instead of the raw SDK text.
+            debug_log("generation.begin", interactive=getattr(self, "interactive", False))
+            messages = self._build_messages(user_input, images=images)
+            if not self.machine_output and self.role.name != DefaultRoleNames.CODER:
+                self.console.print("Assistant:", style="bold green")
+            # Generation-time Ctrl+O: while chunks stream there is no prompt reading the
+            # keyboard, so a small cbreak watcher captures Ctrl+O (and typed-ahead text).
+            # Interactive runs also move the generation pipeline to a worker thread so the
+            # viewer can open while the answer keeps streaming (T3).
+            watcher = self._start_generation_watcher()
+            bridge = None
+            routing = None
+            saved_worker_consoles: list = []
+            result_messages = messages
             try:
-                agent_error = classify_exception(e)
-                detail = getattr(agent_error, "user_message", None) or str(e)
-            except Exception:  # pragma: no cover - classifier must never break the CLI
-                detail = str(e)
-            self.console.print(f"Error processing LLM response: {safe_text(detail)}", style="red")
-            if self.verbose:
-                traceback.print_exc()
-            return None, messages
-        finally:
-            debug_log("generation.end")
-            # Stop the background generator first (it may still be producing), then
-            # restore the consoles it was routed through, then the key watcher.
-            abandoned = False
-            if bridge is not None:
-                from .stream_bridge import clear_active_bridge
-
-                clear_active_bridge(bridge)
-                abandoned = bridge.close(timeout=0.5)
-            if not abandoned:
-                if routing is not None:
-                    routing.restore()
-                self._restore_worker_consoles(saved_worker_consoles)
-            else:
-                # A worker blocked in a provider read/tool call keeps the routed
-                # consoles installed (its dead bridge drops anything it prints later);
-                # main-thread output still reaches the real console unchanged.
-                self.console.print(
-                    "Background generation is still finishing; its remaining output is ignored.",
-                    style="dim",
+                # In background mode the worker mutates its own copy of the message list;
+                # it is adopted only when the turn completes, so an aborted or lingering
+                # worker can never corrupt the next turn's history.
+                request_messages = list(messages) if watcher is not None else messages
+                if watcher is not None:
+                    result_messages = request_messages
+                response_iterator = self.client.completion_with_tools(
+                    request_messages,
+                    stream=self.config["STREAM"],
+                    tool_policy=self._get_tool_policy(),
                 )
-                if getattr(self, "_checkpoint_capture", None) is not None:
-                    self._checkpoint_worker = bridge
-                    self._checkpoint_capture.barrier = True
-            if watcher is not None:
-                pending = watcher.stop()
-                if pending:
-                    # Typed-ahead text (anything but Ctrl+O keys) becomes the next
-                    # prompt's initial buffer instead of being dropped.
-                    self._pending_prompt_text = (getattr(self, "_pending_prompt_text", "") + pending)[-4000:]
+                if self.output_format == "stream-json":
+                    response_iterator = self._instrument_tool_events(response_iterator, request_messages)
+
+                display_iterator = response_iterator
+                if watcher is not None:
+                    from .stream_bridge import ThreadedStream, set_active_bridge
+                    from .worker_console import install_worker_console_routing
+
+                    # Worker output must not touch the terminal directly: route it through
+                    # the bridge so the UI thread replays it in order (T2). The bridge is
+                    # registered as active before the worker starts (lazy start on first
+                    # next()), so even the first tool announcement is marshalled.
+                    routing = install_worker_console_routing(self.console, get_error_console())
+                    saved_worker_consoles = self._swap_worker_consoles(routing.main)
+                    bridge = ThreadedStream(response_iterator, on_console=self._console_replayer(routing))
+                    set_active_bridge(bridge)
+                    display_iterator = bridge
+
+                if watcher is not None:
+                    content, _ = self.printer.display_stream(
+                        display_iterator,
+                        pause_requested=watcher.take_viewer_request,
+                        on_pause=lambda: self._open_viewer_while_generating(watcher),
+                    )
+                else:
+                    content, _ = self.printer.display_stream(display_iterator)
+
+                # Wave-2 coordination (K02/K06): the client reports depth/denial
+                # outcomes through its own flags; mirror them onto the CLI contract.
+                if getattr(self.client, "depth_limit_reached", False) is True:
+                    self.depth_limit_reached = True
+                if getattr(self.client, "tool_denied", False) is True:
+                    self.tool_denied = True
+
+                # The 'messages' list is modified by the client in-place
+                return content, result_messages
+            except Exception as e:
+                self.had_error = True
+                self._record_error(e)
+                self._recover_persisted_context_on_overflow(e)
+                # K05: print the *classified* message (kind + actionable hint, e.g.
+                # "auth (HTTP 401) ... Hint: Check API_KEY") instead of the raw SDK text.
+                try:
+                    agent_error = classify_exception(e)
+                    detail = getattr(agent_error, "user_message", None) or str(e)
+                except Exception:  # pragma: no cover - classifier must never break the CLI
+                    detail = str(e)
+                self.console.print(f"Error processing LLM response: {safe_text(detail)}", style="red")
+                if self.verbose:
+                    traceback.print_exc()
+                return None, messages
+            finally:
+                debug_log("generation.end")
+                # Stop the background generator first (it may still be producing), then
+                # restore the consoles it was routed through, then the key watcher.
+                abandoned = False
+                if bridge is not None:
+                    from .stream_bridge import clear_active_bridge
+
+                    clear_active_bridge(bridge)
+                    abandoned = bridge.close(timeout=0.5)
+                if not abandoned:
+                    if routing is not None:
+                        routing.restore()
+                    self._restore_worker_consoles(saved_worker_consoles)
+                else:
+                    # A worker blocked in a provider read/tool call keeps the routed
+                    # consoles installed (its dead bridge drops anything it prints later);
+                    # main-thread output still reaches the real console unchanged.
+                    self.console.print(
+                        "Background generation is still finishing; its remaining output is ignored.",
+                        style="dim",
+                    )
+                    if getattr(self, "_checkpoint_capture", None) is not None:
+                        self._checkpoint_worker = bridge
+                        self._checkpoint_capture.barrier = True
+                if watcher is not None:
+                    pending = watcher.stop()
+                    if pending:
+                        # Typed-ahead text (anything but Ctrl+O keys) becomes the next
+                        # prompt's initial buffer instead of being dropped.
+                        self._pending_prompt_text = (getattr(self, "_pending_prompt_text", "") + pending)[-4000:]
 
     def _start_generation_watcher(self):
         """Install the generation-time Ctrl+O key watcher (interactive streaming only)."""
@@ -1509,63 +1514,64 @@ class CLI:
 
     def _process_user_input(self, user_input: str, images: Optional[List[ImageData]] = None) -> bool:
         """Wrap a successful persisted interactive turn in a checkpoint journal."""
-        if (
-            not self.interactive
-            or self.machine_output
-            or self.quiet
-            or self.is_temp_session
-            or self.current_mode == TEMP_MODE
-            or not cfg.get("CHECKPOINT_ENABLED", True)
-        ):
-            return self._process_user_input_inner(user_input, images)
-        from .checkpoints import CheckpointError
-
-        store = None
-        capture = None
-        try:
-            store = self._checkpoint_store()
-            if store is None:
-                return self._process_user_input_inner(user_input, images)
-            if self.chat.checkpoint_head < 0 or store.pending_path.exists():
-                self.chat.checkpoint_head = store.ensure_base(self.chat.to_dict())
-                self.chat.save(self.chat_history_dir)
-            records = store.list_records(self.chat.checkpoint_head)
-            capture = store.begin_turn((records[-1]["turn"] + 1) if records else 1)
-            self._checkpoint_capture = capture
-            import copy
-
-            before_plan = copy.deepcopy(self.chat.plan)
-            with capture.activate():
-                result = self._process_user_input_inner(user_input, images)
-            if getattr(self, "_checkpoint_worker", None) is not None and self._checkpoint_worker.alive:
-                return result
-            if self.chat.plan != before_plan:
-                capture.barrier = True
-            if not capture.completed:
-                if capture.files or capture.barrier:
-                    capture.barrier = True
-                else:
-                    store.pending_path.unlink(missing_ok=True)
-                    return result
-
-            def commit(snapshot):
-                self.chat.checkpoint_head = snapshot["checkpoint_head"]
-                self.chat.save(self.chat_history_dir)
-
-            self.chat.checkpoint_head, warning = store.finish_turn(capture, self.chat.to_dict(), commit)
-            self.chat_manager.refresh_chats()
-            if warning:
-                get_error_console().print(warning, markup=False)
-            return result
-        except (CheckpointError, OSError, ChatSaveError) as exc:
-            get_error_console().print(safe_text(str(exc)), markup=False)
-            return True
-        finally:
-            if capture is not None and not (
-                getattr(self, "_checkpoint_worker", None) is not None and self._checkpoint_worker.alive
+        with bind_config(self.config):
+            if (
+                not self.interactive
+                or self.machine_output
+                or self.quiet
+                or self.is_temp_session
+                or self.current_mode == TEMP_MODE
+                or not self.config.get("CHECKPOINT_ENABLED", True)
             ):
-                store.abandon_turn(capture)
-                self._checkpoint_capture = None
+                return self._process_user_input_inner(user_input, images)
+            from .checkpoints import CheckpointError
+
+            store = None
+            capture = None
+            try:
+                store = self._checkpoint_store()
+                if store is None:
+                    return self._process_user_input_inner(user_input, images)
+                if self.chat.checkpoint_head < 0 or store.pending_path.exists():
+                    self.chat.checkpoint_head = store.ensure_base(self.chat.to_dict())
+                    self.chat.save(self.chat_history_dir)
+                records = store.list_records(self.chat.checkpoint_head)
+                capture = store.begin_turn((records[-1]["turn"] + 1) if records else 1)
+                self._checkpoint_capture = capture
+                import copy
+
+                before_plan = copy.deepcopy(self.chat.plan)
+                with capture.activate():
+                    result = self._process_user_input_inner(user_input, images)
+                if getattr(self, "_checkpoint_worker", None) is not None and self._checkpoint_worker.alive:
+                    return result
+                if self.chat.plan != before_plan:
+                    capture.barrier = True
+                if not capture.completed:
+                    if capture.files or capture.barrier:
+                        capture.barrier = True
+                    else:
+                        store.pending_path.unlink(missing_ok=True)
+                        return result
+
+                def commit(snapshot):
+                    self.chat.checkpoint_head = snapshot["checkpoint_head"]
+                    self.chat.save(self.chat_history_dir)
+
+                self.chat.checkpoint_head, warning = store.finish_turn(capture, self.chat.to_dict(), commit)
+                self.chat_manager.refresh_chats()
+                if warning:
+                    get_error_console().print(warning, markup=False)
+                return result
+            except (CheckpointError, OSError, ChatSaveError) as exc:
+                get_error_console().print(safe_text(str(exc)), markup=False)
+                return True
+            finally:
+                if capture is not None and not (
+                    getattr(self, "_checkpoint_worker", None) is not None and self._checkpoint_worker.alive
+                ):
+                    store.abandon_turn(capture)
+                    self._checkpoint_capture = None
 
     def _process_user_input_inner(self, user_input: str, images: Optional[List[ImageData]] = None) -> bool:
         """Process user input: get response, print, update history, maybe execute.
@@ -1733,7 +1739,7 @@ class CLI:
             from .history import prepare_history_file
 
             prepare_history_file(HISTORY_FILE)
-            history = _limited_history_class()(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"])
+            history = _limited_history_class()(HISTORY_FILE, max_entries=self.config["MAX_HISTORY"])
         except OSError as e:
             get_error_console().print(
                 f"Warning: could not set up prompt history ({safe_text(e)}); using in-memory history.",
@@ -1749,7 +1755,7 @@ class CLI:
             self.session = PromptSessionClass(
                 key_bindings=self.bindings,
                 history=history,
-                auto_suggest=AutoSuggestFromHistory() if cfg.get("AUTO_SUGGEST", True) else None,
+                auto_suggest=AutoSuggestFromHistory() if self.config.get("AUTO_SUGGEST", True) else None,
                 enable_history_search=True,
                 # composite completer — slash commands plus the existing @path
                 # completer (kept as the patchable ``AtPathCompleter`` seam).
@@ -1893,7 +1899,7 @@ class CLI:
         # Main REPL loop
         while True:
             if not machine_output:
-                self.console.print(Markdown("---", code_theme=cfg["CODE_THEME"]))
+                self.console.print(Markdown("---", code_theme=self.config["CODE_THEME"]))
 
             # --- Read ---
             from .debug_log import debug_log
@@ -1981,8 +1987,9 @@ class CLI:
         self, user_input: str, shell: bool = False, code: bool = False, images: Optional[List[ImageData]] = None
     ) -> None:
         """Handle default mode"""
-        self.set_role(self.evaluate_role_name(code, shell, self.init_role))
-        self._process_user_input(user_input, images=images)
+        with bind_config(self.config):
+            self.set_role(self.evaluate_role_name(code, shell, self.init_role))
+            self._process_user_input(user_input, images=images)
 
     def run(
         self,
@@ -2046,24 +2053,26 @@ class CLI:
         Redirect stdout to stderr for the duration of the construction only; the
         original stream is restored immediately afterwards.
         """
-        redirect_stdout = self.machine_output
-        original_stdout = sys.stdout
-        if redirect_stdout:
-            sys.stdout = sys.stderr
-        try:
-            return _llm_client_class()(
-                provider_name=cfg["PROVIDER"].lower(),
-                verbose=self.verbose,
-                config=cfg,
-                approval=ToolApprovalManager(),
-                # Machine/one-shot runs must never block on a tool confirmation
-                # prompt; the client then denies unapproved tool calls (K06 owns
-                # the richer --yes/--allowed-tools policy).
-                interactive=bool(self.interactive and not self.machine_output),
-            )
-        except YaicliError as e:
-            self.console.print(f"Error creating client: {safe_text(e)}", style="red")
-            raise typer.Abort()
-        finally:
+        with bind_config(self.config):
+            redirect_stdout = self.machine_output
+            original_stdout = sys.stdout
             if redirect_stdout:
-                sys.stdout = original_stdout
+                sys.stdout = sys.stderr
+            try:
+                return _llm_client_class()(
+                    provider_name=self.config["PROVIDER"].lower(),
+                    verbose=self.verbose,
+                    config=self.config,
+                    runtime=self.runtime,
+                    approval=ToolApprovalManager(),
+                    # Machine/one-shot runs must never block on a tool confirmation
+                    # prompt; the client then denies unapproved tool calls (K06 owns
+                    # the richer --yes/--allowed-tools policy).
+                    interactive=bool(self.interactive and not self.machine_output),
+                )
+            except YaicliError as e:
+                self.console.print(f"Error creating client: {safe_text(e)}", style="red")
+                raise typer.Abort()
+            finally:
+                if redirect_stdout:
+                    sys.stdout = original_stdout
