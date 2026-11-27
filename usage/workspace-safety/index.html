@@ -583,6 +583,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#conversation-checkpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conversation checkpoints
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#undo" class="md-nav__link">
     <span class="md-ellipsis">
       /undo
@@ -1952,6 +1961,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#conversation-checkpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conversation checkpoints
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#undo" class="md-nav__link">
     <span class="md-ellipsis">
       /undo
@@ -2201,6 +2219,17 @@ so delete old stamps once you no longer need them: they are ordinary files insid
 readable (and writable) by both you and the agent — old versions of a file may contain API keys
 that you have since rotated.</p>
 </blockquote>
+<h2 id="conversation-checkpoints">Conversation checkpoints<a class="headerlink" href="#conversation-checkpoints" title="Permanent link">&para;</a></h2>
+<p>For saved interactive chats, <code>/checkpoints</code> lists turn-level snapshots and <code>/rewind [id]</code>
+can restore a recorded earlier conversation and its guarded ordinary-file changes. It shows
+the exact paths and asks for confirmation before changing them. <code>/fork [id] [title]</code> saves
+the current conversation separately before rewinding. The two conversations share one
+working directory; this is not a filesystem clone.</p>
+<p>External modifications, unsupported file types and missing backups prevent unsafe restoration.
+Commands, MCP and custom tools have effects outside the guarded-file journal. Checkpoint
+recovery does not promise to reverse those effects. The existing <code>/undo</code> remains a
+single-operation mechanism and creates a fresh checkpoint baseline after use.
+See <a href="../sessions/#checkpoints-and-rewind">Chat Sessions</a> for storage and retention details.</p>
 <h2 id="undo"><code>/undo</code><a class="headerlink" href="#undo" title="Permanent link">&para;</a></h2>
 <p>In the interactive REPL, <code>/undo</code> reverts the <strong>last</strong> file change made by a guarded tool:</p>
 <table>

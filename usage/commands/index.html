@@ -2720,6 +2720,18 @@ ai<span class="w"> </span>--image<span class="w"> </span>diagram.png
 <td>Restore the last file change made by a guarded tool in this session (see <a href="../workspace-safety/#undo">Workspace Safety</a>)</td>
 </tr>
 <tr>
+<td><code>/checkpoints</code></td>
+<td>List checkpoints of the saved interactive conversation</td>
+</tr>
+<tr>
+<td><code>/rewind [id]</code></td>
+<td>Restore the specified checkpoint, or the previous one, after confirmation</td>
+</tr>
+<tr>
+<td><code>/fork [id] [title]</code></td>
+<td>Save the current conversation separately, then rewind to a checkpoint</td>
+</tr>
+<tr>
 <td><code>/cost</code></td>
 <td>Show session token usage, estimated cost, per-model breakdown and tool metrics</td>
 </tr>

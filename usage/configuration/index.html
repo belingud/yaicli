@@ -2207,6 +2207,9 @@ keeps working with defaults and only warns once when it cannot persist state.</p
 <span class="c1"># built-in default value) to use ~/.yaicli/sessions/&lt;hash of the working directory&gt;/.</span>
 <span class="c1"># CHAT_HISTORY_DIR=/home/me/yaicli-sessions</span>
 <span class="na">MAX_SAVED_CHATS</span><span class="o">=</span><span class="s">20</span>
+<span class="na">CHECKPOINT_ENABLED</span><span class="o">=</span><span class="s">true</span>
+<span class="na">CHECKPOINT_KEEP</span><span class="o">=</span><span class="s">20</span>
+<span class="na">CHECKPOINT_MAX_MB</span><span class="o">=</span><span class="s">50</span>
 
 <span class="c1"># Role settings</span>
 <span class="c1"># Set to false to disable warnings about modified built-in roles</span>
@@ -2501,6 +2504,24 @@ provider name invalid).</p>
 <td>Max saved sessions per store</td>
 <td><code>20</code></td>
 <td><code>YAI_MAX_SAVED_CHATS</code></td>
+</tr>
+<tr>
+<td><code>CHECKPOINT_ENABLED</code></td>
+<td>Record checkpoints in saved interactive chats</td>
+<td><code>true</code></td>
+<td><code>YAI_CHECKPOINT_ENABLED</code></td>
+</tr>
+<tr>
+<td><code>CHECKPOINT_KEEP</code></td>
+<td>Maximum checkpoints per chat (minimum 1)</td>
+<td><code>20</code></td>
+<td><code>YAI_CHECKPOINT_KEEP</code></td>
+</tr>
+<tr>
+<td><code>CHECKPOINT_MAX_MB</code></td>
+<td>Checkpoint storage budget per chat in MiB</td>
+<td><code>50</code></td>
+<td><code>YAI_CHECKPOINT_MAX_MB</code></td>
 </tr>
 <tr>
 <td><code>ROLE_MODIFY_WARNING</code></td>

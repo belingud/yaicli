@@ -805,6 +805,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#checkpoints-and-rewind" class="md-nav__link">
+    <span class="md-ellipsis">
+      Checkpoints and rewind
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#overriding-the-session-directory" class="md-nav__link">
     <span class="md-ellipsis">
       Overriding the session directory
@@ -2000,6 +2009,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#checkpoints-and-rewind" class="md-nav__link">
+    <span class="md-ellipsis">
+      Checkpoints and rewind
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#overriding-the-session-directory" class="md-nav__link">
     <span class="md-ellipsis">
       Overriding the session directory
@@ -2231,6 +2249,58 @@ of a per-project store.</p>
 applied. <code>ai --list-chats --cwd other-project</code> therefore still lists the sessions of the directory
 you ran the command from. <code>cd</code> into the project first, or use <code>/list</code> inside <code>ai --cwd &lt;dir&gt;</code>.</p>
 </blockquote>
+<h2 id="checkpoints-and-rewind">Checkpoints and rewind<a class="headerlink" href="#checkpoints-and-rewind" title="Permanent link">&para;</a></h2>
+<p>Saved interactive chats record conversation checkpoints. Start with <code>ai --chat "Trip"</code>,
+or use <code>/save Trip</code> in a temporary conversation. Changes made before the first save are
+outside the checkpoint history. Restart with <code>ai --resume</code> or <code>/load &lt;index&gt;</code> to continue
+using the same checkpoint chain.</p>
+<div class="highlight"><pre><span></span><code>💬 &gt; /checkpoints
+ID  Time      Turn  Paths  Status
+#2  10:05:00     2      2  current
+#1  10:04:00     1      1
+#0  10:03:00     0      0
+💬 &gt; /rewind 1
+Rewind to checkpoint #1 and drop 1 turn?
+  Restore: trip.md
+  Remove:  packing.md
+Proceed? [y/N]: y
+Rewound to #1. Restored 1 path, removed 1 path, dropped 1 turn.
+</code></pre></div>
+<ul>
+<li><code>/rewind [id]</code> restores the selected turn's conversation and the recorded file changes.
+  With no id it selects the previous checkpoint. Confirmation defaults to <strong>no</strong>; Ctrl+C
+  and EOF cancel. Newer checkpoints are discarded after a successful rewind.</li>
+<li><code>/fork [id] [title]</code> saves the current conversation under a separate title before rewinding.
+  The saved copy appears in <code>/list</code> and can be opened with <code>/load</code>. A title already in use
+  is refused. The two chats <strong>share the working directory</strong>; fork does not copy files or
+  create a Git branch. Plan bindings are not copied into the saved conversation.</li>
+<li>Recovery covers ordinary files modified by guarded built-in file tools. Shell commands,
+  MCP, custom tools, directory-tree operations, symbolic links, interrupted writes and plan
+  state changes cannot be replayed safely across the checkpoint boundary. These operations
+  start a new baseline instead of permitting a rewind across unknown effects. Empty parent
+  directories created by a recorded file operation can be removed when they are still empty.</li>
+<li>Before restoring files, YAICLI checks that their contents match the recorded state.
+  Changed files or missing backups refuse the rewind. If an I/O error happens during
+  recovery, YAICLI attempts to restore the previous state; a recovery error reports the
+  paths requiring manual attention. An unresolved recovery record blocks further rewind.
+  On restart YAICLI checks whether the files and saved conversation fully match the source
+  or target version; it does not automatically rewrite workspace files during startup.</li>
+<li><code>/undo</code> still reverses one guarded file operation and restarts the checkpoint baseline.
+  <code>/clear</code> clears the conversation's checkpoint history as well.</li>
+<li><code>TOOL_POLICY=readonly</code> permits listing checkpoints but refuses rewind and fork.
+  These commands require an interactive terminal and are not added as model tools.
+  One-shot and machine modes preserve their existing behavior.</li>
+</ul>
+<p>Checkpoints live under
+<code>&lt;session-store&gt;/checkpoints/&lt;project-key&gt;/&lt;session-id&gt;/</code>, independently of the chat title.
+The default settings are <code>CHECKPOINT_ENABLED=true</code>, <code>CHECKPOINT_KEEP=20</code> and
+<code>CHECKPOINT_MAX_MB=50</code>. The byte limit uses MiB and applies per conversation.
+The store prunes oldest checkpoints when limits are reached; the retained baseline counts
+toward <code>CHECKPOINT_KEEP</code>, whose minimum is 1. Conversation snapshots are limited to 2 MiB
+each. An oversized snapshot is skipped and cuts the previous rewind chain. Deleting or
+evicting a saved chat also cleans up its owned checkpoints, except unresolved recovery data.
+Sessions use the existing redaction policy; backup bytes must remain
+exact for restoration, so protect the store as private user data (0600 files, 0700 directories).</p>
 <h2 id="overriding-the-session-directory">Overriding the session directory<a class="headerlink" href="#overriding-the-session-directory" title="Permanent link">&para;</a></h2>
 <p>An <strong>explicit</strong> <code>CHAT_HISTORY_DIR</code> value (config file or <code>YAI_CHAT_HISTORY_DIR</code>) that differs from
 the old built-in default keeps the previous flat-directory behaviour: every project's sessions are

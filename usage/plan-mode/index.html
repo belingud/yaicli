@@ -601,9 +601,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#known-boundaries-v024" class="md-nav__link">
+  <a href="#known-boundaries" class="md-nav__link">
     <span class="md-ellipsis">
-      Known boundaries (v0.24)
+      Known boundaries
     </span>
   </a>
   
@@ -2108,9 +2108,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#known-boundaries-v024" class="md-nav__link">
+  <a href="#known-boundaries" class="md-nav__link">
     <span class="md-ellipsis">
-      Known boundaries (v0.24)
+      Known boundaries
     </span>
   </a>
   
@@ -2626,10 +2626,11 @@ is informational: nothing is loaded into the tool set until you explicitly run <
 </table>
 <p>Each option also has a <code>YAI_PLAN_*</code> environment variable; see
 <a href="../configuration/#configuration-options-reference">Configuration</a>.</p>
-<h2 id="known-boundaries-v024">Known boundaries (v0.24)<a class="headerlink" href="#known-boundaries-v024" title="Permanent link">&para;</a></h2>
+<h2 id="known-boundaries">Known boundaries<a class="headerlink" href="#known-boundaries" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>K24 verification loop and K25 checkpoints are not part of this release.</strong> Finishing a plan does
-  not run configured checks and does not create a checkpoint; those roadmap items are deferred.</li>
+<li>Finishing a plan does not run project checks. Checkpoint history does not restore plan files,
+  approval state or todos; plan-state changes form a checkpoint boundary. See
+  <a href="../sessions/#checkpoints-and-rewind">Chat Sessions</a>.</li>
 <li>The read-only shell is <strong>not a security boundary</strong> (see above). It is a convenience with a fixed
   allowlist, a filtered environment and an audit trail.</li>
 <li>There is no automatic plan mode: simple tasks keep the fast normal path.</li>
