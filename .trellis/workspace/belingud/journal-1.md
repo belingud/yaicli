@@ -617,3 +617,29 @@ Cut v0.24.0 from master after PR #56: bumped 0.23.0 -> 0.24.0, regenerated CHANG
 
 - Remaining v0.24 roadmap theme: K24 checks/definition-of-done and K25 checkpoint/rewind (not started).
 - v0.25 (K26 hooks, K27 skills, K28 subagents, K29 model routing) starts from the new master.
+
+
+## Session 15: K25 检查点修复、合并与 v0.26.0 发布
+<!-- trellis-session: v=2 fp=03f01c0c002f716b -->
+
+**Date**: 2026-11-27
+**Task**: K25 检查点修复、合并与 v0.26.0 发布
+**Branch**: `master`
+
+### Summary
+
+K25 已通过 PR #59 合并；修复仅配置文件指定 WORKSPACE_ROOT 时首轮后检查点丢失的问题，补同步、流式及跨进程回退回归。隔离全量 3070 项、相关回归 469 项与打包启动 28 项通过，真实 PTY、Ruff、MkDocs strict 和启动性能门禁通过。v0.26.0 已发布 PyPI，master CI 与文档站部署成功；CHANGELOG.md 使用 git cliff 自动生成并同步 docs/changelog.md，版本标签指向 bump 提交。任务已归档，本地模板与技能改动保持原状。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6758c18` | feat(checkpoints): add persistent rewind and fork |
+| `662a60c` | fix(checkpoints): honor configured workspace root from first turn |
+| `f68affa` | Merge pull request #59 from belingud/feat/checkpoints |
+| `9c7a6ba` | Bump version: 0.25.0 → 0.26.0 |
+| `a92f6c7` | docs(changelog): update changelog for v0.26.0 release |
+
+### Status
+
+[OK] **Completed**

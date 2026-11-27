@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 14
-- **Last Active**: 2026-11-14
+- **Total Sessions**: 15
+- **Last Active**: 2026-11-27
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~619 | Active |
+| `journal-1.md` | ~645 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 15 | 2026-11-27 | K25 检查点修复、合并与 v0.26.0 发布 | `6758c18`, `662a60c`, `f68affa`, `9c7a6ba`, `a92f6c7` | `master` |
 | 14 | 2026-11-14 | Release v0.24.0 (K23 plan mode) | `ae284fb`, `0433937` | `master` |
 | 13 | 2026-11-14 | K23 persistent plan mode (v0.24): implementation, PR #56 and review hardening | `4d9c82d`, `f1c6831`, `3b0f2db`, `dba875a`, `79c7e71`, `31d1528`, `791eb5e`, `847620a`, `88d28c0`, `2488bcf`, `a11c443`, `759d72e` | `master` |
 | 12 | 2026-11-11 | K22 context-window resolution + /context polish (v0.23.0) | `901c59a`, `32ff2da`, `864136e` | `master` |
