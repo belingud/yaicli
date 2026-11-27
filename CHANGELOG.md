@@ -1,5 +1,21 @@
 
 ---
+## [0.26.0](https://github.com/belingud/yaicli/compare/v0.25.0..v0.26.0) - 2026-11-27
+
+### ⛰️  Features
+
+- feat(checkpoints): add persistent rewind and fork - ([6758c18](https://github.com/belingud/yaicli/commit/6758c188df9f6ab7e95ffeba726a86dd05c43ea5)) - Belingud
+
+### 🐛 Bug Fixes
+
+- fix(checkpoints): honor configured workspace root from first turn - ([662a60c](https://github.com/belingud/yaicli/commit/662a60cb407fb574a67194f5fbb46c5df55c3b4e)) - Belingud
+
+### 📚 Documentation
+
+- docs(changelog): update changelog for v0.25.0 release - ([1896597](https://github.com/belingud/yaicli/commit/1896597f3acff2aa980144fda2d026d31590bfe7)) - Belingud
+
+
+---
 ## [0.25.0](https://github.com/belingud/yaicli/compare/v0.24.1..v0.25.0) - 2026-11-19
 
 ### ⛰️  Features
