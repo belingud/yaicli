@@ -643,3 +643,43 @@ K25 已通过 PR #59 合并；修复仅配置文件指定 WORKSPACE_ROOT 时首�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 16: Complete three-stage core organization refactor; PR 60 awaiting CI and merge approval
+<!-- trellis-session: v=2 fp=21cae2da28acb076 -->
+
+**Date**: 2026-11-28
+**Task**: Complete three-stage core organization refactor; PR 60 awaiting CI and merge approval
+**Branch**: `chore/refactor-command-tools`
+
+### Summary
+
+三个顺序阶段实现、独立验收及提交已完成，统一PR #60目标master；保留轻量通用定位，等待最新head CI及用户明确合并授权。
+
+### Main Changes
+
+- 统一命令registry及工具职责，提取会话/输出/计划服务，绑定每实例有效配置和唯一计划状态。
+- 补齐真实A/B/A隔离、延迟provider回调、工具环境恢复及config-only-root跨进程检查点回归，同步规范与架构。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b7d3ce41d6c9050e03b7a35e3764d4d2c2181470` | refactor(core): separate command registry and tool responsibilities |
+| `66db0625e6b559f97509760c06e842f774eb8b9c` | refactor(app): separate session output and planning coordination |
+| `0bb64158dfe1c1744cda4fed1b73d971ab0cef48` | refactor(runtime): bind configuration and plan state to each session |
+
+### Testing
+
+- [OK] Python3.10.21：3195 passed/1既有tomllib skip；3.12.11和3.13.18各3196 passed。
+- [OK] 全仓Ruff、85改动py格式/isort/3.10AST、strict docs、wheel/sdist119模块字节及235文件SHA通过。
+- [OK] 原性能脚本和阈值未改，n=5六项门禁通过；全部隔离HOME/假配置/假provider，未读取真实env或密钥。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 检查PR #60最新head CI，修复真实失败；全绿后按AGENTS.md要求询问用户是否合并。
+- 用户明确批准合并后才同步master、归档四项任务；本次不发布或升版本。

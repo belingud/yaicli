@@ -16,11 +16,11 @@
   "base_branch": "master",
   "worktree_path": null,
   "commit": "66db0625e6b559f97509760c06e842f774eb8b9c",
-  "pr_url": null,
+  "pr_url": "https://github.com/belingud/yaicli/pull/60",
   "subtasks": [],
   "children": [],
   "parent": "11-27-core-organization-refactor",
   "relatedFiles": [],
-  "notes": "用户 2026-11-27 授权自主完成全部重构；基线为已验收第一阶段 b7d3ce4，同分支串行提交，最终统一 PR。 2026-11-28本地完整验收通过，3173 tests passed，已提交66db062；等待最终统一PR/CI/合并。",
+  "notes": "用户 2026-11-27 授权自主完成全部重构；基线为已验收第一阶段 b7d3ce4，同分支串行提交，最终统一 PR。 2026-11-28本地完整验收通过，3173 tests passed，已提交66db062；等待最终统一PR/CI/合并。 2026-11-28三个阶段均已验收提交并推送，统一PR #60目标master，第三阶段0bb6415；等待最新head CI及用户明确合并确认，暂不归档。",
   "meta": {}
 }

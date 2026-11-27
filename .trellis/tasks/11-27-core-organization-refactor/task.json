@@ -16,7 +16,7 @@
   "base_branch": "master",
   "worktree_path": null,
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/belingud/yaicli/pull/60",
   "subtasks": [],
   "children": [
     "11-27-command-tool-boundaries",
@@ -25,6 +25,6 @@
   ],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
+  "notes": " 2026-11-28三个阶段均已验收提交并推送，统一PR #60目标master，第三阶段0bb6415；等待最新head CI及用户明确合并确认，暂不归档。",
   "meta": {}
 }

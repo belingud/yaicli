@@ -118,3 +118,7 @@ uv run --no-sync --offline python scripts/bench.py --gate -n 5 --json
 - pyproject.toml、uv.lock、const/config/schemas、planning模型/存储/校验/提示/编辑器、命令registry、stream_bridge、checkpoint_lock及独立builtin与S2保持一致。
 - 主线程接手第三阶段提交和统一PR；CI通过后按AGENTS.md要求等待用户明确合并确认。未合并前不提前归档或发布。
 - 临时JSON/日志便于本机核查，本记录和父任务记录保留长期验收摘要，不依赖临时目录作为交付物。
+
+## 统一PR交付进度（2026-11-28）
+
+三个阶段已分别提交b7d3ce4、66db062、0bb6415并推送，统一PR [#60](https://github.com/belingud/yaicli/pull/60)目标master。第三阶段完整hash为0bb64158dfe1c1744cda4fed1b73d971ab0cef48。后续任务元数据/日志独立提交，不改已冻结产品与测试；最新head CI通过后仍需用户明确批准合并，未提前归档或发布。
