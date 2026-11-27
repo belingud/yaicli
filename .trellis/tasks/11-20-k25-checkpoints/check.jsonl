@@ -1,0 +1,6 @@
+{"file":".trellis/spec/py/quality-guidelines.md","reason":"测试隔离和质量门禁"}
+{"file":".trellis/spec/py/function-tool-guidelines.md","reason":"核对备份、权限与撤销回归"}
+{"file":".trellis/spec/py/cli-and-rendering.md","reason":"核对 REPL、会话恢复与机器输出"}
+{"file":".trellis/spec/py/config-and-context.md","reason":"核对配置、脱敏和持久化兼容性"}
+{"file":".trellis/spec/repo/build-and-release.md","reason":"核对文档构建和性能门禁"}
+{"file": ".trellis/spec/py/checkpoints.md", "reason": "核对身份、轮次捕获、回退补偿与测试断言"}

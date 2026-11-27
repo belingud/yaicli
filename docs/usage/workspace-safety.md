@@ -132,6 +132,20 @@ my-project/
 > readable (and writable) by both you and the agent — old versions of a file may contain API keys
 > that you have since rotated.
 
+## Conversation checkpoints
+
+For saved interactive chats, `/checkpoints` lists turn-level snapshots and `/rewind [id]`
+can restore a recorded earlier conversation and its guarded ordinary-file changes. It shows
+the exact paths and asks for confirmation before changing them. `/fork [id] [title]` saves
+the current conversation separately before rewinding. The two conversations share one
+working directory; this is not a filesystem clone.
+
+External modifications, unsupported file types and missing backups prevent unsafe restoration.
+Commands, MCP and custom tools have effects outside the guarded-file journal. Checkpoint
+recovery does not promise to reverse those effects. The existing `/undo` remains a
+single-operation mechanism and creates a fresh checkpoint baseline after use.
+See [Chat Sessions](sessions.md#checkpoints-and-rewind) for storage and retention details.
+
 ## `/undo`
 
 In the interactive REPL, `/undo` reverts the **last** file change made by a guarded tool:

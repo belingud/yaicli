@@ -14,6 +14,7 @@ release) live in [../repo/index.md](../repo/index.md).
    | Function calling, builtin functions, tool approval, MCP | [function-tool-guidelines.md](./function-tool-guidelines.md) |
    | CLI modes, REPL, slash commands, rendering, images | [cli-and-rendering.md](./cli-and-rendering.md) |
    | Config layering, roles, history, `@path` context | [config-and-context.md](./config-and-context.md) |
+   | Conversation checkpoints, rewind/fork, mutation capture and recovery | [checkpoints.md](./checkpoints.md) |
    | 上下文窗口解析、请求预算、`/context` 展示、provider 窗口元数据 | [context-window-limits.md](./context-window-limits.md) |
    | Tests, lint, formatting, verification commands | [quality-guidelines.md](./quality-guidelines.md) |
 
@@ -52,6 +53,7 @@ Module map:
 | `yaicli/entry.py` | Typer app (`YaiApp` restores POSIX SIGPIPE default), CLI options incl. headless (`-p`, `--output-format`, `--json`, `-q`, `--max-turns`, `-y`, `--allowed-tools`, `--cwd`, `--fail-on-tool-denied`) and chat session flags (`--chat`, `--resume`), `--list-*`/`--install-functions` callbacks, exit-code mapping, top-level error→stderr rendering. Imports `CLI` lazily inside `main()`. |
 | `yaicli/cli.py` | `CLI` orchestrator: runtime mode dispatch (`TEMP_MODE`/`CHAT_MODE`/`EXEC_MODE`), REPL loop, role/session/history wiring, tool-call confirmation `generator.send()` plumbing, headless/JSON/NDJSON output contract and CLI state (`interactive`, `exit_code`, `had_error`, `interrupted`, `depth_limit_reached`, `tool_denied`, `yes`, `allowed_tools`). |
 | `yaicli/chat.py` | `Chat` message model + `FileChatManager` (per-project session store under `~/.yaicli/sessions/<sha256(cwd)[:16]>/` with 0700/0600, session metadata model/provider/role/cwd/created/updated, legacy flat `CHAT_HISTORY_DIR` override, save/load/list/delete; dir created lazily on first save). |
+| `yaicli/checkpoints.py` / `checkpoint_lock.py` | Lazy persistent interactive checkpoint store, guarded turn capture, rewind preflight/compensation and cross-process locks. See [checkpoints.md](./checkpoints.md). |
 | `yaicli/cmd_handler.py` | `CmdHandler` for slash commands (`/clear`, `/mode`, `/add`, `/context` (+`budget`), `/compact`, `/permissions`, `/save`, ...). |
 | `yaicli/completer.py` | prompt_toolkit completer for `/` commands and `@` paths. |
 | `yaicli/config.py` | `Config(dict)` singleton `cfg`: env `YAI_*` > config file > `const.DEFAULT_CONFIG_MAP`. Import is write-free; `ensure_config_file()` creates the file lazily (0600/dir 0700, OSError-tolerant). |

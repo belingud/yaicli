@@ -395,6 +395,9 @@ The default configuration file is `config.ini` inside the config directory above
 | `JUSTIFY`              | Text alignment                              | `default`                | `YAI_JUSTIFY`              |
 | `CHAT_HISTORY_DIR`     | Explicit session-directory override (old flat layout); a value equal to the built-in default means the per-project store | *unset* (per-project `~/.yaicli/sessions/<hash>/`) | `YAI_CHAT_HISTORY_DIR` |
 | `MAX_SAVED_CHATS`      | Max saved sessions per store                | `20`                     | `YAI_MAX_SAVED_CHATS`      |
+| `CHECKPOINT_ENABLED` | Record checkpoints in saved interactive chats | `true` | `YAI_CHECKPOINT_ENABLED` |
+| `CHECKPOINT_KEEP` | Maximum checkpoints per chat (minimum 1) | `20` | `YAI_CHECKPOINT_KEEP` |
+| `CHECKPOINT_MAX_MB` | Checkpoint storage budget per chat in MiB | `50` | `YAI_CHECKPOINT_MAX_MB` |
 | `ROLE_MODIFY_WARNING`  | Warn when modifying built-in roles          | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
 | `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
 | `SHOW_FUNCTION_OUTPUT` | Show function output when calling function  | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |
@@ -995,6 +998,12 @@ ai --verbose "Explain quantum computing"
 
 ### Interactive Mode Features
 
+Saved terminal chats retain checkpoints across restarts. Rewind restores the conversation
+and recorded changes from guarded file tools; fork saves the current conversation separately
+before rewinding. Both conversations share the same working directory. See
+[Checkpoints and rewind](docs/usage/sessions.md#checkpoints-and-rewind)
+for supported changes and recovery limits.
+
 <table>
 <tr>
 <td width="50%">
@@ -1006,6 +1015,9 @@ ai --verbose "Explain quantum computing"
 - `/his` - Show chat history
 - `/list` - List saved chats
 - `/save <title>` - Save current chat with title
+- `/checkpoints` - List persistent conversation checkpoints
+- `/rewind [id]` - Restore a previous checkpoint after confirmation
+- `/fork [id] [title]` - Save the current conversation separately, then rewind
 - `/load <index>` - Load a saved chat
 - `/del <index>` - Delete a saved chat
 - `/exit` - Exit the application

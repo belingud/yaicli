@@ -58,6 +58,9 @@ CMD_ROLE = "/role"
 #: Slash command to re-run the last user turn from its pre-turn snapshot.
 #: Defined here (not in const.py) for the same reason as :data:`CMD_COMPACT`.
 CMD_RETRY = "/retry"
+CMD_CHECKPOINTS = "/checkpoints"
+CMD_REWIND = "/rewind"
+CMD_FORK = "/fork"
 #: Turn groups kept by ``/compact`` when no argument is given.
 DEFAULT_COMPACT_KEEP_ROUNDS = 5
 #: ``/context`` subcommands that print the estimated usage breakdown.
@@ -128,6 +131,9 @@ COMMAND_INFO: Tuple[CommandInfo, ...] = (
     ),
     CommandInfo(CMD_SHOW_OUTPUT, "View this turn's tool outputs (same as Ctrl+O)"),
     CommandInfo(CMD_UNDO, "Undo the last file change made by a tool"),
+    CommandInfo(CMD_CHECKPOINTS, "List saved conversation checkpoints"),
+    CommandInfo(CMD_REWIND, "Restore a previous conversation checkpoint", usage="/rewind [id]"),
+    CommandInfo(CMD_FORK, "Save the current conversation and rewind", usage="/fork [id] [title]"),
     CommandInfo(CMD_MODEL, "Show or switch the model for this session", usage=f"{CMD_MODEL} [name]"),
     CommandInfo(CMD_ROLE, "Show or switch the assistant role", usage=f"{CMD_ROLE} [name]"),
     CommandInfo(CMD_RETRY, "Re-run the last user turn (e.g. after an API error)"),
@@ -185,6 +191,9 @@ class CmdHandler:
             CMD_PERMISSIONS: self.handle_permissions,
             CMD_SHOW_OUTPUT: self.handle_show_output,
             CMD_UNDO: self.handle_undo,
+            CMD_CHECKPOINTS: self.handle_checkpoints,
+            CMD_REWIND: self.handle_rewind,
+            CMD_FORK: self.handle_fork,
             CMD_COST: self.handle_cost,
             CMD_MODEL: self.handle_model,
             CMD_ROLE: self.handle_role,
@@ -502,6 +511,8 @@ class CmdHandler:
             True to continue the REPL loop
         """
         outcome = workspace.undo_last()
+        if outcome is not None:
+            self.cli._checkpoint_reset()
         if outcome is None:
             self.cli.console.print(
                 "Nothing to undo: no file changes were recorded in this session.",
@@ -526,6 +537,181 @@ class CmdHandler:
                 "The undo was only partially applied; fix the reported errors and retry.",
                 style="yellow",
             )
+        return True
+
+    def handle_checkpoints(self, command_input: str = "") -> bool:
+        return self._handle_checkpoint_command(command_input or CMD_CHECKPOINTS)
+
+    def handle_rewind(self, command_input: str = "") -> bool:
+        return self._handle_checkpoint_command(command_input or CMD_REWIND)
+
+    def handle_fork(self, command_input: str = "") -> bool:
+        return self._handle_checkpoint_command(command_input or CMD_FORK)
+
+    def _handle_checkpoint_command(self, command_input: str) -> bool:
+        """Interactive, human-confirmed checkpoint operations (never model tools)."""
+        from .checkpoints import CheckpointError, display_text
+        from .console import get_error_console
+
+        parts = command_input.split(maxsplit=2)
+        command = parts[0].lower()
+        usage = {
+            CMD_CHECKPOINTS: "Usage: /checkpoints",
+            CMD_REWIND: "Usage: /rewind [id]",
+            CMD_FORK: "Usage: /fork [id] [title]",
+        }[command]
+        error_console = get_error_console()
+        fork_saved = False
+        title = ""
+        try:
+            if (command == CMD_CHECKPOINTS and len(parts) != 1) or (command == CMD_REWIND and len(parts) > 2):
+                raise CheckpointError(usage)
+            if len(parts) > 1 and (not parts[1].isdigit()):
+                raise CheckpointError(usage)
+            if not cfg.get("CHECKPOINT_ENABLED", True):
+                raise CheckpointError("Checkpoints are disabled (CHECKPOINT_ENABLED=false).")
+            if not getattr(self.cli, "interactive", False) or getattr(self.cli, "machine_output", True):
+                raise CheckpointError("Checkpoints require an interactive terminal.")
+            if getattr(self.cli, "is_temp_session", True):
+                if command == CMD_CHECKPOINTS:
+                    self.cli.console.print("No checkpoints for this session.", markup=False)
+                    return True
+                raise CheckpointError("Save this chat with /save before using checkpoints.")
+            if command != CMD_CHECKPOINTS and str(cfg.get("TOOL_POLICY", "standard")).lower() == "readonly":
+                raise CheckpointError("Rewind and fork are unavailable in readonly mode.")
+            store = self.cli._checkpoint_store()
+            if store is None:
+                raise CheckpointError("No checkpoints for this session.")
+            chat = self.cli.chat
+            records = store.list_records(chat.checkpoint_head)
+            if not records:
+                if command != CMD_CHECKPOINTS:
+                    if len(parts) > 1:
+                        raise CheckpointError(f"Checkpoint #{int(parts[1])} is unavailable.")
+                    raise CheckpointError("No earlier checkpoint is available.")
+                self.cli.console.print("No checkpoints for this session.", markup=False)
+                return True
+            if command == CMD_CHECKPOINTS:
+                self.cli.console.print("ID  Time      Turn  Paths  Status", markup=False)
+                for record in reversed(records):
+                    status = "current" if record["id"] == chat.checkpoint_head else ""
+                    self.cli.console.print(
+                        f"#{record['id']}  {record['ts'][11:19]}  {record['turn']:4}  {len({item['path'] for item in record['files']}):5}  {status}",
+                        markup=False,
+                    )
+                return True
+            if len(parts) > 1:
+                target = int(parts[1])
+            elif len(records) > 1:
+                target = int(records[-2]["id"])
+            else:
+                raise CheckpointError("No earlier checkpoint is available.")
+            preview = store.preview(target, chat.checkpoint_head)
+            title = parts[2] if len(parts) == 3 else ""
+            if command == CMD_FORK:
+                from datetime import datetime
+
+                title = title or f"Fork-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+                self.cli.chat_manager.refresh_chats()
+                if len(parts) < 3:
+                    base_title = title
+                    suffix = 1
+                    while any(item.title == title for item in self.cli.chat_manager.list_chats()):
+                        suffix += 1
+                        title = f"{base_title}-{suffix}"
+                if len(parts) == 3 and any(item.title == title for item in self.cli.chat_manager.list_chats()):
+                    raise CheckpointError(f"Chat title already exists: {title}.")
+                self.cli.console.print(
+                    display_text(f'Save the current chat as "{title}" and rewind to checkpoint #{target}?'),
+                    markup=False,
+                )
+            else:
+                self.cli.console.print(
+                    f"Rewind to checkpoint #{target} and drop {preview['dropped_turns']} turn?", markup=False
+                )
+            for name in preview["restore"]:
+                self.cli.console.print(display_text(f"  Restore: {name}"), markup=False)
+            for name in preview["remove"]:
+                self.cli.console.print(display_text(f"  Remove:  {name}"), markup=False)
+            if command == CMD_FORK:
+                self.cli.console.print(
+                    f"  Drop:    {preview['dropped_turns']} turn from the current chat", markup=False
+                )
+            try:
+                answer = self.cli.console.input("Proceed? [y/N]: ")
+            except (KeyboardInterrupt, EOFError):
+                answer = ""
+            if answer.strip().lower() != "y":
+                self.cli.console.print("Cancelled.", markup=False)
+                return True
+            # Recheck after confirmation before saving a fork or modifying paths.
+            store.preview(target, chat.checkpoint_head)
+            source = chat.to_dict()
+
+            def archive():
+                nonlocal fork_saved, title
+                from .chat import Chat
+
+                self.cli.chat_manager.refresh_chats()
+                if any(item.title == title for item in self.cli.chat_manager.list_chats()):
+                    raise CheckpointError(f"Chat title already exists: {title}.")
+                fork_payload = dict(source)
+                fork_payload.pop("checkpoint_session_id", None)
+                fork_payload.pop("checkpoint_head", None)
+                fork_payload.pop("plan", None)
+                fork_chat = Chat.from_dict(fork_payload)
+                fork_chat.title = title
+                try:
+                    title = self.cli.chat_manager.save_chat_exclusive(fork_chat, auto_title=len(parts) < 3)
+                    fork_saved = True
+                except Exception as exc:
+                    if str(exc).startswith("Chat title already exists:"):
+                        raise CheckpointError(str(exc)) from exc
+                    raise CheckpointError("Cannot fork: the current chat could not be saved.") from exc
+
+            def commit(snapshot):
+                from .chat import Chat
+
+                loaded = Chat.from_dict(snapshot)
+                chat.history = loaded.history
+                chat.checkpoint_head = loaded.checkpoint_head
+                chat.save(self.cli.chat_history_dir)
+
+            result = store.rewind(
+                target,
+                chat.checkpoint_head,
+                commit,
+                source_snapshot=source,
+                before_apply=archive if command == CMD_FORK else None,
+            )
+            workspace.reset_undo()
+            from .tools.output_history import reset
+
+            reset()
+            self._clear_retry_snapshot()
+            self._refresh_context_percent()
+            self.cli.chat_manager.refresh_chats()
+            from .checkpoints import checkpoint_audit
+
+            checkpoint_audit(
+                command.lstrip("/"),
+                chat.checkpoint_session_id,
+                target,
+                "committed",
+                len(result["restore"]),
+                len(result["remove"]),
+            )
+            if command == CMD_FORK:
+                self.cli.console.print(display_text(f'Chat saved as "{title}". Rewound to #{target}.'), markup=False)
+            else:
+                self.cli.console.print(
+                    f"Rewound to #{target}. Restored {len(result['restore'])} path, removed {len(result['remove'])} path, dropped {result['dropped_turns']} turn.",
+                    markup=False,
+                )
+        except (CheckpointError, OSError, ValueError) as exc:
+            if fork_saved:
+                self.cli.console.print(display_text(f'Chat saved as "{title}".'), markup=False)
+            error_console.print(display_text(str(exc)), markup=False)
         return True
 
     # ------------------- usage / cost commands (v0.22 K17) -------------------
@@ -1165,6 +1351,9 @@ class CmdHandler:
                 CMD_PERMISSIONS,
                 CMD_MODEL,
                 CMD_ROLE,
+                CMD_CHECKPOINTS,
+                CMD_REWIND,
+                CMD_FORK,
             ):
                 return handler(user_input)
 
@@ -1188,6 +1377,8 @@ class CmdHandler:
             subprocess.call(cmd, shell=True)
         except Exception as e:
             self.cli.console.print(f"Failed to execute command: {safe_text(e)}", style="red")
+        finally:
+            self.cli._checkpoint_reset()
         return True
 
     def handle_help(self) -> bool:
@@ -1215,6 +1406,7 @@ class CmdHandler:
         """
         if self.cli.current_mode == CHAT_MODE:
             self.cli.chat.history.clear()
+            self.cli._checkpoint_reset()
             self.cli.console.print("Chat history cleared", style="bold yellow")
             # A cleared conversation has no turn to retry and no context to report.
             self._clear_retry_snapshot()

@@ -331,6 +331,9 @@ DEFAULT_CONFIG_MAP = {
     # Chat history settings
     "CHAT_HISTORY_DIR": {"value": DEFAULT_CHAT_HISTORY_DIR, "env_key": "YAI_CHAT_HISTORY_DIR", "type": str},
     "MAX_SAVED_CHATS": {"value": DEFAULT_MAX_SAVED_CHATS, "env_key": "YAI_MAX_SAVED_CHATS", "type": int},
+    "CHECKPOINT_ENABLED": {"value": "true", "env_key": "YAI_CHECKPOINT_ENABLED", "type": bool},
+    "CHECKPOINT_KEEP": {"value": 20, "env_key": "YAI_CHECKPOINT_KEEP", "type": int},
+    "CHECKPOINT_MAX_MB": {"value": 50, "env_key": "YAI_CHECKPOINT_MAX_MB", "type": int},
     # Role settings
     "ROLE_MODIFY_WARNING": {"value": DEFAULT_ROLE_MODIFY_WARNING, "env_key": "YAI_ROLE_MODIFY_WARNING", "type": bool},
     # Function settings
@@ -490,6 +493,9 @@ JUSTIFY={DEFAULT_CONFIG_MAP["JUSTIFY"]["value"]}
 # Chat history settings
 CHAT_HISTORY_DIR={DEFAULT_CONFIG_MAP["CHAT_HISTORY_DIR"]["value"]}
 MAX_SAVED_CHATS={DEFAULT_CONFIG_MAP["MAX_SAVED_CHATS"]["value"]}
+CHECKPOINT_ENABLED={DEFAULT_CONFIG_MAP["CHECKPOINT_ENABLED"]["value"]}
+CHECKPOINT_KEEP={DEFAULT_CONFIG_MAP["CHECKPOINT_KEEP"]["value"]}
+CHECKPOINT_MAX_MB={DEFAULT_CONFIG_MAP["CHECKPOINT_MAX_MB"]["value"]}
 
 # Role settings
 # Set to false to disable warnings about modified built-in roles
