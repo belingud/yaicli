@@ -124,6 +124,62 @@ of a per-project store.
 > applied. `ai --list-chats --cwd other-project` therefore still lists the sessions of the directory
 > you ran the command from. `cd` into the project first, or use `/list` inside `ai --cwd <dir>`.
 
+## Checkpoints and rewind
+
+Saved interactive chats record conversation checkpoints. Start with `ai --chat "Trip"`,
+or use `/save Trip` in a temporary conversation. Changes made before the first save are
+outside the checkpoint history. Restart with `ai --resume` or `/load <index>` to continue
+using the same checkpoint chain.
+
+```text
+💬 > /checkpoints
+ID  Time      Turn  Paths  Status
+#2  10:05:00     2      2  current
+#1  10:04:00     1      1
+#0  10:03:00     0      0
+💬 > /rewind 1
+Rewind to checkpoint #1 and drop 1 turn?
+  Restore: trip.md
+  Remove:  packing.md
+Proceed? [y/N]: y
+Rewound to #1. Restored 1 path, removed 1 path, dropped 1 turn.
+```
+
+- `/rewind [id]` restores the selected turn's conversation and the recorded file changes.
+  With no id it selects the previous checkpoint. Confirmation defaults to **no**; Ctrl+C
+  and EOF cancel. Newer checkpoints are discarded after a successful rewind.
+- `/fork [id] [title]` saves the current conversation under a separate title before rewinding.
+  The saved copy appears in `/list` and can be opened with `/load`. A title already in use
+  is refused. The two chats **share the working directory**; fork does not copy files or
+  create a Git branch. Plan bindings are not copied into the saved conversation.
+- Recovery covers ordinary files modified by guarded built-in file tools. Shell commands,
+  MCP, custom tools, directory-tree operations, symbolic links, interrupted writes and plan
+  state changes cannot be replayed safely across the checkpoint boundary. These operations
+  start a new baseline instead of permitting a rewind across unknown effects. Empty parent
+  directories created by a recorded file operation can be removed when they are still empty.
+- Before restoring files, YAICLI checks that their contents match the recorded state.
+  Changed files or missing backups refuse the rewind. If an I/O error happens during
+  recovery, YAICLI attempts to restore the previous state; a recovery error reports the
+  paths requiring manual attention. An unresolved recovery record blocks further rewind.
+  On restart YAICLI checks whether the files and saved conversation fully match the source
+  or target version; it does not automatically rewrite workspace files during startup.
+- `/undo` still reverses one guarded file operation and restarts the checkpoint baseline.
+  `/clear` clears the conversation's checkpoint history as well.
+- `TOOL_POLICY=readonly` permits listing checkpoints but refuses rewind and fork.
+  These commands require an interactive terminal and are not added as model tools.
+  One-shot and machine modes preserve their existing behavior.
+
+Checkpoints live under
+`<session-store>/checkpoints/<project-key>/<session-id>/`, independently of the chat title.
+The default settings are `CHECKPOINT_ENABLED=true`, `CHECKPOINT_KEEP=20` and
+`CHECKPOINT_MAX_MB=50`. The byte limit uses MiB and applies per conversation.
+The store prunes oldest checkpoints when limits are reached; the retained baseline counts
+toward `CHECKPOINT_KEEP`, whose minimum is 1. Conversation snapshots are limited to 2 MiB
+each. An oversized snapshot is skipped and cuts the previous rewind chain. Deleting or
+evicting a saved chat also cleans up its owned checkpoints, except unresolved recovery data.
+Sessions use the existing redaction policy; backup bytes must remain
+exact for restoration, so protect the store as private user data (0600 files, 0700 directories).
+
 ## Overriding the session directory
 
 An **explicit** `CHAT_HISTORY_DIR` value (config file or `YAI_CHAT_HISTORY_DIR`) that differs from

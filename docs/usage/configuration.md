@@ -94,6 +94,9 @@ JUSTIFY=default
 # built-in default value) to use ~/.yaicli/sessions/<hash of the working directory>/.
 # CHAT_HISTORY_DIR=/home/me/yaicli-sessions
 MAX_SAVED_CHATS=20
+CHECKPOINT_ENABLED=true
+CHECKPOINT_KEEP=20
+CHECKPOINT_MAX_MB=50
 
 # Role settings
 # Set to false to disable warnings about modified built-in roles
@@ -252,6 +255,9 @@ TOOL_AUDIT=true
 | `JUSTIFY`              | Text alignment                              | `default`                | `YAI_JUSTIFY`              |
 | `CHAT_HISTORY_DIR`     | Explicit session-directory override (old flat layout); a value equal to the built-in default means the per-project store | *unset* (per-project `~/.yaicli/sessions/<hash>/`) | `YAI_CHAT_HISTORY_DIR` |
 | `MAX_SAVED_CHATS`      | Max saved sessions per store                | `20`                     | `YAI_MAX_SAVED_CHATS`      |
+| `CHECKPOINT_ENABLED` | Record checkpoints in saved interactive chats | `true` | `YAI_CHECKPOINT_ENABLED` |
+| `CHECKPOINT_KEEP` | Maximum checkpoints per chat (minimum 1) | `20` | `YAI_CHECKPOINT_KEEP` |
+| `CHECKPOINT_MAX_MB` | Checkpoint storage budget per chat in MiB | `50` | `YAI_CHECKPOINT_MAX_MB` |
 | `ROLE_MODIFY_WARNING`  | Warn when modifying built-in roles          | `true`                   | `YAI_ROLE_MODIFY_WARNING`  |
 | `ENABLE_FUNCTIONS`     | Enable function calling                     | `true`                   | `YAI_ENABLE_FUNCTIONS`     |
 | `SHOW_FUNCTION_OUTPUT` | Show function output                        | `true`                   | `YAI_SHOW_FUNCTION_OUTPUT` |

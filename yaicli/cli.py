@@ -234,6 +234,8 @@ class CLI:
         "plan_requested",
         #: Plan submitted by a ``--plan`` run (JSON output: plan/plan_path/revision).
         "_plan_output_plan",
+        "_checkpoint_worker",
+        "_checkpoint_capture",
     )
 
     def __init__(
@@ -324,6 +326,8 @@ class CLI:
         self._last_turn_snapshot: Optional[Dict[str, Any]] = None
         # Typed-ahead text captured by the generation-time Ctrl+O watcher.
         self._pending_prompt_text = ""
+        self._checkpoint_worker = None
+        self._checkpoint_capture = None
         self.chat_start_time = None
         self.is_temp_session = True
         self.chat = Chat(title="", history=[])
@@ -936,6 +940,7 @@ class CLI:
     def _persist_chat_plan(self, data: Any) -> None:
         """Store one session-plan payload on the chat and save it best-effort (K23)."""
         try:
+            changed = self.chat.plan != (data if isinstance(data, dict) else {})
             self.chat.plan = dict(data) if isinstance(data, dict) else {}
         except Exception:  # pragma: no cover - legacy chat objects
             return
@@ -946,6 +951,8 @@ class CLI:
                 self.chat.save(self.chat_history_dir)
         except Exception:  # pragma: no cover - best-effort persistence only
             pass
+        if changed:
+            self._checkpoint_reset()
 
     def _sync_chat_plan(self, session: Any = None) -> None:
         """Store the plan pointer/todos in the chat and save it best-effort (K23)."""
@@ -1715,10 +1722,40 @@ class CLI:
 
     # ------------------- Chat Command Methods -------------------
     def _save_chat(self, title: Union[str, None] = None) -> None:
+        """Serialize a saved checkpoint identity before replacing its chat file."""
+        lock = None
+        try:
+            store = self._checkpoint_store() if self.chat.checkpoint_session_id else None
+            if store is not None:
+                lock = store.session_lock()
+                if not lock.acquire():
+                    raise OSError("Workspace is busy. Try again when its file operations finish.")
+                store._fresh(store._load())
+            old_path = self.chat.path
+            if store is not None and title and title != self.chat.title:
+                self.chat.path = None
+            self._save_chat_inner(title)
+            if store is not None and self.chat.path != old_path:
+                data = store._load()
+                data["session_path"] = str(self.chat.path.resolve())
+                store._save(data)
+                if old_path is not None:
+                    old_path.unlink(missing_ok=True)
+        except Exception as exc:
+            get_error_console().print(safe_text(f"Failed to save chat: {exc}"), markup=False)
+            return
+        finally:
+            if lock is not None:
+                lock.release()
+        self._checkpoint_reset(only_if_new=True)
+
+    def _save_chat_inner(self, title: Union[str, None] = None) -> None:
         """Save current chat history to a file using session manager."""
         # Update title if provided
         if title:
             self.chat.title = title
+        if not cfg.get("CHECKPOINT_ENABLED", True):
+            self.chat.checkpoint_head = -1
 
         # v0.21 K13: persist model/provider/role/cwd/created_at/updated_at.
         try:
@@ -2120,6 +2157,9 @@ class CLI:
                     "Background generation is still finishing; its remaining output is ignored.",
                     style="dim",
                 )
+                if getattr(self, "_checkpoint_capture", None) is not None:
+                    self._checkpoint_worker = bridge
+                    self._checkpoint_capture.barrier = True
             if watcher is not None:
                 pending = watcher.stop()
                 if pending:
@@ -2270,7 +2310,159 @@ class CLI:
         self.console.print(f"Retrying last turn: {safe_text(user_input)}", style="dim")
         return self._process_user_input(user_input, images=list(images) if isinstance(images, list) else [])
 
+    def _checkpoint_store(self):
+        """Resolve the current saved-chat store only for a real interactive REPL."""
+        if (
+            not self.interactive
+            or self.machine_output
+            or self.quiet
+            or self.is_temp_session
+            or self.current_mode == TEMP_MODE
+            or not cfg.get("CHECKPOINT_ENABLED", True)
+        ):
+            return None
+        import uuid
+
+        from .checkpoints import CheckpointError, CheckpointStore
+        from .const import project_sessions_key
+        from .tools.workspace import resolve_workspace_root
+
+        worker = getattr(self, "_checkpoint_worker", None)
+        if worker is not None:
+            if worker.alive:
+                raise CheckpointError("Workspace is busy. Try again when its file operations finish.")
+            capture = getattr(self, "_checkpoint_capture", None)
+            if capture is not None:
+                capture.store.abandon_turn(capture)
+            self._checkpoint_worker = None
+            self._checkpoint_capture = None
+        chat = self.chat
+        if (
+            not chat.checkpoint_session_id
+            or len(chat.checkpoint_session_id) != 32
+            or any(char not in "0123456789abcdef" for char in chat.checkpoint_session_id)
+        ):
+            chat.checkpoint_session_id = uuid.uuid4().hex
+            chat.checkpoint_head = -1
+        root = resolve_workspace_root(cfg.get("WORKSPACE_ROOT") or Path.cwd())
+        if chat.path is None:
+            self.chat_manager.save_chat(chat)
+        directory = (
+            self.chat_history_dir.resolve() / "checkpoints" / project_sessions_key() / chat.checkpoint_session_id
+        )
+        store = CheckpointStore(
+            directory,
+            root,
+            chat.checkpoint_session_id,
+            cfg.get("CHECKPOINT_KEEP", 20),
+            cfg.get("CHECKPOINT_MAX_MB", 50),
+            session_path=chat.path.resolve(),
+            expected_head=chat.checkpoint_head,
+        )
+        if not store.belongs_to_path():
+            # A copied session shares its conversation, never another file's journal.
+            chat.checkpoint_session_id = uuid.uuid4().hex
+            chat.checkpoint_head = -1
+            return self._checkpoint_store()
+        try:
+            data = store._load()
+            if chat.checkpoint_head < 0 and data["head"] >= 0 and not store.pending_path.exists():
+                chat.checkpoint_session_id = uuid.uuid4().hex
+                return self._checkpoint_store()
+        except CheckpointError as exc:
+            if (
+                str(exc)
+                not in ("Checkpoint data is corrupt.", "Checkpoint data does not match this session or workspace.")
+                or store.has_recovery()
+            ):
+                raise
+            get_error_console().print(safe_text(f"Checkpoint unavailable: {exc}"), markup=False)
+            chat.checkpoint_session_id = uuid.uuid4().hex
+            chat.checkpoint_head = -1
+            return self._checkpoint_store()
+        store.reconcile()
+        return store
+
+    def _checkpoint_reset(self, only_if_new: bool = False) -> None:
+        capture = getattr(self, "_checkpoint_capture", None)
+        if capture is not None and not capture.finished:
+            capture.barrier = True
+            return
+        try:
+            store = self._checkpoint_store()
+            if store is None:
+                return
+            if only_if_new:
+                self.chat.checkpoint_head = store.ensure_base(self.chat.to_dict())
+            else:
+                self.chat.checkpoint_head = store.reset(self.chat.to_dict())
+            self.chat.save(self.chat_history_dir)
+            if store.warning:
+                get_error_console().print(store.warning, markup=False)
+        except Exception as exc:
+            get_error_console().print(safe_text(f"Checkpoint unavailable: {exc}"), markup=False)
+
     def _process_user_input(self, user_input: str, images: Optional[List[ImageData]] = None) -> bool:
+        """Wrap a successful persisted interactive turn in a checkpoint journal."""
+        if (
+            not self.interactive
+            or self.machine_output
+            or self.quiet
+            or self.is_temp_session
+            or self.current_mode == TEMP_MODE
+            or not cfg.get("CHECKPOINT_ENABLED", True)
+        ):
+            return self._process_user_input_inner(user_input, images)
+        from .checkpoints import CheckpointError
+
+        store = None
+        capture = None
+        try:
+            store = self._checkpoint_store()
+            if store is None:
+                return self._process_user_input_inner(user_input, images)
+            if self.chat.checkpoint_head < 0 or store.pending_path.exists():
+                self.chat.checkpoint_head = store.ensure_base(self.chat.to_dict())
+                self.chat.save(self.chat_history_dir)
+            records = store.list_records(self.chat.checkpoint_head)
+            capture = store.begin_turn((records[-1]["turn"] + 1) if records else 1)
+            self._checkpoint_capture = capture
+            import copy
+
+            before_plan = copy.deepcopy(self.chat.plan)
+            with capture.activate():
+                result = self._process_user_input_inner(user_input, images)
+            if getattr(self, "_checkpoint_worker", None) is not None and self._checkpoint_worker.alive:
+                return result
+            if self.chat.plan != before_plan:
+                capture.barrier = True
+            if not capture.completed:
+                if capture.files or capture.barrier:
+                    capture.barrier = True
+                else:
+                    store.pending_path.unlink(missing_ok=True)
+                    return result
+
+            def commit(snapshot):
+                self.chat.checkpoint_head = snapshot["checkpoint_head"]
+                self.chat.save(self.chat_history_dir)
+
+            self.chat.checkpoint_head, warning = store.finish_turn(capture, self.chat.to_dict(), commit)
+            self.chat_manager.refresh_chats()
+            if warning:
+                get_error_console().print(warning, markup=False)
+            return result
+        except (CheckpointError, OSError, ChatSaveError) as exc:
+            get_error_console().print(safe_text(str(exc)), markup=False)
+            return True
+        finally:
+            if capture is not None and not (
+                getattr(self, "_checkpoint_worker", None) is not None and self._checkpoint_worker.alive
+            ):
+                store.abandon_turn(capture)
+                self._checkpoint_capture = None
+
+    def _process_user_input_inner(self, user_input: str, images: Optional[List[ImageData]] = None) -> bool:
         """Process user input: get response, print, update history, maybe execute.
         Returns True to continue REPL, False to exit on critical error.
         """
@@ -2338,6 +2530,9 @@ class CLI:
             )
             if usage_line:
                 self.console.print(usage_line, style="dim")
+        capture = getattr(self, "_checkpoint_capture", None)
+        if capture is not None:
+            capture.completed = True
         return True
 
     def _run_generated_command(self, command: str) -> None:
@@ -2408,6 +2603,8 @@ class CLI:
         if executed_cmd:
             self.console.print("Executing...", style="bold green")
             try:
+                if getattr(self, "_checkpoint_capture", None) is not None:
+                    self._checkpoint_capture.barrier = True
                 subprocess.call(executed_cmd, shell=True)
             except Exception as e:
                 self.console.print(f"Failed to execute command: {safe_text(e)}", style="red")

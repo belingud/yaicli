@@ -213,6 +213,9 @@ When in interactive chat or shell mode, you can use these special commands:
 | `/permissions revoke <tool-or-index>` | Remove a persistent permission by tool name or rule number (the tool will ask again) |
 | `/show-output` | Open the full-screen viewer listing every tool output of the current turn (same as `Ctrl+O`) |
 | `/undo` | Restore the last file change made by a guarded tool in this session (see [Workspace Safety](workspace-safety.md#undo)) |
+| `/checkpoints` | List checkpoints of the saved interactive conversation |
+| `/rewind [id]` | Restore the specified checkpoint, or the previous one, after confirmation |
+| `/fork [id] [title]` | Save the current conversation separately, then rewind to a checkpoint |
 | `/cost` | Show session token usage, estimated cost, per-model breakdown and tool metrics |
 | `/model` | Show the current model and provider |
 | `/model <name>` | Switch the model for this session; the provider client is rebuilt on the next request, the chat history is kept, and the notice names the previous model so it can be reverted |

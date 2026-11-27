@@ -1,0 +1,6 @@
+{"file":".trellis/spec/py/index.md","reason":"Python 分层、依赖方向与延迟导入"}
+{"file":".trellis/spec/py/function-tool-guidelines.md","reason":"文件守卫、备份、撤销和工具执行边界"}
+{"file":".trellis/spec/py/cli-and-rendering.md","reason":"交互命令、线程与机器输出契约"}
+{"file":".trellis/spec/py/config-and-context.md","reason":"配置优先级、会话格式与隔离"}
+{"file":".trellis/spec/repo/feature-spec-writing.md","reason":"命令输出及交互示例规范"}
+{"file": ".trellis/spec/py/checkpoints.md", "reason": "K25 存储、命令与恢复的执行契约"}

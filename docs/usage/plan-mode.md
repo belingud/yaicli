@@ -363,10 +363,11 @@ is informational: nothing is loaded into the tool set until you explicitly run `
 Each option also has a `YAI_PLAN_*` environment variable; see
 [Configuration](configuration.md#configuration-options-reference).
 
-## Known boundaries (v0.24)
+## Known boundaries
 
-- **K24 verification loop and K25 checkpoints are not part of this release.** Finishing a plan does
-  not run configured checks and does not create a checkpoint; those roadmap items are deferred.
+- Finishing a plan does not run project checks. Checkpoint history does not restore plan files,
+  approval state or todos; plan-state changes form a checkpoint boundary. See
+  [Chat Sessions](sessions.md#checkpoints-and-rewind).
 - The read-only shell is **not a security boundary** (see above). It is a convenience with a fixed
   allowlist, a filtered environment and an audit trail.
 - There is no automatic plan mode: simple tasks keep the fast normal path.

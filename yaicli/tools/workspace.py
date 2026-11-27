@@ -42,6 +42,7 @@ import shutil
 import stat
 import threading
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -65,6 +66,24 @@ _TRUTHY_STRINGS = frozenset({"1", "true", "yes", "on", "y", "t"})
 #: Backup files are private (tool arguments may carry secrets); best effort.
 _BACKUP_FILE_MODE = 0o600
 _BACKUP_DIR_MODE = 0o700
+
+
+@contextmanager
+def mutation_lock(root=None):
+    """Coordinate guarded writers and checkpoint rewinds in one workspace."""
+    import hashlib
+    import tempfile
+
+    key = hashlib.sha256(str(resolve_workspace_root(root)).encode()).hexdigest()
+    from ..checkpoint_lock import SessionLock
+
+    lock = SessionLock(Path(tempfile.gettempdir()) / "yaicli-workspace-locks" / f"{key}.lock")
+    if not lock.acquire():
+        raise OSError("Workspace is busy. Try again when its file operations finish.")
+    try:
+        yield
+    finally:
+        lock.release()
 
 
 class BackupError(Exception):
@@ -537,6 +556,15 @@ def _restore_backup(original: UndoOriginal) -> None:
 
 
 def undo_last() -> Optional[UndoOutcome]:
+    """Undo under the same cross-process workspace lock as guarded writes."""
+    try:
+        with mutation_lock():
+            return _undo_last()
+    except OSError as exc:
+        return UndoOutcome(tool="undo", errors=[str(exc)])
+
+
+def _undo_last() -> Optional[UndoOutcome]:
     """Restore the most recent mutation; ``None`` when the stack is empty.
 
     Never raises: partial failures are reported in ``UndoOutcome.errors``.

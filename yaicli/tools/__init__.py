@@ -8,7 +8,13 @@ from json_repair import repair_json
 from rich.panel import Panel
 
 from ..config import cfg
-from ..console import get_console, get_error_console, safe_text, strip_control_chars, untrusted_text
+from ..console import (
+    get_console,
+    get_error_console,
+    safe_text,
+    strip_control_chars,
+    untrusted_text,
+)
 from ..exceptions import MCPToolsError
 from ..schemas import ToolCall
 from . import output_history, workspace
@@ -583,7 +589,16 @@ def _execute_plan_mode_call(
     if name in plan_mode.SESSION_TOOL_NAMES:
         from . import session_tools
 
-        text = session_tools.execute_session_tool(name, arguments)
+        try:
+            text = session_tools.execute_session_tool(name, arguments)
+        except BaseException:
+            import sys
+
+            module = sys.modules.get("yaicli.checkpoints")
+            capture = module.current_capture() if module is not None else None
+            if capture is not None:
+                capture.barrier = True
+            raise
         result = _emit_tool_result(
             text,
             kind=kind,
@@ -647,6 +662,12 @@ def _execute_plan_mode_call(
         )
         return result, True
 
+    import sys
+
+    module = sys.modules.get("yaicli.checkpoints")
+    capture = module.current_capture() if module is not None else None
+    if capture is not None:
+        capture.barrier = True
     result_text = plan_shell.run_plan_shell(
         verdict.argv,
         cwd=arguments.get("cwd"),
@@ -773,15 +794,50 @@ def execute_tool_call(tool_call: ToolCall, announce: bool = True) -> Tuple[str, 
             # A denial is an in-band result (ok=True below): the call reached the
             # tool path, the model reads actionable JSON and the filesystem is
             # untouched. The guard never raises and never prints.
-            guard_plan = workspace.prepare_mutation(tool_call.name, arguments)
-        if guard_plan is not None and guard_plan.denial is not None:
-            result_text = guard_plan.denial
+            with workspace.mutation_lock():
+                guard_plan = workspace.prepare_mutation(tool_call.name, arguments)
+                if guard_plan.denial is not None:
+                    result_text = guard_plan.denial
+                else:
+                    import sys
+
+                    checkpoint_module = sys.modules.get("yaicli.checkpoints")
+                    capture = checkpoint_module.current_capture() if checkpoint_module is not None else None
+                    if capture is not None:
+                        if getattr(tool, "source", "builtin") != "builtin":
+                            capture.barrier = True
+                        capture.prepare(
+                            guard_plan.build_undo_entry(),
+                            [
+                                str(arguments[key])
+                                for key in ("file_path", "path", "destination")
+                                if isinstance(arguments.get(key), str)
+                            ],
+                        )
+                    try:
+                        result_text = tool.execute(**arguments)
+                    except BaseException:
+                        if capture is not None:
+                            capture.barrier = True
+                        raise
+                    succeeded = workspace.tool_result_succeeded(result_text)
+                    if checkpoint_module is not None:
+                        checkpoint_module.record_mutation(guard_plan.build_undo_entry(), succeeded)
+                    if guard_plan.has_originals and succeeded:
+                        workspace.push_undo(guard_plan.build_undo_entry())
         else:
+            # Only an active interactive capture loads checkpoints on non-file calls.
+            import sys
+
+            checkpoint_module = sys.modules.get("yaicli.checkpoints")
+            capture = checkpoint_module.current_capture() if checkpoint_module is not None else None
+            if capture is not None and (
+                not is_function_call
+                or tool_call.name == "execute_shell_command"
+                or getattr(tool, "source", "builtin") != "builtin"
+            ):
+                capture.barrier = True
             result_text = tool.execute(**arguments)
-            # Only record an undo entry when the mutation really happened: the fs_*
-            # tools report expected failures in-band as {"success": false, ...}.
-            if guard_plan is not None and guard_plan.has_originals and workspace.tool_result_succeeded(result_text):
-                workspace.push_undo(guard_plan.build_undo_entry())
         result = _emit_tool_result(
             result_text,
             kind=_type,

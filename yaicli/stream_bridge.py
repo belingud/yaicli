@@ -125,7 +125,10 @@ class ThreadedStream:
         """
         if self._started:
             return
-        self._thread = threading.Thread(target=self._run, name="yaicli-stream-bridge", daemon=True)
+        import contextvars
+
+        context = contextvars.copy_context()
+        self._thread = threading.Thread(target=lambda: context.run(self._run), name="yaicli-stream-bridge", daemon=True)
         self._thread.start()
         self._started = True
 
@@ -135,9 +138,7 @@ class ThreadedStream:
         try:
             while not self._cancel.is_set():
                 try:
-                    chunk = (
-                        self._generator.send(value) if value is not _MISSING else next(self._generator)
-                    )
+                    chunk = self._generator.send(value) if value is not _MISSING else next(self._generator)
                 except StopIteration:
                     break
                 except BaseException as exc:  # noqa: BLE001 - forwarded to the UI thread

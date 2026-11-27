@@ -152,6 +152,8 @@ class Chat:
     #: ``plan_mode.PlanSession.to_session_dict()``). Empty for sessions without a
     #: plan; legacy files simply lack the key.
     plan: Dict[str, Any] = field(default_factory=dict)
+    checkpoint_session_id: str = ""
+    checkpoint_head: int = -1
 
     def add_message(self, role: str, content: str) -> None:
         """Add message to the session"""
@@ -205,6 +207,9 @@ class Chat:
         # plan-less sessions stay byte-compatible with the previous format.
         if self.plan:
             data["plan"] = self.plan
+        if self.checkpoint_session_id:
+            data["checkpoint_session_id"] = self.checkpoint_session_id
+            data["checkpoint_head"] = self.checkpoint_head
         return data
 
     def to_dict(self) -> Dict:
@@ -240,6 +245,8 @@ class Chat:
             created_at=str(data.get("created_at") or ""),
             updated_at=str(data.get("updated_at") or ""),
             plan=plan,
+            checkpoint_session_id=str(data.get("checkpoint_session_id") or ""),
+            checkpoint_head=int(data.get("checkpoint_head", -1)),
         )
 
         for msg_data in data.get("history", []):
@@ -269,6 +276,8 @@ class Chat:
                 self.updated_at = str(data.get("updated_at") or "")
                 raw_plan = data.get("plan")
                 self.plan = dict(raw_plan) if isinstance(raw_plan, dict) else {}
+                self.checkpoint_session_id = str(data.get("checkpoint_session_id") or "")
+                self.checkpoint_head = int(data.get("checkpoint_head", -1))
                 self.history = [_message_from_dict(msg) for msg in data.get("history", [])]
             return True
         except (json.JSONDecodeError, OSError) as e:
@@ -293,7 +302,7 @@ class Chat:
         Raises:
             ChatSaveError: If there's an error saving the chat
         """
-        if not self.history:
+        if not self.history and not self.checkpoint_session_id:
             raise ChatSaveError("No history in chat to save")
 
         # Ensure chat has a title
@@ -314,6 +323,10 @@ class Chat:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         filename = f"{timestamp}-title-{self.title}.json"
         chat_path = chat_dir / filename
+        if self.checkpoint_session_id and self.path is not None and self.path.parent == chat_dir:
+            # Checkpoint identities survive ordinary saves without filename churn.
+            chat_path = self.path
+            filename = chat_path.name
         # Sibling temporary file: same filesystem, hidden from the "*.json"
         # session listing, and unique per process to survive concurrent saves.
         temp_path = chat_dir / f".{filename}.{os.getpid()}.tmp"
@@ -480,6 +493,89 @@ class FileChatManager:
 
         return chat.title
 
+    def save_chat_exclusive(self, chat: Chat, auto_title: bool = False) -> str:
+        """Create a fork without replacing a title, including competing processes."""
+        from .checkpoint_lock import SessionLock
+
+        if not chat.title or any(char in chat.title for char in ("/", "\\", "\x00")):
+            raise ChatSaveError("Cannot fork: the current chat could not be saved.")
+        self._ensure_chat_dir()
+        lock = SessionLock(self.chat_dir / ".checkpoint-fork.lock")
+        if not lock.acquire():
+            raise ChatSaveError("Workspace is busy. Try again when its file operations finish.")
+        try:
+            self.refresh_chats()
+            titles = {item.title for item in self.list_chats()}
+            original = chat.title
+            suffix = 1
+            while chat.title in titles:
+                if not auto_title:
+                    raise ChatSaveError(f"Chat title already exists: {chat.title}.")
+                suffix += 1
+                chat.title = f"{original}-{suffix}"
+            # Publish without replacing a file that appeared after title discovery.
+            import tempfile
+
+            with tempfile.TemporaryDirectory(prefix=".fork-", dir=self.chat_dir) as staging:
+                chat.save(Path(staging))
+                target = self.chat_dir / chat.path.name
+                os.link(chat.path, target)
+                chat.path = target
+            self.refresh_chats()
+            return chat.title
+        finally:
+            lock.release()
+
+    def _remove_chat_file(self, path: Path) -> None:
+        """Delete owned checkpoint data, retaining journals that need recovery."""
+        locks = []
+        owned = []
+        try:
+            from .checkpoint_lock import SessionLock
+
+            # Disabled saves intentionally detach their identity; session_path is
+            # still the owner of those old records when the chat is later deleted.
+            for manifest in (self.chat_dir / "checkpoints").glob("*/*/manifest.json"):
+                directory = manifest.parent
+                if directory.is_symlink() or directory.parent.is_symlink() or manifest.is_symlink():
+                    continue
+                try:
+                    data = json.loads(manifest.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue
+                if data.get("session_path") != str(path.resolve()):
+                    continue
+                lock = SessionLock(directory / "session.lock")
+                if not lock.acquire():
+                    raise ChatDeleteError("Session is busy. Try again when its file operations finish.")
+                locks.append(lock)
+                owned.append(directory)
+        except (OSError, ValueError, AttributeError):
+            pass
+        except BaseException:
+            for lock in reversed(locks):
+                lock.release()
+            raise
+        try:
+            path.unlink()
+            for directory in owned:
+                if (directory / "recovery.json").exists():
+                    from .console import get_error_console
+
+                    get_error_console().print(
+                        safe_text(
+                            f"Checkpoint recovery is incomplete. Recovery record retained at {directory / 'recovery.json'}"
+                        ),
+                        markup=False,
+                    )
+                else:
+                    import shutil
+
+                    shutil.rmtree(directory)
+        finally:
+            for lock in reversed(locks):
+                lock.release()
+
     def _delete_existing_chat_with_title(self, title: str, exclude_path: Optional[Path] = None) -> None:
         """Delete existing chats with the given title, except ``exclude_path``.
 
@@ -513,7 +609,7 @@ class FileChatManager:
             if keep_path is not None and resolved == keep_path:
                 continue
             try:
-                resolved.unlink()
+                self._remove_chat_file(resolved)
             except FileNotFoundError:
                 continue
             except OSError as e:
@@ -535,7 +631,7 @@ class FileChatManager:
         while len(chat_files) > self.max_saved_chats:
             _, oldest_file = chat_files.pop(0)
             try:
-                oldest_file.unlink()
+                self._remove_chat_file(oldest_file)
             except (OSError, IOError):
                 pass
 
@@ -626,7 +722,7 @@ class FileChatManager:
             return False
 
         try:
-            path.unlink()
+            self._remove_chat_file(path)
 
             # If the current chat is deleted, set it to None
             if self.current_chat and self.current_chat.path == path:
