@@ -135,5 +135,15 @@ repl_ready 607.4、oneshot_local 1639.9，均低于上表既有门限。
 
 代码、测试、文档、规范和任务记录的范围见 [commit-plan.md](commit-plan.md)。
 用户已于 2026-11-26 按仓库 Phase 3.4 确认提交，主体实现已提交为 `6758c18` 并推送。
-PR #59 已创建，用户于 2026-11-27 授权合并；根目录修复作为后续提交推送后，核对最新 CI 再合并。
-任务尚未归档；版本升级、更新日志和发布按仓库 master 发布流程继续。
+用户于 2026-11-27 授权合并；根目录修复 `662a60c` 推送后，最新 CI 与启动性能门禁通过，
+PR #59 已以合并提交 `f68affa` 进入 `master`。
+
+## v0.26.0 发布结果（2026-11-27）
+
+- 版本提交 `9c7a6ba` 将 `.bumpversion.cfg`、`pyproject.toml` 和 `yaicli/__init__.py` 同步至 0.26.0，并创建 `v0.26.0` 标签。
+- 更新日志提交 `a92f6c7` 由 `git cliff -l --prepend CHANGELOG.md` 生成，并同步 `docs/changelog.md`；`uv.lock` 仅同步自身包版本，没有依赖版本变化。
+- 本地 wheel 与源码包构建成功，校验包内版本和新增检查点模块；隔离配置的打包与启动相关测试 **28 passed in 9.19s**，更新日志后的 MkDocs strict 通过（3.49s）。
+- 标签触发的 [Publish to PyPI #45961073507](https://github.com/belingud/yaicli/actions/runs/45961073507) 成功，PyPI 的 `yaicli/0.26.0` 页面已可访问。
+- 发布提交的 [CI #45961071497](https://github.com/belingud/yaicli/actions/runs/45961071497) 与 [Startup benchmark #45961071419](https://github.com/belingud/yaicli/actions/runs/45961071419) 均成功。
+- `docs` 分支同步至 `a92f6c7`，[MkDocs 部署 #45961458006](https://github.com/belingud/yaicli/actions/runs/45961458006) 与 [GitHub Pages 部署 #45961494666](https://github.com/belingud/yaicli/actions/runs/45961494666) 均成功。
+- 模板哈希、未跟踪的本地技能目录和 `.codex/` 不属于本次发布，保持原状，不纳入发布或归档提交。
