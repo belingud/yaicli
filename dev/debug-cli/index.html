@@ -2039,6 +2039,10 @@ into bug reports without checking it: only <code>API_KEY</code> is masked, other
 <td>Untrusted strings must go through <code>yaicli/console.py</code> helpers (<code>safe_text</code>, <code>untrusted_text</code>, <code>print_untrusted</code>).</td>
 </tr>
 <tr>
+<td>The first line keeps appearing during streaming, especially with <code>☀️</code> or <code>❤️</code></td>
+<td>Check the Rich version in the environment running <code>ai</code>. Versions before 14.3.0 can miscount VS16 emoji width, wrap padded Live rows and leave old frames behind. This checkout requires Rich 14.3.3 or later; sync the checkout's dependencies and run with <code>uv run ai</code>.</td>
+</tr>
+<tr>
 <td>Process exits <code>0</code> after an error message</td>
 <td>Should not happen — handled failures exit <code>1</code> (<code>entry.py</code>); file a bug with the command and exit code.</td>
 </tr>
@@ -2130,6 +2134,19 @@ or model/tool content. Relevant events:</p>
 may hit the terminal's own <code>VDISCARD</code> key (the screen appears frozen until you press it again).
 If <code>viewer.run.begin</code> appears without <code>viewer.run.end</code>, the full-screen application hung; attach
 the log tail to the bug report.</p>
+<p><code>generation.end</code> is emitted from cleanup (<code>finally</code>), including error and cancellation paths;
+it does not prove successful completion. These breadcrumbs do not record provider chunks, model
+content or rendered frame widths, so they cannot by themselves distinguish repeated model output
+from terminal redraw artifacts. Captured ANSI output also contains previous Live frames by design.</p>
+<p>For an emoji-related display report, check the dependency in the same environment as the command:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;from importlib.metadata import version; print(version(&#39;rich&#39;))&quot;</span>
+</code></pre></div>
+<p>For source checkouts, <code>uv sync --all-groups --all-extras</code> installs the locked dependencies.
+A globally installed <code>ai</code> may use a different environment from <code>uv run ai</code>. Rich's upstream
+<a href="https://github.com/Textualize/rich/issues/3897">VS16 width issue</a> describes the extra wrapping;
+the fix is included in the supported dependency floor. Compare saved assistant text and the
+visible terminal before attributing raw frame repetition to the model. Do not remove emoji or
+deduplicate model text to hide a rendering defect.</p>
 
 
 
