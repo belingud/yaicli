@@ -1,5 +1,40 @@
 
 ---
+## [0.27.0](https://github.com/belingud/yaicli/compare/v0.26.0..v0.27.0) - 2026-11-28
+
+### 🐛 Bug Fixes
+
+- fix(render): require emoji-aware Rich for live streaming - ([1b63b42](https://github.com/belingud/yaicli/commit/1b63b424142c12cb3371755f872ceb6dc31b38b7)) - Belingud
+
+### 🚜 Refactor
+
+- refactor(runtime): bind configuration and plan state to each session
+
+Keep effective configuration, plan declarations and tool execution tied to the owning session, with scoped restoration for standalone tool environments. Preserve default entry points and existing user contracts. - ([0bb6415](https://github.com/belingud/yaicli/commit/0bb64158dfe1c1744cda4fed1b73d971ab0cef48)) - Belingud
+- refactor(app): separate session output and planning coordination - ([66db062](https://github.com/belingud/yaicli/commit/66db0625e6b559f97509760c06e842f774eb8b9c)) - Belingud
+- refactor(core): separate command registry and tool responsibilities
+
+Use one command definition and separate tool schemas, policy, execution and display while preserving existing behavior. Add contract and real execution regressions before extraction.
+
+Validation: 3152 tests passed; independent review, Ruff, scoped formatting/isort, Python 3.10 syntax, strict docs, wheel/sdist and all six startup gates passed. - ([b7d3ce4](https://github.com/belingud/yaicli/commit/b7d3ce41d6c9050e03b7a35e3764d4d2c2181470)) - Belingud
+
+### 📚 Documentation
+
+- docs(changelog): update changelog for v0.26.0 release - ([a92f6c7](https://github.com/belingud/yaicli/commit/a92f6c738715a0156336969ce1b40a5705a85cd6)) - Belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- chore: record PR 60 merge and task completion - ([94d46f1](https://github.com/belingud/yaicli/commit/94d46f19091d85dc09ed326b9474d28e4f31ac4c)) - Belingud
+- chore(task): archive refactor and rendering tasks after PR 60 - ([0e02521](https://github.com/belingud/yaicli/commit/0e025212c9c9f753b55a25fe7310764edceeffef)) - Belingud
+- chore(task): record stream rendering acceptance - ([5d2424b](https://github.com/belingud/yaicli/commit/5d2424bb8e0288625c851ad72a83734a4052b604)) - Belingud
+- chore(task): record refactor acceptance and PR 60
+
+Link all three stage commits and the unified pull request, retaining merge approval and task archive as pending delivery steps. - ([7408c51](https://github.com/belingud/yaicli/commit/7408c51e583e46e11a1980a4b3f5cc1c49ab3be0)) - Belingud
+- chore: record journal - ([d0cbb8f](https://github.com/belingud/yaicli/commit/d0cbb8f29b69c9429262b83be4daba2cf6e2bf2f)) - Belingud
+- chore(task): archive 11-20-k25-checkpoints - ([16b087c](https://github.com/belingud/yaicli/commit/16b087c9b5725b48e6c817a350ca59a8113a07ac)) - Belingud
+
+
+---
 ## [0.26.0](https://github.com/belingud/yaicli/compare/v0.25.0..v0.26.0) - 2026-11-27
 
 ### ⛰️  Features
