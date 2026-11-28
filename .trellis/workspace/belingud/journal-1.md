@@ -683,3 +683,40 @@ K25 已通过 PR #59 合并；修复仅配置文件指定 WORKSPACE_ROOT 时首�
 
 - 检查PR #60最新head CI，修复真实失败；全绿后按AGENTS.md要求询问用户是否合并。
 - 用户明确批准合并后才同步master、归档四项任务；本次不发布或升版本。
+
+
+## Session 17: 修复流式emoji重复残留并完成本地验收
+<!-- trellis-session: v=2 fp=20a0bb1b3b0523ca -->
+
+**Date**: 2026-11-28
+**Task**: 修复流式emoji重复残留并完成本地验收
+**Branch**: `chore/refactor-command-tools`
+
+### Summary
+
+定向升级现有Rich至14.3.3；独立checker完成本地验收，后续推送PR60等待最新CI和用户明确合并确认。
+
+### Main Changes
+
+- 补10项真实Live/工具执行/debug集成回归；26组独立重放首句残留108→1。
+- 更新渲染、发布、跨层及debug文档，记录旧测试量尺盲点；无新增配置或产品逻辑。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1b63b424142c12cb3371755f872ceb6dc31b38b7` | fix(render): require emoji-aware Rich for live streaming |
+
+### Testing
+
+- [OK] 3203通过+3沙箱本地端口准备错误，同hash补跑3通过；共3206个不同测试已验证。
+- [OK] Ruff/格式/isort/3.10 AST、strict docs、离线锁/构建、原n5启动门禁通过，245冻结文件hash不变。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 推送chore/refactor-command-tools，等待PR60最新head的Python3.10/3.12/3.13等CI。
+- CI全绿后等待用户明确批准合并；尚未合并，按仓库规则暂不归档，不发布。

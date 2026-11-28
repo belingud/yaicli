@@ -61,3 +61,9 @@ python /tmp/yaicli_refactor_run.py .venv/bin/python -m pytest tests/test_stream_
 最终冻结245个产品、测试、元数据与规范文件，验收前后hash均未变；另有237个源码/测试文件清单。新增测试最终SHA256为7e49d1c959cc0c2fc825cde493dddb7a887b2fa31fa4dc503828b90a5c97ef70，取代上文8项实现交接时的历史hash。pyproject和uv.lock hash保持不变。wheel SHA256为452443ce7ee4c07b6cc173ee966dd6cafd006910cbe4ac8b2fb05ac64466965d，sdist为97e9f78c2940e2703130419ea6f898774c080749a6831c979fc7578f013e3e0d。
 
 E1旧版红灯、E2新版10项回归、E3独立26组重放及实际工具/debug对照、E4本地门禁均通过。E5本地独立审查与规范已完成，单独fix提交、最新head远端CI与用户明确合并确认另行记录。用户真实终端尚未直接复测；生命周期日志不能排除实际上游重复。合并前不归档，不发布或升版本。
+
+## 提交与交付边界
+
+独立修复提交1b63b424142c12cb3371755f872ceb6dc31b38b7（fix(render): require emoji-aware Rich for live streaming），21个限定文件；修复后产品逻辑与既有测试未改。原始验收head=7408c51是测试时提交基点，冻结manifest同时覆盖当时未提交的新测试与依赖，最终提交没有改变冻结文件内容。随后的任务/会话提交仅记录hash与交付状态。
+
+远端验收以PR60最新head检查为准，先前7408c51的绿色CI不代替新提交检查。当前未合并，不归档；用户明确批准后才合并，再按仓库规则归档及同步master。回退时先revert本fix，再按原三阶段逆序处理；数据及版本不变。
