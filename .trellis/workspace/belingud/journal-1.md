@@ -720,3 +720,39 @@ K25 已通过 PR #59 合并；修复仅配置文件指定 WORKSPACE_ROOT 时首�
 
 - 推送chore/refactor-command-tools，等待PR60最新head的Python3.10/3.12/3.13等CI。
 - CI全绿后等待用户明确批准合并；尚未合并，按仓库规则暂不归档，不发布。
+
+
+## Session 18: 合并PR60并归档重构与渲染修复
+<!-- trellis-session: v=2 fp=3ae43f4cdd4bcd05 -->
+
+**Date**: 2026-11-28
+**Task**: 合并PR60并归档重构与渲染修复
+**Branch**: `master`
+
+### Summary
+
+用户明确回复“好，合并吧”后，复核5d2424b六项CI全绿，以merge commit ae8620a合并PR60。本地master快进同步，五项同PR任务完成归档；未发布或升版本。
+
+### Main Changes
+
+- 归档父任务、三个重构阶段及独立emoji渲染修复，补齐CI、用户确认和合并证据。
+- 归档与会话记录按仓库允许的master bookkeeping方式提交；既有无关未提交改动保持原样。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b7d3ce41d6c9050e03b7a35e3764d4d2c2181470` | refactor(core): separate command registry and tool responsibilities |
+| `66db0625e6b559f97509760c06e842f774eb8b9c` | refactor(app): separate session output and planning coordination |
+| `0bb64158dfe1c1744cda4fed1b73d971ab0cef48` | refactor(runtime): bind configuration and plan state to each session |
+| `1b63b424142c12cb3371755f872ceb6dc31b38b7` | fix(render): require emoji-aware Rich for live streaming |
+| `ae8620af6cfa0c084e68c37d88405a30a4ba5bc5` | Merge pull request #60 from belingud/chore/refactor-command-tools |
+
+### Testing
+
+- [OK] 合并前复核Python3.10/3.12/3.13、Lint & docs、Cold-start gate和GitGuardian六项全部成功。
+- [OK] 五个归档任务上下文清单验证通过；后续提交仅涉及Trellis任务和会话，未重跑已完成的产品门禁。
+
+### Status
+
+[OK] **Completed**
