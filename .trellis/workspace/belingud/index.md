@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 18
+- **Total Sessions**: 19
 - **Last Active**: 2026-11-28
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~758 | Active |
+| `journal-1.md` | ~799 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 19 | 2026-11-28 | 发布v0.27.0：重构与流式渲染修复 | `21eaf0252f28eee76d994d6f20896a6915ba6b4e`, `4c53dbf848342a5f4a51c4c5139ecbe39cad7b90` | `master` |
 | 18 | 2026-11-28 | 合并PR60并归档重构与渲染修复 | `b7d3ce41d6c9050e03b7a35e3764d4d2c2181470`, `66db0625e6b559f97509760c06e842f774eb8b9c`, `0bb64158dfe1c1744cda4fed1b73d971ab0cef48`, `1b63b424142c12cb3371755f872ceb6dc31b38b7`, `ae8620af6cfa0c084e68c37d88405a30a4ba5bc5` | `master` |
 | 17 | 2026-11-28 | 修复流式emoji重复残留并完成本地验收 | `1b63b424142c12cb3371755f872ceb6dc31b38b7` | `chore/refactor-command-tools` |
 | 16 | 2026-11-28 | Complete three-stage core organization refactor; PR 60 awaiting CI and merge approval | `b7d3ce41d6c9050e03b7a35e3764d4d2c2181470`, `66db0625e6b559f97509760c06e842f774eb8b9c`, `0bb64158dfe1c1744cda4fed1b73d971ab0cef48` | `chore/refactor-command-tools` |

@@ -756,3 +756,44 @@ K25 已通过 PR #59 合并；修复仅配置文件指定 WORKSPACE_ROOT 时首�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 19: 发布v0.27.0：重构与流式渲染修复
+<!-- trellis-session: v=2 fp=172c899c9388db89 -->
+
+**Date**: 2026-11-28
+**Task**: 发布v0.27.0：重构与流式渲染修复
+**Branch**: `master`
+
+### Summary
+
+用户明确要求发布27后，从master发布v0.27.0；标签触发PyPI发布，docs快进部署。发布CI与文档部署全部成功，官方发行包已下载核验并完成隔离安装版本入口检查。既有无关改动保留。
+
+### Main Changes
+
+- bump2version更新版本配置、项目metadata和静态版本常量，uv.lock仅根包版本改为0.27.0，所有依赖条目保持不变。
+- git-cliff生成35行0.27.0更新日志并同步docs/changelog.md，已发布历史逐字保留；244个冻结文件在验收与提交后无漂移。
+- 附注：额外ruff check --no-fix .发现Trellis辅助脚本及gen_model_limits.py共36项既有问题，文件与基准逐字相同；发布门禁按CI规定的yaicli tests范围，未修改范围外文件。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `21eaf0252f28eee76d994d6f20896a6915ba6b4e` | Bump version: 0.26.0 → 0.27.0 |
+| `4c53dbf848342a5f4a51c4c5139ecbe39cad7b90` | docs(changelog): update changelog for v0.27.0 release |
+
+### Testing
+
+- [OK] 独立Python3.12完整测试3206 passed（98.74秒），执行一次；CI范围Ruff、strict MkDocs、离线锁检查及wheel/sdist构建通过。
+- [OK] 原n5启动门禁六项通过：version41.9ms，help393.9ms，template339.9ms，entry_import288.2ms，repl_ready439.9ms，oneshot_local1171.1ms，脚本与阈值未改。
+- [OK] 发布远端工作流全部成功：Publish46117963294、Docs46117963011、CI46117962995（Python3.10/3.12/3.13与lint/docs）、Startup46117962965。
+- [OK] 官方PyPI wheel与sdist各120个产品文件逐字匹配验收源码，声明0.27.0/Python>=3.10/Rich>=14.3.3。wheel SHA256=570be181eacf32de28ecbb28206a0414192693232cbadcea722a5ab98ac1f569；sdist=1c02155e1c45baf236fd1e4bbf48522386091ddc2822b8f6c7c3b22fede56106。
+- [OK] PyPI wheel无依赖安装到临时隔离venv，ai --version输出yaicli 0.27.0；Python -I确认导入来自该venv的site-packages。此项只验证安装与版本快路径，未调用真实模型服务。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 用户升级后在原终端复测含emoji的天气回答；本轮发布已完成，无新功能开发。
