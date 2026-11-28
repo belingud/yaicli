@@ -298,6 +298,14 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
 - Content renders in `Live(console=self.console, auto_refresh=False)` with explicit
   `live.update(..., refresh=True)`; auto-refresh is deliberately off (no refresh thread racing tool-output
   `console.print`). Keep `_safe_stop_live` + `finally`: errors must stop the live and re-raise.
+- Keep `rich>=14.3.3`: older width calculations count VS16 emoji such as `☀️`/`❤️` as one cell
+  while emoji-aware terminals display two. Full-width Live padding then wraps an extra row and
+  leaves old frames in scrollback. Use the upstream fix, preserving model text and emoji; do not
+  deduplicate content, strip variation selectors or monkeypatch Rich's global width functions.
+  Regression tests must drive real Printer/Live output and measure visible rows with an independent
+  width oracle (`wcwidth.wcswidth`), including 60/200-column output after a tool round. Raw ANSI
+  output legitimately contains previous frames; neither substring counts in that raw stream nor a
+  screen emulator that reuses Rich's width calculation can prove absence of visible duplication.
 - `<think>` tags inside content are split into reasoning by `_check_and_update_think_tags()`
   (`in_reasoning` state); native reasoning arrives via `LLMResponse.reasoning`. `SHOW_REASONING=false`
   suppresses both header and body.

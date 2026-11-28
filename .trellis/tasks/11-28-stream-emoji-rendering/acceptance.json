@@ -1,0 +1,282 @@
+{
+  "task": ".trellis/tasks/11-28-stream-emoji-rendering",
+  "branch": "chore/refactor-command-tools",
+  "head": "7408c51e583e46e11a1980a4b3f5cc1c49ab3be0",
+  "local_status": "passed_with_documented_sandbox_setup_rerun",
+  "blocking_code_findings": [],
+  "fixed_findings": [
+    {
+      "file": "tests/test_stream_unicode_width.py",
+      "issue": "The original eight width cases printed a tool announcement without executing a tool, leaving acceptance E3 unproven.",
+      "fix": "Added 60/200-column integration cases using real CLI lifecycle, LLMClient, guarded execute_tool_call, ThreadedStream, worker-console routing and Printer/Live. Fake provider makes exactly two requests; fake weather function runs once on the worker; returned and history text are unique; independent wcwidth rows fit; debug-off/on TTY bytes match and real generation breadcrumbs write only to tmp_path."
+    }
+  ],
+  "acceptance": {
+    "E1": {
+      "status": "pass",
+      "old_rich": "14.0.0",
+      "evidence": "/tmp/yr-gft2765k",
+      "result": "4 VS16 cases failed at 61/201 measured columns in 60/200 viewports; 4 CJK/ordinary-emoji controls passed. Original eight test bodies retained."
+    },
+    "E2": {
+      "status": "pass",
+      "rich": "14.3.3",
+      "new_cases": 10,
+      "regression": "tests/test_stream_unicode_width.py",
+      "focused_prior": {
+        "path": "/tmp/yr-z2swbb4k",
+        "passed": 192,
+        "rerun": false
+      },
+      "final_test_evidence": "/tmp/yr-afnmuyxf/stdout.txt",
+      "oracle": "wcwidth.wcswidth 0.2.13, not Rich width helpers"
+    },
+    "E3": {
+      "status": "pass",
+      "before_replay": "/tmp/yr-vz13u19p/emoji-probe/results.json",
+      "after_replay": "/tmp/yr-ymq5ju8t/emoji-probe/results.json",
+      "cases": 26,
+      "vs16_visible_prefix_count": [
+        108,
+        1
+      ],
+      "vs16_extra_wraps": [
+        108,
+        0
+      ],
+      "tool_execution": "Each final integration run executes the fake weather function exactly once in yaicli-stream-bridge and makes two provider requests. Tool dispatcher and body accumulation are real.",
+      "debug": "Off vs tmp_path/debug.log on: raw TTY bytes and returned content identical; exactly one generation.begin/end written when enabled."
+    },
+    "E4": {
+      "status": "pass_local",
+      "lock": {
+        "python": "3.12.11",
+        "rich": "14.3.3",
+        "wcwidth": "0.2.13",
+        "rich_requires_python": ">=3.8.0",
+        "rich_modules_parse_py310": 77,
+        "package_count": 144,
+        "version_changes": {
+          "rich": [
+            "14.0.0",
+            "14.3.3"
+          ]
+        },
+        "other_package_entries_equal": 142,
+        "source_changes": [],
+        "new_requirement": [
+          {
+            "name": "rich",
+            "specifier": ">=14.3.3"
+          }
+        ],
+        "unique_package_names": 142
+      },
+      "full_suite": "3203 passed + three setup errors in sandbox; same frozen files then passed all three loopback cases with approved permission. Total 3206 distinct tests verified; not a single all-green full invocation.",
+      "static": "Repository Ruff --no-fix, ruff format/isort on 86 changed Python files, git diff --check, and Python 3.10 AST passed.",
+      "docs": "mkdocs build --strict passed",
+      "build": {
+        "artifacts": {
+          "yaicli-0.26.0-py3-none-any.whl": "452443ce7ee4c07b6cc173ee966dd6cafd006910cbe4ac8b2fb05ac64466965d",
+          "yaicli-0.26.0.tar.gz": "97e9f78c2940e2703130419ea6f898774c080749a6831c979fc7578f013e3e0d"
+        },
+        "product_files_identical": 120,
+        "wheel_rich_requirement": [
+          "rich>=14.3.3"
+        ],
+        "requires_python": ">=3.10",
+        "version": "0.26.0"
+      },
+      "bench": "Original scripts/bench.py --gate -n 5 --json passed; no script/threshold edits"
+    },
+    "E5": {
+      "status": "local_review_pass_remote_pending",
+      "specs_reviewed": [
+        ".trellis/spec/py/cli-and-rendering.md",
+        ".trellis/spec/repo/build-and-release.md",
+        ".trellis/spec/guides/cross-layer-thinking-guide.md",
+        "docs/dev/debug-cli.md"
+      ],
+      "scope": "No runtime product source or existing test changed vs HEAD; pyproject only Rich floor, uv.lock only Rich version/artifacts/dependency metadata and root Rich requirement.",
+      "pending": [
+        "Main session must record evidence and create the separate fix commit on PR60.",
+        "Push fix and wait for current-head CI, including Python 3.10/3.12/3.13 and startup gate.",
+        "Merge requires explicit user approval after CI. No release/version change authorized."
+      ]
+    }
+  },
+  "verification": {
+    "python": "3.12.11",
+    "lint": "pass",
+    "typecheck": "Not configured in this repository; Python 3.10 AST validation passed for 86 changed files and 77 installed Rich modules. Rich metadata Requires-Python >=3.8.0 accepts 3.10; remote version matrix still pending.",
+    "full_pytest": {
+      "returncode": 1,
+      "seconds": 105.77,
+      "run_dir": "/tmp/yr-afnmuyxf",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "--basetemp",
+        "/tmp/yr-afnmuyxf/pytest",
+        "-o",
+        "cache_dir=/tmp/yr-afnmuyxf/pytest-cache"
+      ],
+      "stdout_log": "/tmp/yr-afnmuyxf/stdout.txt",
+      "stderr_log": "/tmp/yr-afnmuyxf/stderr.txt",
+      "passed": 3203,
+      "errors": 3,
+      "pytest_seconds": 103.27,
+      "error_cause": "Sandbox PermissionError binding 127.0.0.1:0; three setup errors, no failed assertions"
+    },
+    "sandbox_three_case_rerun": {
+      "returncode": 0,
+      "seconds": 4.23,
+      "run_dir": "/tmp/yr-5x_833db",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/test_provider_response_errors.py::TestHeadlessEmptyResponse::test_json_reports_empty_response",
+        "tests/test_provider_response_errors.py::TestHeadlessEmptyResponse::test_text_reports_error_on_stderr",
+        "tests/test_provider_response_errors.py::TestReplEmptyResponse::test_repl_prints_classified_error",
+        "-q",
+        "--basetemp",
+        "/tmp/yr-5x_833db/pytest",
+        "-o",
+        "cache_dir=/tmp/yr-5x_833db/pytest-cache"
+      ],
+      "stdout_log": "/tmp/yr-5x_833db/stdout.txt",
+      "stderr_log": "/tmp/yr-5x_833db/stderr.txt",
+      "passed": 3,
+      "errors": 0,
+      "pytest_seconds": 3.2,
+      "permission": "Authorized escalation for local loopback fake HTTP server only"
+    },
+    "static": {
+      "returncode": 0,
+      "seconds": 1.82,
+      "run_dir": "/tmp/yr-whdwb9x5",
+      "command": [
+        ".venv/bin/python",
+        "/tmp/yaicli_refactor_checks.py"
+      ],
+      "stdout_log": "/tmp/yr-whdwb9x5/stdout.txt",
+      "stderr_log": "/tmp/yr-whdwb9x5/stderr.txt"
+    },
+    "docs": {
+      "returncode": 0,
+      "seconds": 4.57,
+      "run_dir": "/tmp/yr-fr719at3",
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "mkdocs",
+        "build",
+        "--strict",
+        "--site-dir",
+        "/tmp/yaicli-emoji-final-site"
+      ],
+      "stdout_log": "/tmp/yr-fr719at3/stdout.txt",
+      "stderr_log": "/tmp/yr-fr719at3/stderr.txt"
+    },
+    "lock_check": {
+      "returncode": 0,
+      "seconds": 0.12,
+      "run_dir": "/tmp/yr-as1d_0bk",
+      "command": [
+        "uv",
+        "lock",
+        "--check",
+        "--offline"
+      ],
+      "stdout_log": "/tmp/yr-as1d_0bk/stdout.txt",
+      "stderr_log": "/tmp/yr-as1d_0bk/stderr.txt"
+    },
+    "build": {
+      "returncode": 0,
+      "seconds": 1.17,
+      "run_dir": "/tmp/yr-k_7oa_4d",
+      "command": [
+        "uv",
+        "build",
+        "--python",
+        "/tmp/yaicli-refactor-build-env/bin/python",
+        "--no-build-isolation",
+        "--offline",
+        "--out-dir",
+        "/tmp/yaicli-emoji-final-dist"
+      ],
+      "stdout_log": "/tmp/yr-k_7oa_4d/stdout.txt",
+      "stderr_log": "/tmp/yr-k_7oa_4d/stderr.txt"
+    },
+    "build_review": {
+      "artifacts": {
+        "yaicli-0.26.0-py3-none-any.whl": "452443ce7ee4c07b6cc173ee966dd6cafd006910cbe4ac8b2fb05ac64466965d",
+        "yaicli-0.26.0.tar.gz": "97e9f78c2940e2703130419ea6f898774c080749a6831c979fc7578f013e3e0d"
+      },
+      "product_files_identical": 120,
+      "wheel_rich_requirement": [
+        "rich>=14.3.3"
+      ],
+      "requires_python": ">=3.10",
+      "version": "0.26.0"
+    },
+    "startup_gate": {
+      "returncode": 0,
+      "seconds": 20.5,
+      "run_dir": "/tmp/yr-e1s40z4b",
+      "command": [
+        ".venv/bin/python",
+        "scripts/bench.py",
+        "--gate",
+        "-n",
+        "5",
+        "--json"
+      ],
+      "stdout_log": "/tmp/yr-e1s40z4b/stdout.txt",
+      "stderr_log": "/tmp/yr-e1s40z4b/stderr.txt",
+      "metrics": {
+        "results": {
+          "version": 45.9,
+          "help": 508.0,
+          "template": 470.2,
+          "entry_import": 412.7,
+          "repl_ready": 622.2,
+          "oneshot_local": 1683.6
+        },
+        "limits": {
+          "version": 250.0,
+          "help": 900.0,
+          "template": 900.0,
+          "entry_import": 900.0,
+          "repl_ready": 1800.0,
+          "oneshot_local": 2200.0
+        }
+      }
+    }
+  },
+  "limitations": [
+    "The reproduced condition is an emoji-aware terminal measuring VS16 glyphs as two cells; this does not claim a direct observation or successful retest of the user actual terminal.",
+    "Debug lifecycle logs alone do not establish successful generation; generation.end runs in finally.",
+    "Saved grapheme replay tool_call_count measures announcement text; actual execution is established separately by the new integration tests.",
+    "Remote current-head CI was not run by this reviewer; no commit, push, merge or version operation performed."
+  ],
+  "integrity": {
+    "initial_frozen_files": 245,
+    "frozen_manifest": "/tmp/yaicli_emoji_freeze.json",
+    "changed_since_freeze": [],
+    "source_test_manifest": "/tmp/yaicli-emoji-final-source-manifest.json",
+    "source_test_manifest_count": 237,
+    "tracked_source_tests_equal_HEAD": true,
+    "untracked_source_tests": [
+      "tests/test_stream_unicode_width.py"
+    ],
+    "critical_sha256": {
+      "pyproject.toml": "259a050bed6e2a87c46e0fa6ec28e25c3a3aa0b02047a9996902c49259a1b598",
+      "uv.lock": "50007e5b1fea601b581b90d5ac6e4e319e0f8dd3094a82488f6982a7af22f2fe",
+      "tests/test_stream_unicode_width.py": "7e49d1c959cc0c2fc825cde493dddb7a887b2fa31fa4dc503828b90a5c97ef70"
+    }
+  }
+}

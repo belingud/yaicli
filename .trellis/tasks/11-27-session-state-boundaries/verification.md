@@ -122,3 +122,11 @@ uv run --no-sync --offline python scripts/bench.py --gate -n 5 --json
 ## 统一PR交付进度（2026-11-28）
 
 三个阶段已分别提交b7d3ce4、66db062、0bb6415并推送，统一PR [#60](https://github.com/belingud/yaicli/pull/60)目标master。第三阶段完整hash为0bb64158dfe1c1744cda4fed1b73d971ab0cef48。后续任务元数据/日志独立提交，不改已冻结产品与测试；最新head CI通过后仍需用户明确批准合并，未提前归档或发布。
+
+## 用户后续报告的独立渲染缺陷（2026-11-28）
+
+原三阶段验收/PR7408c51的CI通过后，用户报告含☀️的流式回答残留重复。结合已授权读取的debug生命周期日志与真实Rich输出，定位到旧锁Rich14.0.0的VS16计宽缺陷；重构前同样存在。已建立独立任务[stream-emoji-rendering](../11-28-stream-emoji-rendering/prd.md)，以独立fix提交附加到同一PR60，不重写原阶段提交或把升级前门禁冒称升级后验证。其192项聚焦与26组独立重放已绿，完整验收/最新PR CI由该任务继续；合并仍需用户明确确认。
+
+### 缺陷跟进本地验收完成
+
+独立stream-emoji-rendering任务已完成定向Rich14.3.3修复和本地独立检查：旧版4项VS16红灯，修复后10项回归与26组重放通过（108次残留→1次）；真实天气fake工具在工作线程只执行一次，debug前后TTY字节相同。冻结245文件未变，3203项通过后因沙箱回环端口限制产生的3项准备错误同hash补跑通过，共3206个不同测试已验证。静态、strict docs、离线lock/构建、原启动门禁均通过；新版wheel/sdist120产品文件与源码一致。本段不替代上文三阶段历史基线；完整结果见../11-28-stream-emoji-rendering/verification.md及acceptance.json。待单独fix提交和最新head CI，再等待用户明确合并确认。

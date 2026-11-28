@@ -2192,16 +2192,15 @@ wheels = [
 
 [[package]]
 name = "rich"
-version = "14.0.0"
+version = "14.3.3"
 source = { registry = "https://repo.huaweicloud.com/repository/pypi/simple/" }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "pygments" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/a1/53/830aa4c3066a8ab0ae9a9955976fb770fe9c6102117c8ec4ab3ea62d89e8/rich-14.0.0.tar.gz", hash = "sha256:82f1bc23a6a21ebca4ae0c45af9bdbc492ed20231dcb63f297d6d1021a9d5725" }
+sdist = { url = "https://repo.huaweicloud.com/repository/pypi/packages/b3/c6/f3b320c27991c46f43ee9d856302c70dc2d0fb2dba4842ff739d5f46b393/rich-14.3.3.tar.gz", hash = "sha256:b8daa0b9e4eef54dd8cf7c86c03713f53241884e814f4e2f5fb342fe520f639b" }
 wheels = [
-    { url = "https://repo.huaweicloud.com/repository/pypi/packages/0d/9b/63f4c7ebc259242c89b3acafdb37b41d1185c07ff0011164674e9076b491/rich-14.0.0-py3-none-any.whl", hash = "sha256:1c9491e1951aac09caffd42f448ee3d04e58923ffe14993f6e83068dc395d7e0" },
+    { url = "https://repo.huaweicloud.com/repository/pypi/packages/14/25/b208c5683343959b670dc001595f2f3737e051da617f66c31f7c4fa93abc/rich-14.3.3-py3-none-any.whl", hash = "sha256:793431c1f8619afa7d3b52b2cdec859562b950ea0d4b6b505397612db8d5362d" },
 ]
 
 [[package]]
@@ -2980,7 +2979,7 @@ requires-dist = [
     { name = "ollama", marker = "extra == 'ollama'", specifier = ">=0.5.1" },
     { name = "openai", specifier = ">=1.76.0" },
     { name = "prompt-toolkit", specifier = ">=3.0.50" },
-    { name = "rich", specifier = ">=13.9.4" },
+    { name = "rich", specifier = ">=14.3.3" },
     { name = "socksio", specifier = ">=1.0.0" },
     { name = "trafilatura", specifier = ">=1.6.1" },
     { name = "typer", specifier = ">=0.16.0" },
