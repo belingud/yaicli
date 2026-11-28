@@ -14,13 +14,15 @@ returns a JSON string and reports expected failures in-band (never raises).
 
 from __future__ import annotations
 
+import inspect
 import json
+from functools import wraps
 from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
-from .. import plan_mode
 from ..function_schema import OpenAISchema
+from ..planning import service as plan_mode
 
 #: Session tool names exposed by this module (plan/todo state only).
 SESSION_TOOL_NAMES = frozenset({"submit_plan", "todo_write"})
@@ -164,16 +166,20 @@ class SubmitPlanFunction(OpenAISchema):
         change_summary: str = "",
     ) -> str:
         """Validate/submit the plan through :func:`yaicli.plan_mode.handle_submit_plan`."""
-        payload = {
-            "goal": goal,
-            "assumptions": _as_str_list(assumptions),
-            "steps": [_as_payload(step) for step in (steps or [])],
-            "risks": _as_str_list(risks),
-            "not_doing": _as_str_list(not_doing),
-            "revision": revision,
-            "change_summary": change_summary,
-        }
-        return _json(plan_mode.handle_submit_plan(payload))
+        return _submit_plan_result(goal, assumptions, steps, risks, not_doing, revision, change_summary)
+
+
+def _submit_plan_result(goal, assumptions, steps, risks, not_doing, revision, change_summary, *, session=None):
+    payload = {
+        "goal": goal,
+        "assumptions": _as_str_list(assumptions),
+        "steps": [_as_payload(step) for step in (steps or [])],
+        "risks": _as_str_list(risks),
+        "not_doing": _as_str_list(not_doing),
+        "revision": revision,
+        "change_summary": change_summary,
+    }
+    return _json(plan_mode.handle_submit_plan(payload, session=session))
 
 
 class TodoWriteFunction(OpenAISchema):
@@ -197,8 +203,12 @@ class TodoWriteFunction(OpenAISchema):
     @classmethod
     def execute(cls, items: List[TodoItemInput] = []) -> str:
         """Validate/apply the todo list through :func:`yaicli.plan_mode.handle_todo_write`."""
-        payload = {"items": [_as_payload(item) for item in (items or [])]}
-        return _json(plan_mode.handle_todo_write(payload))
+        return _todo_write_result(items)
+
+
+def _todo_write_result(items, *, session=None):
+    payload = {"items": [_as_payload(item) for item in (items or [])]}
+    return _json(plan_mode.handle_todo_write(payload, session=session))
 
 
 #: Tool name -> schema class (also defines the per-mode availability).
@@ -228,20 +238,40 @@ def anthropic_schemas(mode: str) -> List[dict]:
     return [cls.anthropic_schema for cls in _schemas_for(mode)]
 
 
-def gemini_functions(mode: str) -> List[Any]:
+def gemini_functions(mode: str, *, runtime=None) -> List[Any]:
     """Gemini-format session tool callables for ``mode``."""
     from .function import wrap_gemini_function
 
     functions: List[Any] = []
     for cls in _schemas_for(mode):
-        wrapped = wrap_gemini_function(cls.execute)
+        if runtime is None:
+            execute = cls.execute
+        else:
+
+            @wraps(cls.execute)
+            def execute(*args, _cls=cls, **kwargs):
+                bound = inspect.signature(_cls.execute).bind(*args, **kwargs)
+                from ..runtime import bind_config
+
+                with bind_config(runtime.config):
+                    return _execute_bound_session_tool(_cls, bound.arguments, runtime.get_plan_session())
+
+        wrapped = wrap_gemini_function(execute)
         wrapped.__name__ = cls.openai_schema["name"]
         wrapped.__doc__ = cls.openai_schema.get("description", "")
         functions.append(wrapped)
     return functions
 
 
-def execute_session_tool(name: str, arguments: Dict[str, Any]) -> str:
+def _execute_bound_session_tool(func, payload, session):
+    """Share signature validation/normalization without adding a display side effect."""
+    bound = inspect.signature(func.execute).bind(**payload)
+    bound.apply_defaults()
+    handler = _submit_plan_result if func is SubmitPlanFunction else _todo_write_result
+    return handler(**bound.arguments, session=session)
+
+
+def execute_session_tool(name: str, arguments: Dict[str, Any], *, session=None) -> str:
     """Execute one session tool by name; always returns a JSON string.
 
     Invalid arguments and unexpected failures are reported in-band so the model
@@ -259,7 +289,10 @@ def execute_session_tool(name: str, arguments: Dict[str, Any]) -> str:
         )
     payload = arguments if isinstance(arguments, dict) else {}
     try:
-        result = func.execute(**payload)
+        if session is None:
+            result = func.execute(**payload)
+        else:
+            result = _execute_bound_session_tool(func, payload, session)
     except TypeError as exc:
         return _json(
             {
@@ -312,8 +345,8 @@ def _emit_todo_progress(name: str, result: str) -> None:
     if index <= 0 or total <= 0 or not todo_id:
         return
     try:
-        from ..console import safe_text
         from .. import tools as tools_module
+        from ..console import safe_text
 
         tools_module.console.print(f"[todo {index}/{total}] {safe_text(todo_id)} {safe_text(title)}", style="cyan")
     except Exception:  # pragma: no cover - progress display must never break the tool

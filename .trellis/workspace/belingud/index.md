@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 15
-- **Last Active**: 2026-11-27
+- **Total Sessions**: 17
+- **Last Active**: 2026-11-28
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~645 | Active |
+| `journal-1.md` | ~722 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-11-28 | 修复流式emoji重复残留并完成本地验收 | `1b63b424142c12cb3371755f872ceb6dc31b38b7` | `chore/refactor-command-tools` |
+| 16 | 2026-11-28 | Complete three-stage core organization refactor; PR 60 awaiting CI and merge approval | `b7d3ce41d6c9050e03b7a35e3764d4d2c2181470`, `66db0625e6b559f97509760c06e842f774eb8b9c`, `0bb64158dfe1c1744cda4fed1b73d971ab0cef48` | `chore/refactor-command-tools` |
 | 15 | 2026-11-27 | K25 检查点修复、合并与 v0.26.0 发布 | `6758c18`, `662a60c`, `f68affa`, `9c7a6ba`, `a92f6c7` | `master` |
 | 14 | 2026-11-14 | Release v0.24.0 (K23 plan mode) | `ae284fb`, `0433937` | `master` |
 | 13 | 2026-11-14 | K23 persistent plan mode (v0.24): implementation, PR #56 and review hardening | `4d9c82d`, `f1c6831`, `3b0f2db`, `dba875a`, `79c7e71`, `31d1528`, `791eb5e`, `847620a`, `88d28c0`, `2488bcf`, `a11c443`, `759d72e` | `master` |

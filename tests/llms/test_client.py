@@ -72,7 +72,8 @@ class TestLLMClient:
 
         client = LLMClient(provider_name="openai", config=mock_config)
 
-        mock_factory.assert_called_once_with("openai", config=mock_config, verbose=False)
+        mock_factory.assert_called_once_with("openai", config=mock_config, verbose=False, runtime=client.runtime)
+        assert client.runtime.config is mock_config
         assert client.provider == mock_provider
 
     @patch("yaicli.llms.provider.ProviderFactory.create_provider")
@@ -83,7 +84,8 @@ class TestLLMClient:
 
         client = LLMClient(provider_name="openai", config=mock_config)
 
-        mock_factory.assert_called_once_with("openai", config=mock_config, verbose=False)
+        mock_factory.assert_called_once_with("openai", config=mock_config, verbose=False, runtime=client.runtime)
+        assert client.runtime.config is mock_config
         assert client.provider == mock_provider
 
     @patch("yaicli.llms.provider.ProviderFactory.create_provider")
@@ -364,7 +366,10 @@ class TestLLMClient:
 
         client.provider.client = MagicMock()
         client.provider.client.chat.completions.create.side_effect = [first_response, second_response]
-        mock_execute_tool.side_effect = lambda tool_call, announce=True: (f"result-{tool_call.id}", True)
+        mock_execute_tool.side_effect = lambda tool_call, announce=True, *, runtime=None: (
+            f"result-{tool_call.id}",
+            True,
+        )
 
         messages = [ChatMessage(role="user", content="read a.txt and b.txt")]
         responses = list(client.completion_with_tools(messages, stream=False))
@@ -455,7 +460,10 @@ class TestLLMClient:
 
         client.provider.client = MagicMock()
         client.provider.client.chat.completions.create.side_effect = [first_stream, second_stream]
-        mock_execute_tool.side_effect = lambda tool_call, announce=True: (f"result-{tool_call.id}", True)
+        mock_execute_tool.side_effect = lambda tool_call, announce=True, *, runtime=None: (
+            f"result-{tool_call.id}",
+            True,
+        )
 
         messages = [ChatMessage(role="user", content="read a.txt and b.txt")]
         responses = list(client.completion_with_tools(messages, stream=True))

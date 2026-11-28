@@ -1,0 +1,30 @@
+{
+  "id": "core-organization-refactor",
+  "name": "core-organization-refactor",
+  "title": "代码组织渐进式重构",
+  "description": "在保持现有行为和扩展契约的前提下，分阶段明确命令、工具、CLI、计划与会话状态的职责边界",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "belingud",
+  "assignee": "belingud",
+  "createdAt": "2026-11-27",
+  "completedAt": null,
+  "branch": "chore/refactor-command-tools",
+  "base_branch": "master",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": "https://github.com/belingud/yaicli/pull/60",
+  "subtasks": [],
+  "children": [
+    "11-27-command-tool-boundaries",
+    "11-27-cli-planning-boundaries",
+    "11-27-session-state-boundaries"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": " 2026-11-28三个阶段均已验收提交并推送，统一PR #60目标master，第三阶段0bb6415；等待最新head CI及用户明确合并确认，暂不归档。",
+  "meta": {}
+}

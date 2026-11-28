@@ -6,6 +6,8 @@ adding one, or touching the tool-call loop:
 - `yaicli/llms/provider.py` — the `Provider` ABC and `ProviderFactory` (39 registry keys today).
 - `yaicli/llms/providers/` — 39 provider classes across 32 modules; most providers are thin.
 - `yaicli/llms/client.py` — `LLMClient`, the provider-agnostic tool loop, confirmation gate.
+- `yaicli/tools/policy.py` — internal permission decisions consumed by the client; providers do not
+  prompt, persist grants, execute tools or serialize `ToolDecision` onto their wire format.
 - `yaicli/schemas.py` — `LLMResponse`, `ToolCall`, `ChatMessage`, `ToolPolicy`; the only types
   that cross the provider/client boundary.
 
@@ -29,6 +31,26 @@ enforced by tests and by `LLMClient`.
 working, but new code should emit/read `tool_calls`. `LLMClient` never inspects `finish_reason`; it
 collects every call from every response, dedups repeated snapshots by `tool_call.id`, filters by tool
 policy and executes each call once (`tool_calls: dict[str, ToolCall]`, `yaicli/llms/client.py`).
+
+The client delegates risk/policy evaluation to `tools.policy.evaluate_tool_call`, retaining
+`ConfirmToolCall`/`send`, grant-write fallback, audit, paired result messages and the next provider
+request. Public schema helpers remain exported from `yaicli.tools`, backed by `tools.schemas`.
+Preserve each provider's actual declarations: Gemini's callable filtering/direct MCP aggregation
+currently differs from OpenAI/Anthropic; a module move is not permission to change that behavior.
+
+## Runtime dependencies
+
+The built-in client/provider path shares the application SessionContext and its effective mapping.
+Consume the explicit internal runtime argument at the factory/base boundary; never forward it through
+SDK kwargs. Direct LLMClient construction retains the supplied config object and compatible write-back
+semantics. Ready-client injection must not cause replacement or eager SDK construction.
+
+Declarations, tool selection, permission and execution use the same owner's plan/config dependencies.
+Provider protocol differences stay local: Gemini keeps its existing ENABLED_TOOLS and direct MCP behavior.
+Its delayed callable adapters retain the owner's configuration/session without exposing runtime, config
+or session as model parameters, and keep names/docs/signatures expected by the SDK. Context scopes must
+cover actual generator/callback consumption and restore correctly on errors and close; environment locks
+belong only to the actual tool execution boundary, never the provider generator.
 
 ## Provider Families
 

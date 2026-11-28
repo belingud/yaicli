@@ -77,8 +77,9 @@ def _workspace_root() -> Path:
     raw = ""
     try:  # Lazy import: approval.py must stay importable without the config singleton.
         from ..config import cfg
+        from ..runtime import current_config
 
-        raw = str(cfg.get("WORKSPACE_ROOT") or "").strip()
+        raw = str(current_config(cfg).get("WORKSPACE_ROOT") or "").strip()
     except Exception:  # pragma: no cover - config lookups must never break approval
         raw = ""
     if raw:

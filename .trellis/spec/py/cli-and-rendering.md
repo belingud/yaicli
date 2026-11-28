@@ -1,13 +1,14 @@
 # CLI & Rendering Guidelines
 
-> Scope: before touching `yaicli/entry.py`, `cli.py`, `chat.py`, `cmd_handler.py`, `completer.py`,
+> Scope: before touching `yaicli/entry.py`, `cli.py`, `application/`, `planning/`, `chat.py`, `cmd_handler.py`, `commands/`, `completer.py`,
 > `printer.py`, `render.py`, `image.py`, `exceptions.py`, or their tests. Config/context internals:
 > [config-and-context.md](./config-and-context.md). Cross-layer data flow: [cross-layer guide](../guides/cross-layer-thinking-guide.md).
 
-`entry.py` (Typer surface) → `cli.py` (orchestrator) → `cmd_handler.py` / `chat.py` / `context.py`
-(session services) → `printer.py` (display) → `llms/client.py` (generator). Only `entry.py` parses
-arguments and only `printer.py` renders output; `entry.py` stays thin: normalize input → build `CLI` →
-`cli.run(...)` → map exceptions to messages.
+`entry.py` (Typer surface) → `cli.py` (assembly and terminal lifecycle) → named command,
+session, output and planning services → `printer.py` (stream display) / `llms/client.py` (generator).
+`application/session.py` owns chat state and persistence; `application/output.py` owns machine result
+state, events and exit mapping; `planning/coordinator.py` owns plan application coordination.
+`entry.py` stays thin: normalize input → build `CLI` → `cli.run(...)` → map exceptions to messages.
 
 ## Entry Points & Typer Surface
 
@@ -68,6 +69,13 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 
 ## Runtime Modes & Dispatch (`cli.py`)
 
+- `SessionController`, `MachineOutput` and `PlanCoordinator` receive concrete dependencies, never the
+  whole CLI or an object forwarding arbitrary CLI attributes. `RunState` holds shared run options;
+  result state belongs to `MachineOutput`, chat/checkpoint coordination to `SessionController`.
+  Preserve one authoritative state and delegate existing public CLI properties to it.
+- Keep provider generation, `Printer`, confirmation pumping, worker watching and terminal key
+  handling in the CLI. Planning coordination uses the named `PlanTurns` lifecycle operations;
+  do not move generation ownership into a storage service or change checkpoint lock ordering.
 - Runtime modes are three strings: `TEMP_MODE` (default single-shot), `CHAT_MODE` (REPL), `EXEC_MODE`
   (generate-then-confirm shell command). There is no code runtime mode: `--code` selects the `CODER` role
   plus `Printer(content_markdown=False)` through `evaluate_role_name`, not a `current_mode`. A fourth mode
@@ -98,14 +106,22 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   `fail_on_tool_denied`, `output_format`, `quiet`, `machine_output`. `_finalize_exit_code()` maps them:
   interrupted → 130, denied + `--fail-on-tool-denied` → 3, handled error / depth limit (when
   `EXIT_ON_DEPTH_LIMIT`) → 1, else 0. The client reports depth/denial via its own flags; the CLI
-  mirrors them after each turn.
+  records them in its output service after each turn; its public properties expose that same state.
 - `CLI.run()`: `chat=True` loads a session by `user_input` title then calls `_run_repl()`; otherwise
   `_run_once()` = `set_role(...)` + `_process_user_input()`. Empty `user_input` with `chat=False` raises
   `typer.Abort`; `entry.main` makes sure image-only calls pass a non-empty prompt.
-- DI seam: `CLI(verbose, role, chat_manager, role_manager, context_manager, client)`, defaulting to the
-  singletons `chat_mgr`/`role_mgr`/`ctx_mgr`; tests pass `MagicMock`s and overwrite `cli.console`/`cli.session`.
-  `__init__` resolves "auto" `OS_NAME`/`SHELL_NAME` via `detect_os`/`detect_shell`; `--verbose` masks `API_KEY`
-  and in machine mode writes to stderr.
+- DI seams preserve ready clients and injected managers; optional internal `config` supplies the parsed
+  assembly source. CLI deep-copies it once, exposes the same mapping through `self.config` and
+  `self.runtime.config`, and creates its own default FileChatManager directory. Shared role/context
+  managers remain compatible. Auto OS/shell detection and runtime commands update this session mapping.
+  Tests should construct a real CLI with fake boundary dependencies instead of bypassing initialization.
+  `--verbose` masks API_KEY and writes diagnostics to stderr in machine mode.
+
+The SessionContext owns the sole lazy plan reference shared by the coordinator and built-in client.
+CLI compatibility plan properties delegate to it; normal execution must not synchronize a global tool
+mode copy. Bind the owning effective config through message construction, actual generator consumption,
+worker start and save callbacks, restoring on exit. This binding carries no environment lock. Keep the
+actual tool environment adapter inside the execution thread and preserve cancellation/pending semantics.
 
 ## Message Assembly & Tool Policy
 
@@ -127,7 +143,7 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
   Image-only invocations are handled in `entry.main`, which substitutes `Describe the image.` /
   `Describe these images.` so `CLI.run()` never receives an empty prompt.
 - `_get_tool_policy()` (`cli.py:308`) is the single `ToolPolicy` source: `EXEC_MODE` disables functions
-  **and** MCP; else pass `cfg["ENABLE_FUNCTIONS"]`/`cfg["ENABLE_MCP"]`. The client intersects it with the
+  **and** MCP; else pass the owned mapping's `ENABLE_FUNCTIONS`/`ENABLE_MCP`. The client intersects it with the
   provider default (`Provider.resolve_tool_policy`), so disable tools here, never ad hoc.
 - After each turn `_process_user_input()` rebuilds `chat.history` from the client-returned messages
   **filtering out every `role == "system"`**. Context economy (v0.19): `LLMClient` enforces the token
@@ -156,8 +172,8 @@ arguments and only `printer.py` renders output; `entry.py` stays thin: normalize
 - `prepare_chat_loop()` sets `CHAT_MODE`, installs Shift+Tab (`s-tab`) chat/exec toggling in
   `_setup_key_bindings()`, makes the `HISTORY_FILE` setup OSError-tolerant (read-only HOME / container:
   warn once, continue without history; never crash), then builds `PromptSession` with
-  `LimitedFileHistory(HISTORY_FILE, max_entries=cfg["MAX_HISTORY"])` (a non-positive `MAX_HISTORY`
-  disables history saving), `AutoSuggestFromHistory()` when `cfg["AUTO_SUGGEST"]`, `AtPathCompleter()`,
+  `LimitedFileHistory(HISTORY_FILE, max_entries=self.config["MAX_HISTORY"])` (a non-positive `MAX_HISTORY`
+  disables history saving), `AutoSuggestFromHistory()` when `self.config["AUTO_SUGGEST"]`, `AtPathCompleter()`,
   `complete_while_typing=True`; on failure it falls back to `PromptSession(key_bindings=...)` and prints
   `Error initializing prompt session history: {e}`. `_setup_key_bindings()` also binds `c-o`:
   the handler calls `event.app.exit(exception=ToolOutputViewerRequested())` (never `raise` inside the
@@ -231,11 +247,18 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
 
 ## Slash Commands & Completion
 
-- `CmdHandler.commands` maps `const.CMD_*` constants to handlers; exact matches first, then prefix match for
-  argument-taking commands (`/save`, `/load`, `/del`, `/mode`, `/add`, `/context`, `/compact`,
-  `/permissions`, `/undo`). Aliases: `/ctx`, `/chats`, `?`, and `!`/`！` → `subprocess.call(shell=True)`.
+- `commands/registry.py::COMMAND_INFO` is the authority for spelling, handler method name, aliases,
+  help text and `accepts_arguments`. `COMMAND_BY_NAME` and `command_completions()` derive from it;
+  `CmdHandler` binds handlers on its own instance. `cmd_handler.py` preserves the existing metadata,
+  helper and constant exports without a second registry. Exact whole-input matches run first, then
+  exact whitespace-delimited command tokens for argument-taking entries; never use string prefixes.
+  Normalize only for matching and pass argument-taking handlers the unchanged input. Aliases include
+  `/ctx`, `/chats`, `/delete`, `?`; `?` executes but is excluded from slash completion.
+  `!`/`！` retain their direct `subprocess.call(shell=True)` path.
   `handle_command()` returns `True` (continue), `False` (exit) or the original input; handlers return
-  `bool` and print via `self.cli.console`.
+  `bool` and use the bound console. Migrated session/planning/runtime commands live in
+  `commands/session.py`, `planning.py` and `runtime.py`, receiving the services and named operations
+  they use; they must not reach into CLI `_client`, retry snapshots or private business methods.
 - `/add`, `/context` use `shlex.split` (quoted paths work) and strip one leading `@`; bad quoting prints
   `Error parsing command`. Bare `/context` prints the estimated token usage block (window source,
   role/project/add buckets, history, `overhead`, total/budget, remaining, reserve) **and** the legacy
@@ -247,13 +270,18 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
   lists session/persisted/rules and revokes persisted entries.
 - `/undo` (v0.21 K11) restores the most recent builtin-filesystem mutation the agent made in this
   process (backup restore, or delete a path the agent created) and prints what was restored/deleted;
-  with an empty stack it prints a friendly message. `CMD_UNDO` is cmd_handler-local; the undo stack
+  with an empty stack it prints a friendly message. `CMD_UNDO` is defined in the command registry and
+  re-exported by `cmd_handler`; the undo stack
   lives in `yaicli/tools/workspace.py` and is populated by `execute_tool_call`, not by the handler.
   See [function-tool-guidelines.md](./function-tool-guidelines.md) for the guard/backup contract.
-- New command checklist: constant in `const.py` (or cmd_handler-local like `CMD_COMPACT`/`CMD_UNDO`) → register in
-  `CmdHandler.commands` → usage line in `cli.print_help()` → path prefix in `completer.py`
-  (`_is_context_command`) if it takes a path (`tests/test_command_handler.py` covers shlex errors,
-  missing args, aliases, tri-state return).
+- New command checklist: handler or thin forwarder in `CmdHandler` to the relevant command group,
+  plus one `CommandInfo(command, description, usage,
+  aliases, handler, accepts_arguments)` entry in `commands/registry.py`; dispatch, help and completion
+  follow it. Existing `const.CMD_*` values stay compatible; command-local constants now live in the
+  registry. Add a path prefix in `completer.py::_is_context_command` only when path completion is needed.
+  Preserve `/help extra` as ordinary input, while `/checkpoints extra` reaches its handler and prints
+  Usage. Tests must freeze expected command/alias/argument behavior independently of `COMMAND_INFO`,
+  so deleting one registry entry cannot make all consistency checks pass together.
 - `AtPathCompleter(base_dir=Path.cwd())` fires only on `@` in `document.text_before_cursor` or the `/add`,
   `/context add`, `/context remove` prefixes. Completions are relative to `base_dir`, directories get `/`,
   spaces are quoted, hidden files are listed, `display_meta` is `[DIR]` or the suffix, and
@@ -270,6 +298,14 @@ confirmation. Contract defined by `LLMClient.completion_with_tools()` and `schem
 - Content renders in `Live(console=self.console, auto_refresh=False)` with explicit
   `live.update(..., refresh=True)`; auto-refresh is deliberately off (no refresh thread racing tool-output
   `console.print`). Keep `_safe_stop_live` + `finally`: errors must stop the live and re-raise.
+- Keep `rich>=14.3.3`: older width calculations count VS16 emoji such as `☀️`/`❤️` as one cell
+  while emoji-aware terminals display two. Full-width Live padding then wraps an extra row and
+  leaves old frames in scrollback. Use the upstream fix, preserving model text and emoji; do not
+  deduplicate content, strip variation selectors or monkeypatch Rich's global width functions.
+  Regression tests must drive real Printer/Live output and measure visible rows with an independent
+  width oracle (`wcwidth.wcswidth`), including 60/200-column output after a tool round. Raw ANSI
+  output legitimately contains previous frames; neither substring counts in that raw stream nor a
+  screen emulator that reuses Rich's width calculation can prove absence of visible duplication.
 - `<think>` tags inside content are split into reasoning by `_check_and_update_think_tags()`
   (`in_reasoning` state); native reasoning arrives via `LLMResponse.reasoning`. `SHOW_REASONING=false`
   suppresses both header and body.

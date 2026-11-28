@@ -2,7 +2,17 @@ import difflib
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from rich.console import Group, RenderableType
 from rich.live import Live
@@ -11,7 +21,13 @@ from rich.prompt import Prompt
 from rich.text import Text
 
 from .config import Config, get_config
-from .console import YaiConsole, get_console, safe_text, strip_control_chars, untrusted_text
+from .console import (
+    YaiConsole,
+    get_console,
+    safe_text,
+    strip_control_chars,
+    untrusted_text,
+)
 from .render import Markdown, plain_formatter
 from .schemas import ConfirmToolCall, LLMResponse, RefreshLive, ToolConfirmDecision
 from .tools.approval import canonical_arguments, parse_tool_arguments
@@ -745,7 +761,7 @@ class Printer:
     def _shorten_plan_path(path: Any) -> str:
         """Render a plan file path with the home directory abbreviated."""
         try:
-            from . import plan_store
+            from .planning import store as plan_store
 
             return plan_store.shorten_path(Path(path))
         except Exception:  # pragma: no cover - defensive: display must never break

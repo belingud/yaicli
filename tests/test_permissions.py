@@ -51,7 +51,12 @@ from yaicli.tools.approval import (
     parse_tool_arguments,
     summarize_arguments,
 )
-from yaicli.tools.risk import BUILTIN_TOOL_RISK, RiskLevel, classify_shell_command, get_tool_risk
+from yaicli.tools.risk import (
+    BUILTIN_TOOL_RISK,
+    RiskLevel,
+    classify_shell_command,
+    get_tool_risk,
+)
 
 MCP_PREFIX = "_mcp__"
 
@@ -198,9 +203,8 @@ def execute_and_capture(name, raw_arguments):
     tool = RecordingTool()
     fake_cfg = {"SHOW_FUNCTION_OUTPUT": False, "SHOW_MCP_OUTPUT": False}
     with (
-        patch("yaicli.tools.get_function", return_value=tool),
+        patch("yaicli.tools.executor.get_function", return_value=tool),
         patch("yaicli.tools.cfg", fake_cfg),
-        patch("yaicli.tools._sync_shell_guardrail_env"),
     ):
         result, ok = execute_tool_call(ToolCall(id="c1", name=name, arguments=raw_arguments), announce=False)
     assert ok is True, result

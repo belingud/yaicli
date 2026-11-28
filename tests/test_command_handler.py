@@ -1,5 +1,8 @@
+import subprocess
+import sys
+from contextlib import ExitStack
 from types import MappingProxyType
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -13,11 +16,26 @@ from yaicli.cmd_handler import (
     CmdHandler,
     command_completions,
 )
+from yaicli.config import cfg
 from yaicli.const import (
     CHAT_MODE,
     EXEC_MODE,
     DefaultRoleNames,
 )
+
+
+def _command_ports(cli):
+    """Provide the explicit data/service ports consumed by command presentation."""
+    cli.config = dict(cfg)
+    cli.run_state = cli
+    if hasattr(cli, "sessions"):
+        cli.sessions.state = cli
+        cli.sessions.chat = cli.chat
+    if hasattr(cli, "invalidate_client"):
+        cli.invalidate_client.side_effect = lambda: setattr(cli, "active_client", None)
+    if hasattr(cli, "clear_retry_snapshot"):
+        cli.clear_retry_snapshot.side_effect = lambda: setattr(cli.sessions, "retry_snapshot", None)
+    return cli
 
 
 @pytest.fixture
@@ -36,7 +54,7 @@ def mock_cli():
 @pytest.fixture
 def cmd_handler(mock_cli):
     """Create a CmdHandler instance with mock CLI for testing."""
-    return CmdHandler(mock_cli)
+    return CmdHandler(_command_ports(mock_cli))
 
 
 class TestCmdHandler:
@@ -133,50 +151,50 @@ class TestCmdHandler:
         # Test with title
         result = cmd_handler.handle_command("/save New Title")
         assert result is True
-        cmd_handler.cli._save_chat.assert_called_once_with("New Title")
+        cmd_handler.cli.sessions.save_chat.assert_called_once_with("New Title")
 
         # Test without title
-        cmd_handler.cli._save_chat.reset_mock()
+        cmd_handler.cli.sessions.save_chat.reset_mock()
         result = cmd_handler.handle_command("/save")
         assert result is True
-        cmd_handler.cli._save_chat.assert_called_once_with(cmd_handler.cli.chat.title)
+        cmd_handler.cli.sessions.save_chat.assert_called_once_with(cmd_handler.cli.chat.title)
 
     def test_handle_load_command(self, cmd_handler):
         """Test handling load command."""
         # Test with valid index
         result = cmd_handler.handle_command("/load 1")
         assert result is True
-        cmd_handler.cli._load_chat_by_index.assert_called_once_with(index="1")
+        cmd_handler.cli.sessions.load_chat_by_index.assert_called_once_with(index="1")
 
         # Test without index - should show usage message
-        cmd_handler.cli._load_chat_by_index.reset_mock()
+        cmd_handler.cli.sessions.load_chat_by_index.reset_mock()
         cmd_handler.cli.console.print.reset_mock()
         result = cmd_handler.handle_command("/load")
         assert result is True
         cmd_handler.cli.console.print.assert_any_call("Usage: /load <index>", style="yellow")
-        cmd_handler.cli._list_chats.assert_called_once()
+        cmd_handler.cli.sessions.list_chats.assert_called_once()
 
     def test_handle_delete_command(self, cmd_handler):
         """Test handling delete command."""
         # Test with valid index
         result = cmd_handler.handle_command("/delete 1")
         assert result is True
-        cmd_handler.cli._delete_chat_by_index.assert_called_once_with(index="1")
+        cmd_handler.cli.sessions.delete_chat_by_index.assert_called_once_with(index="1")
 
         # Test without index - should show usage message
-        cmd_handler.cli._delete_chat_by_index.reset_mock()
+        cmd_handler.cli.sessions.delete_chat_by_index.reset_mock()
         cmd_handler.cli.console.print.reset_mock()
         result = cmd_handler.handle_command("/delete")
         assert result is True
         cmd_handler.cli.console.print.assert_any_call("Usage: /del <index>", style="yellow")
-        cmd_handler.cli._list_chats.assert_called_once()
+        cmd_handler.cli.sessions.list_chats.assert_called_once()
 
     def test_handle_list_command(self, cmd_handler):
         """Test handling list command."""
         with patch.object(cmd_handler, "handle_list", return_value=True):
             result = cmd_handler.handle_command("/chats")
             assert result is True
-            cmd_handler.cli._list_chats.assert_called_once()
+            cmd_handler.cli.sessions.list_chats.assert_called_once()
 
     def test_handle_mode_command(self, cmd_handler):
         """Test handling mode command."""
@@ -312,7 +330,7 @@ class TestHandleHistoryToolCalls:
         assistant_msg = MagicMock(role="assistant", content="Let me check", tool_calls=[tool_call])
         cmd_handler.cli.chat.history = [assistant_msg]
 
-        with patch("yaicli.cmd_handler.cfg", {"CODE_THEME": "monokai"}):
+        with patch.object(cmd_handler.cli, "config", {"CODE_THEME": "monokai"}):
             result = cmd_handler.handle_history()
 
         assert result is True
@@ -360,14 +378,15 @@ class TestContextUsageOutput:
         cli.chat.history = []
         for name, value in cli_attrs.items():
             setattr(cli, name, value)
-        return cli, CmdHandler(cli)
+        return cli, CmdHandler(_command_ports(cli))
 
     def test_known_model_prints_window_source_and_reserve(self):
         cli, handler = self._handler()
 
         with (
-            patch(
-                "yaicli.cmd_handler.cfg",
+            patch.object(
+                cli,
+                "config",
                 {"PROVIDER": "openrouter", "MAX_TOKENS": 1024, "CONTEXT_SAFETY_TOKENS": 1024},
             ),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=self._usage()),
@@ -412,7 +431,7 @@ class TestContextUsageOutput:
         )
 
         with (
-            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openai", "MAX_TOKENS": 1024}),
+            patch.object(cli, "config", {"PROVIDER": "openai", "MAX_TOKENS": 1024}),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=usage),
         ):
             handler._print_context_usage()
@@ -438,7 +457,7 @@ class TestContextUsageOutput:
         fake_usage = self._usage()
 
         with (
-            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openrouter"}),
+            patch.object(cli, "config", {"PROVIDER": "openrouter"}),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=fake_usage) as estimator,
         ):
             assert handler._context_usage() is fake_usage
@@ -456,11 +475,11 @@ class TestContextUsageOutput:
         cli.console = MagicMock()
         cli.chat = MagicMock()
         cli.chat.history = []
-        handler = CmdHandler(cli)
+        handler = CmdHandler(_command_ports(cli))
         fake_usage = self._usage()
 
         with (
-            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openai"}),
+            patch.object(cli, "config", {"PROVIDER": "openai"}),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=fake_usage) as estimator,
         ):
             assert handler._context_usage() is fake_usage
@@ -475,7 +494,7 @@ class TestContextUsageOutput:
         cli.context_manager.list_items = MagicMock()
 
         with (
-            patch("yaicli.cmd_handler.cfg", {"PROVIDER": "openai"}),
+            patch.object(cli, "config", {"PROVIDER": "openai"}),
             patch("yaicli.cmd_handler.estimate_context_usage", return_value=self._usage()),
         ):
             assert handler.handle_context("/context budget") is True
@@ -517,14 +536,14 @@ class TestHandleCost:
     def _handler(self, snapshot):
         cli = MagicMock()
         cli.console = MagicMock()
-        cli._client = MagicMock()
-        cli._client.usage_snapshot = MagicMock(return_value=snapshot)
-        cli._client.last_finish_reason = "stop"
-        return CmdHandler(cli)
+        cli.active_client = MagicMock()
+        cli.active_client.usage_snapshot = MagicMock(return_value=snapshot)
+        cli.active_client.last_finish_reason = "stop"
+        return CmdHandler(_command_ports(cli))
 
     def test_cost_without_client_prints_friendly_line(self, mock_cli):
-        mock_cli._client = None
-        handler = CmdHandler(mock_cli)
+        mock_cli.active_client = None
+        handler = CmdHandler(_command_ports(mock_cli))
 
         assert handler.handle_command(CMD_COST) is True
 
@@ -600,8 +619,8 @@ _FAKE_MODEL_CFG = {"MODEL": "gpt-4o-mini", "PROVIDER": "openai"}
 def _model_handler():
     cli = MagicMock()
     cli.console = MagicMock()
-    cli._client = MagicMock()
-    return cli, CmdHandler(cli)
+    cli.active_client = MagicMock()
+    return cli, CmdHandler(_command_ports(cli))
 
 
 class TestHandleModel:
@@ -613,7 +632,7 @@ class TestHandleModel:
 
     def test_show_current_model_and_provider(self):
         cli, handler = _model_handler()
-        with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)):
+        with patch.object(cli, "config", dict(_FAKE_MODEL_CFG)):
             assert handler.handle_command(CMD_MODEL) is True
 
         printed = _printed_text(cli.console)
@@ -622,13 +641,13 @@ class TestHandleModel:
 
     def test_switch_model_updates_config_and_invalidates_client(self):
         cli, handler = _model_handler()
-        old_client = cli._client
-        with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)) as fake_cfg:
+        old_client = cli.active_client
+        with patch.object(cli, "config", dict(_FAKE_MODEL_CFG)) as fake_cfg:
             assert handler.handle_command(f"{CMD_MODEL} gpt-4o") is True
             assert fake_cfg["MODEL"] == "gpt-4o"
 
-        assert cli._client is None
-        assert cli._client is not old_client
+        assert cli.active_client is None
+        assert cli.active_client is not old_client
         printed = _printed_text(cli.console)
         assert "Model switched: gpt-4o-mini -> gpt-4o" in printed
         # The notice says how to revert.
@@ -636,16 +655,17 @@ class TestHandleModel:
 
     def test_switch_to_same_model_is_a_noop(self):
         cli, handler = _model_handler()
-        with patch("yaicli.cmd_handler.cfg", dict(_FAKE_MODEL_CFG)):
+        old_client = cli.active_client
+        with patch.object(cli, "config", dict(_FAKE_MODEL_CFG)):
             handler.handle_command(f"{CMD_MODEL} gpt-4o-mini")
 
-        assert cli._client is cli._client  # untouched client slot
+        assert cli.active_client is old_client
         assert "Already using model" in _printed_text(cli.console)
 
     def test_switch_without_writable_config_prints_error(self):
         cli, handler = _model_handler()
         # A mapping without __setitem__ models a read-only config object.
-        with patch("yaicli.cmd_handler.cfg", MappingProxyType(dict(_FAKE_MODEL_CFG))):
+        with patch.object(cli, "config", MappingProxyType(dict(_FAKE_MODEL_CFG))):
             assert handler.handle_command(f"{CMD_MODEL} other-model") is True
 
         assert "Could not update the session model" in _printed_text(cli.console)
@@ -667,7 +687,7 @@ class TestHandleRole:
             {"id": "Code Assistant", "name": "Code Assistant"},
             {"id": "SQL Expert", "name": "SQL Expert"},
         ]
-        return cli, CmdHandler(cli)
+        return cli, CmdHandler(_command_ports(cli))
 
     def test_role_is_registered(self, cmd_handler):
         assert CMD_ROLE in cmd_handler.commands
@@ -718,15 +738,15 @@ class TestHandleRetry:
     def test_retry_delegates_to_cli(self):
         cli = MagicMock()
         cli.console = MagicMock()
-        handler = CmdHandler(cli)
+        handler = CmdHandler(_command_ports(cli))
 
         assert handler.handle_command(CMD_RETRY) is True
-        cli._retry_last_turn.assert_called_once()
+        cli.retry_last_turn.assert_called_once()
 
     def test_retry_without_snapshot_support_is_friendly(self):
         cli = MagicMock(spec=["console"])
         cli.console = MagicMock()
-        handler = CmdHandler(cli)
+        handler = CmdHandler(_command_ports(cli))
 
         assert handler.handle_retry() is True
         assert "Nothing to retry" in _printed_text(cli.console)
@@ -734,8 +754,8 @@ class TestHandleRetry:
     def test_retry_failure_does_not_escape(self):
         cli = MagicMock()
         cli.console = MagicMock()
-        cli._retry_last_turn.side_effect = RuntimeError("boom")
-        handler = CmdHandler(cli)
+        cli.retry_last_turn.side_effect = RuntimeError("boom")
+        handler = CmdHandler(_command_ports(cli))
 
         assert handler.handle_retry() is True
         assert "Retry failed: boom" in _printed_text(cli.console)
@@ -760,6 +780,174 @@ class TestCommandMetadata:
         assert "/cost" in {command for command, _ in command_completions()}
 
 
+# Freeze the v0.26 contract independently of the production registry. Deriving
+# expected values from COMMAND_INFO would miss an entry deleted from every view.
+# Fields: token, handler, accepts trailing input, help spelling, description, aliases.
+_COMMAND_CONTRACT = (
+    ("/help", "handle_help", False, "/help|?", "Show help message", ("?",)),
+    ("/clear", "handle_clear", False, "/clear", "Clear chat history", ()),
+    ("/his", "handle_history", False, "/his", "Show chat history", ()),
+    ("/list", "handle_list", False, "/list|/chats", "List saved chats", ("/chats",)),
+    ("/save", "handle_save", True, "/save <title>", "Save current chat", ()),
+    ("/load", "handle_load", True, "/load <index>", "Load a saved chat", ()),
+    ("/del", "handle_delete", True, "/del|/delete <index>", "Delete a saved chat", ("/delete",)),
+    ("/add", "handle_add_context", True, "/add <path>", "Add @file/dir to context", ()),
+    (
+        "/context",
+        "handle_context",
+        True,
+        "/context, /ctx",
+        "Show context/token usage; manage context (list, add, remove, clear, budget)",
+        ("/ctx",),
+    ),
+    (
+        "/plan",
+        "handle_plan",
+        True,
+        "/plan [task|list [--all]|show [id]|edit|review [id]|resume [id]|clear [--done|--all]|abort]",
+        "Plan mode: toggle, or plan a task; list/show/edit/review/resume/clear/abort",
+        (),
+    ),
+    ("/todo", "handle_todo", False, "/todo", "Show the current plan todos", ()),
+    ("/cost", "handle_cost", False, "/cost", "Show session token usage and estimated cost", ()),
+    (
+        "/compact",
+        "handle_compact",
+        True,
+        "/compact [keep_rounds]",
+        "Compact history, keeping the last N turn groups (default 5)",
+        (),
+    ),
+    (
+        "/permissions",
+        "handle_permissions",
+        True,
+        "/permissions [revoke <tool-or-index>]",
+        "List/revoke tool permissions and session grants",
+        (),
+    ),
+    (
+        "/show-output",
+        "handle_show_output",
+        False,
+        "/show-output",
+        "View this turn's tool outputs (same as Ctrl+O)",
+        (),
+    ),
+    ("/undo", "handle_undo", False, "/undo", "Undo the last file change made by a tool", ()),
+    ("/checkpoints", "handle_checkpoints", True, "/checkpoints", "List saved conversation checkpoints", ()),
+    ("/rewind", "handle_rewind", True, "/rewind [id]", "Restore a previous conversation checkpoint", ()),
+    ("/fork", "handle_fork", True, "/fork [id] [title]", "Save the current conversation and rewind", ()),
+    ("/model", "handle_model", True, "/model [name]", "Show or switch the model for this session", ()),
+    ("/role", "handle_role", True, "/role [name]", "Show or switch the assistant role", ()),
+    ("/retry", "handle_retry", False, "/retry", "Re-run the last user turn (e.g. after an API error)", ()),
+    ("/exit", "handle_exit", False, "/exit|Ctrl+D", "Exit (Ctrl+D also exits)", ()),
+    ("/mode", "handle_mode", True, "/mode chat|exec", "Switch mode (Case insensitive)", ()),
+)
+_COMMAND_ROUTES = tuple(
+    (name, handler, accepts_arguments)
+    for token, handler, accepts_arguments, _, _, aliases in _COMMAND_CONTRACT
+    for name in (token, *aliases)
+)
+
+
+@pytest.fixture
+def isolated_command_routes(mock_cli):
+    """Keep all business handlers inert while checking the real dispatcher."""
+    with ExitStack() as stack:
+        handlers = {
+            name: stack.enter_context(patch.object(CmdHandler, name, return_value=True))
+            for name in {handler for _, handler, _ in _COMMAND_ROUTES}
+        }
+        yield CmdHandler(_command_ports(mock_cli)), handlers
+
+
+class TestFrozenCommandContract:
+    def test_compatibility_exports_use_the_same_registry_objects(self):
+        from yaicli import cmd_handler
+        from yaicli.commands import registry
+
+        assert cmd_handler.COMMAND_INFO is registry.COMMAND_INFO
+        assert cmd_handler.CommandInfo is registry.CommandInfo
+        assert cmd_handler.command_completions is registry.command_completions
+
+    def test_registry_import_does_not_load_the_application_or_provider_sdks(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import sys; import yaicli.commands.registry; "
+                "assert not ({'yaicli.cli', 'yaicli.entry', 'yaicli.config', 'yaicli.llms', "
+                "'openai', 'anthropic', 'google.genai', 'fastmcp'} & sys.modules.keys())",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 0, result.stderr
+
+    def test_registration_contains_the_frozen_commands_and_aliases(self, cmd_handler):
+        assert set(cmd_handler.commands) == {name for name, _, _ in _COMMAND_ROUTES}
+
+    def test_help_and_completion_keep_the_frozen_order_and_text(self, mock_cli):
+        from yaicli.cli import CLI
+
+        CLI.print_help(mock_cli)
+
+        assert [item for item in mock_cli.console.print.call_args_list if item.kwargs.get("markup") is False] == [
+            call(f"{usage:<19}: {description}", markup=False) for _, _, _, usage, description, _ in _COMMAND_CONTRACT
+        ]
+        assert command_completions() == tuple(
+            (name, description)
+            for token, _, _, _, description, aliases in _COMMAND_CONTRACT
+            for name in (token, *aliases)
+            if name.startswith("/")
+        )
+
+    @pytest.mark.parametrize("token,handler_name,accepts_arguments", _COMMAND_ROUTES)
+    def test_exact_token_dispatch_is_case_insensitive_and_ignores_outer_whitespace(
+        self, isolated_command_routes, token, handler_name, accepts_arguments
+    ):
+        handler, methods = isolated_command_routes
+
+        assert handler.handle_command(f" \t{token.upper()} \t") is True
+
+        methods[handler_name].assert_called_once_with()
+        assert sum(method.call_count for method in methods.values()) == 1
+
+    @pytest.mark.parametrize("token,handler_name,accepts_arguments", _COMMAND_ROUTES)
+    def test_only_argument_commands_receive_the_unchanged_raw_input(
+        self, isolated_command_routes, token, handler_name, accepts_arguments
+    ):
+        handler, methods = isolated_command_routes
+        raw = f' \t{token.upper()}\t MixedCase  "A path with spaces"  \t'
+
+        result = handler.handle_command(raw)
+
+        if accepts_arguments:
+            assert result is True
+            methods[handler_name].assert_called_once_with(raw)
+            assert sum(method.call_count for method in methods.values()) == 1
+        else:
+            assert result == raw
+            assert all(not method.called for method in methods.values())
+
+    @pytest.mark.parametrize(
+        "raw",
+        ["/modelx hello", "/modelexec", "/ctxx list", "/unknown ARG", "hello world", " !pwd", " ！pwd", ""],
+    )
+    def test_unknown_or_approximate_command_is_the_original_prompt(self, isolated_command_routes, raw):
+        handler, methods = isolated_command_routes
+
+        assert handler.handle_command(raw) == raw
+        assert all(not method.called for method in methods.values())
+
+    def test_question_mark_really_displays_help_but_is_not_a_slash_completion(self, cmd_handler, mock_cli):
+        assert cmd_handler.handle_command(" ? ") is True
+        mock_cli.print_help.assert_called_once_with()
+        assert "?" not in dict(command_completions())
+
+
 class TestHistoryCommandsRefreshPromptState:
     """History-mutating commands refresh the cached prompt context %."""
 
@@ -776,10 +964,52 @@ class TestHistoryCommandsRefreshPromptState:
                 ChatMessage(role="assistant", content=f"answer {index}"),
             ]
         cli.chat.history = history
-        cli._last_turn_snapshot = {"input": "old", "images": [], "history": []}
-        handler = CmdHandler(cli)
+        cli.sessions.retry_snapshot = {"input": "old", "images": [], "history": []}
+        handler = CmdHandler(_command_ports(cli))
 
         assert handler.handle_command(f"{CMD_COMPACT} 1") is True
 
-        cli._update_context_percent.assert_called_once()
+        cli.refresh_context_percent.assert_called_once()
+        assert cli.sessions.retry_snapshot is None
+
+
+class TestRealCommandServiceState:
+    """Named command ports mutate the actual application's single state."""
+
+    def test_model_switch_invalidates_actual_client_and_keeps_history(self, monkeypatch):
+        from yaicli.cli import CLI
+        from yaicli.config import cfg
+
+        monkeypatch.setitem(cfg, "MODEL", "before-model")
+        existing_client = object()
+        cli = CLI(client=existing_client)
+        cli.console = MagicMock()
+        cli.chat.add_message("user", "keep this history")
+        history = cli.chat.history
+        assert cli.active_client is existing_client
+
+        assert cli.cmd_handler.handle_model("/model after-model") is True
+
+        assert cli.config["MODEL"] == "after-model"
+        assert cfg["MODEL"] == "before-model"
+        assert cli.active_client is None
+        assert cli.chat.history is history
+        assert cli.chat.history[0].content == "keep this history"
+
+    def test_clear_forgets_actual_retry_snapshot_and_keeps_shared_chat(self):
+        from yaicli.cli import CLI
+
+        cli = CLI(client=object())
+        cli.console = MagicMock()
+        cli.current_mode = CHAT_MODE
+        cli.chat.add_message("user", "old turn")
+        chat = cli.chat
+        cli._remember_turn_for_retry("retry me")
+        assert cli.sessions.retry_snapshot["input"] == "retry me"
+
+        assert cli.cmd_handler.handle_clear() is True
+
+        assert cli.chat is chat is cli.sessions.chat
+        assert cli.chat.history == []
+        assert cli.sessions.retry_snapshot is None
         assert cli._last_turn_snapshot is None

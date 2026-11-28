@@ -119,7 +119,7 @@ def test_fork_title_collision_preserves_both_sessions(cli, monkeypatch, capsys):
 @pytest.mark.parametrize("command", ["/rewind 0", "/fork 0 Weekend"])
 def test_readonly_refusal(cli, monkeypatch, capsys, command):
     path = record_turn(cli)
-    monkeypatch.setitem(cfg, "TOOL_POLICY", "readonly")
+    monkeypatch.setitem(cli.config, "TOOL_POLICY", "readonly")
     monkeypatch.setattr(cli.console, "input", lambda prompt: pytest.fail("must not confirm"))
     cli.cmd_handler.handle_command(command)
     assert path.exists()
@@ -132,6 +132,34 @@ def test_non_tty_does_not_modify(cli, capsys):
     cli.cmd_handler.handle_command("/rewind 0")
     assert path.exists()
     assert "interactive terminal" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "command,usage",
+    [
+        ("/rewind abc", "Usage: /rewind [id]"),
+        ("/rewind 0 extra", "Usage: /rewind [id]"),
+        ("/checkpoints extra", "Usage: /checkpoints"),
+        ("/fork abc Mixed Case", "Usage: /fork [id] [title]"),
+    ],
+)
+def test_invalid_arguments_only_print_usage_to_stderr(cli, monkeypatch, capsys, command, usage):
+    path = record_turn(cli)
+    session_before = cli.chat.path.read_bytes()
+    manifest_before = cli._checkpoint_store()._load()
+    output_before = output(cli)
+    monkeypatch.setattr(cli.console, "input", lambda prompt: pytest.fail("must not confirm invalid syntax"))
+
+    assert cli.cmd_handler.handle_command(command) is True
+
+    captured = capsys.readouterr()
+    assert captured.err.strip() == usage
+    assert captured.out == ""
+    assert output(cli) == output_before
+    assert path.read_text() == "changed"
+    assert cli.chat.path.read_bytes() == session_before
+    assert cli._checkpoint_store()._load() == manifest_before
+    assert len(cli.chat_manager.list_chats()) == 1
 
 
 def test_plain_turn_roundtrip_via_saved_chat(cli, monkeypatch):
@@ -233,7 +261,7 @@ def test_file_tool_exception_cuts_earlier_history(cli, monkeypatch):
             path.write_text("partial")
             raise OSError("tool failed after writing")
 
-    monkeypatch.setattr(tools, "get_function", lambda name: BrokenTool())
+    monkeypatch.setattr(tools.executor, "get_function", lambda name: BrokenTool())
     with capture.activate():
         _, succeeded = tools.execute_tool_call(
             ToolCall(id="t", name="fs_write_file", arguments='{"file_path":"trip.md"}')
@@ -257,7 +285,7 @@ def test_custom_override_of_builtin_is_barrier(cli, monkeypatch):
         def execute(**kwargs):
             return '{"success": true}'
 
-    monkeypatch.setattr(tools, "get_function", lambda name: UserTool())
+    monkeypatch.setattr(tools.executor, "get_function", lambda name: UserTool())
     with capture.activate():
         tools.execute_tool_call(ToolCall(id="t", name="fs_write_file", arguments='{"file_path":"trip.md"}'))
     assert capture.barrier
@@ -290,7 +318,7 @@ def test_delete_preserves_recovery_and_reports_location(cli, capsys):
 
 def test_disabled_detachment_still_cleans_store_on_deletion(cli, monkeypatch):
     store = cli._checkpoint_store()
-    monkeypatch.setitem(cfg, "CHECKPOINT_ENABLED", False)
+    monkeypatch.setitem(cli.config, "CHECKPOINT_ENABLED", False)
     cli._save_chat()
     assert cli.chat.checkpoint_head == -1
     cli.chat_manager.delete_chat(cli.chat.path)

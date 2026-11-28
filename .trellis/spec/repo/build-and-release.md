@@ -44,6 +44,11 @@ Quirks to preserve when editing the Justfile: the `format` recipe calls `isort y
   `fastmcp`, `ddgs`, `distro`, `socksio`. `ddgs` (web_search), `trafilatura` (fetch_webpage
   extraction) and `fastmcp` (MCP) intentionally stay in base: a plain `pip install yaicli` must never
   leave a builtin tool broken. Do not move them to extras without a product decision.
+- **Rich rendering floor**: require `rich>=14.3.3` and keep the lock consistent. Rich 14.3.0 fixed
+  multi-codepoint/VS16 width accounting; 14.3.3 includes the subsequent grapheme-loop fix.
+  Earlier versions can leave repeated Live frames when an emoji-aware terminal wraps padded rows.
+  For a rendering dependency fix, update only the necessary package and inspect other locked
+  versions; run real-render regressions, the existing suite, strict docs, packaging and startup gate.
 - **Optional extras** keep cloud/long-tail provider SDKs out of the core install: `all`, `bedrock`,
   `vertex`, `doubao`, `ollama`, `cohere`, `gemini`, `huggingface`, `mistral`, `cerebras`,
   `fireworks`. `bedrock`/`vertex` wrap `anthropic[bedrock]`/`anthropic[vertex]`; `all` stays complete

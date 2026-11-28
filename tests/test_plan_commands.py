@@ -67,7 +67,7 @@ def _submit(cli, goal="Plan the feature", steps=None):
         {"title": "First step", "acceptance": "first acceptance"},
         {"title": "Second step", "acceptance": "second acceptance"},
     ]
-    result = plan_mode.handle_submit_plan({"goal": goal, "steps": steps})
+    result = plan_mode.handle_submit_plan({"goal": goal, "steps": steps}, session=cli.plan_session)
     assert result.get("success") is True, result
     assert cli.plan_session.draft_plan is not None
     return cli.plan_session.draft_plan
@@ -101,13 +101,11 @@ class TestPromptAndBanner:
     """Prompt tokens, status line and the welcome banner reflect plan mode."""
 
     def test_toggle_reaches_plan_prompt_and_back(self, plan_cli):
-        from yaicli import tools
-
         plan_cli.current_mode = CHAT_MODE
         assert plan_cli.cmd_handler.handle_command(CMD_PLAN) is True
         session = plan_cli.plan_session
         assert session.mode == "researching"
-        assert tools.get_plan_tool_mode() == "plan"
+        assert plan_cli.runtime.tool_mode == "plan"
         assert plan_cli.get_prompt_tokens() == [("class:qmark", " [plan] 💬 "), ("class:prompt", "> ")]
         printed = _printed(plan_cli)
         assert "[plan] exploring (read-only) …" in printed
@@ -115,7 +113,7 @@ class TestPromptAndBanner:
 
         assert plan_cli.cmd_handler.handle_command(CMD_PLAN) is True
         assert session.mode == "normal"
-        assert tools.get_plan_tool_mode() is None
+        assert plan_cli.runtime.tool_mode is None
         assert "plan mode off" in _printed(plan_cli)
         assert plan_cli.get_prompt_tokens() == [("class:qmark", " 💬 "), ("class:prompt", "> ")]
 
@@ -147,7 +145,7 @@ class TestPromptAndBanner:
         assert "[plan] revising (read-only) …" in _printed(plan_cli)
 
     def test_plan_disabled_prints_one_line(self, plan_cli, monkeypatch):
-        monkeypatch.setitem(cfg, "PLAN_ENABLED", False)
+        monkeypatch.setitem(plan_cli.config, "PLAN_ENABLED", False)
         assert plan_cli.cmd_handler.handle_command(CMD_PLAN) is True
         assert plan_cli.plan_session is None
         assert "plan mode is disabled (PLAN_ENABLED=false)" in _printed(plan_cli)
@@ -165,7 +163,7 @@ class TestPromptAndBanner:
         assert "plan files under" in banner
 
     def test_banner_disabled(self, plan_cli, monkeypatch):
-        monkeypatch.setitem(cfg, "PLAN_ENABLED", False)
+        monkeypatch.setitem(plan_cli.config, "PLAN_ENABLED", False)
         plan_cli._print_welcome_message()
         assert "Plan mode: disabled (PLAN_ENABLED=false)" in _printed(plan_cli)
 
@@ -231,7 +229,7 @@ class TestPlanSubcommands:
         plan_mode.finish_plan(plan_cli.plan_session)
         assert plan.status == PLAN_STATUS_DONE
 
-        monkeypatch.setattr("yaicli.cmd_handler.Prompt.ask", lambda *args, **kwargs: "y")
+        monkeypatch.setattr("yaicli.commands.planning.Prompt.ask", lambda *args, **kwargs: "y")
         assert plan_cli.cmd_handler.handle_command(f"{CMD_PLAN} clear --done") is True
         assert "cleared 1 plan file(s)" in _printed(plan_cli)
         assert not plan.path.exists()
@@ -247,7 +245,7 @@ class TestPlanSubcommands:
         plan_cli._toggle_plan_mode()
         plan = _submit(plan_cli)
         plan_mode.approve_new_plan(plan_cli.plan_session)
-        monkeypatch.setattr("yaicli.cmd_handler.Prompt.ask", lambda *args, **kwargs: "y")
+        monkeypatch.setattr("yaicli.commands.planning.Prompt.ask", lambda *args, **kwargs: "y")
 
         assert plan_cli.cmd_handler.handle_command(f"{CMD_PLAN} abort") is True
         assert "plan aborted · todos cleared" in _printed(plan_cli)

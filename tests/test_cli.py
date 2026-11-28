@@ -238,7 +238,7 @@ class TestSpecialCommands:
         # Just check that it was called again
         assert cli.chat_manager.save_chat.called
 
-    @patch("yaicli.cli.CLI._load_chat_by_index")
+    @patch("yaicli.application.session.SessionController.load_chat_by_index")
     def test_load_command(self, mock_load_method, cli_with_mocks):
         """Test /load command."""
         cli = cli_with_mocks
@@ -263,7 +263,7 @@ class TestSpecialCommands:
         # Should show usage message when no index is provided
         cli.console.print.assert_any_call("Usage: /load <index>", style="yellow")
 
-    @patch("yaicli.cli.CLI._delete_chat_by_index")
+    @patch("yaicli.application.session.SessionController.delete_chat_by_index")
     def test_delete_command(self, mock_delete_method, cli_with_mocks):
         """Test /delete command."""
         cli = cli_with_mocks
@@ -562,12 +562,7 @@ class TestAPIInteraction:
         mock_build_messages.return_value = []
         mock_display_stream.return_value = ("Test response", None)
 
-        with patch("yaicli.cli.cfg") as mock_cfg:
-            mock_cfg.__getitem__.side_effect = lambda key: {
-                "STREAM": False,
-                "ENABLE_FUNCTIONS": False,
-                "ENABLE_MCP": True,
-            }[key]
+        with patch.dict(cli.config, {"STREAM": False, "ENABLE_FUNCTIONS": False, "ENABLE_MCP": True}):
             mock_response = MagicMock()
             mock_response.__iter__.return_value = [MagicMock(content="Test response", tool_call=None)]
             cli.client.completion_with_tools.return_value = mock_response
@@ -1002,7 +997,7 @@ class TestKeyBindingsAndSetup:
         history_file = tmp_path / "history"
         with (
             patch("yaicli.cli.CLI._setup_key_bindings"),
-            patch("yaicli.cli.cfg", {**cfg, "MAX_HISTORY": 17}),
+            patch.dict(cli.config, {"MAX_HISTORY": 17}),
             patch("yaicli.cli.HISTORY_FILE", history_file),
             patch("yaicli.cli.PromptSession"),
             patch("yaicli.cli.LimitedFileHistory") as mock_limited_history,
@@ -1305,9 +1300,8 @@ class TestCLICoverage:
         from unittest.mock import MagicMock
 
         from yaicli import plan_mode, tools
-        from yaicli.config import cfg
 
-        monkeypatch.setitem(cfg, "PLAN_DIR", str(tmp_path / "plans"))
+        monkeypatch.setitem(cli_with_mocks.config, "PLAN_DIR", str(tmp_path / "plans"))
         plan_mode.reset_plan_session()
         tools.set_plan_tool_mode(None)
 
@@ -1322,12 +1316,12 @@ class TestCLICoverage:
         session = cli.plan_session
         assert session is not None
         assert session.mode == "researching"
-        assert tools.get_plan_tool_mode() == "plan"
+        assert cli.runtime.tool_mode == "plan"
         assert cli.get_prompt_tokens() == [("class:qmark", " [plan] 💬 "), ("class:prompt", "> ")]
 
         binding.handler(MagicMock())
         assert session.mode == "normal"
-        assert tools.get_plan_tool_mode() is None
+        assert cli.runtime.tool_mode is None
         assert cli.get_prompt_tokens()[0] == ("class:qmark", " 💬 ")
 
         plan_mode.reset_plan_session()
@@ -1343,7 +1337,7 @@ class TestCLICoverage:
     def test_print_welcome_shows_model_status(self, cli_with_mocks):
         cli_with_mocks.is_temp_session = True
         cli_with_mocks._context_percent = 12.6
-        with patch("yaicli.cli.cfg", {"MODEL": "openai/gpt-4o"}):
+        with patch.dict(cli_with_mocks.config, {"MODEL": "openai/gpt-4o"}):
             cli_with_mocks._print_welcome_message()
         printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
         assert any("Model:" in text and "gpt-4o" in text for text in printed)
@@ -1500,8 +1494,7 @@ class TestCLICoverage:
         cli_with_mocks.context_manager.parse_at_references.return_value = ("", "hi", [])
         no_vision = next(iter(NO_VISION_PROVIDERS))
         img = ImageData(data="x", media_type="image/png", is_url=False)
-        with patch("yaicli.cli.cfg") as mock_cfg:
-            mock_cfg.get.side_effect = lambda k, d=None: no_vision if k == "PROVIDER" else d
+        with patch.dict(cli_with_mocks.config, {"PROVIDER": no_vision}):
             messages = cli_with_mocks._build_messages("hi", images=[img])
 
         printed = [str(c.args[0]) for c in cli_with_mocks.console.print.call_args_list if c.args]
@@ -1513,7 +1506,8 @@ class TestCLIErrorTracking:
     """Tests for the had_error flag used by entry.main to pick a non-zero exit code."""
 
     def test_had_error_slot_initialised_false(self, cli_with_mocks):
-        assert "had_error" in CLI.__slots__
+        assert isinstance(CLI.had_error, property)
+        assert cli_with_mocks.output.result.had_error is False
         assert cli_with_mocks.had_error is False
 
     def test_handle_llm_response_failure_sets_had_error(self, cli_with_mocks):
@@ -1557,11 +1551,10 @@ class TestBackgroundGeneration:
         import time
 
         import yaicli.tools as tools_mod
+        from yaicli.printer import Printer
         from yaicli.schemas import LLMResponse
         from yaicli.stream_bridge import get_active_bridge
         from yaicli.tools import output_history
-
-        from yaicli.printer import Printer
 
         cli = cli_with_mocks
         cli.interactive = True

@@ -14,8 +14,12 @@ from rich.panel import Panel
 
 from yaicli.const import DEFAULT_CONFIG_INI, DEFAULT_CONFIG_MAP
 from yaicli.schemas import ToolCall
-from yaicli.tools import execute_tool_call, get_last_tool_output, show_last_tool_output
-from yaicli.tools import output_history
+from yaicli.tools import (
+    execute_tool_call,
+    get_last_tool_output,
+    output_history,
+    show_last_tool_output,
+)
 from yaicli.tools.limits import (
     build_preview_marker,
     format_arguments_text,
@@ -41,7 +45,7 @@ def _tool_call(arguments: str = '{"city": "NYC"}', result: str = "result text"):
     tc = ToolCall(id="1", name="get_weather", arguments=arguments)
     patches = (
         patch("yaicli.tools.cfg", {"SHOW_FUNCTION_OUTPUT": True, "SHOW_MCP_OUTPUT": False}),
-        patch("yaicli.tools.get_function", return_value=tool),
+        patch("yaicli.tools.executor.get_function", return_value=tool),
         patch("yaicli.tools.console", console),
     )
     for p in patches:
@@ -274,7 +278,7 @@ class TestExecuteToolCallDisplay:
         tc = ToolCall(id="1", name="nope", arguments="{}")
         with (
             patch("yaicli.tools.cfg", {"SHOW_FUNCTION_OUTPUT": True, "SHOW_MCP_OUTPUT": False}),
-            patch("yaicli.tools.get_function", side_effect=ValueError("missing")),
+            patch("yaicli.tools.executor.get_function", side_effect=ValueError("missing")),
             patch("yaicli.tools.console", console),
         ):
             _, ok = execute_tool_call(tc)

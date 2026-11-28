@@ -10,6 +10,7 @@ import pytest
 import yaicli.functions as functions_mod
 import yaicli.tools as tools_mod
 import yaicli.tools.function as func_mod
+import yaicli.tools.schemas as schema_mod
 
 #: The real bundled templates inside the package (not patched in these tests).
 REAL_BUILDIN_DIR = Path(func_mod.__file__).resolve().parent.parent / "functions" / "buildin"
@@ -101,8 +102,8 @@ def reset_caches(tmp_path, monkeypatch):
     monkeypatch.setattr(func_mod, "_func_name_map", None)
     monkeypatch.setattr(func_mod, "_gemini_functions_cache", None)
     monkeypatch.setattr(func_mod, "_deprecated_warned", set())
-    monkeypatch.setattr(tools_mod, "_openai_schemas_cache", None)
-    monkeypatch.setattr(tools_mod, "_anthropic_schemas_cache", None)
+    monkeypatch.setattr(schema_mod, "_openai_schemas_cache", None)
+    monkeypatch.setattr(schema_mod, "_anthropic_schemas_cache", None)
     monkeypatch.setattr(functions_mod, "_stale_warned", False)
     monkeypatch.setattr(functions_mod, "FUNCTIONS_MANIFEST_PATH", tmp_path / "functions_manifest.json")
 

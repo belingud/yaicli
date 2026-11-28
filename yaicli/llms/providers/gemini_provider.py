@@ -12,6 +12,7 @@ from ...config import cfg
 from ...console import get_console
 from ...errors import provider_response_error, wrap_provider_exception
 from ...model_limits import ModelLimits, limits_from_dict
+from ...runtime import bind_config, current_config
 from ...schemas import ChatMessage, LLMResponse, ToolCall, ToolPolicy
 from ...tools.function import get_functions_gemini_format
 from ...usage import usage_from_gemini
@@ -200,12 +201,14 @@ class GeminiProvider(Provider):
 
         # Add regular functions
         if effective_tool_policy.enable_functions:
-            funcs.extend(get_functions_gemini_format())
+            funcs.extend(get_functions_gemini_format(runtime=getattr(self, "runtime", None)))
 
         # Add MCP functions if enabled
         if effective_tool_policy.enable_mcp:
             try:
-                mcp_tools = get_mcp_manager().to_gemini_tools()
+                runtime = getattr(self, "runtime", None)
+                with bind_config(runtime.config if runtime is not None else current_config(cfg)):
+                    mcp_tools = get_mcp_manager().to_gemini_tools()
                 funcs.extend(mcp_tools)
             except (ImportError, Exception) as e:
                 self.console.print(f"Failed to load MCP tools for Gemini: {e}", style="red")

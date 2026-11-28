@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/py/index.md", "reason": "确认源码分层、依赖方向和懒加载约束"}
+{"file": ".trellis/spec/repo/index.md", "reason": "遵守分支 PR、文档与任务规范"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "执行隔离测试、lint、格式及完整质量门禁；历史差异参考研究笔记"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查命令、客户端、工具与存储的端到端数据流"}
+{"file": ".trellis/tasks/11-27-core-organization-refactor/research/organization-review.md", "reason": "读取本次实际代码证据、行为测试映射、兼容限制和旧规范差异"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "拆分 CLI 时保留状态契约、交互及输出行为"}
+{"file": ".trellis/spec/py/config-and-context.md", "reason": "保留模型角色切换、恢复会话、配置与消息组装行为"}
+{"file": ".trellis/spec/py/checkpoints.md", "reason": "保持 writer lock、工作线程、会话提交和恢复协议"}
+{"file": ".trellis/spec/py/function-tool-guidelines.md", "reason": "命令及计划协调迁移不得绕过工具 guard 和确认入口"}
+{"file": ".trellis/tasks/11-27-core-organization-refactor/research/test-safety-review.md", "reason": "按行为证据补齐重构前的关键回归，保留 provider 差异并识别测试隔离和基线限制"}

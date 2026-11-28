@@ -7,8 +7,8 @@ import pytest
 from yaicli.errors import AgentError, ErrorKind
 from yaicli.llms.providers.gemini_provider import GeminiProvider
 from yaicli.schemas import ChatMessage, ImageData, ToolCall, ToolPolicy
-from yaicli.usage import Usage
 from yaicli.tools.function import wrap_gemini_function
+from yaicli.usage import Usage
 
 
 def _make_text_response(text: str = "ok"):
@@ -99,7 +99,7 @@ class TestGeminiProvider:
     @patch("yaicli.llms.providers.gemini_provider.types.HttpOptions")
     @patch("yaicli.llms.providers.gemini_provider.types.ThinkingConfig")
     @patch("yaicli.llms.providers.gemini_provider.types.GenerateContentConfig")
-    @patch("yaicli.tools.function.get_functions_gemini_format")
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
     def test_get_chat_config(
         self, mock_get_functions, mock_gen_config, mock_thinking_config, mock_http_options, mock_config
     ):
@@ -144,7 +144,7 @@ class TestGeminiProvider:
     @patch("yaicli.llms.providers.gemini_provider.types.HttpOptions")
     @patch("yaicli.llms.providers.gemini_provider.types.ThinkingConfig")
     @patch("yaicli.llms.providers.gemini_provider.types.GenerateContentConfig")
-    @patch("yaicli.tools.function.get_functions_gemini_format")
+    @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
     def test_get_chat_config_request_tool_policy_disables_tools(
         self, mock_get_functions, mock_gen_config, mock_thinking_config, mock_http_options, mock_config
     ):
@@ -269,6 +269,33 @@ class TestGeminiProvider:
             assert len(functions) == 4  # 2 + 2
             mock_get_functions.assert_called_once()
             mock_get_mcp_manager.assert_called_once()
+
+    def test_real_builder_preserves_gemini_selection_and_plan_mcp_baseline(self, mock_config, monkeypatch):
+        """Freeze Gemini's existing differences; moving modules must not unify policy here."""
+        from yaicli.config import cfg
+        from yaicli.tools import set_plan_tool_mode
+
+        monkeypatch.setitem(cfg, "ENABLED_TOOLS", "fs_write_file")
+        mock_config["ENABLE_MCP"] = True
+        mcp_declaration = object()
+        manager = MagicMock()
+        manager.to_gemini_tools.return_value = [mcp_declaration]
+        with (
+            patch("google.genai.Client"),
+            patch("yaicli.llms.providers.gemini_provider.get_mcp_manager", return_value=manager),
+        ):
+            provider = GeminiProvider(config=mock_config)
+            normal = provider.gen_gemini_functions()
+            names = {getattr(item, "__name__", None) for item in normal}
+            assert {"fs_write_file", "fs_read_file"} <= names
+            assert normal[-1] is mcp_declaration
+            set_plan_tool_mode("plan")
+            planning = provider.gen_gemini_functions()
+            names = {getattr(item, "__name__", None) for item in planning}
+            assert {"fs_read_file", "submit_plan"} <= names
+            assert "fs_write_file" not in names
+            assert planning[-1] is mcp_declaration
+            assert manager.to_gemini_tools.call_count == 2
 
     @patch("yaicli.llms.providers.gemini_provider.get_functions_gemini_format")
     def test_completion_non_streaming(self, mock_get_functions, mock_config, mock_gemini_client):

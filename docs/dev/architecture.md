@@ -9,12 +9,27 @@ behaviour is documented under `docs/usage/`; coding conventions live in `CLAUDE.
 ```
 _faststart.py (thin console entry; -v/--version fast path, EPIPE-safe)
   └─ entry.py (Typer CLI; headless flags -> CLI.configure_headless, exit-code mapping)
-       └─ cli.py (CLI: mode dispatch, REPL, headless output, tool-confirmation pump)
+       └─ cli.py (CLI: assembly, mode dispatch, REPL, tool-confirmation pump)
+       ├─ runtime.py (owned effective config + lazy plan state; scoped config binding)
        ├─ llms/client.py (LLMClient: provider call + tool loop + streaming)
        │    └─ llms/provider.py (ProviderFactory -> Provider)
        │         └─ llms/providers/<name>_provider.py
-       ├─ tools/__init__.py (tool schemas, execute_tool_call, output panels)
-       │    ├─ tools/function.py (built-in functions from ~/.config/yaicli/functions/)
+       ├─ commands/registry.py (one definition for dispatch, help and completion)
+       ├─ cmd_handler.py (bound handlers; named session/planning operations)
+       ├─ application/session.py (chat state, persistence and checkpoint coordination)
+       ├─ application/output.py (result state, machine events and exit mapping)
+       ├─ application/state.py (shared run options)
+       ├─ planning/coordinator.py (plan interaction and application coordination)
+       │    ├─ planning/model.py / validation.py (session models and input validation)
+       │    ├─ planning/service.py / store.py (state transitions and persistence)
+       │    └─ planning/prompt.py / editor.py (context text and editor adapter)
+       ├─ tools/__init__.py (compatible public schema/execution entry points)
+       │    ├─ tools/schemas.py (selection, declarations and mode-aware caches)
+       │    ├─ tools/policy.py (permission decisions; no confirmation IO)
+       │    ├─ tools/executor.py (dispatch, guard/capture/undo and result processing)
+       │    ├─ tools/environment.py (scoped standalone-tool guardrail environment)
+       │    ├─ tools/display.py (tool announcements, previews and panels)
+       │    ├─ tools/function.py (package builtins, overridden by same-name user functions)
        │    └─ tools/mcp.py (MCP tools, lazy fastmcp import)
        ├─ chat.py (Chat model + FileChatManager persistence)
        └─ printer.py / render.py (streaming, reasoning, markdown, prompts)
@@ -35,9 +50,17 @@ with the tool results.
 | --- | --- |
 | `_faststart.py` | Console entry (`ai`, `yaicli`, `python -m yaicli`); static `--version` fast path, SIGPIPE/EPIPE handling; then delegates to `entry.py`. |
 | `entry.py` | Typer app/options, stdin/image handling, headless flags, top-level error → exit-code mapping. |
-| `cli.py` | `CLI` orchestrator: temp/chat/exec modes, REPL, chat save/load, role wiring, machine output (`json`/`stream-json`), exit-code state contract. |
+| `cli.py` | Application assembly, temp/chat/exec dispatch, REPL, role wiring and generation/terminal lifecycle; compatible public properties delegate to the underlying state. |
+| `application/session.py` | `SessionController`: one chat state, save/load/resume and checkpoint storage coordination, using the actual injected chat manager's directory. |
+| `application/output.py` | `MachineOutput`/`ResultState`: result payloads, tool events, usage, errors and exit mapping; serialization does not eagerly construct a provider. |
+| `application/state.py` | `RunState`: shared interaction/mode options, without a reference back to the CLI. |
+| `runtime.py` | `SessionContext`: one effective configuration mapping and lazy plan session, with a scoped configuration binding for lower-level helpers. |
+| `planning/` | Models, validation, persistence, state operations, prompt formatting and editor adapter; `PlanCoordinator` connects them to session/output services and a small set of terminal lifecycle operations. |
+| `plan_mode.py` / `plan_store.py` | Explicit compatibility exports for the planning implementation; no duplicate model classes or plan state. Product imports use `planning/`. |
 | `errors.py` | `ErrorKind`/`AgentError`, exception classification, retry helpers, `EXIT_*` constants. |
-| `cmd_handler.py` | Slash commands (`/add`, `/context`, `/save`, `/mode`, ...) and `!shell`. |
+| `commands/registry.py` | Immutable command metadata: handler name, aliases, help and argument policy; generates dispatch metadata and slash completions. |
+| `cmd_handler.py` | Binds registry entries to command methods; slash command business logic and `!shell`; preserves existing metadata/constant exports. |
+| `commands/session.py` / `planning.py` / `runtime.py` | Session, plan and model/role/retry command groups use named services and operations; their business logic does not reach into CLI private state. |
 | `config.py` | Layered `cfg` singleton: env > `config.ini` > defaults; type conversion. |
 | `const.py` | Defaults (`DEFAULT_CONFIG_MAP`), paths, commands/modes, default roles. |
 | `console.py` | `YaiConsole` singleton, stderr console for machine mode, EPIPE-safe broken-pipe handling, untrusted-text helpers. |
@@ -52,8 +75,27 @@ with the tool results.
 | `function_schema.py` | `OpenAISchema`: pydantic model → OpenAI/Anthropic tool schemas. |
 | `functions/` | Built-in function templates (`buildin/`) and install/reinstall/list callbacks. |
 | `llms/` | `LLMClient`, provider ABC/registry, one module per provider. |
-| `tools/` | Tool schema aggregation/caching, function loading, MCP integration, approval store, `risk.py` (tool risk classes + shell danger classification). |
+| `tools/` | Public entry points delegate to `schemas.py`, `policy.py`, `executor.py` and `display.py`; `environment.py` scopes standalone guardrail propagation; `function.py` loads functions, `mcp.py` adapts MCP, `approval.py` stores grants/rules, `risk.py` classifies risk. |
 | `utils.py` | Shell/OS detection, `str2bool`, option callbacks, event-loop helper. |
+
+## Session dependencies
+
+CLI assembly takes one deep snapshot of the parsed configuration. Session/output/planning services and
+the built-in client/provider/tool path share that mapping and the same lazy plan context. Runtime model,
+role and limit changes affect subsequent requests in that session; constructing a second application must
+not change the first application's plan state, tool visibility or default chat directory. Injected ready
+clients and chat managers retain their existing ownership and lifecycle.
+
+Tool mode is derived from the owning plan session. Public no-context helpers retain their compatible
+default behavior; normal application calls carry explicit dependencies. Immutable function metadata and
+base declarations may be shared, while mode/selection caches and delayed Gemini callbacks must preserve
+the owning session. Gemini retains its existing tool-selection and direct MCP declaration differences.
+
+Standalone tools still receive guardrail configuration through four managed environment keys. The adapter
+saves, applies and restores those keys only around actual tool/undo execution, using a reentrant lock before
+the existing workspace mutation lock. It must not hold that lock across provider generation, confirmation
+or worker waits. Configuration binding for saves and checkpoint callbacks uses a separate lock-free scope.
+This supports serial/alternating applications; it does not add concurrent application or cwd isolation.
 
 ## State on disk
 
@@ -84,10 +126,20 @@ command) are the only runtime modes. `--code` is not a runtime mode: it selects 
 1. A per-request `ToolPolicy` decides whether functions/MCP tools are advertised.
 2. Provider responses carry zero or more complete `ToolCall`s (streaming providers aggregate
    per tool index).
-3. `LLMClient` evaluates the policy, runs each call through the confirmation gate
-   (`TOOL_CONFIRM`) and `execute_tool_call()`.
+3. `tools/policy.py` evaluates permission/risk decisions. `LLMClient` keeps the confirmation
+   generator (`yield ConfirmToolCall` / `send`), remembered grants and audit, then calls the compatible
+   `execute_tool_call()` entry point. `tools/executor.py` owns actual dispatch, workspace mutation
+   capture/undo and one result-truncation/history pass; `tools/display.py` renders its preview.
 4. Tool results are appended as messages and the provider is called again, up to
    `MAX_TOOL_CALL_DEPTH` rounds.
+
+Command registration and tool execution remain separate boundaries. Add a handler and one
+`CommandInfo` entry to extend the slash command set; help and completion derive from that same
+entry. Session and planning coordination receive concrete dependencies rather than the CLI;
+the CLI retains generation threads, confirmation and terminal lifecycle. Core planning models,
+validation and storage do not import the CLI or terminal presentation code. Builtin/user/MCP
+loading contracts and public tool entry points are preserved; Gemini retains its existing
+callable/MCP declaration path.
 
 ## Where to read next
 

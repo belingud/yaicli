@@ -68,7 +68,8 @@ def _make_plan(cli, goal="Session plan"):
                 {"title": "First step", "acceptance": "first acceptance"},
                 {"title": "Second step", "acceptance": "second acceptance"},
             ],
-        }
+        },
+        session=cli.plan_session,
     )
     assert result.get("success") is True, result
     plan = cli.plan_session.draft_plan
@@ -101,7 +102,7 @@ def _pointer(plan, todos=()) -> dict:
 
 def _silence_stderr():
     """Patch the stderr console used by resume hints (returns the mock)."""
-    return patch("yaicli.cli.get_error_console")
+    return patch("yaicli.planning.coordinator.get_error_console")
 
 
 class TestRestoreUnfinishedPlan:
@@ -152,15 +153,13 @@ class TestRestoreUnfinishedPlan:
         assert "Use /plan resume to continue it, or /plan list to see all plans." in printed
 
     def test_restore_never_enables_plan_tool_mode(self, plan_cli):
-        from yaicli import tools
-
         plan = _make_plan(plan_cli)
         plan_cli.chat.plan = _pointer(plan)
 
         plan_cli._restore_plan_from_session()
 
         assert plan_cli.plan_session.mode == "normal"
-        assert tools.get_plan_tool_mode() is None
+        assert plan_cli.runtime.tool_mode is None
 
     def test_missing_plan_file_prints_error_and_clears_pointer(self, plan_cli, tmp_path):
         plan = _make_plan(plan_cli)

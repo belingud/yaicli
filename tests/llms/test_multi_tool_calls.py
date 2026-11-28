@@ -698,7 +698,10 @@ class TestClientMultiCallTurns:
             ]
         )
         mock_factory.return_value = provider
-        mock_execute_tool.side_effect = lambda tool_call, announce=True: (f"result-{tool_call.id}", True)
+        mock_execute_tool.side_effect = lambda tool_call, announce=True, *, runtime=None: (
+            f"result-{tool_call.id}",
+            True,
+        )
 
         client = LLMClient(provider_name="openai", config=mock_config)
         messages = [ChatMessage(role="user", content="read a.txt and b.txt")]
@@ -740,9 +743,7 @@ class TestClientMultiCallTurns:
 
     @patch("yaicli.llms.client.execute_tool_call")
     @patch("yaicli.llms.provider.ProviderFactory.create_provider")
-    def test_calls_are_filtered_by_tool_policy_but_order_is_kept(
-        self, mock_factory, mock_execute_tool, mock_config
-    ):
+    def test_calls_are_filtered_by_tool_policy_but_order_is_kept(self, mock_factory, mock_execute_tool, mock_config):
         """Filtering must not reorder or drop the allowed calls."""
         allowed = ToolCall(id="call_a", name="fs_read_file", arguments="{}")
         mcp = ToolCall(id="call_b", name="_mcp__clock", arguments="{}")
@@ -756,6 +757,8 @@ class TestClientMultiCallTurns:
         mock_execute_tool.return_value = ("ok", True)
 
         client = LLMClient(provider_name="openai", config=mock_config)
-        list(client.completion_with_tools([ChatMessage(role="user", content="go")], tool_policy=ToolPolicy(True, False)))
+        list(
+            client.completion_with_tools([ChatMessage(role="user", content="go")], tool_policy=ToolPolicy(True, False))
+        )
 
         assert [call.args[0].id for call in mock_execute_tool.call_args_list] == ["call_a"]

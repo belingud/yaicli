@@ -983,8 +983,9 @@ def checkpoint_audit(
     from . import const
     from .config import cfg
     from .redaction import redact_text
+    from .runtime import current_config
 
-    if not cfg.get("TOOL_AUDIT", False):
+    if not current_config(cfg).get("TOOL_AUDIT", False):
         return
     try:
         payload = {

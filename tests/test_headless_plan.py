@@ -56,7 +56,9 @@ def make_client(*, submit=True, chunks=None):
 
     def completion(messages, **kwargs):
         if submit:
-            submitted["result"] = plan_mode.handle_submit_plan({"goal": "Headless plan", "steps": PLAN_STEPS})
+            submitted["result"] = plan_mode.handle_submit_plan(
+                {"goal": "Headless plan", "steps": PLAN_STEPS}, session=client.plan_session
+            )
         return iter(chunks if chunks is not None else [LLMResponse(content="done")])
 
     client.completion_with_tools = MagicMock(side_effect=completion)

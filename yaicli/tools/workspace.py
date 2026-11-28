@@ -297,9 +297,10 @@ def plans_root(plan_dir: str = "") -> Optional[Path]:
             return Path(raw).expanduser().resolve()
         from ..config import cfg
         from ..const import get_config_dir
+        from ..runtime import current_config
 
         try:
-            raw = str(cfg.get("PLAN_DIR") or "").strip()
+            raw = str(current_config(cfg).get("PLAN_DIR") or "").strip()
         except (AttributeError, TypeError):  # pragma: no cover - exotic config mappings
             raw = ""
         if raw:

@@ -529,7 +529,7 @@ class TestCliStateContract:
             assert cli.fail_on_tool_denied is True
             assert cli.max_turns == 4
             assert cli.cwd == "/tmp"
-            assert cfg["MAX_TOOL_CALL_DEPTH"] == 4
+            assert cli.config["MAX_TOOL_CALL_DEPTH"] == 4
         finally:
             cfg["MAX_TOOL_CALL_DEPTH"] = 8
 

@@ -120,6 +120,10 @@ After implementation:
       casting payload fields locally
 - [ ] Checked that derived state points back to the source event identifier
       (`seq`, `id`, `version`) instead of inventing a second cursor
+- [ ] For terminal output, compared the final content, raw ANSI frames and displayed rows separately;
+      tested Unicode width with an oracle independent of the renderer. A model that shares the
+      implementation's width assumptions can hide the same wrapping bug. See
+      [CLI rendering contracts](../py/cli-and-rendering.md#rendering-printerpy-renderpy).
 
 ---
 

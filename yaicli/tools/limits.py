@@ -48,6 +48,7 @@ from ..const import (
     DEFAULT_TOOL_OUTPUT_MAX_CHARS,
 )
 from ..redaction import is_redaction_enabled, redact_text
+from ..runtime import current_config
 
 #: Default cap (characters) when neither the tool nor the config overrides it.
 DEFAULT_OUTPUT_MAX_CHARS = DEFAULT_TOOL_OUTPUT_MAX_CHARS
@@ -84,7 +85,8 @@ _ARGUMENT_VALUE_SUMMARY_OVER = 80
 def _config_int(key: str, default: int) -> int:
     """Read an integer config value, tolerating mocks/strings/None."""
     try:
-        raw = cfg.get(key) if hasattr(cfg, "get") else None
+        config = current_config(cfg)
+        raw = config.get(key) if hasattr(config, "get") else None
     except Exception:  # pragma: no cover - defensive: broken config mapping
         return default
     if raw is None or raw == "":
@@ -97,7 +99,8 @@ def _config_int(key: str, default: int) -> int:
 
 def _config_str(key: str, default: str) -> str:
     try:
-        raw = cfg.get(key) if hasattr(cfg, "get") else None
+        config = current_config(cfg)
+        raw = config.get(key) if hasattr(config, "get") else None
     except Exception:  # pragma: no cover - defensive: broken config mapping
         return default
     if raw is None or raw == "":
@@ -219,9 +222,7 @@ class TruncatedOutput:
     truncated: bool = False
 
 
-def truncate_tool_output_meta(
-    text: Any, tool_name: str, max_chars: Optional[int] = None
-) -> TruncatedOutput:
+def truncate_tool_output_meta(text: Any, tool_name: str, max_chars: Optional[int] = None) -> TruncatedOutput:
     """Truncate one tool result to its cap and return the result with metadata.
 
     The metadata (original length, spill path, truncation flag) feeds the Ctrl+O

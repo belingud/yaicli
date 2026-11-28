@@ -13,7 +13,14 @@ from yaicli import cli as cli_module
 from yaicli import plan_mode
 from yaicli.cli import CLI
 from yaicli.config import cfg
-from yaicli.plan_store import PLAN_STATUS_DONE, PLAN_STATUS_DRAFT, PLAN_STATUS_IN_PROGRESS, read_plan
+from yaicli.plan_store import (
+    PLAN_STATUS_DONE,
+    PLAN_STATUS_DRAFT,
+    PLAN_STATUS_IN_PROGRESS,
+    read_plan,
+)
+from yaicli.planning import coordinator as coordinator_module
+from yaicli.planning import service as plan_service
 
 
 @pytest.fixture(autouse=True)
@@ -61,7 +68,7 @@ SPEC = [
 def _submit(cli, steps=None, goal="Execution plan"):
     from yaicli import plan_mode
 
-    result = plan_mode.handle_submit_plan({"goal": goal, "steps": list(steps or SPEC)})
+    result = plan_mode.handle_submit_plan({"goal": goal, "steps": list(steps or SPEC)}, session=cli.plan_session)
     assert result.get("success") is True, result
     plan = cli.plan_session.draft_plan
     assert plan is not None and plan.path is not None
@@ -93,7 +100,7 @@ def _todo_items(cli, statuses):
 def _no_execute(monkeypatch):
     """Replace the execution loop with a recorder (approval tests don't run turns)."""
     executed = []
-    monkeypatch.setattr(CLI, "_execute_plan", lambda self: executed.append(True))
+    monkeypatch.setattr(coordinator_module.PlanCoordinator, "execute_plan", lambda self: executed.append(True))
     return executed
 
 
@@ -179,7 +186,7 @@ class TestApprovalPanel:
 
     def test_readonly_policy_prompt_declined_stays_reviewing(self, plan_cli, monkeypatch):
         plan = _enter_reviewing(plan_cli)
-        monkeypatch.setitem(cfg, "TOOL_POLICY", "readonly")
+        monkeypatch.setitem(plan_cli.config, "TOOL_POLICY", "readonly")
         executed = _no_execute(monkeypatch)
         asked = []
 
@@ -187,7 +194,7 @@ class TestApprovalPanel:
             asked.append(prompt)
             return "n"
 
-        monkeypatch.setattr("yaicli.cli.Prompt.ask", fake_ask)
+        monkeypatch.setattr(coordinator_module.Prompt, "ask", fake_ask)
         plan_cli.printer.ask_plan_decision.side_effect = ["approve", "save"]
 
         plan_cli._handle_plan_review_panel()
@@ -198,18 +205,18 @@ class TestApprovalPanel:
         # picks another action (here: save only).
         assert plan_cli.plan_session.mode == "normal"
         assert read_plan(plan.path).status == PLAN_STATUS_DRAFT
-        assert cfg.get("TOOL_POLICY") == "readonly"
+        assert plan_cli.config.get("TOOL_POLICY") == "readonly"
 
     def test_readonly_policy_accepted_switches_to_standard(self, plan_cli, monkeypatch):
         _enter_reviewing(plan_cli)
-        monkeypatch.setitem(cfg, "TOOL_POLICY", "readonly")
+        monkeypatch.setitem(plan_cli.config, "TOOL_POLICY", "readonly")
         executed = _no_execute(monkeypatch)
-        monkeypatch.setattr("yaicli.cli.Prompt.ask", lambda prompt, **kwargs: "y")
+        monkeypatch.setattr(coordinator_module.Prompt, "ask", lambda prompt, **kwargs: "y")
         plan_cli.printer.ask_plan_decision.return_value = "approve"
 
         plan_cli._handle_plan_review_panel()
 
-        assert cfg.get("TOOL_POLICY") == "standard"
+        assert plan_cli.config.get("TOOL_POLICY") == "standard"
         assert executed
         assert plan_cli.plan_session.mode == "executing"
 
@@ -246,11 +253,11 @@ class TestExecutionLoop:
                 items = _todo_items(plan_cli, ["completed", "in_progress"])
             else:
                 items = _todo_items(plan_cli, ["completed", "completed"])
-            result = plan_mode.handle_todo_write(items)
+            result = plan_mode.handle_todo_write(items, session=plan_cli.plan_session)
             assert result.get("success") is True, result
             return True
 
-        monkeypatch.setattr(CLI, "_process_user_input", fake_process)
+        monkeypatch.setattr(plan_cli.planning.turns, "process", lambda instruction: fake_process(plan_cli, instruction))
 
         plan_cli._execute_plan()
 
@@ -267,7 +274,7 @@ class TestExecutionLoop:
         def interrupted(self, instruction, images=None):
             raise KeyboardInterrupt
 
-        monkeypatch.setattr(CLI, "_process_user_input", interrupted)
+        monkeypatch.setattr(plan_cli.planning.turns, "process", lambda instruction: interrupted(plan_cli, instruction))
 
         plan_cli._execute_plan()
 
@@ -292,7 +299,7 @@ class TestExecutionLoop:
             turns.append(instruction)
             return True
 
-        monkeypatch.setattr(CLI, "_process_user_input", idle)
+        monkeypatch.setattr(plan_cli.planning.turns, "process", lambda instruction: idle(plan_cli, instruction))
 
         plan_cli._execute_plan()
 
@@ -303,14 +310,14 @@ class TestExecutionLoop:
     def test_turn_budget_caps_execution(self, plan_cli, monkeypatch):
         _enter_reviewing(plan_cli)
         _approve(plan_cli)
-        monkeypatch.setattr(cli_module, "PLAN_MAX_EXECUTION_TURNS", 1)
+        monkeypatch.setattr(coordinator_module, "PLAN_MAX_EXECUTION_TURNS", 1)
         turns = []
 
         def idle(self, instruction, images=None):
             turns.append(instruction)
             return True
 
-        monkeypatch.setattr(CLI, "_process_user_input", idle)
+        monkeypatch.setattr(plan_cli.planning.turns, "process", lambda instruction: idle(plan_cli, instruction))
 
         plan_cli._execute_plan()
 
@@ -326,7 +333,9 @@ class TestReplanRevision:
 
         plan = _enter_reviewing(plan_cli)
         _approve(plan_cli)
-        result = plan_mode.handle_todo_write(_todo_items(plan_cli, ["completed", "in_progress"]))
+        result = plan_mode.handle_todo_write(
+            _todo_items(plan_cli, ["completed", "in_progress"]), session=plan_cli.plan_session
+        )
         assert result.get("success") is True, result
         return plan
 
@@ -345,7 +354,8 @@ class TestReplanRevision:
                 "revision": 2,
                 "change_summary": "add a third step",
                 "steps": steps,
-            }
+            },
+            session=plan_cli.plan_session,
         )
         assert result.get("success") is True, result
         return result
@@ -438,8 +448,6 @@ class TestEditPlanFromPanel:
     """[e]dit opens $EDITOR, re-validates and refreshes the panel."""
 
     def test_edit_first_plan_reloads_draft(self, plan_cli, monkeypatch, tmp_path):
-        from yaicli import plan_mode
-
         plan = _enter_reviewing(plan_cli)
         _no_execute(monkeypatch)
         plan_cli.printer.ask_plan_decision.side_effect = ["edit", "save"]
@@ -452,7 +460,7 @@ class TestEditPlanFromPanel:
             Path(path).write_text(text, encoding="utf-8")
             return True, ""
 
-        monkeypatch.setattr(plan_mode, "edit_plan_file", fake_edit)
+        monkeypatch.setattr(plan_service, "edit_plan_file", fake_edit)
 
         plan_cli._handle_plan_review_panel()
 
@@ -462,12 +470,10 @@ class TestEditPlanFromPanel:
         assert plan_cli.plan_session.mode == "normal"
 
     def test_edit_invalid_file_stays_in_reviewing(self, plan_cli, monkeypatch):
-        from yaicli import plan_mode
-
         _enter_reviewing(plan_cli)
         _no_execute(monkeypatch)
         plan_cli.printer.ask_plan_decision.side_effect = ["edit", "cancel"]
-        monkeypatch.setattr(plan_mode, "edit_plan_file", lambda path: (False, "invalid plan file"))
+        monkeypatch.setattr(plan_service, "edit_plan_file", lambda path: (False, "invalid plan file"))
 
         plan_cli._handle_plan_review_panel()
 
@@ -478,7 +484,9 @@ class TestEditPlanFromPanel:
     def test_edit_revision_reloads_diff(self, plan_cli, monkeypatch):
         plan = _enter_reviewing(plan_cli)
         _approve(plan_cli)
-        result = plan_mode.handle_todo_write(_todo_items(plan_cli, ["completed", "in_progress"]))
+        result = plan_mode.handle_todo_write(
+            _todo_items(plan_cli, ["completed", "in_progress"]), session=plan_cli.plan_session
+        )
         assert result.get("success") is True
         plan_cli._toggle_plan_mode()
         revision = {
@@ -491,7 +499,7 @@ class TestEditPlanFromPanel:
                 {"id": "S3", "title": "Third step", "acceptance": "third acceptance"},
             ],
         }
-        assert plan_mode.handle_submit_plan(revision).get("success") is True
+        assert plan_mode.handle_submit_plan(revision, session=plan_cli.plan_session).get("success") is True
         _no_execute(monkeypatch)
         plan_cli.printer.ask_plan_decision.side_effect = ["edit", "cancel"]
 
@@ -502,7 +510,7 @@ class TestEditPlanFromPanel:
             )
             return True, ""
 
-        monkeypatch.setattr(plan_mode, "edit_plan_file", fake_edit)
+        monkeypatch.setattr(plan_service, "edit_plan_file", fake_edit)
 
         plan_cli._handle_plan_review_panel()
 

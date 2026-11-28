@@ -1,0 +1,11 @@
+{"file": ".trellis/spec/py/index.md", "reason": "确认源码分层、依赖方向和懒加载约束"}
+{"file": ".trellis/spec/repo/index.md", "reason": "遵守分支 PR、文档与任务规范"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "执行隔离测试、lint、格式及完整质量门禁；历史差异参考研究笔记"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查命令、客户端、工具与存储的端到端数据流"}
+{"file": ".trellis/tasks/11-27-core-organization-refactor/research/organization-review.md", "reason": "读取本次实际代码证据、行为测试映射、兼容限制和旧规范差异"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "保留命令语义、终端确认及机器输出边界"}
+{"file": ".trellis/spec/py/function-tool-guidelines.md", "reason": "保持 schema、工具覆盖、执行结果、guard 和 MCP 契约"}
+{"file": ".trellis/spec/py/provider-guidelines.md", "reason": "保持 provider 声明、工具结果配对及确认 generator 协议"}
+{"file": ".trellis/spec/py/checkpoints.md", "reason": "执行器迁移不得改变 mutation capture、文件锁及恢复边界"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "复用现有 CommandInfo、工具格式转换与截断实现"}
+{"file": ".trellis/tasks/11-27-core-organization-refactor/research/test-safety-review.md", "reason": "按行为证据补齐重构前的关键回归，保留 provider 差异并识别测试隔离和基线限制"}

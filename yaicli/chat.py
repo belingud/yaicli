@@ -13,6 +13,7 @@ from .console import YaiConsole, get_console, safe_text, untrusted_text
 from .const import DEFAULT_CHAT_HISTORY_DIR, get_project_sessions_dir, get_sessions_dir
 from .exceptions import ChatDeleteError, ChatLoadError, ChatSaveError
 from .redaction import is_redaction_enabled, redact_message_dict
+from .runtime import current_config
 from .schemas import ChatMessage, ImageData, ToolCall
 from .utils import option_callback
 
@@ -31,7 +32,7 @@ def _chmod_quietly(path: Path, mode: int) -> None:
         pass
 
 
-def resolve_default_chat_dir() -> Path:
+def resolve_default_chat_dir(config=None) -> Path:
     """Resolve the session directory used when no explicit one is given.
 
     v0.21 K13: sessions are isolated per project under
@@ -40,7 +41,8 @@ def resolve_default_chat_dir() -> Path:
     differs from the built-in default keeps the previous flat-directory
     behaviour, so scripts/tests pinning that directory are unaffected.
     """
-    configured = str(cfg.get("CHAT_HISTORY_DIR") or "").strip()
+    config = current_config(cfg) if config is None else config
+    configured = str(config.get("CHAT_HISTORY_DIR") or "").strip()
     if configured and configured != str(DEFAULT_CHAT_HISTORY_DIR):
         return Path(configured).expanduser()
     return get_project_sessions_dir()

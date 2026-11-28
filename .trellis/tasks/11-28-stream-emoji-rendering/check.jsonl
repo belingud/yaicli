@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/py/index.md", "reason": "Python层入口与依赖边界"}
+{"file": ".trellis/spec/py/cli-and-rendering.md", "reason": "Printer/Live/TTY及机器输出契约"}
+{"file": ".trellis/spec/py/quality-guidelines.md", "reason": "隔离测试和无真实API要求"}
+{"file": ".trellis/spec/repo/build-and-release.md", "reason": "仅uv管理依赖与PR合并约束"}
+{"file": ".trellis/spec/guides/index.md", "reason": "跨层与测试盲点审查"}
+{"file": ".trellis/tasks/11-27-session-state-boundaries/research/debug-stream-display.md", "reason": "真实Rich与独立终端重放及根因"}
+{"file": ".trellis/tasks/11-27-session-state-boundaries/research/debug-stream-protocol.md", "reason": "provider/client假流与上游重复边界"}

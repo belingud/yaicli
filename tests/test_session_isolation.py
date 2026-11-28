@@ -72,6 +72,7 @@ def error_console(monkeypatch):
     """Capture stderr notices from the CLI module."""
     console = MagicMock()
     monkeypatch.setattr(cli_module, "get_error_console", lambda: console)
+    monkeypatch.setattr("yaicli.application.session.get_error_console", lambda: console)
     return console
 
 
@@ -298,8 +299,8 @@ class TestSessionMetadata:
         cli.chat = Chat(title="From CLI")
         cli.chat.add_message("user", "hi")
         cli.role_name = DefaultRoleNames.DEFAULT.value
-        monkeypatch.setitem(cfg, "MODEL", "cli-model")
-        monkeypatch.setitem(cfg, "PROVIDER", "cli-provider")
+        monkeypatch.setitem(cli.config, "MODEL", "cli-model")
+        monkeypatch.setitem(cli.config, "PROVIDER", "cli-provider")
 
         cli._save_chat("From CLI")
 
@@ -382,9 +383,7 @@ class TestResume:
         with patch.object(CLI, "_run_repl"):
             cli.run(chat=True)
 
-        assert [message.content for message in cli.chat.history if message.role == "assistant"] == [
-            "previous answer"
-        ]
+        assert [message.content for message in cli.chat.history if message.role == "assistant"] == ["previous answer"]
 
     def test_startup_missed_title_prints_new_session_notice(self, manager, error_console):
         cli = _make_cli(manager)
@@ -395,9 +394,7 @@ class TestResume:
         assert cli.chat.history == []
         assert cli.is_temp_session is False
         notices = _printed(error_console)
-        assert any(
-            "No saved session titled" in notice and "My Missing Session" in notice for notice in notices
-        )
+        assert any("No saved session titled" in notice and "My Missing Session" in notice for notice in notices)
 
     def test_startup_matching_title_loads_without_new_session_notice(self, manager, error_console):
         _save_session(manager, "Existing Session")

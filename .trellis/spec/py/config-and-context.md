@@ -1,13 +1,13 @@
 # Config, Context & Session Guidelines
 
-> Scope: before touching `yaicli/config.py`, `const.py`, `role.py`, `context.py`, `history.py`, `schemas.py`,
+> Scope: before touching `yaicli/config.py`, `runtime.py`, `application/session.py`, `const.py`, `role.py`, `context.py`, `history.py`, `schemas.py`,
 > `console.py`, `utils.py`, or their tests. CLI/rendering wiring is in
 > [cli-and-rendering.md](./cli-and-rendering.md); cross-layer data flow in the
 > [cross-layer guide](../guides/cross-layer-thinking-guide.md).
 
-Configuration is a single global dict `cfg` (`yaicli/config.py`) built at import time from three layers:
-defaults in `const.DEFAULT_CONFIG_MAP` → the config file (`CONFIG_PATH`) → environment variables. Everything
-else (roles, context, chat sessions, printer, CLI) imports `cfg` and reads uppercase keys. Importing config
+The default parsed configuration is `cfg` (`yaicli/config.py`), built at import time from three layers:
+defaults in `const.DEFAULT_CONFIG_MAP` → the config file (`CONFIG_PATH`) → environment variables.
+Application services receive their configuration mapping explicitly and read uppercase keys. Importing config
 never writes: a missing config file is parsed from `DEFAULT_CONFIG_INI` in memory, and the file is created
 on demand by `ensure_config_file()` (first real run, never for `--version`/`--help`/`--template`/`--list-*`).
 
@@ -15,7 +15,7 @@ on demand by `ensure_config_file()` (first real run, never for `--version`/`--he
 
 - `Config(dict)` subclasses `dict`: `reload()` clears, loads defaults, parses the INI, applies env overrides,
   then type-converts. `cfg = get_config()` is a `@lru_cache(1)` singleton (`get_config()` calls `sys.exit()` on
-  `ConfigError`): **import `cfg`**, never construct `Config()` in feature code.
+  `ConfigError`): use this parsed default at the assembly/compatibility boundary; never construct `Config()` in feature code. Runtime services consume their owned mapping.
 - `DEFAULT_CONFIG_MAP` (`const.py`) entries have exactly `value`, `env_key` (`YAI_<KEY>`), `type`
   (`bool`/`int`/`float`/`str`/`dict`). The env layer only iterates this map, so a key absent from the map has
   **no env override** (the historical `YAI_PROVIDER` bug — `PROVIDER` now lives in the map).
@@ -62,7 +62,7 @@ on demand by `ensure_config_file()` (first real run, never for `--version`/`--he
    type conversion.
 2. Add the line + comment to `DEFAULT_CONFIG_INI` — config files are written from that template by
    `ensure_config_file()` only.
-3. Read it as `cfg["KEY"]` at the use site; only `Config._load_from_env` may read the env var for a key.
+3. Read uppercase keys from the effective session mapping at runtime; default compatibility helpers may use `cfg`. Only `Config._load_from_env` parses config env overrides; standalone tool guardrails use the scoped adapter described in function-tool-guidelines.md.
 4. Update `_pending_version_updated_config_keys()` (`config.py`) if installed config files need the key
    appended (today hardcoded for `CHAT_HISTORY_DIR`). Detection is read-only at import: lines are queued
    per `CONFIG_PATH` and appended only by `ensure_config_file()` on a real run, deduped and skipped when
@@ -79,10 +79,47 @@ on demand by `ensure_config_file()` (first real run, never for `--version`/`--he
   when the value differs from the option default (the default was read from `cfg` at import). This is why
   `--model`, `--temperature`, `--stream/--no-stream`, `--show-reasoning`, `--enable-mcp`, etc. mutate `cfg`
   before `CLI` is built — there is no separate options object for them.
-- `CLI.__init__` resolves `auto` values: `OS_NAME`/`SHELL_NAME` are detected via `detect_os`/`detect_shell`
-  (`utils.py`) and written back into global `cfg`; `role`, `chat_manager`, `context_manager` and cfg-derived
-  state (`interactive_round`, `chat_history_dir`) are captured on the instance.
+- `CLI.__init__` takes a deep snapshot of the parsed source mapping once, including nested dict/list values.
+  `OS_NAME`/`SHELL_NAME` auto detection, runtime commands and headless overrides update that owned mapping;
+  they must not mutate another application or the loader default. Role/managers and derived run state remain
+  attached to the instance. An explicitly injected ready client keeps its identity and lifecycle.
 - `--verbose` prints config with `API_KEY` replaced by `"****"`; any new secret key must be masked there.
+
+### Effective runtime ownership (`runtime.py`)
+
+`SessionContext(config)` retains the already-owned mapping and one lazy `PlanSession` reference. The CLI,
+coordinator, built-in client, provider and tool adapters share this same context; do not copy configuration
+again inside these services. Direct `LLMClient(config)` keeps the caller mapping identity and established
+write-back semantics. `peek_plan_session()` does not create or import planning; `get_plan_session()` creates
+one object on first use. Compatibility assignment goes through `set_plan_session()`.
+
+`tool_mode` derives from that plan object: researching/revising → plan, executing → execution, otherwise
+None. Do not maintain another global mode copy on the explicit product path. Old default plan/mode entry
+points remain for standalone callers and must be tested separately from instance isolation.
+
+`bind_config(mapping)` provides a ContextVar scope for lower-level helpers; `current_config(default)` uses
+an explicit binding even when the mapping is empty, and only falls back when unbound. Restore the token in
+finally. This scope reads no files, creates no service and takes no environment lock. Generator/stream
+consumption, callbacks and save paths need the correct owning binding at actual execution time. Reuse
+`ThreadedStream.copy_context()` when entering the worker; do not introduce a second thread-local store.
+
+Default CLI assembly must own its chat manager directory; constructing B must not rewrite A's manager.
+Preserve the identity of a caller-injected manager. Ordinary saves, plan-pointer saves and checkpoint commit
+callbacks use the same effective redaction configuration without acquiring the tool environment lock.
+
+### Session coordination
+
+`application/session.py::SessionController` owns chat identity, persistence state, retry snapshots and
+checkpoint storage coordination. Its constructor receives the configuration mapping, actual chat
+manager, shared run options, console and a history-change callback; never pass it the whole CLI.
+The manager's actual directory determines saved-chat and checkpoint ownership. Existing public CLI
+chat properties delegate to this same state rather than storing copies.
+
+Keep save/load/resume metadata, tool-message pairing and checkpoint identities intact. History changes
+invalidate the retry snapshot and notify the application to refresh its context. Generation workers
+and terminal confirmation remain controlled by the CLI; moving chat coordination must preserve the
+existing writer/workspace lock and save-callback order. Verify services with real temporary Chat and
+FileChatManager dependencies independently of constructing a CLI.
 
 ## Constants & Paths (`const.py`)
 
@@ -180,7 +217,7 @@ appends (default 2) to the newest `max_entries` prompt-toolkit records (`# times
 caller to degrade, and returns `None` for non-`str`/`Path` inputs; `store_string`/`_trim_history` best-effort
 re-apply 0600 so legacy 0644 files are repaired on the next append/trim.
 `CLI.prepare_chat_loop()` makes the history setup OSError-tolerant (read-only HOME must not crash: warn once,
-continue without history) and passes `max_entries=cfg["MAX_HISTORY"]`; a non-positive limit disables saving
+continue without history) and passes `max_entries=self.config["MAX_HISTORY"]`; a non-positive limit disables saving
 (`store_string` no-ops; the `_trim_history()` guard also clears the file if trimming is forced directly).
 The documented `MAX_HISTORY=0` semantics live in `docs/advanced/history.md` (the configuration table only
 lists the key). `INTERACTIVE_ROUND` does not bound this file — it only bounds the in-conversation chat
@@ -226,13 +263,15 @@ uv run pytest tests/test_config.py tests/test_context.py tests/test_role.py test
 to a temp file so REPL/history tests never write the real HOME, `setup_test_environment` sets
 `YAI_API_KEY`/`YAI_MODEL` (and `YAI_PROVIDER`, which the map now reads), `mock_console` is a `MagicMock`.
 Caveat: the module-level `cfg` singleton is created at import, **before** the `CONFIG_PATH` patch applies, so
-tests needing a provider patch `yaicli.cli.cfg` explicitly (`tests/test_cli.py:347`, `tests/test_image.py:420`);
-the `cli_with_mocks` helper in `tests/test_cli.py` instead injects a mock client.
+tests may patch `yaicli.cli.cfg` before construction or supply CLI's explicit internal config source.
+After construction change `cli.config`, not the loader singleton, to exercise runtime updates; ready-client
+fixtures can still inject a fake client without constructing SDKs.
 
 ## Rules
 
-- One default location: values in `const.py`, conversion in `config.py`, no literals at read sites. Never mutate `cfg`
-  from feature code except CLI-flag override and `auto` OS/shell detection (tests share the singleton).
+- One default location: values in `const.py`, conversion in `config.py`, no literals at read sites. Entry flags may
+  update the parsed source before assembly; runtime updates belong to the session mapping. Do not mutate default
+  `cfg` to synchronize live sessions or temporarily swap it to impersonate another application.
 - Never build paths from `~` inline; import the `const.py` constant so tests can patch one place. Keep secrets out of
   logs/verbose output (`API_KEY` masked as `****`).
 - Import paths must stay write-free (config/role/chat/providers/tools); all state writes are explicit, best-effort

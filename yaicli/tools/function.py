@@ -240,7 +240,7 @@ def get_function(name: str) -> Function:
 
 
 #: Gemini declarations cache, keyed by plan tool mode (``""`` = normal run).
-_gemini_functions_cache: Optional[Dict[str, List[Callable]]] = None
+_gemini_functions_cache: Optional[Dict[tuple, List[Callable]]] = None
 
 
 def reset_gemini_schema_cache() -> None:
@@ -261,23 +261,7 @@ def _plan_tool_mode() -> Optional[str]:
         return None
 
 
-def _gemini_plan_allowlist() -> Optional[frozenset]:
-    """Read the plan-mode allowlist for Gemini declarations (``None`` outside plan mode).
-
-    ``yaicli.plan_mode`` and the config singleton are imported lazily so the normal
-    (non-plan) path never pays for them.
-    """
-    try:
-        from .. import plan_mode
-        from ..config import cfg
-
-        allow_shell = bool(cfg.get("PLAN_ALLOW_READONLY_SHELL", True))
-        return plan_mode.plan_tool_allowlist(allow_shell)
-    except Exception:  # pragma: no cover - defensive: never break tool advertisement
-        return frozenset()
-
-
-def get_functions_gemini_format() -> List[Callable]:
+def get_functions_gemini_format(*, runtime=None) -> List[Callable]:
     """Get functions in gemini format.
 
     Mode-aware (v0.24 K23): in plan mode only the read-only allowlist is declared
@@ -285,28 +269,53 @@ def get_functions_gemini_format() -> List[Callable]:
     declared plus ``todo_write``. Declarations are cached per mode.
     """
     global _gemini_functions_cache
-    mode = _plan_tool_mode()
+    mode = runtime.tool_mode if runtime is not None else _plan_tool_mode()
     if mode not in ("plan", "execution"):
         mode = None
     cache = _gemini_functions_cache
     if cache is None:
         cache = {}
         _gemini_functions_cache = cache
-    cache_key = mode or ""
-    if cache_key in cache:
+    from ..config import cfg
+    from ..runtime import current_config
+
+    config = runtime.config if runtime is not None else current_config(cfg)
+    allow_shell = bool(config.get("PLAN_ALLOW_READONLY_SHELL", True))
+    cache_key = (mode or "", allow_shell, id(get_func_name_map()))
+    if runtime is None and cache_key in cache:
         return cache[cache_key]
-    allowed = _gemini_plan_allowlist() if mode == "plan" else None
+    if mode == "plan":
+        from ..planning.model import plan_tool_allowlist
+
+        allowed = plan_tool_allowlist(allow_shell)
+    else:
+        allowed = None
     gemini_functions = []
     for func_name, func in get_func_name_map().items():
         if allowed is not None and func_name not in allowed:
             continue
-        wrapped_func = wrap_gemini_function(func.execute)
+        execute = _bind_execution(func.execute, runtime) if runtime is not None else func.execute
+        wrapped_func = wrap_gemini_function(execute)
         wrapped_func.__name__ = func_name
         wrapped_func.__doc__ = func.description
         gemini_functions.append(wrapped_func)
     if mode in ("plan", "execution"):
         from . import session_tools
 
-        gemini_functions.extend(session_tools.gemini_functions(mode))
-    cache[cache_key] = gemini_functions
+        gemini_functions.extend(session_tools.gemini_functions(mode, runtime=runtime))
+    if runtime is None:
+        cache[cache_key] = gemini_functions
     return gemini_functions
+
+
+def _bind_execution(function: Callable, runtime) -> Callable:
+    """Bind a delayed standalone callback without changing its model signature."""
+
+    @wraps(function)
+    def execute(*args, **kwargs):
+        from .environment import tool_environment
+
+        with tool_environment(runtime.config):
+            return function(*args, **kwargs)
+
+    return execute

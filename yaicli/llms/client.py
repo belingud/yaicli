@@ -23,7 +23,16 @@ from ..model_limits import (
     get_context_limits,
     record_learned_limit,
 )
-from ..schemas import ChatMessage, ConfirmToolCall, LLMResponse, RefreshLive, ToolCall, ToolConfirmDecision, ToolPolicy
+from ..runtime import SessionContext, bind_config
+from ..schemas import (
+    ChatMessage,
+    ConfirmToolCall,
+    LLMResponse,
+    RefreshLive,
+    ToolCall,
+    ToolConfirmDecision,
+    ToolPolicy,
+)
 from ..tokens import (
     estimate_messages_tokens,
     trim_messages_to_budget,
@@ -32,12 +41,12 @@ from ..tokens import (
 from ..tools import execute_tool_call, tool_enabled
 from ..tools.approval import (
     ToolApprovalManager,
-    parse_tool_arguments,
     redact_text,
     summarize_arguments,
 )
 from ..tools.mcp import MCP_TOOL_NAME_PREFIX
-from ..tools.risk import RiskLevel, ShellRisk, classify_shell_command, get_tool_risk
+from ..tools.policy import evaluate_tool_call
+from ..tools.risk import RiskLevel
 from ..usage import Usage, UsageTracker, estimate_usage
 from .provider import ProviderFactory
 from .tool_calls import dedupe_tool_calls
@@ -53,12 +62,6 @@ def _as_positive_int(value: Any) -> Optional[int]:
     except (TypeError, ValueError):
         return None
     return parsed if parsed > 0 else None
-
-
-#: Session-state tools of the persistent plan workflow (v0.24 K23). Kept in sync
-#: with :data:`yaicli.plan_mode.SESSION_TOOL_NAMES`; duplicated here so the normal
-#: tool gate never imports the plan-mode module (plan mode is fully optional).
-_SESSION_STATE_TOOL_NAMES = frozenset({"submit_plan", "todo_write"})
 
 
 class LLMClient:
@@ -120,11 +123,8 @@ class LLMClient:
         #: Set after an oversized MAX_TOKENS was clamped to fit the context window
         #: (one stderr warning per client; the clamped value is written back to config).
         "_max_tokens_clamped",
-        # ---- v0.24 K23 persistent plan mode ----
-        #: Plan session injected by the CLI (``None`` = normal tool gating). Typed as
-        #: ``Any`` because the client must not import ``yaicli.plan_mode`` at module
-        #: level; only ``.mode`` (a string) is read here.
-        "plan_session",
+        # Session-owned configuration and lazily constructed plan state.
+        "runtime",
     )
 
     def __init__(
@@ -134,6 +134,7 @@ class LLMClient:
         verbose: bool = False,
         approval: Optional[ToolApprovalManager] = None,
         interactive: bool = True,
+        runtime=None,
         **kwargs,
     ):
         """
@@ -146,7 +147,8 @@ class LLMClient:
             approval: Tool approval manager (created if not provided)
             interactive: Whether the session can prompt the user (TTY available)
         """
-        self.config = config
+        self.runtime = runtime if runtime is not None else SessionContext(config)
+        self.config = self.runtime.config
         self.verbose = verbose
         self.console = get_console()
         self.enable_function = self.config["ENABLE_FUNCTIONS"]
@@ -165,7 +167,9 @@ class LLMClient:
             self.console.print(f"Provider {provider_key} not found, using openai as default", style="yellow")
             provider_key = "openai"
         self.provider_key: str = provider_key
-        self.provider = ProviderFactory.create_provider(provider_key, config=config, verbose=verbose, **kwargs)
+        self.provider = ProviderFactory.create_provider(
+            provider_key, config=self.config, verbose=verbose, runtime=self.runtime, **kwargs
+        )
 
         self.max_tool_call_depth = self.config["MAX_TOOL_CALL_DEPTH"]
 
@@ -188,10 +192,13 @@ class LLMClient:
         self.output_truncated: bool = False
         self._max_tokens_clamped: bool = False
 
-        # ---- v0.24 K23 persistent plan mode ----
-        #: Set by the CLI (``cli._get_plan_session``); the plan-mode gate reads
-        #: ``.mode`` from it. ``None`` keeps the pre-K23 permission gate unchanged.
-        self.plan_session: Any = None
+    @property
+    def plan_session(self):
+        return self.runtime.peek_plan_session()
+
+    @plan_session.setter
+    def plan_session(self, value):
+        self.runtime.set_plan_session(value)
 
     # ------------------- usage / cost (v0.22 K17) -------------------
     @property
@@ -648,73 +655,6 @@ class LLMClient:
         return valid_tool_calls
 
     # ------------------- approval gate helpers (v0.19 K06) -------------------
-    def _gate_shell_risk(self, gate_name: str, parsed_arguments: Optional[Dict[str, Any]]) -> Optional[ShellRisk]:
-        """Classify a shell tool call before it runs (``None`` for non-shell tools).
-
-        The command is the *decoded* ``command`` argument, i.e. the same value
-        ``execute_tool_call`` passes to the tool after ``json_repair``. Classification
-        is advisory: the gate decides whether to confirm/deny, never the classifier.
-        """
-        if gate_name != "execute_shell_command" or not isinstance(parsed_arguments, dict):
-            return None
-        command = parsed_arguments.get("command")
-        if not isinstance(command, str):
-            return None
-        try:
-            return classify_shell_command(command)
-        except Exception:  # pragma: no cover - classification must never break the gate
-            return ShellRisk(
-                level=RiskLevel.exec,
-                dangerous=True,
-                reasons=["shell command could not be classified safely"],
-            )
-
-    def _approval_match_source(self, gate_name: str, parsed_arguments: Optional[Dict[str, Any]]) -> Optional[str]:
-        """Return why a call is pre-approved (``session``/``persist``/``rule``) or None.
-
-        Duck-typed: tests and embedders may pass a minimal approval object exposing only
-        the v1 ``is_allowed(name)`` signature; such managers simply have no rules.
-        """
-        match_source = getattr(self.approval, "match_source", None)
-        if callable(match_source):
-            try:
-                return match_source(gate_name, parsed_arguments)
-            except TypeError:  # legacy is_allowed-only stub missing this signature
-                try:
-                    return match_source(gate_name)
-                except Exception:
-                    return None
-            except Exception:  # pragma: no cover - approval lookup must never break a turn
-                return None
-
-        is_allowed = getattr(self.approval, "is_allowed", None)
-        if callable(is_allowed):
-            try:
-                allowed = is_allowed(gate_name, parsed_arguments)
-            except TypeError:  # v1 signature: is_allowed(name)
-                try:
-                    allowed = is_allowed(gate_name)
-                except Exception:
-                    return None
-            except Exception:  # pragma: no cover
-                return None
-            if allowed:
-                return "persist"
-        return None
-
-    def _approval_run_allowed(self, gate_name: str) -> bool:
-        """True when the per-run ``--allowed-tools`` patterns match this tool name."""
-        method = getattr(self.approval, "is_run_allowed", None)
-        if not callable(method):
-            return False
-        try:
-            return bool(method(gate_name))
-        except Exception:  # pragma: no cover - run grants must never break a turn
-            return False
-
-    def _approval_auto_allow_read(self) -> bool:
-        """True when ``--yes`` was given for this run."""
-        return bool(getattr(self.approval, "auto_allow_read", False))
 
     # ------------------- permission policy mode (v0.21 K10) -------------------
     def _resolve_tool_policy_mode(self) -> str:
@@ -749,16 +689,6 @@ class LLMClient:
         self.tool_policy_mode = _const.DEFAULT_TOOL_POLICY
         return self.tool_policy_mode
 
-    @staticmethod
-    def _readonly_deny_reason(gate_name: str, risk: RiskLevel) -> str:
-        """Actionable reason for a ``TOOL_POLICY=readonly`` hard deny (K10)."""
-        return (
-            f"Tool '{gate_name}' (risk: {risk.value}) is blocked by TOOL_POLICY=readonly, which denies "
-            "write/exec tools even when they are pre-approved or confirmation is disabled; the call was "
-            "declined. Set TOOL_POLICY=standard (config.ini) or YAI_TOOL_POLICY=standard (environment) "
-            "to allow it, or use a read-only tool instead."
-        )
-
     def _remember_approval(self, gate_name: str, decision: ToolConfirmDecision) -> None:
         """Store a SESSION/PERSIST prompt decision on the approval manager."""
         if decision == ToolConfirmDecision.SESSION:
@@ -780,33 +710,6 @@ class LLMClient:
                     f"Could not persist approval for '{gate_name}'; allowed for this session only.",
                     style="yellow",
                 )
-
-    def _permissions_path_text(self) -> str:
-        """Config-file path shown in deny hints (never a secret)."""
-        path = getattr(self.approval, "permissions_path", None)
-        return str(path) if path else str(_const.TOOL_PERMISSIONS_PATH)
-
-    def _non_interactive_deny_reason(self, gate_name: str, risk: RiskLevel) -> str:
-        """Explain a policy denial to the model (it must be able to adapt)."""
-        return (
-            f"Tool '{gate_name}' (risk: {risk.value}) requires confirmation, but this session has no "
-            "interactive terminal; the call was declined. Pre-approve it with --allowed-tools, add a "
-            f"rule to {self._permissions_path_text()}, or run interactively."
-        )
-
-    @staticmethod
-    def _dangerous_deny_reason(shell_risk: ShellRisk, *, non_interactive: bool) -> str:
-        """Explain why a danger-classified shell command was refused."""
-        details = "; ".join(shell_risk.reasons) or "dangerous command"
-        if non_interactive:
-            return (
-                f"Dangerous shell command refused in a non-interactive session; the call was declined "
-                f"({details}). Pre-approval flags can not override the danger classification."
-            )
-        return (
-            "Confirmation is disabled (TOOL_CONFIRM=false) and this shell command is classified as "
-            f"dangerous, so the call was declined ({details}). Enable TOOL_CONFIRM to approve it explicitly."
-        )
 
     def _audit_enabled(self) -> bool:
         """True when this config asks for the tool audit log.
@@ -911,30 +814,24 @@ class LLMClient:
             # but execute_tool_call strips it in place at execution time.
             gate_name = getattr(tool_call, "name", "") or ""
             raw_arguments = getattr(tool_call, "arguments", "")
-            parsed_arguments = parse_tool_arguments(raw_arguments)
-            risk = get_tool_risk(gate_name)
-            # v0.24 K23: session-state tools are not builtins, so the risk map would
-            # classify them as unknown/exec. They never touch the workspace; record
-            # them as read in the audit trail (the builtin map invariant is unchanged).
-            audit_risk = RiskLevel.read if gate_name in _SESSION_STATE_TOOL_NAMES else risk
-            shell_risk = self._gate_shell_risk(gate_name, parsed_arguments)
-            dangerous = bool(shell_risk is not None and shell_risk.dangerous)
-
-            # v0.22 K19: a tool that ENABLED_TOOLS/--tools does not offer is not
-            # advertised to the model, so a call to it can only be a hallucination or
-            # a stale history replay. Refuse it in-band (the assistant message keeps
-            # the call so tool_call_id pairing stays valid) with an actionable reason;
-            # this is not a permission denial and does not affect the exit code.
-            if not tool_enabled(gate_name):
-                reason = (
-                    f"Tool '{gate_name}' is not offered in this run (ENABLED_TOOLS/--tools selection); "
-                    "it was not executed. Use one of the offered tools, or add this tool to ENABLED_TOOLS "
-                    "and ask again."
+            with bind_config(self.config):
+                outcome = evaluate_tool_call(
+                    gate_name,
+                    raw_arguments,
+                    config=self.config,
+                    policy_mode=policy_mode,
+                    confirm_enabled=confirm_enabled,
+                    interactive=self.interactive,
+                    approval=self.approval,
+                    plan_state=getattr(self.plan_session, "mode", None) if self.plan_session is not None else None,
+                    selected=tool_enabled(gate_name, runtime=self.runtime),
                 )
+            audit_risk = outcome.risk
+            if outcome.error is not None:
                 messages.append(
                     ChatMessage(
                         role=tool_role,
-                        content=json.dumps({"error": "tool_disabled", "reason": reason}, ensure_ascii=False),
+                        content=json.dumps({"error": outcome.error, "reason": outcome.reason}, ensure_ascii=False),
                         name=gate_name.removeprefix(MCP_TOOL_NAME_PREFIX),
                         tool_call_id=tool_call.id,
                     )
@@ -943,121 +840,20 @@ class LLMClient:
                     tool=gate_name,
                     risk=audit_risk,
                     policy=policy_mode,
-                    decision="disabled",
-                    source="tool_selection",
+                    decision="disabled" if outcome.error == "tool_disabled" else "denied",
+                    source=outcome.source,
                     arguments=raw_arguments,
                     duration_ms=0.0,
-                    reason=reason,
+                    reason=outcome.reason,
                 )
                 continue
 
-            decision = ToolConfirmDecision.ONCE
-            source: Optional[str] = None
-            reason: Optional[str] = None
-            prompted = False
-            plan_override = False
-
-            # ---- v0.24 K23 persistent plan mode gate -------------------------
-            # This branch runs BEFORE the danger classification / TOOL_POLICY /
-            # approval branches: plan-mode tools are read-only or session-state,
-            # never prompt, and tools hidden in the current mode are refused
-            # in-band (structured error + audit, no approval prompt).
-            plan_state = getattr(self.plan_session, "mode", None) if self.plan_session is not None else None
-            if plan_state is not None or gate_name in _SESSION_STATE_TOOL_NAMES:
-                deny_reason: Optional[str] = None
-                if plan_state in ("researching", "revising"):
-                    from ..plan_mode import is_tool_allowed_in_plan
-
-                    allow_readonly_shell = True
-                    try:
-                        allow_readonly_shell = bool(self.config.get("PLAN_ALLOW_READONLY_SHELL", True))
-                    except (TypeError, AttributeError):  # pragma: no cover - exotic config mappings
-                        allow_readonly_shell = True
-                    if not is_tool_allowed_in_plan(gate_name, allow_readonly_shell=allow_readonly_shell):
-                        deny_reason = (
-                            f"Tool '{gate_name}' is not available in plan mode; planning is read-only. "
-                            "Use the read/network tools or a read-only shell command, then call submit_plan, "
-                            "or leave plan mode with Shift+Tab."
-                        )
-                    else:
-                        # Allowed in the read-only phase: run without an approval prompt.
-                        # The read-only shell allowlist is validated in execute_tool_call.
-                        decision, source = ToolConfirmDecision.ONCE, "plan_mode"
-                        plan_override = True
-                elif plan_state == "executing" and gate_name == "todo_write":
-                    decision, source = ToolConfirmDecision.ONCE, "plan_mode"
-                    plan_override = True
-                elif gate_name in _SESSION_STATE_TOOL_NAMES:
-                    deny_reason = (
-                        f"Tool '{gate_name}' is not available in mode '{plan_state or 'normal'}': it only "
-                        "runs while planning (submit_plan) or while executing an approved plan (todo_write)."
-                    )
-                if deny_reason is not None:
-                    messages.append(
-                        ChatMessage(
-                            role=tool_role,
-                            content=json.dumps(
-                                {"error": "tool_not_available_in_mode", "reason": deny_reason}, ensure_ascii=False
-                            ),
-                            name=gate_name.removeprefix(MCP_TOOL_NAME_PREFIX),
-                            tool_call_id=tool_call.id,
-                        )
-                    )
-                    self._audit_tool_decision(
-                        tool=gate_name,
-                        risk=audit_risk,
-                        policy=policy_mode,
-                        decision="denied",
-                        source="plan_mode",
-                        arguments=raw_arguments,
-                        duration_ms=0.0,
-                        reason=deny_reason,
-                    )
-                    continue
-
-            if plan_override:
-                pass
-            elif dangerous:
-                # A danger-classified shell command can never be auto-approved: it needs
-                # an explicit interactive confirmation, and non-interactive runs refuse it.
-                # This branch keeps its precedence in every TOOL_POLICY mode (K10).
-                if not self.interactive:
-                    decision, source = ToolConfirmDecision.DENY, "non_interactive"
-                    reason = self._dangerous_deny_reason(shell_risk, non_interactive=True)
-                elif not confirm_enabled:
-                    decision, source = ToolConfirmDecision.DENY, "disabled"
-                    reason = self._dangerous_deny_reason(shell_risk, non_interactive=False)
-                else:
-                    decision = (yield ConfirmToolCall(tool_call)) or ToolConfirmDecision.DENY
-                    prompted = True
-                    source = "prompt"
-            elif policy_mode == "readonly":
-                # K10 hard ceiling: no approval, run-grant or TOOL_CONFIRM=false escape.
-                if risk in (RiskLevel.write, RiskLevel.exec):
-                    decision, source = ToolConfirmDecision.DENY, "policy"
-                    reason = self._readonly_deny_reason(gate_name, risk)
-                else:
-                    decision, source = ToolConfirmDecision.ONCE, "policy"
-            elif policy_mode == "trusted":
-                # K10 floor: every non-dangerous tool runs without a prompt.
-                decision, source = ToolConfirmDecision.ONCE, "policy"
-            elif not confirm_enabled:
-                decision, source = ToolConfirmDecision.ONCE, "disabled"
-            else:
-                match_source = self._approval_match_source(gate_name, parsed_arguments)
-                if match_source is not None:
-                    decision, source = ToolConfirmDecision.ONCE, match_source
-                elif self._approval_run_allowed(gate_name):
-                    decision, source = ToolConfirmDecision.ONCE, "allowlist"
-                elif self._approval_auto_allow_read() and risk is RiskLevel.read:
-                    decision, source = ToolConfirmDecision.ONCE, "yes"
-                elif not self.interactive:
-                    decision, source = ToolConfirmDecision.DENY, "non_interactive"
-                    reason = self._non_interactive_deny_reason(gate_name, risk)
-                else:
-                    decision = (yield ConfirmToolCall(tool_call)) or ToolConfirmDecision.DENY
-                    prompted = True
-                    source = "prompt"
+            decision = outcome.decision
+            source = outcome.source
+            reason = outcome.reason
+            prompted = decision is None
+            if prompted:
+                decision = (yield ConfirmToolCall(tool_call)) or ToolConfirmDecision.DENY
 
             if decision in (ToolConfirmDecision.SESSION, ToolConfirmDecision.PERSIST):
                 self._remember_approval(gate_name, decision)
@@ -1095,7 +891,7 @@ class LLMClient:
 
             # Avoid double-printing the call: the prompt already showed it when we prompted.
             started_at = time.perf_counter()
-            function_result, ok = execute_tool_call(tool_call, announce=not prompted)
+            function_result, ok = execute_tool_call(tool_call, announce=not prompted, runtime=self.runtime)
             duration_ms = (time.perf_counter() - started_at) * 1000.0
             # K17 tool metrics: executed calls only (denied calls never ran), with
             # the real wall-clock duration and the size of the result as the model sees it.

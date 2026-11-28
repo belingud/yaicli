@@ -22,15 +22,18 @@ from yaicli.llms.provider import Provider
 from yaicli.schemas import ChatMessage, ConfirmToolCall, LLMResponse, ToolCall
 from yaicli.tools import (
     execute_tool_call,
+)
+from yaicli.tools import executor as executor_mod
+from yaicli.tools import function as function_mod
+from yaicli.tools import (
     get_anthropic_mcp_tools,
     get_anthropic_schemas,
     get_openai_mcp_tools,
     get_openai_schemas,
     output_history,
-    set_plan_tool_mode,
-    workspace,
 )
-from yaicli.tools import function as function_mod
+from yaicli.tools import schemas as schema_mod
+from yaicli.tools import set_plan_tool_mode, workspace
 
 
 @pytest.fixture(autouse=True)
@@ -45,10 +48,10 @@ def plan_state(tmp_path, monkeypatch):
     monkeypatch.setitem(cfg, "SHOW_FUNCTION_OUTPUT", False)
     monkeypatch.setitem(cfg, "SHOW_MCP_OUTPUT", False)
     monkeypatch.setattr(const, "TOOL_AUDIT_PATH", tmp_path / "audit.jsonl")
-    monkeypatch.setattr(tools_mod, "_openai_schemas_cache", None)
-    monkeypatch.setattr(tools_mod, "_anthropic_schemas_cache", None)
-    monkeypatch.setattr(tools_mod, "_filtered_schemas_cache", {})
-    monkeypatch.setattr(tools_mod, "_warned_tool_patterns", set())
+    monkeypatch.setattr(schema_mod, "_openai_schemas_cache", None)
+    monkeypatch.setattr(schema_mod, "_anthropic_schemas_cache", None)
+    monkeypatch.setattr(schema_mod, "_filtered_schemas_cache", {})
+    monkeypatch.setattr(schema_mod, "_warned_tool_patterns", set())
     monkeypatch.setattr(function_mod, "_gemini_functions_cache", None)
     monkeypatch.delenv("YAI_WORKSPACE_ROOT", raising=False)
     session = plan_mode.get_plan_session()
@@ -98,7 +101,7 @@ class TestSessionToolsViaExecuteToolCall:
         console = MagicMock()
         monkeypatch.setattr(tools_mod, "console", console)
         get_function = MagicMock(side_effect=AssertionError("builtin lookup must not run for session tools"))
-        monkeypatch.setattr(tools_mod, "get_function", get_function)
+        monkeypatch.setattr(executor_mod, "get_function", get_function)
         tool_call = ToolCall(id="call_1", name="submit_plan", arguments=json.dumps(_plan_payload()))
         result, ok = execute_tool_call(tool_call)
         assert ok is True
@@ -229,7 +232,7 @@ class TestPlanShellGate:
         tool = MagicMock()
         tool.execute.return_value = "normal result"
         monkeypatch.setattr(tools_mod, "console", MagicMock())
-        monkeypatch.setattr(tools_mod, "get_function", MagicMock(return_value=tool))
+        monkeypatch.setattr(executor_mod, "get_function", MagicMock(return_value=tool))
         monkeypatch.setattr(plan_shell, "run_plan_shell", MagicMock(side_effect=AssertionError("not plan mode")))
         result, ok = execute_tool_call(
             ToolCall(id="1", name="execute_shell_command", arguments=json.dumps({"command": "git status | head"}))
@@ -252,7 +255,7 @@ class TestModeAwareSchemas:
         set_plan_tool_mode(None)
         schemas = get_openai_schemas()
         assert len(schemas) == len(self._builtin_names())
-        assert schemas is tools_mod._openai_schemas_cache
+        assert schemas is schema_mod._openai_schemas_cache
 
     def test_plan_mode_schemas_are_the_allowlist_plus_submit_plan(self, plan_state):
         set_plan_tool_mode("plan")
@@ -298,7 +301,7 @@ class TestModeAwareSchemas:
 
     def test_mcp_schemas_hidden_in_plan_mode(self):
         set_plan_tool_mode("plan")
-        with patch("yaicli.tools.get_mcp_manager", side_effect=AssertionError("must not connect to MCP")):
+        with patch("yaicli.tools.schemas.get_mcp_manager", side_effect=AssertionError("must not connect to MCP")):
             assert get_openai_mcp_tools() == []
             assert get_anthropic_mcp_tools() == []
 
@@ -306,7 +309,7 @@ class TestModeAwareSchemas:
         set_plan_tool_mode(None)
         manager = MagicMock()
         manager.to_openai_tools.return_value = [{"type": "function", "function": {"name": "_mcp__a"}}]
-        with patch("yaicli.tools.get_mcp_manager", return_value=manager):
+        with patch("yaicli.tools.schemas.get_mcp_manager", return_value=manager):
             assert len(get_openai_mcp_tools()) == 1
 
     def test_gemini_functions_follow_the_mode(self):

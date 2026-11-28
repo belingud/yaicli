@@ -242,7 +242,7 @@ class ProviderFactory:
     }
 
     @classmethod
-    def create_provider(cls, provider_type: str, verbose: bool = False, **kwargs) -> Provider:
+    def create_provider(cls, provider_type: str, verbose: bool = False, *, runtime=None, **kwargs) -> Provider:
         """Create a provider instance based on provider type
 
         Args:
@@ -259,7 +259,10 @@ class ProviderFactory:
         module_path, class_name = cls.providers_map[provider_type]
         try:
             module = importlib.import_module(module_path, package="yaicli.llms")
-            return getattr(module, class_name)(verbose=verbose, **kwargs)
+            provider = getattr(module, class_name)(verbose=verbose, **kwargs)
+            if runtime is not None:
+                provider.runtime = runtime
+            return provider
         except ImportError as exc:
             extra = _OPTIONAL_PROVIDER_EXTRAS.get(provider_type)
             if extra:

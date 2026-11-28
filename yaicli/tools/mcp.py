@@ -3,6 +3,7 @@ import inspect
 import json
 import re
 import threading
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
@@ -85,8 +86,9 @@ def _config_int(key: str, default: int) -> int:
     """
     try:
         from ..config import cfg
+        from ..runtime import current_config
 
-        raw = cfg.get(key)
+        raw = current_config(cfg).get(key)
     except Exception:  # noqa: BLE001 - broken/mocked config mapping
         return default
     if raw is None or raw == "":
@@ -717,14 +719,19 @@ class MCPToolConverter:
             self._create_parameter_from_schema(name, prop_info, required) for name, prop_info in properties.items()
         ]
 
-        # Dynamic function
+        from ..runtime import bind_config, current_config
+
+        config = current_config(None)
+
+        # Dynamic function: capture configuration now; SDK invocation may happen later.
         def dynamic_function(**kwargs):
             # stderr: stdout is reserved for the tool result (headless JSON purity).
             try:
                 get_error_console().print(f"@MCP call: {dynamic_function.__name__}({json.dumps(kwargs)})", style="blue")
             except Exception:  # noqa: BLE001 - diagnostics must never break the tool call
                 pass
-            return tool_obj.execute(**kwargs)
+            with bind_config(config) if config is not None else nullcontext():
+                return tool_obj.execute(**kwargs)
 
         # Set function attributes
         dynamic_function.__signature__ = inspect.Signature(parameters=params)
