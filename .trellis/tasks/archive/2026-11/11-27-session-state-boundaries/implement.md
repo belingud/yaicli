@@ -37,8 +37,8 @@ uv run --no-sync pytest tests/test_headless_contract.py tests/test_runtime_boots
 - [x] 三版本完整 pytest、Ruff --no-fix、85个改动文件格式/isort/3.10AST、strict docs、构建、包字节、原启动门禁及 git diff --check 通过。
 - [x] verification.md 记录用例、命令、环境、锁顺序检查、数据格式未变及剩余限制。
 - [x] 完成父任务 A1—A5 最终集成审查、A6技术审查和架构图；A6的提交/PR/CI/合并仍单列待办。
-- [ ] 提交 PR，CI 通过后等待用户明确授权合并；记录父任务及三个子任务证据。
-- [ ] 全部合并后按 Trellis 规范记录会话与归档；不自动发布新版本。
+- [x] 提交 PR，CI 通过后等待用户明确授权合并；记录父任务及三个子任务证据。
+- [x] 全部合并后按 Trellis 规范记录会话与归档；不自动发布新版本。
 
 ## Rollback points
 

@@ -1,0 +1,67 @@
+{
+  "pr": 60,
+  "base_branch": "master",
+  "ci_head": "5d2424bb8e0288625c851ad72a83734a4052b604",
+  "ci_result": "all_six_checks_passed",
+  "checks": [
+    {
+      "name": "Lint & docs",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/belingud/yaicli/actions/runs/46114260307/job/140884400028",
+      "startedAt": "2026-11-28T05:55:29Z",
+      "completedAt": "2026-11-28T05:55:49Z"
+    },
+    {
+      "name": "Cold-start gate",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/belingud/yaicli/actions/runs/46114260249/job/140884399798",
+      "startedAt": "2026-11-28T05:55:28Z",
+      "completedAt": "2026-11-28T05:55:45Z"
+    },
+    {
+      "name": "Test (py3.10)",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/belingud/yaicli/actions/runs/46114260307/job/140884400258",
+      "startedAt": "2026-11-28T05:55:28Z",
+      "completedAt": "2026-11-28T05:56:39Z"
+    },
+    {
+      "name": "Test (py3.12)",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/belingud/yaicli/actions/runs/46114260307/job/140884400181",
+      "startedAt": "2026-11-28T05:55:28Z",
+      "completedAt": "2026-11-28T05:56:45Z"
+    },
+    {
+      "name": "Test (py3.13)",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/belingud/yaicli/actions/runs/46114260307/job/140884400548",
+      "startedAt": "2026-11-28T05:55:29Z",
+      "completedAt": "2026-11-28T05:56:39Z"
+    },
+    {
+      "name": "GitGuardian Security Checks",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://dashboard.gitguardian.com",
+      "startedAt": "2026-11-28T05:55:25Z",
+      "completedAt": "2026-11-28T05:55:26Z"
+    }
+  ],
+  "authorization": {
+    "date": "2026-11-28",
+    "user_message": "好，合并吧"
+  },
+  "state": "MERGED",
+  "merged_at": "2026-11-28T06:02:54Z",
+  "merge_commit": "ae8620af6cfa0c084e68c37d88405a30a4ba5bc5",
+  "method": "merge commit",
+  "version": "0.26.0",
+  "release_performed": false,
+  "tasks": [
+    "11-27-command-tool-boundaries",
+    "11-27-cli-planning-boundaries",
+    "11-27-session-state-boundaries",
+    "11-28-stream-emoji-rendering",
+    "11-27-core-organization-refactor"
+  ]
+}

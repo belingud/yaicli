@@ -77,3 +77,9 @@ S2-A1—S2-A5 全部通过，无未解决阻塞问题，允许提交并进入第
 ## 统一PR交付进度（2026-11-28）
 
 三个阶段已分别提交b7d3ce4、66db062、0bb6415并推送，统一PR [#60](https://github.com/belingud/yaicli/pull/60)目标master。第三阶段完整hash为0bb64158dfe1c1744cda4fed1b73d971ab0cef48。后续任务元数据/日志独立提交，不改已冻结产品与测试；最新head CI通过后仍需用户明确批准合并，未提前归档或发布。
+
+## 最终合并与归档（2026-11-28）
+
+最新交付head 5d2424bb8e0288625c851ad72a83734a4052b604 的六项CI全部通过：Python3.10/3.12/3.13完整测试、Lint & docs、Cold-start gate、GitGuardian。用户明确回复“好，合并吧”后，PR60于2026-11-28 06:02:54 UTC（北京时间14:02:54）以merge commit ae8620af6cfa0c084e68c37d88405a30a4ba5bc5合并到master。本地master已快进同步，原有无关未提交改动保留。长期合并/CI证据见../11-27-core-organization-refactor/delivery.json。
+
+本PR对应父任务、三个重构阶段及独立emoji修复均已完成；按仓库规则归档到archive/2026-11，不开展新功能，不发布、不升版本。此前章节中的“待CI/合并”等为当时历史状态，以本节为最终交付结果。后续仅允许任务归档与会话记录的bookkeeping提交。

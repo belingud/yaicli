@@ -67,3 +67,9 @@ E1旧版红灯、E2新版10项回归、E3独立26组重放及实际工具/debug�
 独立修复提交1b63b424142c12cb3371755f872ceb6dc31b38b7（fix(render): require emoji-aware Rich for live streaming），21个限定文件；修复后产品逻辑与既有测试未改。原始验收head=7408c51是测试时提交基点，冻结manifest同时覆盖当时未提交的新测试与依赖，最终提交没有改变冻结文件内容。随后的任务/会话提交仅记录hash与交付状态。
 
 远端验收以PR60最新head检查为准，先前7408c51的绿色CI不代替新提交检查。当前未合并，不归档；用户明确批准后才合并，再按仓库规则归档及同步master。回退时先revert本fix，再按原三阶段逆序处理；数据及版本不变。
+
+## 最终合并与归档（2026-11-28）
+
+最新交付head 5d2424bb8e0288625c851ad72a83734a4052b604 的六项CI全部通过：Python3.10/3.12/3.13完整测试、Lint & docs、Cold-start gate、GitGuardian。用户明确回复“好，合并吧”后，PR60于2026-11-28 06:02:54 UTC（北京时间14:02:54）以merge commit ae8620af6cfa0c084e68c37d88405a30a4ba5bc5合并到master。本地master已快进同步，原有无关未提交改动保留。长期合并/CI证据见../11-27-core-organization-refactor/delivery.json。
+
+本PR对应父任务、三个重构阶段及独立emoji修复均已完成；按仓库规则归档到archive/2026-11，不开展新功能，不发布、不升版本。此前章节中的“待CI/合并”等为当时历史状态，以本节为最终交付结果。后续仅允许任务归档与会话记录的bookkeeping提交。

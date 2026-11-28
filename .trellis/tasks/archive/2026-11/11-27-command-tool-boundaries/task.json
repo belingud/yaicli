@@ -1,0 +1,31 @@
+{
+  "id": "command-tool-boundaries",
+  "name": "command-tool-boundaries",
+  "title": "第一阶段：统一命令定义与拆分工具入口",
+  "description": "统一命令注册、帮助、补全和参数分发定义，拆分工具声明、执行、展示职责并保持原有调用契约",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "belingud",
+  "assignee": "belingud",
+  "createdAt": "2026-11-27",
+  "completedAt": "2026-11-28",
+  "branch": "chore/refactor-command-tools",
+  "base_branch": "master",
+  "worktree_path": null,
+  "commit": "b7d3ce41d6c9050e03b7a35e3764d4d2c2181470",
+  "pr_url": "https://github.com/belingud/yaicli/pull/60",
+  "subtasks": [],
+  "children": [],
+  "parent": "11-27-core-organization-refactor",
+  "relatedFiles": [],
+  "notes": "第一阶段本地验收完成并提交。用户 2026-11-27 授权自主完成全部重构，后续阶段同分支串行推进，最终统一 PR，合并仍需明确确认。 2026-11-28三个阶段均已验收提交并推送，统一PR #60目标master，第三阶段0bb6415；等待最新head CI及用户明确合并确认，暂不归档。 2026-11-28用户明确回复“好，合并吧”；最新head六项CI通过后PR60已以merge commit ae8620af6cfa0c084e68c37d88405a30a4ba5bc5合并，本地master快进同步；现归档本任务，不发布或升版本。",
+  "meta": {
+    "ci_head": "5d2424bb8e0288625c851ad72a83734a4052b604",
+    "ci_result": "all_six_checks_passed",
+    "merge_commit": "ae8620af6cfa0c084e68c37d88405a30a4ba5bc5",
+    "merged_at": "2026-11-28T06:02:54Z"
+  }
+}

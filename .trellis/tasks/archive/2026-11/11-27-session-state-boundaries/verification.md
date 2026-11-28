@@ -130,3 +130,9 @@ uv run --no-sync --offline python scripts/bench.py --gate -n 5 --json
 ### 缺陷跟进本地验收完成
 
 独立stream-emoji-rendering任务已完成定向Rich14.3.3修复和本地独立检查：旧版4项VS16红灯，修复后10项回归与26组重放通过（108次残留→1次）；真实天气fake工具在工作线程只执行一次，debug前后TTY字节相同。冻结245文件未变，3203项通过后因沙箱回环端口限制产生的3项准备错误同hash补跑通过，共3206个不同测试已验证。静态、strict docs、离线lock/构建、原启动门禁均通过；新版wheel/sdist120产品文件与源码一致。本段不替代上文三阶段历史基线；完整结果见../11-28-stream-emoji-rendering/verification.md及acceptance.json。待单独fix提交和最新head CI，再等待用户明确合并确认。
+
+## 最终合并与归档（2026-11-28）
+
+最新交付head 5d2424bb8e0288625c851ad72a83734a4052b604 的六项CI全部通过：Python3.10/3.12/3.13完整测试、Lint & docs、Cold-start gate、GitGuardian。用户明确回复“好，合并吧”后，PR60于2026-11-28 06:02:54 UTC（北京时间14:02:54）以merge commit ae8620af6cfa0c084e68c37d88405a30a4ba5bc5合并到master。本地master已快进同步，原有无关未提交改动保留。长期合并/CI证据见../11-27-core-organization-refactor/delivery.json。
+
+本PR对应父任务、三个重构阶段及独立emoji修复均已完成；按仓库规则归档到archive/2026-11，不开展新功能，不发布、不升版本。此前章节中的“待CI/合并”等为当时历史状态，以本节为最终交付结果。后续仅允许任务归档与会话记录的bookkeeping提交。

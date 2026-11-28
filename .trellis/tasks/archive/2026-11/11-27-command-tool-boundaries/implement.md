@@ -48,8 +48,8 @@ uv run --no-sync pytest tests/test_printer.py tests/test_tool_output_viewer.py t
 - [x] 使用 Trellis check 子代理检查 S1-A1—S1-A5；核对行为及副作用，不只检查模块导入成功。独立审查无阻塞项。
 - [x] 完整 pytest 3152 passed；Ruff --no-fix、27 个改动文件格式/isort、Python 3.10 语法、strict docs、wheel/sdist、六项启动门禁及 git diff --check 通过。
 - [x] verification.md 写明基线提交、命令、环境隔离方式、结果和未覆盖风险；冻结后 212 个 Python 文件哈希一致。
-- [ ] 分支提交和 PR 记录中包含原因、测试证据和回退方法；CI 通过后等待用户明确授权合并。
-- [ ] 合并后更新父任务、重新核对第二阶段规划；本阶段不自动开始后续开发。
+- [x] 分支提交和 PR 记录中包含原因、测试证据和回退方法；CI 通过后等待用户明确授权合并。
+- [x] 合并后更新父任务、重新核对第二阶段规划；本阶段不自动开始后续开发。
 
 ## Rollback points
 

@@ -278,5 +278,12 @@
       "uv.lock": "50007e5b1fea601b581b90d5ac6e4e319e0f8dd3094a82488f6982a7af22f2fe",
       "tests/test_stream_unicode_width.py": "7e49d1c959cc0c2fc825cde493dddb7a887b2fa31fa4dc503828b90a5c97ef70"
     }
+  },
+  "delivery": {
+    "ci_head": "5d2424bb8e0288625c851ad72a83734a4052b604",
+    "ci_result": "all_six_checks_passed",
+    "merged_at": "2026-11-28T06:02:54Z",
+    "merge_commit": "ae8620af6cfa0c084e68c37d88405a30a4ba5bc5",
+    "user_approved": true
   }
 }
